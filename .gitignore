@@ -1,0 +1,31 @@
+### IDE ###
+.vscode/
+.idea/
+
+### System ###
+.DS_Store
+Thumbs.db
+*.log
+
+### Go ###
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
+
+### Env ###
+.env
+.env.local
+.env.prod
+.env.test
+
+### Logger ###
+.logs/
+
+### Build ###
+build/
+bamboo-base-go-template
