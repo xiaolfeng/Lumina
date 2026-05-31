@@ -9,6 +9,7 @@ import (
 
 type service struct {
 	healthLogic *logic.HealthLogic
+	authLogic   *logic.AuthLogic
 }
 
 type handler struct {
@@ -31,8 +32,11 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 		log:  xLog.WithName(xLog.NamedCONT, handlerName),
 		service: &service{
 			healthLogic: logic.NewHealthLogic(ctx),
+			authLogic:   logic.NewAuthLogic(ctx),
 		},
 	}
 }
 
 type HealthHandler handler
+
+type AuthHandler handler

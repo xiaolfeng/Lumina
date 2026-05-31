@@ -28,11 +28,11 @@ func (r *HealthRepo) DatabaseReady(ctx context.Context) (bool, *xError.Error) {
 
 	sqlDB, err := r.db.WithContext(ctx).DB()
 	if err != nil {
-		return false, xError.NewError(nil, xError.DatabaseError, "获取数据库连接失败", false, err)
+		return false, xError.NewError(ctx, xError.DatabaseError, "获取数据库连接失败", false, err)
 	}
 
 	if err = sqlDB.PingContext(ctx); err != nil {
-		return false, xError.NewError(nil, xError.DatabaseError, "数据库健康检查失败", false, err)
+		return false, xError.NewError(ctx, xError.DatabaseError, "数据库健康检查失败", false, err)
 	}
 
 	return true, nil
@@ -42,7 +42,7 @@ func (r *HealthRepo) RedisReady(ctx context.Context) (bool, *xError.Error) {
 	r.log.Info(ctx, "RedisReady - 检查 Redis 连接")
 
 	if err := r.rdb.Ping(ctx).Err(); err != nil {
-		return false, xError.NewError(nil, xError.CacheError, "缓存健康检查失败", false, err)
+		return false, xError.NewError(ctx, xError.CacheError, "缓存健康检查失败", false, err)
 	}
 
 	return true, nil

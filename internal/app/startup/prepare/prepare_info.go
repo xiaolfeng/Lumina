@@ -3,7 +3,6 @@ package prepare
 import (
 	"log/slog"
 
-	xUtil "github.com/bamboo-services/bamboo-base-go/common/utility"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 )
 
@@ -12,9 +11,6 @@ import (
 // 写入站点基础配置和站主信息。使用 FirstOrCreate 保证幂等性，
 // 已存在的 key 不会被覆盖。
 func (p *Prepare) prepareInfo() {
-	// 加密默认密码
-	defaultPasswordHash := xUtil.Password().MustEncryptString("lumina123")
-
 	infos := []entity.Info{
 		{
 			Key:         "site_name",
@@ -28,18 +24,23 @@ func (p *Prepare) prepareInfo() {
 		},
 		{
 			Key:         "owner_username",
-			Value:       "xiaolfeng",
+			Value:       "",
 			Description: "站主用户名",
 		},
 		{
 			Key:         "owner_email",
-			Value:       "i@xinac.cc",
+			Value:       "",
 			Description: "站主邮箱",
 		},
 		{
 			Key:         "owner_password",
-			Value:       defaultPasswordHash,
+			Value:       "",
 			Description: "站主密码（加密存储）",
+		},
+		{
+			Key:         "is_initial",
+			Value:       "false",
+			Description: "是否为初始化模式",
 		},
 	}
 

@@ -132,6 +132,7 @@
 
 ## CONVENTIONS
 
+- **框架文档优先**：本项目基于 `bamboo-base-go` 框架构建，使用任何框架组件（`xError`、`xResult`、`xLog`、`xEnv`、`xCtxUtil` 等）前，**必须先通过 `bamboo-document` MCP 查阅官方文档**（板块标识：`bamboo-base-go`），确认 API 签名、参数语义和推荐用法后再编码。禁止凭记忆或猜测使用框架 API。
 - **导入别名**：bamboo-base-go 包使用 `x*` 别名（`xLog`、`xEnv`、`xError`、`xResult`、`xReg` 等）。
 - **严格分层**：route -> handler -> logic -> repository；禁止跳层调用。
 - **上下文依赖注入**：启动阶段将基础设施注册到 context；逻辑层通过 `xCtxUtil.MustGetDB/MustGetRDB` 获取。
@@ -146,6 +147,7 @@
 ## ANTI-PATTERNS (THIS PROJECT)
 
 - 禁止从路由直接调用仓库或绕过 logic 层。
+- 禁止凭记忆或猜测使用 `bamboo-base-go` 框架 API；使用前必须通过 `bamboo-document` MCP（板块 `bamboo-base-go`）查阅官方文档，确认签名和用法。
 - 禁止直接使用 `os.Getenv`；应使用带默认值的 `xEnv.GetEnv*`。
 - 禁止在 handler 中手写原始 Gin JSON 响应；优先使用 `xResult` 辅助函数。
 - 禁止在 logic/repository 构造函数内部创建 DB/Redis 客户端；应从启动阶段/context 获取注入的依赖。

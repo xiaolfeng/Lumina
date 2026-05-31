@@ -1,4 +1,189 @@
+definitions:
+  auth.InitializeRequest:
+    properties:
+      email:
+        description: 邮箱地址
+        type: string
+      password:
+        description: 登录密码
+        maxLength: 64
+        minLength: 6
+        type: string
+      username:
+        description: 用户名
+        maxLength: 32
+        minLength: 3
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  auth.LoginRequest:
+    properties:
+      account:
+        description: 账号（用户名或邮箱）
+        type: string
+      password:
+        description: 登录密码
+        type: string
+    required:
+    - account
+    - password
+    type: object
+  auth.RefreshRequest:
+    properties:
+      refresh_token:
+        description: 刷新令牌
+        type: string
+    required:
+    - refresh_token
+    type: object
+  common.BaseResponse:
+    properties:
+      code:
+        type: integer
+      context:
+        type: string
+      data: {}
+      error_message:
+        type: string
+      message:
+        type: string
+      output:
+        type: string
+      overhead:
+        type: integer
+    type: object
 info:
   contact: {}
-paths: {}
+paths:
+  /api/v1/auth/initialize:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 初始化请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.InitializeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 初始化成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "409":
+          description: 系统已初始化
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: 系统初始化
+      tags:
+      - auth
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 登录请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 登录成功，返回Token
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 账号或密码错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: 用户登录
+      tags:
+      - auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 登出请求（传入refresh_token）
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 登出成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 用户登出
+      tags:
+      - auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 刷新请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 刷新成功，返回新Token
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 刷新令牌无效
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: 刷新令牌
+      tags:
+      - auth
+  /api/v1/auth/status:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回初始化状态
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: 系统初始化状态
+      tags:
+      - auth
 swagger: "2.0"

@@ -34,4 +34,6 @@ func NewRoute(reg *xReg.Reg) {
 
 	apiRouter := r.engine.Group("/api/v1")
 	r.healthRouter(apiRouter)
+	r.authPublicRouter(apiRouter)
+	r.authProtectedRouter(apiRouter)
 }

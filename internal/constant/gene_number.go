@@ -1,5 +1,8 @@
 package bConst
 
+import xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
+
 const (
-// Apikey xSnowflake.Gene = 32 // 有替代内容
+	// GeneApikey API 密钥实体基因（业务级别 32）
+	GeneApikey xSnowflake.Gene = 32
 )
