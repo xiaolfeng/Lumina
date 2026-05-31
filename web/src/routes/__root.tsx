@@ -15,7 +15,16 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'TanStack Start Starter',
+        name: 'theme-color',
+        content: '#e7f3ec',
+      },
+      {
+        title: 'Lumina · 微明 — AI 深度代码认知与长期记忆的知识中枢',
+      },
+      {
+        name: 'description',
+        content:
+          '赋予 AI 深度代码认知与长期记忆的知识中枢。RepoWiki、Memory、Q&A 三合一，通过 MCP 协议向所有 AI Agent 开放。',
       },
     ],
     links: [
@@ -30,7 +39,7 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <head>
         <HeadContent />
       </head>
