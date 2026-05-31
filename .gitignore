@@ -29,3 +29,7 @@ go.work.sum
 ### Build ###
 build/
 bamboo-base-go-template
+
+
+### AI ###
+.omo/
