@@ -6,17 +6,17 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/xiaolfeng/Lumina/internal/entity"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
+	"github.com/xiaolfeng/Lumina/internal/entity"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 )
 
 var migrateTables = []interface{}{
-	&entity.Role{},
-	&entity.User{},
+	&entity.Info{},
+	&entity.Apikey{},
 }
 
 func (r *reg) databaseInit(ctx context.Context) (any, error) {
