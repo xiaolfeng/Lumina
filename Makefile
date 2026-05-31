@@ -7,19 +7,25 @@ SCRIPT_DIR = script
 
 .DEFAULT_GOAL := help
 
-.PHONY: help swag run dev
+.PHONY: help swag run dev-backend dev-frontend tidy fmt test
 
 # 显示帮助信息
 help:
 	@echo "BambooBase - 可用命令"
 	@echo ""
 	@echo "开发命令:"
-	@echo "  make swag       - 生成 Swagger 文档"
-	@echo "  make run        - 运行程序"
-	@echo "  make dev        - 生成文档并运行 (推荐)"
+	@echo "  make swag         - 生成 Swagger 文档"
+	@echo "  make run          - 运行后端程序"
+	@echo "  make dev-backend  - 生成文档并运行后端 (推荐)"
+	@echo "  make dev-frontend - 运行前端开发服务器"
+	@echo ""
+	@echo "质量命令:"
+	@echo "  make tidy         - 整理 Go 模块"
+	@echo "  make fmt          - 格式化代码"
+	@echo "  make test         - 运行测试"
 	@echo ""
 	@echo "示例:"
-	@echo "  make dev"
+	@echo "  make dev-backend"
 	@echo ""
 
 # 提取出的 Swagger 生成目标
@@ -33,6 +39,9 @@ run:
 tidy:
 	go mod tidy
 
-# 组合目标：先生成文档，再运行程序
-# 以后你只需要执行 `make dev` 就可以一键起飞了！
-dev: swag run
+# 组合目标：先生成文档，再运行后端程序
+dev-backend: swag run
+
+# 前端开发服务器
+dev-frontend:
+	cd web && pnpm dev
