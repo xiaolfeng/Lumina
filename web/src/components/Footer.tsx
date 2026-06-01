@@ -13,7 +13,7 @@ const footerLinks = [
 
 export function Footer() {
   return (
-    <footer className="site-footer py-8">
+    <footer className="border-t border-[var(--line)] bg-[var(--surface-strong)] py-8">
       <div className="page-wrap flex flex-col items-center gap-4 text-center">
         {/* ── Brand + copyright ── */}
         <p className="text-sm text-[var(--sea-ink-soft)]">
@@ -32,18 +32,20 @@ export function Footer() {
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 nav-link text-sm font-medium"
+                className="group relative inline-flex items-center gap-1.5 pb-0.5 text-sm font-medium text-[var(--sea-ink)] no-underline"
               >
                 <Github className="h-4 w-4" aria-hidden />
                 {link.label}
+                <span className="absolute bottom-0 left-1/2 h-[1.5px] w-0 -translate-x-1/2 bg-[var(--lagoon)] transition-all duration-250 group-hover:w-full group-hover:left-0 group-hover:translate-x-0" />
               </a>
             ) : (
               <Link
                 key={link.to}
                 to={link.to}
-                className="nav-link text-sm font-medium"
+                className="group relative pb-0.5 text-sm font-medium text-[var(--sea-ink)] no-underline"
               >
                 {link.label}
+                <span className="absolute bottom-0 left-1/2 h-[1.5px] w-0 -translate-x-1/2 bg-[var(--lagoon)] transition-all duration-250 group-hover:w-full group-hover:left-0 group-hover:translate-x-0" />
               </Link>
             ),
           )}

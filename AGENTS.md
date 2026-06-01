@@ -172,6 +172,14 @@ web/                            # TanStack Start 前端（pnpm + Vite）
 - **前端路由**：基于 TanStack Start file-router 模式，路由文件位于 `web/src/routes/`。
 - **UI 组件库**：shadcn/ui（new-york 风格、zinc 基色、lucide 图标），通过 `pnpm dlx shadcn@latest add` 添加。
 - **CSS 框架**：Tailwind CSS 4，自定义 CSS 变量和主题定义在 `web/src/styles.css`。
+- **CSS 架构约束**（⚠️ 强制）：`styles.css` **仅负责**：
+  1. CSS 变量定义（`:root` / `.dark` 的 `--*` 变量）
+  2. Tailwind `@theme inline` 映射
+  3. body 级别基础样式（背景渐变、纹理、字体平滑）
+  4. `@layer base` 全局约束（`border-border outline-ring/50`）
+  5. `prefers-reduced-motion` 全局降级
+  6. **全局排版工具类**（`.display-title`、`.page-wrap` 等）— 跨页面复用的字体/布局约定，非组件私有样式
+  **禁止**在 `styles.css` 中编写任何组件级或页面级样式（如 `a {}`、`code {}`、`.island-shell`、`.nav-link`、`.prose pre`、`.rise-in`、`.feature-card` 等）。这些样式必须由组件文件自身通过 Tailwind 类或组件内 `<style>` 管理。
 
 ## ANTI-PATTERNS (THIS PROJECT)
 

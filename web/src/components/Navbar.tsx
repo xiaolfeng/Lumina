@@ -3,6 +3,7 @@
 import { Button } from '#/components/ui/button'
 import { Link } from '@tanstack/react-router'
 import { Sparkles, Menu, X } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useState } from 'react'
 
 const navLinks = [
@@ -15,9 +16,12 @@ export function Navbar() {
   const [open, setOpen] = useState(false)
 
   return (
-    <nav
-      className="island-shell fixed top-4 left-4 right-4 z-50 flex items-center justify-between rounded-xl px-6 py-3 rise-in"
+    <motion.nav
+      className="fixed top-4 left-4 right-4 z-50 flex items-center justify-between rounded-xl border border-[var(--line)] bg-[var(--surface)] px-6 py-3 shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-md"
       aria-label="主导航"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
     >
       {/* ── Brand ── */}
       <Link
@@ -32,7 +36,11 @@ export function Navbar() {
         <span className="display-title text-lg font-bold tracking-tight text-[var(--sea-ink)]">
           Lumina
         </span>
-        <span className="island-kicker hidden sm:inline">微明</span>
+        <span className="hidden items-center rounded-full border border-[var(--chip-line)] px-[0.7em] py-[0.25em] text-xs font-bold uppercase tracking-widest text-[var(--lagoon-deep)] sm:inline-flex"
+          style={{ background: 'linear-gradient(to right, transparent, var(--chip-bg), transparent)' }}
+        >
+          微明
+        </span>
       </Link>
 
       {/* ── Desktop nav links ── */}
@@ -41,17 +49,18 @@ export function Navbar() {
           <Link
             key={link.to}
             to={link.to}
-            className="nav-link text-sm font-medium"
+            className="group relative pb-0.5 text-sm font-medium text-[var(--sea-ink)] no-underline"
             activeProps={{ className: 'is-active' }}
           >
             {link.label}
+            <span className="absolute bottom-0 left-1/2 h-[1.5px] w-0 -translate-x-1/2 bg-[var(--lagoon)] transition-all duration-250 group-hover:w-full group-hover:left-0 group-hover:translate-x-0 [.is-active_&]:w-full [.is-active_&]:left-0 [.is-active_&]:translate-x-0" />
           </Link>
         ))}
       </div>
 
       {/* ── Desktop CTA ── */}
       <div className="hidden md:block">
-        <Button asChild variant="default" size="sm">
+        <Button asChild variant="default" size="sm" className="!text-white">
           <Link to="/login">登录</Link>
         </Button>
       </div>
@@ -64,17 +73,22 @@ export function Navbar() {
         aria-label={open ? '关闭菜单' : '打开菜单'}
         aria-expanded={open}
       >
-        {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {open ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
       </button>
 
       {/* ── Mobile menu panel ── */}
       {open && (
-        <div className="absolute top-full mt-2 left-0 right-0 island-shell flex flex-col gap-3 rounded-xl p-5 md:hidden rise-in">
+        <motion.div
+          className="absolute top-full mt-2 left-0 right-0 flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-md md:hidden"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+        >
           {navLinks.map((link) => (
             <Link
               key={link.to}
               to={link.to}
-              className="nav-link text-base font-medium"
+              className="text-base font-medium text-[var(--sea-ink)] no-underline"
               activeProps={{ className: 'is-active' }}
               onClick={() => setOpen(false)}
             >
@@ -82,13 +96,13 @@ export function Navbar() {
             </Link>
           ))}
 
-          <Button asChild variant="default" size="sm" className="mt-1 w-full">
+          <Button asChild variant="default" size="sm" className="mt-1 w-full !text-white">
             <Link to="/login" onClick={() => setOpen(false)}>
               登录
             </Link>
           </Button>
-        </div>
+        </motion.div>
       )}
-    </nav>
+    </motion.nav>
   )
 }
