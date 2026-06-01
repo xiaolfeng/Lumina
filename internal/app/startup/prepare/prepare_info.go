@@ -47,9 +47,7 @@ func (p *Prepare) prepareInfo() {
 	for _, info := range infos {
 		item := info
 		err := p.db.WithContext(p.ctx).
-			Model(&entity.Info{}).
 			Where("key = ?", item.Key).
-			Assign(entity.Info{Value: item.Value, Description: item.Description}).
 			FirstOrCreate(&item).
 			Error
 		if err != nil {
