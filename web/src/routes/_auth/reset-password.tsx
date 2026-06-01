@@ -22,10 +22,7 @@ function ResetPasswordPage() {
       </motion.div>
 
       {/* Instructions */}
-      <motion.div
-        variants={rightItemVariants}
-        className="flex flex-col gap-5"
-      >
+      <motion.div variants={rightItemVariants} className="flex flex-col gap-5">
         <div className="rounded-xl border border-[var(--line)] bg-card p-5">
           <div className="mb-3 flex items-center gap-2 text-sm font-medium text-[var(--sea-ink)]">
             <Terminal className="h-4 w-4 text-[var(--lagoon)]" aria-hidden />

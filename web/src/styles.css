@@ -11,13 +11,13 @@
 
 :root {
   /* ── 意象层 ── */
-  --sea-ink: #2a2420;          /* 深墨褐 — 幽暗之主 */
-  --sea-ink-soft: #5c534a;     /* 柔褐 — 隐于幽微，需保证对比度 */
-  --lagoon: #c9883a;           /* 琥珀金 — 烛光本体 */
-  --lagoon-deep: #7a4e1a;      /* 深琥珀 — 烛芯，需保证对比度 */
-  --palm: #b87050;             /* 余烬橙 — 温暖余温 */
-  --sand: #ede5d8;             /* 沙褐 — 沉淀之壤 */
-  --foam: #f8f4ee;             /* 烛晕 — 微光弥漫 */
+  --sea-ink: #2a2420; /* 深墨褐 — 幽暗之主 */
+  --sea-ink-soft: #5c534a; /* 柔褐 — 隐于幽微，需保证对比度 */
+  --lagoon: #c9883a; /* 琥珀金 — 烛光本体 */
+  --lagoon-deep: #7a4e1a; /* 深琥珀 — 烛芯，需保证对比度 */
+  --palm: #b87050; /* 余烬橙 — 温暖余温 */
+  --sand: #ede5d8; /* 沙褐 — 沉淀之壤 */
+  --foam: #f8f4ee; /* 烛晕 — 微光弥漫 */
 
   /* ── 材质层 ── */
   --surface: rgba(255, 251, 245, 0.72);
@@ -73,21 +73,21 @@
 
 .dark {
   /* ── 意象层 · 夜烛 ── */
-  --sea-ink: #e8ddd0;          /* 暖白 — 被烛光照亮的文字 */
-  --sea-ink-soft: #a89a8a;     /* 暗羊皮 — 隐于夜色 */
-  --lagoon: #e8a855;           /* 亮琥珀 — 烛光跳动 */
-  --lagoon-deep: #f5c574;      /* 浅琥珀 —  Hover 更暖 */
-  --palm: #e08a5e;             /* 暖橙 — 余温 */
-  --sand: #1a1512;             /* 深褐 — 夜色之底 */
-  --foam: #13100e;             /* 烟褐 — 幽暗深处 */
+  --sea-ink: #e8ddd0; /* 暖白 — 被烛光照亮的文字 */
+  --sea-ink-soft: #a89a8a; /* 暗羊皮 — 隐于夜色 */
+  --lagoon: #e8a855; /* 亮琥珀 — 烛光跳动 */
+  --lagoon-deep: #f5c574; /* 浅琥珀 —  Hover 更暖 */
+  --palm: #e08a5e; /* 暖橙 — 余温 */
+  --sand: #1a1512; /* 深褐 — 夜色之底 */
+  --foam: #13100e; /* 烟褐 — 幽暗深处 */
 
   /* ── 材质层 · 夜 ── */
   --surface: rgba(30, 25, 20, 0.78);
   --surface-strong: rgba(25, 20, 16, 0.92);
   --line: rgba(232, 213, 190, 0.14);
   --inset-glint: rgba(255, 235, 210, 0.1);
-  --kicker: #f5d69a;           /* 暖金 — 夜中标签 */
-  --bg-base: #0f0c0a;          /* 烟黑 — 最深 */
+  --kicker: #f5d69a; /* 暖金 — 夜中标签 */
+  --bg-base: #0f0c0a; /* 烟黑 — 最深 */
   --header-bg: rgba(15, 12, 10, 0.85);
   --chip-bg: rgba(30, 25, 20, 0.88);
   --chip-line: rgba(232, 213, 190, 0.2);
@@ -202,7 +202,11 @@ body {
   background:
     radial-gradient(1000px 560px at -6% -8%, var(--hero-a), transparent 60%),
     radial-gradient(900px 520px at 108% -10%, var(--hero-b), transparent 64%),
-    radial-gradient(640px 340px at 50% 118%, rgba(201, 136, 58, 0.08), transparent 72%),
+    radial-gradient(
+      640px 340px at 50% 118%,
+      rgba(201, 136, 58, 0.08),
+      transparent 72%
+    ),
     linear-gradient(
       180deg,
       color-mix(in oklab, var(--sand) 60%, #fff) 0%,
@@ -223,8 +227,16 @@ body::before {
   z-index: -1;
   opacity: 0.24;
   background:
-    radial-gradient(circle at 22% 18%, rgba(255, 248, 235, 0.7), transparent 36%),
-    radial-gradient(circle at 76% 24%, rgba(201, 136, 58, 0.15), transparent 44%),
+    radial-gradient(
+      circle at 22% 18%,
+      rgba(255, 248, 235, 0.7),
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 76% 24%,
+      rgba(201, 136, 58, 0.15),
+      transparent 44%
+    ),
     radial-gradient(circle at 44% 84%, rgba(184, 112, 80, 0.1), transparent 38%);
 }
 

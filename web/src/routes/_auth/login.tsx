@@ -1,12 +1,8 @@
-import { useState, type FormEvent, useRef } from 'react'
+import { useState, useRef } from 'react'
+import type { FormEvent } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
-import {
-  Eye,
-  EyeOff,
-  Github,
-  LogIn,
-} from 'lucide-react'
+import { Eye, EyeOff, Github, LogIn } from 'lucide-react'
 
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
@@ -195,8 +191,6 @@ function LoginPage() {
           使用 GitHub 登录
         </Button>
       </motion.div>
-
-
     </>
   )
 }

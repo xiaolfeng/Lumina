@@ -132,14 +132,11 @@ function AuthLayout() {
             style={{ color: 'rgba(231, 240, 232, 0.72)' }}
             variants={itemVariants}
           >
-            赋予 AI 深度代码认知与长期记忆的知识中枢。
-            通过 MCP 协议开放 RepoWiki、Memory、Q&A 三大核心能力，让知识自由流动。
+            赋予 AI 深度代码认知与长期记忆的知识中枢。 通过 MCP 协议开放
+            RepoWiki、Memory、Q&A 三大核心能力，让知识自由流动。
           </motion.p>
 
-          <motion.div
-            className="flex flex-wrap gap-3"
-            variants={itemVariants}
-          >
+          <motion.div className="flex flex-wrap gap-3" variants={itemVariants}>
             {highlights.map((h) => (
               <span
                 key={h.label}

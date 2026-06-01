@@ -57,11 +57,7 @@ const shellBase =
   'border border-[var(--line)] bg-[var(--surface)] shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-sm'
 
 const kickerBase =
-  'inline-flex items-center rounded-full border border-[var(--chip-line)] px-[0.7em] py-[0.25em] text-xs font-bold uppercase tracking-widest text-[var(--lagoon-deep)]'
-
-const kickerStyle = {
-  background: 'linear-gradient(to right, transparent, var(--chip-bg), transparent)',
-} as const
+  'text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--lagoon-deep)]'
 
 /* ─── Data ─────────────────────────────────────────────── */
 
@@ -98,7 +94,7 @@ function Home() {
     <>
       {/* ════════ 1. HERO SECTION ════════ */}
       <motion.section
-        className="relative flex min-h-[90vh] items-center justify-center overflow-hidden px-4 pt-24 pb-20 text-center md:min-h-[92vh] md:pt-28 md:pb-24"
+        className="relative flex min-h-[90vh] items-center justify-center overflow-hidden px-4 pt-4 pb-20 text-center md:min-h-[92vh] md:pt-6 md:pb-24"
         aria-label="主标题区域"
         initial="hidden"
         animate="visible"
@@ -111,26 +107,36 @@ function Home() {
             backgroundImage:
               'linear-gradient(rgba(42,36,32,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(42,36,32,0.4) 1px, transparent 1px)',
             backgroundSize: '48px 48px',
-            maskImage: 'radial-gradient(circle at 50% 40%, black, transparent 75%)',
+            maskImage:
+              'radial-gradient(circle at 50% 40%, black, transparent 75%)',
           }}
         />
 
         {/* 主光晕 */}
         <div
           className="pointer-events-none absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-50 blur-3xl md:h-[900px] md:w-[900px] md:opacity-40"
-          style={{ background: 'radial-gradient(circle, var(--hero-a), transparent 60%)' }}
+          style={{
+            background:
+              'radial-gradient(circle, var(--hero-a), transparent 60%)',
+          }}
         />
 
         {/* 右上余温光晕 */}
         <div
           className="pointer-events-none absolute top-[15%] right-[-5%] h-[350px] w-[350px] rounded-full opacity-30 blur-3xl md:h-[500px] md:w-[500px] md:opacity-25"
-          style={{ background: 'radial-gradient(circle, var(--hero-b), transparent 55%)' }}
+          style={{
+            background:
+              'radial-gradient(circle, var(--hero-b), transparent 55%)',
+          }}
         />
 
         {/* 左下微光 */}
         <div
           className="pointer-events-none absolute bottom-[10%] left-[-5%] h-[280px] w-[280px] rounded-full opacity-20 blur-3xl md:h-[400px] md:w-[400px]"
-          style={{ background: 'radial-gradient(circle, rgba(201,136,58,0.25), transparent 60%)' }}
+          style={{
+            background:
+              'radial-gradient(circle, rgba(201,136,58,0.25), transparent 60%)',
+          }}
         />
 
         <div className="relative z-10 mx-auto max-w-3xl">
@@ -168,7 +174,10 @@ function Home() {
             >
               <Link to="/login" aria-label="开始使用 Lumina">
                 开始使用
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
+                <ArrowRight
+                  className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                  aria-hidden
+                />
               </Link>
             </Button>
 
@@ -193,7 +202,11 @@ function Home() {
       </motion.section>
 
       {/* ════════ 2. FEATURES SECTION ════════ */}
-      <section id="features" className="page-wrap px-4 py-20" aria-label="核心功能">
+      <section
+        id="features"
+        className="page-wrap px-4 py-20"
+        aria-label="核心功能"
+      >
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -201,9 +214,14 @@ function Home() {
           variants={sectionStagger}
         >
           <div className="mb-12 text-center">
-            <motion.p className={`${kickerBase} mb-3`} style={kickerStyle} variants={fadeUp}>
-              核心能力
-            </motion.p>
+            <motion.div
+              className="mb-3 flex items-center justify-center gap-3"
+              variants={fadeUp}
+            >
+              <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--lagoon)]/30" />
+              <span className={kickerBase}>核心能力</span>
+              <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--lagoon)]/30" />
+            </motion.div>
             <motion.h2
               className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl"
               variants={fadeUp}
@@ -219,7 +237,11 @@ function Home() {
                 className={`${shellBase} cursor-pointer rounded-xl p-6`}
                 aria-label={`${feat.title} 功能卡片`}
                 variants={fadeUp}
-                whileHover={{ y: -4, boxShadow: '0 8px 36px rgba(42,36,32,0.10)', transition: { duration: 0.2 } }}
+                whileHover={{
+                  y: -4,
+                  boxShadow: '0 8px 36px rgba(42,36,32,0.10)',
+                  transition: { duration: 0.2 },
+                }}
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--lagoon)]/10">
                   <feat.icon
@@ -240,7 +262,7 @@ function Home() {
                   {feat.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1 text-xs font-medium text-[var(--sea-ink-soft)]"
+                      className="inline-flex items-center rounded-full bg-gradient-to-r from-[var(--lagoon)]/5 to-[var(--palm)]/5 px-3 py-1 text-[11px] font-semibold text-[var(--lagoon-deep)] ring-1 ring-[var(--lagoon)]/10 backdrop-blur-sm transition-all duration-200 hover:from-[var(--lagoon)]/10 hover:to-[var(--palm)]/10 hover:ring-[var(--lagoon)]/25"
                     >
                       {tag}
                     </span>
@@ -261,9 +283,14 @@ function Home() {
           variants={sectionStagger}
         >
           <div className="mb-12 text-center">
-            <motion.p className={`${kickerBase} mb-3`} style={kickerStyle} variants={fadeUp}>
-              架构设计
-            </motion.p>
+            <motion.div
+              className="mb-3 flex items-center justify-center gap-3"
+              variants={fadeUp}
+            >
+              <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--lagoon)]/30" />
+              <span className={kickerBase}>架构设计</span>
+              <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--lagoon)]/30" />
+            </motion.div>
             <motion.h2
               className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl"
               variants={fadeUp}
@@ -284,7 +311,7 @@ function Home() {
               ].map((item) => (
                 <span
                   key={item.label}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-4 py-2 text-sm font-medium text-[var(--sea-ink)]"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--surface-strong)] px-4 py-2 text-sm font-semibold text-[var(--sea-ink)] shadow-sm ring-1 ring-[var(--line)] backdrop-blur-md transition-all duration-200 hover:shadow-md hover:ring-[var(--lagoon)]/20 hover:-translate-y-0.5"
                 >
                   <item.icon
                     className="h-4 w-4 text-[var(--lagoon)]"
@@ -318,7 +345,7 @@ function Home() {
               ].map((item) => (
                 <span
                   key={item.label}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-4 py-2 text-sm font-medium text-[var(--sea-ink-soft)]"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--sea-ink-soft)] shadow-sm ring-1 ring-[var(--line)] backdrop-blur-md transition-all duration-200 hover:shadow-md hover:ring-[var(--palm)]/20 hover:-translate-y-0.5"
                 >
                   <item.icon
                     className="h-4 w-4 text-[var(--palm)]"
@@ -341,9 +368,14 @@ function Home() {
           viewport={viewportOnce}
           variants={sectionStagger}
         >
-          <motion.p className={`${kickerBase} mb-3`} style={kickerStyle} variants={fadeUp}>
-            开放协议
-          </motion.p>
+          <motion.div
+            className="mb-3 flex items-center justify-center gap-3"
+            variants={fadeUp}
+          >
+            <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--lagoon)]/30" />
+            <span className={kickerBase}>开放协议</span>
+            <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--lagoon)]/30" />
+          </motion.div>
           <motion.h2
             className="display-title mb-4 text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl"
             variants={fadeUp}
@@ -362,8 +394,9 @@ function Home() {
             className={`${shellBase} overflow-hidden rounded-xl text-left`}
             variants={scaleIn}
           >
-            <div className="border-b border-[var(--line)] bg-[var(--foam)] px-4 py-2.5">
-              <span className="text-xs font-medium text-[var(--sea-ink-soft)]">
+            <div className="flex items-center gap-2 border-b border-[var(--line)] bg-[var(--foam)] px-4 py-2.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-[var(--lagoon)]/60" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
                 MCP Tools
               </span>
             </div>
@@ -372,7 +405,9 @@ function Home() {
                 {mcpTools.map((tool, i) => (
                   <span key={tool}>
                     {i > 0 && '\n'}
-                    <span className="text-[var(--lagoon-deep)]">{'>'}</span>{' '}
+                    <span className="text-[var(--lagoon-deep)]">
+                      {'>'}
+                    </span>{' '}
                     {tool}
                   </span>
                 ))}
@@ -383,7 +418,10 @@ function Home() {
       </section>
 
       {/* ════════ 5. CTA SECTION ════════ */}
-      <section className="page-wrap px-4 py-24 text-center" aria-label="行动号召">
+      <section
+        className="page-wrap px-4 py-24 text-center"
+        aria-label="行动号召"
+      >
         <motion.div
           className={`${shellBase} mx-auto max-w-xl rounded-2xl px-8 py-14`}
           initial="hidden"
@@ -410,10 +448,7 @@ function Home() {
             立即开始使用 Lumina，开启 AI 深度代码认知之旅。
           </motion.p>
           <motion.div variants={fadeUp}>
-            <Button
-              asChild
-              size="lg"
-            >
+            <Button asChild size="lg">
               <Link to="/login" aria-label="立即开始使用 Lumina">
                 立即开始
                 <ArrowRight className="ml-2 h-4 w-4" aria-hidden />

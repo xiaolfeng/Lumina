@@ -9,7 +9,7 @@ export const Route = createFileRoute('/_public')({
 
 function PublicLayout() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pt-16 md:pt-20">
       <Navbar />
       <Outlet />
       <Footer />
