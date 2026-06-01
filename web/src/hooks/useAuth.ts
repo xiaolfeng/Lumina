@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import Cookies from 'js-cookie'
 import * as api from '#/lib/apis/auth'
 import type {
   InitializeRequest,
@@ -9,20 +10,7 @@ import type {
 import type { TokenResponse, StatusResponse } from '#/lib/models/response/auth'
 import type { BaseResponse } from '#/lib/models/response/common'
 
-// ── Cookie helpers ──
-
-export function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]*)'))
-  return match ? decodeURIComponent(match[2]) : null
-}
-
-export function setCookie(name: string, value: string, maxAge: number): void {
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Lax`
-}
-
-export function deleteCookie(name: string): void {
-  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`
-}
+export const getCookie = Cookies.get
 
 const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60
 
@@ -40,16 +28,24 @@ export function useLogin() {
     onSuccess: (response) => {
       const tokenData = response.data
       if (tokenData) {
-        setCookie('access_token', tokenData.access_token, tokenData.expires_in)
-        setCookie(
-          'refresh_token',
-          tokenData.refresh_token,
-          THIRTY_DAYS_IN_SECONDS,
-        )
-        setCookie(
+        Cookies.set('access_token', tokenData.access_token, {
+          expires: tokenData.expires_in / 86400,
+          path: '/',
+          sameSite: 'Lax',
+        })
+        Cookies.set('refresh_token', tokenData.refresh_token, {
+          expires: THIRTY_DAYS_IN_SECONDS / 86400,
+          path: '/',
+          sameSite: 'Lax',
+        })
+        Cookies.set(
           'expires_at',
           String(Date.now() + tokenData.expires_in * 1000),
-          tokenData.expires_in,
+          {
+            expires: tokenData.expires_in / 86400,
+            path: '/',
+            sameSite: 'Lax',
+          },
         )
       }
     },
@@ -60,9 +56,9 @@ export function useLogout() {
   return useMutation<BaseResponse, Error, RefreshRequest>({
     mutationFn: api.logout,
     onSuccess: () => {
-      deleteCookie('access_token')
-      deleteCookie('refresh_token')
-      deleteCookie('expires_at')
+      Cookies.remove('access_token', { path: '/' })
+      Cookies.remove('refresh_token', { path: '/' })
+      Cookies.remove('expires_at', { path: '/' })
     },
   })
 }
@@ -73,16 +69,24 @@ export function useRefresh() {
     onSuccess: (response) => {
       const tokenData = response.data
       if (tokenData) {
-        setCookie('access_token', tokenData.access_token, tokenData.expires_in)
-        setCookie(
-          'refresh_token',
-          tokenData.refresh_token,
-          THIRTY_DAYS_IN_SECONDS,
-        )
-        setCookie(
+        Cookies.set('access_token', tokenData.access_token, {
+          expires: tokenData.expires_in / 86400,
+          path: '/',
+          sameSite: 'Lax',
+        })
+        Cookies.set('refresh_token', tokenData.refresh_token, {
+          expires: THIRTY_DAYS_IN_SECONDS / 86400,
+          path: '/',
+          sameSite: 'Lax',
+        })
+        Cookies.set(
           'expires_at',
           String(Date.now() + tokenData.expires_in * 1000),
-          tokenData.expires_in,
+          {
+            expires: tokenData.expires_in / 86400,
+            path: '/',
+            sameSite: 'Lax',
+          },
         )
       }
     },
@@ -109,14 +113,14 @@ export function useAuth() {
   const refresh = useRefresh()
   const status = useStatus()
 
-  const isAuthenticated = getCookie('access_token') !== null
+  const isAuthenticated = !!Cookies.get('access_token')
 
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      const expiresAt = getCookie('expires_at')
+      const expiresAt = Cookies.get('expires_at')
       if (!expiresAt) return
 
       const expiresAtMs = Number(expiresAt)
@@ -124,7 +128,7 @@ export function useAuth() {
 
       const fiveMinutes = 5 * 60 * 1000
       if (expiresAtMs - Date.now() < fiveMinutes) {
-        const refreshToken = getCookie('refresh_token')
+        const refreshToken = Cookies.get('refresh_token')
         if (refreshToken && !refreshRef.current.isPending) {
           refreshRef.current.mutate({ refresh_token: refreshToken })
         }

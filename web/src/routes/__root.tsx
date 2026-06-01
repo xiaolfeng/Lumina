@@ -44,21 +44,14 @@ export const Route = createRootRoute({
     ],
   }),
   beforeLoad: async ({ location }) => {
-    let isInitial = true
+    const res = await getStatus()
 
-    try {
-      const res = await getStatus()
-      isInitial = res.data?.is_initial ?? true
-    } catch {
-      // Graceful degradation: allow access on API failure
-    }
-
-    if (!isInitial && location.pathname !== '/new') {
+    if (res.data?.is_initial === true && location.pathname !== '/new') {
       throw redirect({ to: '/new' })
     }
 
-    if (isInitial && location.pathname === '/new') {
-      throw redirect({ to: '/' })
+    if (res.data?.is_initial === false && location.pathname === '/new') {
+      throw redirect({ to: '/login' })
     }
   },
   shellComponent: RootDocument,
@@ -66,7 +59,7 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

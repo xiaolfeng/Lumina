@@ -208,7 +208,7 @@ const docTemplate = `{
                 "summary": "系统初始化状态",
                 "responses": {
                     "200": {
-                        "description": "返回初始化状态",
+                        "description": "返回系统初始化状态（true=未初始化）",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }

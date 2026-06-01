@@ -48,14 +48,14 @@ func NewAuthLogic(ctx context.Context) *AuthLogic {
 	}
 }
 
-// GetInitialStatus 获取系统是否已完成初始化
+// GetInitialStatus 获取系统是否为初始状态（未初始化）
 func (l *AuthLogic) GetInitialStatus(ctx context.Context) (bool, *xError.Error) {
 	l.log.Info(ctx, "GetInitialStatus - 检查系统初始化状态")
 
 	var info entity.Info
 	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "is_initial").First(&info).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return false, nil
+			return true, nil
 		}
 		return false, xError.NewError(ctx, xError.DatabaseError, "查询初始化状态失败", false, nil)
 	}
@@ -72,7 +72,7 @@ func (l *AuthLogic) Initialize(ctx context.Context, req *apiAuth.InitializeReque
 	if xErr != nil {
 		return xErr
 	}
-	if isInitial {
+	if !isInitial {
 		return xError.NewError(ctx, xError.RepeatOperation, "系统已初始化，不可重复操作", false, nil)
 	}
 
@@ -103,10 +103,10 @@ func (l *AuthLogic) Initialize(ctx context.Context, req *apiAuth.InitializeReque
 			return err
 		}
 
-		// 更新初始化状态为 true
+		// 标记系统已完成初始化
 		if err := tx.WithContext(ctx).Model(&entity.Info{}).
 			Where("key = ?", "is_initial").
-			Update("value", "true").Error; err != nil {
+			Update("value", "false").Error; err != nil {
 			return err
 		}
 

@@ -132,7 +132,7 @@ func (h *AuthHandler) Logout(ctx *gin.Context) {
 // @Tags		auth
 // @Accept		json
 // @Produce		json
-// @Success		200		{object}	apiCommon.BaseResponse	"返回初始化状态"
+// @Success		200		{object}	apiCommon.BaseResponse	"返回系统初始化状态（true=未初始化）"
 // @Router		/api/v1/auth/status [get]
 func (h *AuthHandler) Status(ctx *gin.Context) {
 	h.log.Info(ctx, "Status - 查询系统状态")

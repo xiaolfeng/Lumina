@@ -1,4 +1,5 @@
 import axios from 'axios'
+import Cookies from 'js-cookie'
 import type {
   InitializeRequest,
   LoginRequest,
@@ -8,20 +9,15 @@ import type { TokenResponse, StatusResponse } from '../models/response/auth'
 import type { BaseResponse } from '../models/response/common'
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: '',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]*)'))
-  return match ? decodeURIComponent(match[2]) : null
-}
-
 apiClient.interceptors.request.use((config) => {
-  const token = getCookie('access_token')
+  const token = Cookies.get('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }

@@ -9,7 +9,7 @@ import (
 // prepareInfo 初始化 Info 表种子数据
 //
 // 写入站点基础配置和站主信息。使用 FirstOrCreate 保证幂等性，
-// 已存在的 key 不会被覆盖。
+// 已存在的 key 不会被覆盖。is_initial 默认值为 "true"，表示系统处于未初始化状态。
 func (p *Prepare) prepareInfo() {
 	infos := []entity.Info{
 		{
@@ -39,8 +39,8 @@ func (p *Prepare) prepareInfo() {
 		},
 		{
 			Key:         "is_initial",
-			Value:       "false",
-			Description: "是否为初始化模式",
+			Value:       "true",
+			Description: "系统是否为初始状态（true=未初始化，false=已初始化）",
 		},
 	}
 

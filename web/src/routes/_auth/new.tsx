@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import type { FormEvent } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'motion/react'
 import { Eye, EyeOff, Sparkles } from 'lucide-react'
 
@@ -17,6 +18,7 @@ export const Route = createFileRoute('/_auth/new')({ component: NewPage })
 
 function NewPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -86,7 +88,9 @@ function NewPage() {
         password,
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
+          await queryClient.invalidateQueries({ queryKey: ['auth', 'status'] })
+          await router.invalidate()
           setSuccess(true)
           setTimeout(() => {
             router.navigate({ to: '/login' })
