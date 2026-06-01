@@ -1,6 +1,6 @@
 # 项目知识库
 
-**生成日期:** 2026-06-01
+**生成日期:** 2026-06-02
 **提交:** d40697d
 **分支:** master
 
@@ -96,8 +96,8 @@
 | `Init` | 函数 | `internal/app/startup/startup.go` | 启动节点列表工厂 |
 | `NewRoute` | 函数 | `internal/app/route/route.go` | 全局中间件 + 路由组 |
 | `NewHandler[T]` | 泛型函数 | `internal/handler/handler.go` | Handler 泛型构造模式 |
-| `Auth` | 中间件 | `internal/app/middleware/auth.go` | Bearer Token 认证拦截 |
-| `AuthLogic` | 结构体 | `internal/logic/auth.go` | 认证业务编排 |
+| `Auth` | 中间件 | `internal/app/middleware/auth.go` | Bearer Token 认证拦截（单用户模式，注入认证标记） |
+| `AuthLogic` | 结构体 | `internal/logic/auth.go` | 单用户认证业务编排（Info 表） |
 | `HealthLogic.Ping` | 方法 | `internal/logic/health.go` | 服务健康检查编排 |
 | `HealthRepo.DatabaseReady` | 方法 | `internal/repository/health.go` | 数据库就绪检查 |
 | `getRouter` | 函数 | `web/src/router.tsx` | 前端路由入口 |
@@ -132,7 +132,7 @@
 ```
 前端（web/）──REST API + SSE──▶ 后端（Go Gin）
                                   │
-                                  ├── 认证模块（已实现）
+                                  ├── 认证模块（已实现，单用户 Info 表认证）
                                   ├── 健康检查（已实现）
                                   ├── RepoWiki（设计中）
                                   ├── Memory（设计中）
@@ -227,7 +227,7 @@ pnpm dlx shadcn@latest add <component>  # 添加 UI 组件
 - Q&A Session 默认最大存活 7 天；可通过 `QA_SESSION_MAX_DURATION`（单位秒）配置。
 - RepoWiki 模块需要独立的 LLM Provider 配置；通过 `LLM_*` 环境变量设置。
 - 前端位于 `web/` 目录，通过 REST API + SSE 与后端通信；开发服务器端口 3000。
-- 认证模块已实现（登录、注册、Token 刷新、Bearer 中间件）；RepoWiki/Memory/Q&A 尚在设计阶段。
+- 认证模块已实现（登录、初始化、Token 刷新、Bearer 中间件）；RepoWiki/Memory/Q&A 尚在设计阶段。
 
 ## 引用
 

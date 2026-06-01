@@ -10,7 +10,7 @@ import (
 type RedisKey string
 
 const (
-	CacheAuthToken    RedisKey = "auth:at:%s" // CacheAuthToken AccessToken→User 缓存（%s = MD5(AT)）
+	CacheAuthToken    RedisKey = "auth:at:%s" // CacheAuthToken AccessToken 认证标记缓存（%s = MD5(AT)）
 	CacheRefreshToken RedisKey = "auth:rt:%s" // CacheRefreshToken RefreshToken→UserID 缓存（%s = RT）
 )
 

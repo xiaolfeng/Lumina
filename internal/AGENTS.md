@@ -29,19 +29,15 @@ internal/
 │   ├── auth.go            # 认证逻辑（Token 验证、密码校验）
 │   └── health.go          # 健康检查逻辑
 ├── repository/            # 数据访问层
-│   ├── user.go            # 用户 CRUD
 │   ├── token.go           # Token 持久化
 │   ├── health.go          # 数据库就绪检查
 │   └── cache/             # Redis 缓存操作
 │       └── token.go       # Token 缓存（AT/RT 存储）
 ├── entity/                # GORM 实体
-│   ├── user.go            # 用户实体
-│   ├── info.go            # 站点配置实体
-│   └── apikey.go          # API 密钥实体
+│   └── info.go            # 站点配置实体（单用户模式）
 └── constant/              # 共享业务常量
-    ├── gene_number.go     # 雪花算法基因编号
     ├── cache.go           # Redis Key 前缀/过期时间
-    └── context.go         # Context Key（如 CtxUserKey）
+    └── context.go         # Context Key（如 CtxOwnerKey）
 ```
 
 ## 导航指南
@@ -65,7 +61,7 @@ internal/
 - **Repository 返回值**：统一 `(data, *xError.Error)` 风格，不用裸 `error`。
 - **日志命名**：按层使用 `xLog.WithName` — `NamedCONT`（handler）、`NamedLOGC`（logic）、`NamedREPO`（repository）、`NamedINIT`（startup）。
 - **上下文传递**：使用 `ctx.Request.Context()` 或注入的 context 下发调用。
-- **认证中间件**：通过 `middleware.Auth(ctx)` 创建，将验证后的用户实体注入 `CtxUserKey`。
+- **认证中间件**：通过 `middleware.Auth(ctx)` 创建，注入认证标记到 context（`CtxOwnerKey`）。
 - **泛型 Handler 构造**：`NewHandler[T]` 统一注入所有 logic 实例到 `service` 结构体。
 - **实体 ID 策略**：雪花算法基因策略；每个实体必须实现 `GetGene() xSnowflake.Gene`。
 - **字段注释**：实体字段必须追加行尾中文注释（`// 字段说明`），且与 `gorm comment` 一致。

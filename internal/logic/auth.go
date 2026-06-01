@@ -20,7 +20,6 @@ import (
 
 // authRepo 认证模块依赖的仓储集合
 type authRepo struct {
-	user  *repository.UserRepo
 	token *repository.TokenRepo
 }
 
@@ -42,7 +41,6 @@ func NewAuthLogic(ctx context.Context) *AuthLogic {
 			log: xLog.WithName(xLog.NamedLOGC, "AuthLogic"),
 		},
 		repo: authRepo{
-			user:  repository.NewUserRepo(db),
 			token: repository.NewTokenRepo(rdb),
 		},
 	}
@@ -63,7 +61,7 @@ func (l *AuthLogic) GetInitialStatus(ctx context.Context) (bool, *xError.Error) 
 	return info.Value == "true", nil
 }
 
-// Initialize 执行系统初始化，创建首个管理员用户并标记已初始化
+// Initialize 执行系统初始化，将 owner 凭据写入 Info 表并标记已初始化
 func (l *AuthLogic) Initialize(ctx context.Context, req *apiAuth.InitializeRequest) *xError.Error {
 	l.log.Info(ctx, "Initialize - 执行系统初始化")
 
@@ -76,30 +74,26 @@ func (l *AuthLogic) Initialize(ctx context.Context, req *apiAuth.InitializeReque
 		return xError.NewError(ctx, xError.RepeatOperation, "系统已初始化，不可重复操作", false, nil)
 	}
 
-	// 检查用户名是否已存在
-	if _, found, xErr := l.repo.user.GetByUsername(ctx, req.Username); xErr != nil {
-		return xErr
-	} else if found {
-		return xError.NewError(ctx, xError.Existed, "用户名已被占用", false, nil)
-	}
-
-	// 检查邮箱是否已存在
-	if _, found, xErr := l.repo.user.GetByEmail(ctx, req.Email); xErr != nil {
-		return xErr
-	} else if found {
-		return xError.NewError(ctx, xError.Existed, "邮箱已被占用", false, nil)
-	}
-
-	// 在事务中执行：创建用户 + 更新初始化状态
+	// 在事务中执行：写入 owner 凭据 + 更新初始化状态
 	if err := l.db.Transaction(func(tx *gorm.DB) error {
-		// 创建用户
-		user := entity.User{
-			Username:     req.Username,
-			Email:        req.Email,
-			PasswordHash: xUtil.Password().MustEncryptString(req.Password),
-			IsActive:     true,
+		// 写入 owner 用户名
+		if err := tx.WithContext(ctx).Model(&entity.Info{}).
+			Where("key = ?", "owner_username").
+			Update("value", req.Username).Error; err != nil {
+			return err
 		}
-		if err := tx.WithContext(ctx).Create(&user).Error; err != nil {
+
+		// 写入 owner 邮箱
+		if err := tx.WithContext(ctx).Model(&entity.Info{}).
+			Where("key = ?", "owner_email").
+			Update("value", req.Email).Error; err != nil {
+			return err
+		}
+
+		// 写入 owner 密码（bcrypt 加密）
+		if err := tx.WithContext(ctx).Model(&entity.Info{}).
+			Where("key = ?", "owner_password").
+			Update("value", xUtil.Password().MustEncryptString(req.Password)).Error; err != nil {
 			return err
 		}
 
@@ -123,31 +117,38 @@ func (l *AuthLogic) Initialize(ctx context.Context, req *apiAuth.InitializeReque
 func (l *AuthLogic) Login(ctx context.Context, req *apiAuth.LoginRequest) (*apiAuth.TokenResponse, *xError.Error) {
 	l.log.Info(ctx, "Login - 用户登录")
 
-	// 根据是否包含 @ 判断登录方式
-	var user *entity.User
-	var found bool
-	var xErr *xError.Error
+	// 从 Info 表读取 owner 用户名
+	var usernameInfo entity.Info
+	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "owner_username").First(&usernameInfo).Error; err != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, err)
+	}
 
+	// 从 Info 表读取 owner 邮箱
+	var emailInfo entity.Info
+	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "owner_email").First(&emailInfo).Error; err != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, err)
+	}
+
+	// 根据是否包含 @ 判断登录方式，验证账号匹配
+	accountMatched := false
 	if strings.Contains(req.Account, "@") {
-		user, found, xErr = l.repo.user.GetByEmail(ctx, req.Account)
+		accountMatched = req.Account == emailInfo.Value
 	} else {
-		user, found, xErr = l.repo.user.GetByUsername(ctx, req.Account)
+		accountMatched = req.Account == usernameInfo.Value
 	}
-	if xErr != nil {
-		return nil, xErr
-	}
-	if !found {
+	if !accountMatched {
 		return nil, xError.NewError(ctx, xError.LoginFailed, "账号或密码错误", false, nil)
+	}
+
+	// 从 Info 表读取 owner 密码哈希
+	var passwordInfo entity.Info
+	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "owner_password").First(&passwordInfo).Error; err != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, err)
 	}
 
 	// 验证密码
-	if !xUtil.Password().IsValid(req.Password, user.PasswordHash) {
+	if !xUtil.Password().IsValid(req.Password, passwordInfo.Value) {
 		return nil, xError.NewError(ctx, xError.LoginFailed, "账号或密码错误", false, nil)
-	}
-
-	// 检查账户状态
-	if !user.IsActive {
-		return nil, xError.NewError(ctx, xError.UserDisabled, "账户已被禁用", false, nil)
 	}
 
 	// 生成 AccessToken 和 RefreshToken
@@ -158,16 +159,11 @@ func (l *AuthLogic) Login(ctx context.Context, req *apiAuth.LoginRequest) (*apiA
 	rt := uuid.New().String()
 
 	// 存储令牌到 Redis
-	if xErr := l.repo.token.SetAccessToken(ctx, atMD5, user); xErr != nil {
+	if xErr := l.repo.token.SetAccessToken(ctx, atMD5); xErr != nil {
 		return nil, xErr
 	}
-	if xErr := l.repo.token.SetRefreshToken(ctx, rt, user.ID); xErr != nil {
+	if xErr := l.repo.token.SetRefreshToken(ctx, rt); xErr != nil {
 		return nil, xErr
-	}
-
-	// 更新最后登录时间（非致命错误）
-	if xErr := l.repo.user.UpdateLastLoginAt(ctx, user.ID); xErr != nil {
-		l.log.Warn(ctx, "Login - 更新最后登录时间失败: "+xErr.Error())
 	}
 
 	l.log.Info(ctx, "Login - 用户登录成功")
@@ -184,7 +180,7 @@ func (l *AuthLogic) Refresh(ctx context.Context, req *apiAuth.RefreshRequest) (*
 	l.log.Info(ctx, "Refresh - 刷新令牌")
 
 	// 验证刷新令牌
-	userID, found, xErr := l.repo.token.GetRefreshToken(ctx, req.RefreshToken)
+	found, xErr := l.repo.token.GetRefreshToken(ctx, req.RefreshToken)
 	if xErr != nil {
 		return nil, xErr
 	}
@@ -197,15 +193,6 @@ func (l *AuthLogic) Refresh(ctx context.Context, req *apiAuth.RefreshRequest) (*
 		return nil, xErr
 	}
 
-	// 获取用户信息
-	user, found, xErr := l.repo.user.GetByID(ctx, userID)
-	if xErr != nil {
-		return nil, xErr
-	}
-	if !found {
-		return nil, xError.NewError(ctx, xError.UserNotFound, "用户不存在", false, nil)
-	}
-
 	// 生成新的 AccessToken 和 RefreshToken
 	at := uuid.New().String()
 	atMD5Hash := md5.Sum([]byte(at))
@@ -214,10 +201,10 @@ func (l *AuthLogic) Refresh(ctx context.Context, req *apiAuth.RefreshRequest) (*
 	rt := uuid.New().String()
 
 	// 存储新令牌到 Redis
-	if xErr := l.repo.token.SetAccessToken(ctx, atMD5, user); xErr != nil {
+	if xErr := l.repo.token.SetAccessToken(ctx, atMD5); xErr != nil {
 		return nil, xErr
 	}
-	if xErr := l.repo.token.SetRefreshToken(ctx, rt, user.ID); xErr != nil {
+	if xErr := l.repo.token.SetRefreshToken(ctx, rt); xErr != nil {
 		return nil, xErr
 	}
 
@@ -243,22 +230,22 @@ func (l *AuthLogic) Logout(ctx context.Context, refreshToken string) *xError.Err
 	return nil
 }
 
-// ValidateAccessToken 验证访问令牌的有效性，返回对应的用户实体
-func (l *AuthLogic) ValidateAccessToken(ctx context.Context, accessToken string) (*entity.User, *xError.Error) {
+// ValidateAccessToken 验证访问令牌的有效性
+func (l *AuthLogic) ValidateAccessToken(ctx context.Context, accessToken string) (bool, *xError.Error) {
 	l.log.Info(ctx, "ValidateAccessToken - 验证访问令牌")
 
 	// 计算 AccessToken 的 MD5 摘要
 	atMD5Hash := md5.Sum([]byte(accessToken))
 	atMD5 := hex.EncodeToString(atMD5Hash[:])
 
-	// 从 Redis 获取用户信息
-	user, found, xErr := l.repo.token.GetAccessToken(ctx, atMD5)
+	// 从 Redis 检查令牌是否存在
+	found, xErr := l.repo.token.GetAccessToken(ctx, atMD5)
 	if xErr != nil {
-		return nil, xErr
+		return false, xErr
 	}
 	if !found {
-		return nil, xError.NewError(ctx, xError.TokenInvalid, "访问令牌无效或已过期", false, nil)
+		return false, xError.NewError(ctx, xError.TokenInvalid, "访问令牌无效或已过期", false, nil)
 	}
 
-	return user, nil
+	return true, nil
 }

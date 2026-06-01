@@ -51,6 +51,6 @@ startup/
 `prepare` 依赖 context 中的 DB 实例（`xCtxUtil.MustGetDB`），因此 DB 节点必须先执行。
 
 ## 迁移顺序
-`migrateTables` 当前顺序：`Info` → `Apikey` → `User`。
+`migrateTables` 当前：仅 `Info`（单用户模式下 User/Apikey 表已移除）。
 
-`User` 排在最后因为可能引用其他实体；新增实体时根据 FK 依赖关系插入到正确位置。
+新增实体时根据 FK 依赖关系追加到正确位置。
