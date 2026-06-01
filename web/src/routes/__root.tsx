@@ -1,8 +1,17 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import {
+  HeadContent,
+  Scripts,
+  createRootRoute,
+  redirect,
+} from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
+import { getStatus } from '#/lib/apis/auth'
 import appCss from '../styles.css?url'
+
+const queryClient = new QueryClient()
 
 export const Route = createRootRoute({
   head: () => ({
@@ -34,6 +43,24 @@ export const Route = createRootRoute({
       },
     ],
   }),
+  beforeLoad: async ({ location }) => {
+    let isInitial = true
+
+    try {
+      const res = await getStatus()
+      isInitial = res.data?.is_initial ?? true
+    } catch {
+      // Graceful degradation: allow access on API failure
+    }
+
+    if (!isInitial && location.pathname !== '/new') {
+      throw redirect({ to: '/new' })
+    }
+
+    if (isInitial && location.pathname === '/new') {
+      throw redirect({ to: '/' })
+    }
+  },
   shellComponent: RootDocument,
 })
 
@@ -44,18 +71,20 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+        <QueryClientProvider client={queryClient}>
+          {children}
+          <TanStackDevtools
+            config={{
+              position: 'bottom-right',
+            }}
+            plugins={[
+              {
+                name: 'Tanstack Router',
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+            ]}
+          />
+        </QueryClientProvider>
         <Scripts />
       </body>
     </html>

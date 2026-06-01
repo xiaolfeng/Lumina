@@ -1,9 +1,11 @@
 # WEB 前端知识库
 
 ## 概述
+
 TanStack Start（React 19）+ Tailwind CSS 4 + shadcn/ui 构建的 Lumina 前端应用，通过 REST API + SSE 与后端通信。
 
 ## 目录结构
+
 ```text
 web/
 ├── package.json                # pnpm 管理；React 19 + TanStack Start + Tailwind CSS 4
@@ -34,17 +36,19 @@ web/
 ```
 
 ## 导航指南
-| 任务 | 位置 | 说明 |
-|---|---|---|
-| 新增页面 | `src/routes/` | 文件路径即路由路径；布局路由以 `_` 前缀 |
-| 新增布局路由 | `src/routes/_<name>.tsx` | 含 `Outlet` 的布局组件 |
-| 新增通用组件 | `src/components/` | Navbar/Footer 级别的全局组件 |
-| 新增 shadcn/ui 组件 | `src/components/ui/` | 通过 `pnpm dlx shadcn@latest add <name>` |
-| 修改全局主题色 | `src/styles.css` | 仅修改 CSS 变量和 `@theme inline` |
-| 修改路由配置 | `src/router.tsx` | 预加载策略、滚动恢复等 |
-| 工具函数 | `src/lib/` | 通用工具（如 `cn()`） |
+
+| 任务                | 位置                     | 说明                                     |
+| ------------------- | ------------------------ | ---------------------------------------- |
+| 新增页面            | `src/routes/`            | 文件路径即路由路径；布局路由以 `_` 前缀  |
+| 新增布局路由        | `src/routes/_<name>.tsx` | 含 `Outlet` 的布局组件                   |
+| 新增通用组件        | `src/components/`        | Navbar/Footer 级别的全局组件             |
+| 新增 shadcn/ui 组件 | `src/components/ui/`     | 通过 `pnpm dlx shadcn@latest add <name>` |
+| 修改全局主题色      | `src/styles.css`         | 仅修改 CSS 变量和 `@theme inline`        |
+| 修改路由配置        | `src/router.tsx`         | 预加载策略、滚动恢复等                   |
+| 工具函数            | `src/lib/`               | 通用工具（如 `cn()`）                    |
 
 ## 约定
+
 - **包管理器为 pnpm**：禁止使用 npm 或 yarn，确保 lock 文件一致性。
 - **代码风格**：Prettier（`semi: false`、`singleQuote: true`、`trailingComma: "all"`）+ ESLint（`@tanstack/eslint-config`）。
 - **路径别名**：`#/*` 映射到 `./src/*`；组件内使用 `#/components/xxx` 导入。
@@ -55,6 +59,7 @@ web/
 - **主题配色**：微明色盘（烛光暖褐系），亮/暗模式通过 `:root` / `.dark` CSS 变量切换；shadcn/ui 变量已兼容主题。
 
 ## 反模式
+
 - 禁止在 `styles.css` 中编写组件级或页面级样式（如 `a {}`、`code {}`、`.island-shell` 等）。
 - 禁止手动编辑 `routeTree.gen.ts`，它由 TanStack Router 插件自动生成。
 - 禁止手动创建 `src/components/ui/` 下的 shadcn/ui 组件文件。
@@ -62,6 +67,7 @@ web/
 - 禁止在 `styles.css` 中引入第三方 CSS 库的完整样式。
 
 ## 调试路径
+
 1. 页面 404 → 检查 `src/routes/` 文件路径是否正确匹配路由。
 2. 样式异常 → 检查 `styles.css` 的 CSS 变量是否被覆盖；确认组件使用 Tailwind 类而非自定义 CSS。
 3. shadcn/ui 组件不显示 → 确认通过 CLI 正确安装，检查 `components.json` 别名配置。

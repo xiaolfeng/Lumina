@@ -13,6 +13,7 @@ import { Route as PublicRouteImport } from './routes/_public'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
+import { Route as AuthNewRouteImport } from './routes/_auth/new'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 
 const PublicRoute = PublicRouteImport.update({
@@ -33,6 +34,11 @@ const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthNewRoute = AuthNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -42,11 +48,13 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/login': typeof AuthLoginRoute
+  '/new': typeof AuthNewRoute
   '/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
   '/login': typeof AuthLoginRoute
+  '/new': typeof AuthNewRoute
   '/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRoutesById {
@@ -54,19 +62,21 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteWithChildren
   '/_public': typeof PublicRouteWithChildren
   '/_auth/login': typeof AuthLoginRoute
+  '/_auth/new': typeof AuthNewRoute
   '/_auth/reset-password': typeof AuthResetPasswordRoute
   '/_public/': typeof PublicIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/reset-password'
+  fullPaths: '/' | '/login' | '/new' | '/reset-password'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/reset-password'
+  to: '/' | '/login' | '/new' | '/reset-password'
   id:
     | '__root__'
     | '/_auth'
     | '/_public'
     | '/_auth/login'
+    | '/_auth/new'
     | '/_auth/reset-password'
     | '/_public/'
   fileRoutesById: FileRoutesById
@@ -106,6 +116,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/new': {
+      id: '/_auth/new'
+      path: '/new'
+      fullPath: '/new'
+      preLoaderRoute: typeof AuthNewRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/login': {
       id: '/_auth/login'
       path: '/login'
@@ -118,11 +135,13 @@ declare module '@tanstack/react-router' {
 
 interface AuthRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
+  AuthNewRoute: typeof AuthNewRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
+  AuthNewRoute: AuthNewRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
 }
 

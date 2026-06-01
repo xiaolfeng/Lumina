@@ -1,10 +1,11 @@
 'use client'
 
 import { Button } from '#/components/ui/button'
-import { Link } from '@tanstack/react-router'
-import { Sparkles, Menu, X } from 'lucide-react'
+import { Link, useRouter } from '@tanstack/react-router'
+import { LogOut, Menu, Sparkles, X } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
+import { getCookie, useAuth } from '#/hooks/useAuth'
 
 const navLinks = [
   { label: '首页', to: '/' },
@@ -15,6 +16,8 @@ const navLinks = [
 export function Navbar() {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const { isAuthenticated, logout } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16)
@@ -79,9 +82,27 @@ export function Navbar() {
 
         {/* ── Desktop CTA (col-3, right-aligned) ── */}
         <div className="col-span-3 hidden items-center justify-end md:flex">
-          <Button asChild variant="default" size="sm" className="!text-white">
-            <Link to="/login">登录</Link>
-          </Button>
+          {isAuthenticated ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                logout.mutate(
+                  { refresh_token: getCookie('refresh_token') || '' },
+                  {
+                    onSuccess: () => router.navigate({ to: '/login' }),
+                  },
+                )
+              }
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              登出
+            </Button>
+          ) : (
+            <Button asChild variant="default" size="sm" className="!text-white">
+              <Link to="/login">登录</Link>
+            </Button>
+          )}
         </div>
 
         {/* ── Mobile hamburger (col-6, right-aligned) ── */}
@@ -121,16 +142,38 @@ export function Navbar() {
               </Link>
             ))}
 
-            <Button
-              asChild
-              variant="default"
-              size="sm"
-              className="mt-1 w-full !text-white"
-            >
-              <Link to="/login" onClick={() => setOpen(false)}>
-                登录
-              </Link>
-            </Button>
+            {isAuthenticated ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-1 w-full"
+                onClick={() =>
+                  logout.mutate(
+                    { refresh_token: getCookie('refresh_token') || '' },
+                    {
+                      onSuccess: () => {
+                        setOpen(false)
+                        router.navigate({ to: '/login' })
+                      },
+                    },
+                  )
+                }
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                登出
+              </Button>
+            ) : (
+              <Button
+                asChild
+                variant="default"
+                size="sm"
+                className="mt-1 w-full !text-white"
+              >
+                <Link to="/login" onClick={() => setOpen(false)}>
+                  登录
+                </Link>
+              </Button>
+            )}
           </motion.div>
         )}
       </nav>

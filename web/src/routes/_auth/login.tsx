@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import type { FormEvent } from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Eye, EyeOff, Github, LogIn } from 'lucide-react'
 
@@ -9,6 +9,7 @@ import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Separator } from '#/components/ui/separator'
 
+import { useLogin } from '#/hooks/useAuth'
 import { rightItemVariants } from '../_auth'
 
 export const Route = createFileRoute('/_auth/login')({ component: LoginPage })
@@ -16,13 +17,15 @@ export const Route = createFileRoute('/_auth/login')({ component: LoginPage })
 /* ─── Component ────────────────────────────────────────── */
 
 function LoginPage() {
+  const router = useRouter()
+  const login = useLogin()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {},
   )
-  const [loading, setLoading] = useState(false)
+  const [globalError, setGlobalError] = useState<string | null>(null)
   const emailInputRef = useRef<HTMLInputElement>(null)
   const passwordInputRef = useRef<HTMLInputElement>(null)
 
@@ -41,9 +44,18 @@ function LoginPage() {
       else passwordInputRef.current?.focus()
       return
     }
-    setLoading(true)
-    console.log({ email, password })
-    setTimeout(() => setLoading(false), 1200)
+    setGlobalError(null)
+    login.mutate(
+      { account: email, password },
+      {
+        onSuccess: () => {
+          router.navigate({ to: '/' })
+        },
+        onError: (error) => {
+          setGlobalError(error.message)
+        },
+      },
+    )
   }
 
   return (
@@ -152,11 +164,11 @@ function LoginPage() {
         <Button
           type="submit"
           size="lg"
-          disabled={loading}
+          disabled={login.isPending}
           className="w-full"
           style={{ touchAction: 'manipulation' }}
         >
-          {loading ? (
+          {login.isPending ? (
             <span className="flex items-center gap-2">
               <LogIn className="h-4 w-4 animate-pulse" aria-hidden />
               登录中…
@@ -168,6 +180,12 @@ function LoginPage() {
             </span>
           )}
         </Button>
+
+        {globalError && (
+          <span className="text-xs text-red-500" role="alert">
+            {globalError}
+          </span>
+        )}
       </motion.form>
 
       {/* Divider */}
