@@ -1,4 +1,37 @@
 definitions:
+  apikey.CreateRequest:
+    properties:
+      description:
+        description: 密钥用途描述
+        type: string
+      expires_at:
+        description: 过期时间（可选）
+        type: string
+      name:
+        description: 密钥名称
+        maxLength: 64
+        minLength: 1
+        type: string
+    required:
+    - name
+    type: object
+  apikey.UpdateRequest:
+    properties:
+      description:
+        description: 密钥用途描述
+        type: string
+      expires_at:
+        description: 过期时间
+        type: string
+      is_active:
+        description: 是否启用
+        type: boolean
+      name:
+        description: 密钥名称
+        maxLength: 64
+        minLength: 1
+        type: string
+    type: object
   auth.InitializeRequest:
     properties:
       email:
@@ -58,6 +91,184 @@ definitions:
 info:
   contact: {}
 paths:
+  /api/v1/apikey:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功，返回脱敏列表
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 查询 API Key 列表
+      tags:
+      - apikey
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/apikey.CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功，返回完整Key
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 创建 API Key
+      tags:
+      - apikey
+  /api/v1/apikey/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: API Key ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: API Key 不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 删除 API Key
+      tags:
+      - apikey
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: API Key ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功，返回脱敏详情
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: API Key 不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 查询 API Key 详情
+      tags:
+      - apikey
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: API Key ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 更新请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/apikey.UpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: API Key 不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 更新 API Key
+      tags:
+      - apikey
+  /api/v1/apikey/{id}/reset:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: API Key ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 重置成功，返回新Key
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: API Key 不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 重置 API Key
+      tags:
+      - apikey
   /api/v1/auth/initialize:
     post:
       consumes:

@@ -5,13 +5,15 @@ import (
 
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
+
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
 // Apikey AI Agent MCP SSE 认证密钥实体
 //
 // 存储加密后的密钥值，单连接专用。
-// 密钥原文由 xUtil.Security().GenerateLongKey() 生成（格式: cs_ + 64位十六进制），
-// 使用 xUtil.Password().EncryptString() 加密后存入 KeyHash 字段。
+// 密钥原文由 crypto/rand 生成随机字节后经 base64 编码（格式: lumi_ + base64），
+// 使用 bcrypt 哈希后存入 KeyHash 字段。
 type Apikey struct {
 	xModels.BaseEntity
 	Name        string     `gorm:"not null;type:varchar(64);comment:密钥名称标识" json:"name"`                             // 密钥名称标识
@@ -25,5 +27,5 @@ type Apikey struct {
 
 // GetGene 返回 Apikey 实体的业务基因类型
 func (_ *Apikey) GetGene() xSnowflake.Gene {
-	return xSnowflake.GeneToken
+	return bConst.GeneApikey
 }

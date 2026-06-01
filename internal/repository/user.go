@@ -5,10 +5,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/xiaolfeng/Lumina/internal/entity"
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
+	"github.com/xiaolfeng/Lumina/internal/entity"
 	"gorm.io/gorm"
 )
 

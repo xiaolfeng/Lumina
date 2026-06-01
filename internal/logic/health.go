@@ -4,13 +4,13 @@ import (
 	"context"
 	"time"
 
-	apiHealth "github.com/xiaolfeng/Lumina/api/health"
-	"github.com/xiaolfeng/Lumina/internal/repository"
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	"github.com/gin-gonic/gin"
+	apiHealth "github.com/xiaolfeng/Lumina/api/health"
+	"github.com/xiaolfeng/Lumina/internal/repository"
 )
 
 type healthRepo struct {

@@ -1,11 +1,11 @@
 package route
 
 import (
-	"github.com/xiaolfeng/Lumina/docs"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/xiaolfeng/Lumina/docs"
 )
 
 func swaggerRegister(r gin.IRouter) {

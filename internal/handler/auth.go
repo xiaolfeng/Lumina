@@ -1,10 +1,10 @@
 package handler
 
 import (
-	apiAuth "github.com/xiaolfeng/Lumina/api/auth"
-	apiCommon "github.com/xiaolfeng/Lumina/api/common"
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
 	"github.com/gin-gonic/gin"
+	apiAuth "github.com/xiaolfeng/Lumina/api/auth"
+	apiCommon "github.com/xiaolfeng/Lumina/api/common"
 )
 
 // 确保 apiCommon 包被编译器识别（swag 注释依赖此导入）

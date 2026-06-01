@@ -1,8 +1,8 @@
 package route
 
 import (
-	"github.com/xiaolfeng/Lumina/internal/handler"
 	"github.com/gin-gonic/gin"
+	"github.com/xiaolfeng/Lumina/internal/handler"
 )
 
 func (r *route) healthRouter(route gin.IRouter) {

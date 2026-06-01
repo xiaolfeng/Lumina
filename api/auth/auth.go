@@ -3,8 +3,8 @@ package auth
 // InitializeRequest 初始化请求
 type InitializeRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=32"` // 用户名
-	Email    string `json:"email" binding:"required,email"`            // 邮箱地址
-	Password string `json:"password" binding:"required,min=6,max=64"`  // 登录密码
+	Email    string `json:"email" binding:"required,email"`           // 邮箱地址
+	Password string `json:"password" binding:"required,min=6,max=64"` // 登录密码
 }
 
 // LoginRequest 登录请求

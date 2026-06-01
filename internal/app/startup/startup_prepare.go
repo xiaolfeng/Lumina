@@ -3,8 +3,8 @@ package startup
 import (
 	"context"
 
-	"github.com/xiaolfeng/Lumina/internal/app/startup/prepare"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
+	"github.com/xiaolfeng/Lumina/internal/app/startup/prepare"
 )
 
 func (r *reg) businessDataPrepare(ctx context.Context) (any, error) {

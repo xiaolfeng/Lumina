@@ -4,12 +4,12 @@ import (
 	"context"
 	"strings"
 
-	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
+	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
+	"github.com/gin-gonic/gin"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/logic"
-	"github.com/gin-gonic/gin"
 )
 
 // Auth 授权中间件，验证 Bearer AccessToken 并注入用户信息到上下文
