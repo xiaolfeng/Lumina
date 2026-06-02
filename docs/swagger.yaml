@@ -1,4 +1,35 @@
 definitions:
+  apikey.CreateRequest:
+    properties:
+      description:
+        description: 描述
+        type: string
+      expires_at:
+        description: 过期时间（NULL=永不过期）
+        type: string
+      name:
+        description: API Key名称
+        maxLength: 64
+        minLength: 1
+        type: string
+    required:
+    - name
+    type: object
+  apikey.UpdateRequest:
+    properties:
+      description:
+        description: 描述（指针区分零值和未传）
+        type: string
+      expires_at:
+        description: 过期时间
+        type: string
+      is_active:
+        description: 是否启用（指针区分零值和未传）
+        type: boolean
+      name:
+        description: API Key名称
+        type: string
+    type: object
   auth.InitializeRequest:
     properties:
       email:
@@ -58,6 +89,223 @@ definitions:
 info:
   contact: {}
 paths:
+  /api/v1/apikey:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功，密钥脱敏展示
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 分页获取API密钥列表
+      tags:
+      - apikey
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/apikey.CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功，返回完整密钥（仅此一次）
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 创建API密钥
+      tags:
+      - apikey
+  /api/v1/apikey/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: API密钥ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 密钥不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 删除API密钥
+      tags:
+      - apikey
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: API密钥ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功，密钥脱敏展示
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 密钥不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 获取API密钥详情
+      tags:
+      - apikey
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: API密钥ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 更新请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/apikey.UpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 密钥不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 更新API密钥
+      tags:
+      - apikey
+  /api/v1/apikey/{id}/reset:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: API密钥ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 重置成功，返回新完整密钥（仅此一次）
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 密钥不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 重置API密钥
+      tags:
+      - apikey
   /api/v1/auth/initialize:
     post:
       consumes:

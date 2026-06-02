@@ -36,4 +36,5 @@ func NewRoute(reg *xReg.Reg) {
 	r.healthRouter(apiRouter)
 	r.authPublicRouter(apiRouter)
 	r.authProtectedRouter(apiRouter)
+	r.apikeyRouter(apiRouter)
 }

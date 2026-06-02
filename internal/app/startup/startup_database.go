@@ -16,6 +16,7 @@ import (
 
 var migrateTables = []interface{}{
 	&entity.Info{},
+	&entity.Apikey{},
 }
 
 func (r *reg) databaseInit(ctx context.Context) (any, error) {
