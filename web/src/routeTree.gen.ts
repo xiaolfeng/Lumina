@@ -9,19 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PublicRouteImport } from './routes/_public'
-import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
-import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
-import { Route as AuthNewRouteImport } from './routes/_auth/new'
-import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
+import { Route as AuthNewRouteImport } from './routes/auth/new'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as PublicStartRouteImport } from './routes/_public/start'
 
-const PublicRoute = PublicRouteImport.update({
-  id: '/_public',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/_auth',
+const PublicRoute = PublicRouteImport.update({
+  id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PublicIndexRoute = PublicIndexRouteImport.update({
@@ -44,62 +46,85 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AuthRoute,
 } as any)
+const PublicStartRoute = PublicStartRouteImport.update({
+  id: '/start',
+  path: '/start',
+  getParentRoute: () => PublicRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
-  '/login': typeof AuthLoginRoute
-  '/new': typeof AuthNewRoute
-  '/reset-password': typeof AuthResetPasswordRoute
+  '/auth': typeof AuthRouteWithChildren
+  '/start': typeof PublicStartRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/new': typeof AuthNewRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRoutesByTo {
+  '/auth': typeof AuthRouteWithChildren
+  '/start': typeof PublicStartRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/new': typeof AuthNewRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/': typeof PublicIndexRoute
-  '/login': typeof AuthLoginRoute
-  '/new': typeof AuthNewRoute
-  '/reset-password': typeof AuthResetPasswordRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_auth': typeof AuthRouteWithChildren
   '/_public': typeof PublicRouteWithChildren
-  '/_auth/login': typeof AuthLoginRoute
-  '/_auth/new': typeof AuthNewRoute
-  '/_auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth': typeof AuthRouteWithChildren
+  '/_public/start': typeof PublicStartRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/new': typeof AuthNewRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/_public/': typeof PublicIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/new' | '/reset-password'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/start'
+    | '/auth/login'
+    | '/auth/new'
+    | '/auth/reset-password'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/new' | '/reset-password'
+  to:
+    | '/auth'
+    | '/start'
+    | '/auth/login'
+    | '/auth/new'
+    | '/auth/reset-password'
+    | '/'
   id:
     | '__root__'
-    | '/_auth'
     | '/_public'
-    | '/_auth/login'
-    | '/_auth/new'
-    | '/_auth/reset-password'
+    | '/auth'
+    | '/_public/start'
+    | '/auth/login'
+    | '/auth/new'
+    | '/auth/reset-password'
     | '/_public/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AuthRoute: typeof AuthRouteWithChildren
   PublicRoute: typeof PublicRouteWithChildren
+  AuthRoute: typeof AuthRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_public': {
       id: '/_public'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof PublicRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_auth': {
-      id: '/_auth'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_public/': {
@@ -109,29 +134,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_auth/reset-password': {
-      id: '/_auth/reset-password'
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
       path: '/reset-password'
-      fullPath: '/reset-password'
+      fullPath: '/auth/reset-password'
       preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/new': {
-      id: '/_auth/new'
+    '/auth/new': {
+      id: '/auth/new'
       path: '/new'
-      fullPath: '/new'
+      fullPath: '/auth/new'
       preLoaderRoute: typeof AuthNewRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/login': {
-      id: '/_auth/login'
+    '/auth/login': {
+      id: '/auth/login'
       path: '/login'
-      fullPath: '/login'
+      fullPath: '/auth/login'
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_public/start': {
+      id: '/_public/start'
+      path: '/start'
+      fullPath: '/start'
+      preLoaderRoute: typeof PublicStartRouteImport
+      parentRoute: typeof PublicRoute
+    }
   }
 }
+
+interface PublicRouteChildren {
+  PublicStartRoute: typeof PublicStartRoute
+  PublicIndexRoute: typeof PublicIndexRoute
+}
+
+const PublicRouteChildren: PublicRouteChildren = {
+  PublicStartRoute: PublicStartRoute,
+  PublicIndexRoute: PublicIndexRoute,
+}
+
+const PublicRouteWithChildren =
+  PublicRoute._addFileChildren(PublicRouteChildren)
 
 interface AuthRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
@@ -147,20 +192,9 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
-interface PublicRouteChildren {
-  PublicIndexRoute: typeof PublicIndexRoute
-}
-
-const PublicRouteChildren: PublicRouteChildren = {
-  PublicIndexRoute: PublicIndexRoute,
-}
-
-const PublicRouteWithChildren =
-  PublicRoute._addFileChildren(PublicRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
-  AuthRoute: AuthRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
+  AuthRoute: AuthRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

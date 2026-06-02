@@ -172,7 +172,7 @@ function Home() {
               size="lg"
               className="group relative h-12 overflow-hidden rounded-full bg-gradient-to-r from-[var(--lagoon)] to-[var(--palm)] px-8 text-base font-semibold !text-white shadow-lg shadow-[var(--lagoon)]/25 transition-shadow duration-300 hover:shadow-xl hover:shadow-[var(--lagoon)]/40"
             >
-              <Link to="/login" aria-label="开始使用 Lumina">
+              <Link to="/auth/login" aria-label="开始使用 Lumina">
                 开始使用
                 <ArrowRight
                   className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
@@ -449,7 +449,7 @@ function Home() {
           </motion.p>
           <motion.div variants={fadeUp}>
             <Button asChild size="lg">
-              <Link to="/login" aria-label="立即开始使用 Lumina">
+              <Link to="/auth/login" aria-label="立即开始使用 Lumina">
                 立即开始
                 <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
               </Link>

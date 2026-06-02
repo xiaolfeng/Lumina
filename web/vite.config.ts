@@ -11,6 +11,10 @@ const config = defineConfig({
         target: 'http://localhost:8800',
         changeOrigin: true,
       },
+      '/swagger': {
+        target: 'http://localhost:8800',
+        changeOrigin: true,
+      },
     },
   },
   plugins: [

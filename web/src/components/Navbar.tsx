@@ -2,15 +2,14 @@
 
 import { Button } from '#/components/ui/button'
 import { Link, useRouter } from '@tanstack/react-router'
-import { LogOut, Menu, Sparkles, X } from 'lucide-react'
+import { Github, LogOut, Menu, Sparkles, X } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { getCookie, useAuth } from '#/hooks/useAuth'
 
 const navLinks = [
   { label: '首页', to: '/' },
-  { label: '文档', to: '/docs' },
-  { label: 'API', to: '/api' },
+  { label: '开始', to: '/start' },
 ] as const
 
 export function Navbar() {
@@ -81,7 +80,16 @@ export function Navbar() {
         </div>
 
         {/* ── Desktop CTA (col-3, right-aligned) ── */}
-        <div className="col-span-3 hidden items-center justify-end md:flex">
+        <div className="col-span-3 hidden items-center justify-end gap-3 md:flex">
+          <a
+            href="https://github.com/xiaolfeng/Lumina"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[var(--sea-ink-soft)] transition-colors duration-200 hover:bg-[var(--lagoon)]/10 hover:text-[var(--lagoon-deep)] cursor-pointer"
+            aria-label="GitHub 仓库"
+          >
+            <Github className="h-[1.15rem] w-[1.15rem]" aria-hidden />
+          </a>
           {isAuthenticated ? (
             <Button
               variant="outline"
@@ -90,7 +98,7 @@ export function Navbar() {
                 logout.mutate(
                   { refresh_token: getCookie('refresh_token') || '' },
                   {
-                    onSuccess: () => router.navigate({ to: '/login' }),
+                    onSuccess: () => router.navigate({ to: '/auth/login' }),
                   },
                 )
               }
@@ -100,7 +108,7 @@ export function Navbar() {
             </Button>
           ) : (
             <Button asChild variant="default" size="sm" className="!text-white">
-              <Link to="/login">登录</Link>
+              <Link to="/auth/login">登录</Link>
             </Button>
           )}
         </div>
@@ -142,6 +150,17 @@ export function Navbar() {
               </Link>
             ))}
 
+            <a
+              href="https://github.com/xiaolfeng/Lumina"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-base font-medium text-[var(--sea-ink)] no-underline"
+              onClick={() => setOpen(false)}
+            >
+              <Github className="h-[1.15rem] w-[1.15rem]" aria-hidden />
+              GitHub
+            </a>
+
             {isAuthenticated ? (
               <Button
                 variant="outline"
@@ -153,7 +172,7 @@ export function Navbar() {
                     {
                       onSuccess: () => {
                         setOpen(false)
-                        router.navigate({ to: '/login' })
+                        router.navigate({ to: '/auth/login' })
                       },
                     },
                   )
@@ -169,7 +188,7 @@ export function Navbar() {
                 size="sm"
                 className="mt-1 w-full !text-white"
               >
-                <Link to="/login" onClick={() => setOpen(false)}>
+                <Link to="/auth/login" onClick={() => setOpen(false)}>
                   登录
                 </Link>
               </Button>

@@ -1,6 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"io/fs"
+	"os"
+
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xMain "github.com/bamboo-services/bamboo-base-go/major/main"
 	xReg "github.com/bamboo-services/bamboo-base-go/major/register"
@@ -12,6 +16,11 @@ func main() {
 	reg := xReg.Register(startup.Init())
 	log := xLog.WithName(xLog.NamedMAIN)
 
-	xMain.Runner(reg, log, route.NewRoute, nil)
-	return
+	distFS, err := fs.Sub(frontendDist, "web/dist")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "前端资源初始化失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	xMain.Runner(reg, log, route.NewRouteWithFrontend(distFS), nil)
 }

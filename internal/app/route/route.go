@@ -2,8 +2,8 @@ package route
 
 import (
 	"context"
+	"io/fs"
 
-	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	xMiddle "github.com/bamboo-services/bamboo-base-go/major/middleware"
 	xReg "github.com/bamboo-services/bamboo-base-go/major/register"
 	xRoute "github.com/bamboo-services/bamboo-base-go/major/route"
@@ -11,30 +11,44 @@ import (
 )
 
 type route struct {
-	engine  *gin.Engine
-	context context.Context
+	engine     *gin.Engine
+	context    context.Context
+	frontendFS fs.FS
 }
 
+// NewRoute 注册所有后端 API 路由（不含前端静态资源）。
 func NewRoute(reg *xReg.Reg) {
-	r := &route{
-		engine:  reg.Serve,
-		context: reg.Init.Ctx,
-	}
+	NewRouteWithFrontend(nil)(reg)
+}
 
-	r.engine.NoMethod(xRoute.NoMethod)
-	r.engine.NoRoute(xRoute.NoRoute)
+// NewRouteWithFrontend 注册全部路由，包括前端 SPA 静态资源服务。
+// frontendFS 为 nil 时跳过前端路由注册。
+func NewRouteWithFrontend(frontendFS fs.FS) func(reg *xReg.Reg) {
+	return func(reg *xReg.Reg) {
+		r := &route{
+			engine:     reg.Serve,
+			context:    reg.Init.Ctx,
+			frontendFS: frontendFS,
+		}
 
-	r.engine.Use(xMiddle.ResponseMiddleware)
-	r.engine.Use(xMiddle.ReleaseAllCors)
-	r.engine.Use(xMiddle.AllowOption)
+		r.engine.NoMethod(xRoute.NoMethod)
 
-	if xEnv.GetEnvBool(xEnv.Debug, false) {
+		r.engine.Use(xMiddle.ResponseMiddleware)
+		r.engine.Use(xMiddle.ReleaseAllCors)
+		r.engine.Use(xMiddle.AllowOption)
+
 		swaggerRegister(r.engine)
-	}
 
-	apiRouter := r.engine.Group("/api/v1")
-	r.healthRouter(apiRouter)
-	r.authPublicRouter(apiRouter)
-	r.authProtectedRouter(apiRouter)
-	r.apikeyRouter(apiRouter)
+		apiRouter := r.engine.Group("/api/v1")
+		r.healthRouter(apiRouter)
+		r.authPublicRouter(apiRouter)
+		r.authProtectedRouter(apiRouter)
+		r.apikeyRouter(apiRouter)
+
+		if r.frontendFS != nil {
+			r.frontendRouter()
+		} else {
+			r.engine.NoRoute(xRoute.NoRoute)
+		}
+	}
 }

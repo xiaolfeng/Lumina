@@ -14,12 +14,12 @@ export const Route = createRootRoute({
       staleTime: 0,
     })
 
-    if (res.data?.is_initial === true && location.pathname !== '/new') {
-      throw redirect({ to: '/new' })
+    if (res.data?.is_initial === true && location.pathname !== '/auth/new') {
+      throw redirect({ to: '/auth/new' })
     }
 
-    if (res.data?.is_initial === false && location.pathname === '/new') {
-      throw redirect({ to: '/login' })
+    if (res.data?.is_initial === false && location.pathname === '/auth/new') {
+      throw redirect({ to: '/auth/login' })
     }
   },
   component: RootComponent,
