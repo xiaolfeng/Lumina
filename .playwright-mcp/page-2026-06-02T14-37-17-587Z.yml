@@ -1,0 +1,117 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - list:
+                - listitem:
+                  - link:
+                    - /url: /console
+                    - generic:
+                      - img
+                    - generic:
+                      - generic: 微明 Lumina
+                      - generic: 管理后台
+            - generic:
+              - generic:
+                - generic: 导航
+                - generic:
+                  - list:
+                    - listitem:
+                      - link:
+                        - /url: /console
+                        - img
+                        - generic: 看板
+                    - listitem:
+                      - link:
+                        - /url: /console/apikey
+                        - img
+                        - generic: 令牌管理
+                    - listitem:
+                      - link:
+                        - /url: /faq
+                        - img
+                        - generic: 交互问答
+            - generic:
+              - list:
+                - listitem:
+                  - button:
+                    - generic:
+                      - generic: 管
+                    - generic:
+                      - generic: 管理员
+                      - generic: Lumina Console
+      - main:
+        - generic:
+          - button:
+            - img
+            - generic: Toggle Sidebar
+          - navigation:
+            - list:
+              - listitem:
+                - link:
+                  - /url: /console
+                  - text: Console
+        - main:
+          - generic:
+            - generic:
+              - generic:
+                - heading [level=1]: 令牌管理
+                - paragraph: 管理你的 API 访问令牌
+              - button:
+                - img
+                - text: 创建令牌
+            - generic:
+              - generic:
+                - table:
+                  - rowgroup:
+                    - row:
+                      - columnheader: 名称
+                      - columnheader: 前缀
+                      - columnheader: 状态
+                      - columnheader: 描述
+                      - columnheader: 创建时间
+                      - columnheader: 操作
+                  - rowgroup:
+                    - row:
+                      - cell: 暂无数据
+            - generic:
+              - generic: 第 1 页 / 共 1 页，共 0 条
+              - generic:
+                - generic:
+                  - generic: 每页
+                  - combobox
+                  - generic: 条
+                - generic:
+                  - button [disabled]:
+                    - img
+                  - button [disabled]:
+                    - img
+      - region "Notifications alt+T"
+    - button [ref=e166] [cursor=pointer]:
+      - generic [ref=e71]:
+        - img [ref=e73]
+        - img [ref=e108]
+      - generic [ref=e142]: "-"
+      - generic [ref=e143]: TanStack Router
+  - dialog "创建令牌" [ref=e168]:
+    - generic [ref=e169]:
+      - heading "创建令牌" [level=2] [ref=e170]
+      - paragraph [ref=e171]: 创建一个新的 API 令牌，创建后将显示完整密钥（仅此一次）。
+    - generic [ref=e172]:
+      - generic [ref=e173]:
+        - generic [ref=e174]: 名称 *
+        - textbox "名称 *" [active] [ref=e175]:
+          - /placeholder: 输入令牌名称
+      - generic [ref=e176]:
+        - generic [ref=e177]: 描述
+        - textbox "描述" [ref=e178]:
+          - /placeholder: 输入描述（可选）
+    - generic [ref=e179]:
+      - button "取消" [ref=e180]
+      - button "创建" [disabled]
+    - button "Close" [ref=e181]:
+      - img
+      - generic [ref=e182]: Close

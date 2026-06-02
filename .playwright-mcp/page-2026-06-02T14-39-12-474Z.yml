@@ -1,0 +1,63 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e6]:
+      - list [ref=e8]:
+        - listitem [ref=e9]:
+          - link "微明 Lumina 管理后台" [ref=e10] [cursor=pointer]:
+            - /url: /console
+            - img [ref=e12]
+            - generic [ref=e15]:
+              - generic [ref=e16]: 微明 Lumina
+              - generic [ref=e17]: 管理后台
+      - generic [ref=e19]:
+        - generic [ref=e20]: 导航
+        - list [ref=e22]:
+          - listitem [ref=e23]:
+            - link "看板" [ref=e24] [cursor=pointer]:
+              - /url: /console
+              - img [ref=e25]
+              - generic [ref=e30]: 看板
+          - listitem [ref=e31]:
+            - link "令牌管理" [active] [ref=e32] [cursor=pointer]:
+              - /url: /console/apikey
+              - img [ref=e33]
+              - generic [ref=e36]: 令牌管理
+          - listitem [ref=e37]:
+            - link "交互问答" [ref=e38] [cursor=pointer]:
+              - /url: /faq
+              - img [ref=e39]
+              - generic [ref=e41]: 交互问答
+      - list [ref=e43]:
+        - listitem [ref=e44]:
+          - button "管 管理员 Lumina Console" [ref=e45]:
+            - generic [ref=e47]: 管
+            - generic [ref=e48]:
+              - generic [ref=e49]: 管理员
+              - generic [ref=e50]: Lumina Console
+    - main [ref=e51]:
+      - generic [ref=e52]:
+        - button "Toggle Sidebar" [ref=e53]:
+          - img
+          - generic [ref=e54]: Toggle Sidebar
+        - navigation "breadcrumb" [ref=e55]:
+          - list [ref=e56]:
+            - listitem [ref=e57]:
+              - link "Console" [ref=e58] [cursor=pointer]:
+                - /url: /console
+      - main [ref=e59]:
+        - generic [ref=e167]:
+          - generic [ref=e168]:
+            - heading "令牌管理" [level=1] [ref=e169]
+            - paragraph [ref=e170]: 管理你的 API 访问令牌
+          - button "创建令牌" [ref=e171]:
+            - img
+            - text: 创建令牌
+    - region "Notifications alt+T"
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=e92] [cursor=pointer]:
+        - generic [ref=e93]:
+          - img [ref=e95]
+          - img [ref=e130]
+        - generic [ref=e164]: "-"
+        - generic [ref=e165]: TanStack Router

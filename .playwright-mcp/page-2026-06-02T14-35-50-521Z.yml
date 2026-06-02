@@ -1,0 +1,62 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - link "返回首页" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img [ref=e8]
+          - text: 返回首页
+        - generic [ref=e10]:
+          - img [ref=e11]
+          - generic [ref=e14]: Lumina · 微明
+      - generic [ref=e15]:
+        - heading "烛照幽微 知常曰明" [level=1] [ref=e16]:
+          - text: 烛照幽微
+          - text: 知常曰明
+        - paragraph [ref=e17]: 赋予 AI 深度代码认知与长期记忆的知识中枢。 通过 MCP 协议开放 RepoWiki、Memory、Q&A 三大核心能力，让知识自由流动。
+        - generic [ref=e18]:
+          - generic [ref=e19]:
+            - img [ref=e20]
+            - text: RepoWiki
+          - generic [ref=e22]:
+            - img [ref=e23]
+            - text: Memory
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - text: Q&A
+      - paragraph [ref=e34]: © 2026 Xiao Lfeng (筱锋) · MIT License
+    - main [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - heading "欢迎回来" [level=1] [ref=e38]
+          - paragraph [ref=e39]: 登录到你的知识中枢
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - generic [ref=e42]: 邮箱
+            - textbox "邮箱" [ref=e43]:
+              - /placeholder: you@example.com
+          - generic [ref=e44]:
+            - generic [ref=e45]: 密码
+            - generic [ref=e46]:
+              - textbox "密码" [ref=e47]:
+                - /placeholder: 输入密码…
+              - button "显示密码" [ref=e48] [cursor=pointer]:
+                - img [ref=e49]
+          - link "忘记密码？" [ref=e53] [cursor=pointer]:
+            - /url: /auth/reset-password
+          - button "登录" [ref=e54]:
+            - generic [ref=e55]:
+              - img
+              - text: 登录
+        - generic [ref=e57]: 或
+        - button "使用 GitHub 登录" [ref=e59]:
+          - img
+          - text: 使用 GitHub 登录
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=e60] [cursor=pointer]:
+        - generic [ref=e61]:
+          - img [ref=e63]
+          - img [ref=e98]
+        - generic [ref=e132]: "-"
+        - generic [ref=e133]: TanStack Router

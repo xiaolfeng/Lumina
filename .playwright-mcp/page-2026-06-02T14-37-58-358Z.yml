@@ -1,0 +1,91 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e6]:
+      - list [ref=e8]:
+        - listitem [ref=e9]:
+          - link "微明 Lumina 管理后台" [ref=e10] [cursor=pointer]:
+            - /url: /console
+            - img [ref=e12]
+            - generic [ref=e15]:
+              - generic [ref=e16]: 微明 Lumina
+              - generic [ref=e17]: 管理后台
+      - generic [ref=e19]:
+        - generic [ref=e20]: 导航
+        - list [ref=e22]:
+          - listitem [ref=e23]:
+            - link "看板" [ref=e24] [cursor=pointer]:
+              - /url: /console
+              - img [ref=e25]
+              - generic [ref=e30]: 看板
+          - listitem [ref=e31]:
+            - link "令牌管理" [ref=e32] [cursor=pointer]:
+              - /url: /console/apikey
+              - img [ref=e33]
+              - generic [ref=e36]: 令牌管理
+          - listitem [ref=e37]:
+            - link "交互问答" [ref=e38] [cursor=pointer]:
+              - /url: /faq
+              - img [ref=e39]
+              - generic [ref=e41]: 交互问答
+      - list [ref=e43]:
+        - listitem [ref=e44]:
+          - button "管 管理员 Lumina Console" [ref=e45]:
+            - generic [ref=e47]: 管
+            - generic [ref=e48]:
+              - generic [ref=e49]: 管理员
+              - generic [ref=e50]: Lumina Console
+    - main [ref=e51]:
+      - generic [ref=e52]:
+        - button "Toggle Sidebar" [ref=e53]:
+          - img
+          - generic [ref=e54]: Toggle Sidebar
+        - navigation "breadcrumb" [ref=e55]:
+          - list [ref=e56]:
+            - listitem [ref=e57]:
+              - link "Console" [ref=e58] [cursor=pointer]:
+                - /url: /console
+      - main [ref=e59]:
+        - generic [ref=e60]:
+          - generic [ref=e61]:
+            - generic [ref=e62]:
+              - heading "令牌管理" [level=1] [ref=e63]
+              - paragraph [ref=e64]: 管理你的 API 访问令牌
+            - button "创建令牌" [ref=e65]:
+              - img
+              - text: 创建令牌
+          - table [ref=e146]:
+            - rowgroup [ref=e147]:
+              - row "名称 前缀 状态 描述 创建时间 操作" [ref=e148]:
+                - columnheader "名称" [ref=e149]
+                - columnheader "前缀" [ref=e150]
+                - columnheader "状态" [ref=e151]
+                - columnheader "描述" [ref=e152]
+                - columnheader "创建时间" [ref=e153]
+                - columnheader "操作" [ref=e154]
+            - rowgroup [ref=e155]:
+              - row "暂无数据" [ref=e156]:
+                - cell "暂无数据" [ref=e157]
+          - generic [ref=e158]:
+            - generic [ref=e159]: 第 1 页 / 共 1 页，共 0 条
+            - generic [ref=e160]:
+              - generic [ref=e161]:
+                - generic [ref=e162]: 每页
+                - combobox [ref=e163]:
+                  - option "10" [selected]
+                  - option "20"
+                  - option "50"
+                - generic [ref=e164]: 条
+              - generic [ref=e165]:
+                - button [disabled]:
+                  - img
+                - button [disabled]:
+                  - img
+    - region "Notifications alt+T"
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=e184] [cursor=pointer]:
+        - generic [ref=e71]:
+          - img [ref=e73]
+          - img [ref=e108]
+        - generic [ref=e142]: "-"
+        - generic [ref=e143]: TanStack Router

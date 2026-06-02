@@ -40,13 +40,13 @@ swag:
 
 # 提取出的运行目标
 run:
-	go run $(MAIN_FILE)
+	chmod +x $(OUTPUT_BIN) && ./$(OUTPUT_BIN)
 
 tidy:
 	go mod tidy
 
 # 组合目标：先生成文档，再运行后端程序
-dev-backend: swag run
+dev-backend: generate run
 
 # 前端开发服务器
 dev-frontend:
@@ -54,7 +54,7 @@ dev-frontend:
 
 # 一键构建：前端打包 → Swagger 文档 → Go 编译
 generate: build-frontend swag
-	go build -o $(OUTPUT_BIN) . && chmod +x $(OUTPUT_BIN) && ./$(OUTPUT_BIN)
+	go build -o $(OUTPUT_BIN)
 
 # build 是 generate 的别名
 build: generate

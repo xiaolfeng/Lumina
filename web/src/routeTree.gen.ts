@@ -9,14 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ConsoleRouteImport } from './routes/console'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PublicRouteImport } from './routes/_public'
+import { Route as ConsoleIndexRouteImport } from './routes/console/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as ConsoleApikeyRouteImport } from './routes/console/apikey'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthNewRouteImport } from './routes/auth/new'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as PublicStartRouteImport } from './routes/_public/start'
+import { Route as PublicFaqIndexRouteImport } from './routes/_public/faq/index'
 
+const ConsoleRoute = ConsoleRouteImport.update({
+  id: '/console',
+  path: '/console',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -26,10 +35,20 @@ const PublicRoute = PublicRouteImport.update({
   id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConsoleIndexRoute = ConsoleIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ConsoleRoute,
+} as any)
 const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRoute,
+} as any)
+const ConsoleApikeyRoute = ConsoleApikeyRouteImport.update({
+  id: '/apikey',
+  path: '/apikey',
+  getParentRoute: () => ConsoleRoute,
 } as any)
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -51,14 +70,23 @@ const PublicStartRoute = PublicStartRouteImport.update({
   path: '/start',
   getParentRoute: () => PublicRoute,
 } as any)
+const PublicFaqIndexRoute = PublicFaqIndexRouteImport.update({
+  id: '/faq/',
+  path: '/faq/',
+  getParentRoute: () => PublicRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/auth': typeof AuthRouteWithChildren
+  '/console': typeof ConsoleRouteWithChildren
   '/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/console/apikey': typeof ConsoleApikeyRoute
+  '/console/': typeof ConsoleIndexRoute
+  '/faq/': typeof PublicFaqIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
@@ -66,27 +94,38 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/console/apikey': typeof ConsoleApikeyRoute
   '/': typeof PublicIndexRoute
+  '/console': typeof ConsoleIndexRoute
+  '/faq': typeof PublicFaqIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_public': typeof PublicRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/console': typeof ConsoleRouteWithChildren
   '/_public/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/console/apikey': typeof ConsoleApikeyRoute
   '/_public/': typeof PublicIndexRoute
+  '/console/': typeof ConsoleIndexRoute
+  '/_public/faq/': typeof PublicFaqIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/console'
     | '/start'
     | '/auth/login'
     | '/auth/new'
     | '/auth/reset-password'
+    | '/console/apikey'
+    | '/console/'
+    | '/faq/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -94,25 +133,40 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/new'
     | '/auth/reset-password'
+    | '/console/apikey'
     | '/'
+    | '/console'
+    | '/faq'
   id:
     | '__root__'
     | '/_public'
     | '/auth'
+    | '/console'
     | '/_public/start'
     | '/auth/login'
     | '/auth/new'
     | '/auth/reset-password'
+    | '/console/apikey'
     | '/_public/'
+    | '/console/'
+    | '/_public/faq/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   PublicRoute: typeof PublicRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  ConsoleRoute: typeof ConsoleRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/console': {
+      id: '/console'
+      path: '/console'
+      fullPath: '/console'
+      preLoaderRoute: typeof ConsoleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -127,12 +181,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/console/': {
+      id: '/console/'
+      path: '/'
+      fullPath: '/console/'
+      preLoaderRoute: typeof ConsoleIndexRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
     '/_public/': {
       id: '/_public/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/console/apikey': {
+      id: '/console/apikey'
+      path: '/apikey'
+      fullPath: '/console/apikey'
+      preLoaderRoute: typeof ConsoleApikeyRouteImport
+      parentRoute: typeof ConsoleRoute
     }
     '/auth/reset-password': {
       id: '/auth/reset-password'
@@ -162,17 +230,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicStartRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_public/faq/': {
+      id: '/_public/faq/'
+      path: '/faq'
+      fullPath: '/faq/'
+      preLoaderRoute: typeof PublicFaqIndexRouteImport
+      parentRoute: typeof PublicRoute
+    }
   }
 }
 
 interface PublicRouteChildren {
   PublicStartRoute: typeof PublicStartRoute
   PublicIndexRoute: typeof PublicIndexRoute
+  PublicFaqIndexRoute: typeof PublicFaqIndexRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicStartRoute: PublicStartRoute,
   PublicIndexRoute: PublicIndexRoute,
+  PublicFaqIndexRoute: PublicFaqIndexRoute,
 }
 
 const PublicRouteWithChildren =
@@ -192,9 +269,23 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface ConsoleRouteChildren {
+  ConsoleApikeyRoute: typeof ConsoleApikeyRoute
+  ConsoleIndexRoute: typeof ConsoleIndexRoute
+}
+
+const ConsoleRouteChildren: ConsoleRouteChildren = {
+  ConsoleApikeyRoute: ConsoleApikeyRoute,
+  ConsoleIndexRoute: ConsoleIndexRoute,
+}
+
+const ConsoleRouteWithChildren =
+  ConsoleRoute._addFileChildren(ConsoleRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   PublicRoute: PublicRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  ConsoleRoute: ConsoleRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
