@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { motion } from 'motion/react'
 import { Plus } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { Skeleton } from '#/components/ui/skeleton'
@@ -12,6 +13,7 @@ import { EditDialog } from '#/components/apikey/edit-dialog'
 import { DeleteDialog } from '#/components/apikey/delete-dialog'
 import { ResetDialog } from '#/components/apikey/reset-dialog'
 import type { ApikeyItem } from '#/lib/models/response/apikey'
+import { staggerContainer, staggerItem } from '#/lib/motion'
 
 export const Route = createFileRoute('/console/apikey')({
   component: ApikeyPage,
@@ -48,8 +50,17 @@ function ApikeyPage() {
   })
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <motion.div
+      className="space-y-4"
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+    >
+      {/* 标题行 */}
+      <motion.div
+        className="flex items-center justify-between"
+        variants={staggerItem}
+      >
         <div>
           <h1 className="text-2xl font-bold tracking-tight">令牌管理</h1>
           <p className="text-muted-foreground">管理你的 API 访问令牌</p>
@@ -58,30 +69,33 @@ function ApikeyPage() {
           <Plus className="mr-2 size-4" />
           创建令牌
         </Button>
-      </div>
+      </motion.div>
 
-      {isLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
-      ) : (
-        <>
-          <DataTable columns={columns} data={items} />
-          <DataTablePagination
-            currentPage={page}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size)
-              setPage(1)
-            }}
-          />
-        </>
-      )}
+      {/* 表格区域 */}
+      <motion.div variants={staggerItem}>
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : (
+          <>
+            <DataTable columns={columns} data={items} />
+            <DataTablePagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setPage(1)
+              }}
+            />
+          </>
+        )}
+      </motion.div>
 
       <CreateDialog open={createOpen} onOpenChange={setCreateOpen} />
       <EditDialog
@@ -99,6 +113,6 @@ function ApikeyPage() {
         onOpenChange={setResetOpen}
         item={selectedItem}
       />
-    </div>
+    </motion.div>
   )
 }

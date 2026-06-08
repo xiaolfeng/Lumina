@@ -2,7 +2,7 @@
 
 import { Button } from '#/components/ui/button'
 import { Link, useRouter } from '@tanstack/react-router'
-import { Github, LogOut, Menu, Sparkles, X } from 'lucide-react'
+import { Github, LayoutDashboard, LogOut, Menu, Sparkles, X } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { getCookie, useAuth } from '#/hooks/useAuth'
@@ -91,21 +91,30 @@ export function Navbar() {
             <Github className="h-[1.15rem] w-[1.15rem]" aria-hidden />
           </a>
           {isAuthenticated ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                logout.mutate(
-                  { refresh_token: getCookie('refresh_token') || '' },
-                  {
-                    onSuccess: () => router.navigate({ to: '/auth/login' }),
-                  },
-                )
-              }
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              登出
-            </Button>
+            <>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/console/dashboard">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  控制台
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[var(--sea-ink-soft)]"
+                onClick={() =>
+                  logout.mutate(
+                    { refresh_token: getCookie('refresh_token') || '' },
+                    {
+                      onSuccess: () => router.navigate({ to: '/auth/login' }),
+                    },
+                  )
+                }
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                登出
+              </Button>
+            </>
           ) : (
             <Button asChild variant="default" size="sm" className="!text-white">
               <Link to="/auth/login">登录</Link>
@@ -162,25 +171,33 @@ export function Navbar() {
             </a>
 
             {isAuthenticated ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-1 w-full"
-                onClick={() =>
-                  logout.mutate(
-                    { refresh_token: getCookie('refresh_token') || '' },
-                    {
-                      onSuccess: () => {
-                        setOpen(false)
-                        router.navigate({ to: '/auth/login' })
+              <>
+                <Button asChild variant="outline" size="sm" className="w-full">
+                  <Link to="/console/dashboard" onClick={() => setOpen(false)}>
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    控制台
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-[var(--sea-ink-soft)]"
+                  onClick={() =>
+                    logout.mutate(
+                      { refresh_token: getCookie('refresh_token') || '' },
+                      {
+                        onSuccess: () => {
+                          setOpen(false)
+                          router.navigate({ to: '/auth/login' })
+                        },
                       },
-                    },
-                  )
-                }
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                登出
-              </Button>
+                    )
+                  }
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  登出
+                </Button>
+              </>
             ) : (
               <Button
                 asChild

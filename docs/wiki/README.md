@@ -20,7 +20,11 @@ docs/wiki/
 │   ├── README.md          ← 模块概述
 │   ├── design.md          ← 详细设计
 │   └── mcp-tools.md       ← MCP 工具与 REST API 定义
-└── qa/                    ← Q&A 模块文档
+├── qa/                    ← Q&A 模块文档
+│   ├── README.md          ← 模块概述
+│   ├── design.md          ← 详细设计
+│   └── mcp-tools.md       ← MCP 工具与 REST API 定义
+└── pin/                   ← Pin 模块文档
     ├── README.md          ← 模块概述
     ├── design.md          ← 详细设计
     └── mcp-tools.md       ← MCP 工具与 REST API 定义
@@ -33,6 +37,7 @@ docs/wiki/
 | 🔍 **RepoWiki** | 代码库结构化知识沉淀，克隆项目并通过 LLM 分析生成 Wiki | [repowiki/README.md](repowiki/README.md) |
 | 🧠 **Memory** | AI 的长期决策记忆，跨会话保留重要约定与决策 | [memory/README.md](memory/README.md) |
 | 💬 **Q&A** | Agent 与用户的富交互式问答通道，支持选项、文本、高级面板 | [qa/README.md](qa/README.md) |
+| 📌 **Pin** | 跨项目依赖约束传递，点对点定向推送与 FIFO 队列消费 | [pin/README.md](pin/README.md) |
 
 ## 全局文档
 
@@ -48,12 +53,12 @@ docs/wiki/
 - MCP 工具名称、参数、REST API 路径、数据结构等均为**设计参考值**
 - 实际实现时可根据技术约束和开发决策进行调整
 - 文档中的逻辑模型不等同于最终物理表结构
-- 三个模块的设计方案可能在实现过程中被修改或替代
+- 四个模块的设计方案可能在实现过程中被修改或替代
 
 本文档的价值在于**对齐设计意图和方向**，而非锁定实现细节。
 
 ## 设计约定
 
 - 所有文档使用**简体中文**
-- 三个模块完全独立，不直接交互，Agent 通过 MCP 自行编排
+- 四个模块完全独立，不直接交互，Agent 通过 MCP 自行编排
 - 每个模块按 README（概述）→ design（详细设计）→ mcp-tools（接口定义）三层组织

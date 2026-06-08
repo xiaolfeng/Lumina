@@ -9,18 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as ConsoleRouteImport } from './routes/console'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as ConsoleIndexRouteImport } from './routes/console/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as ConsoleDashboardRouteImport } from './routes/console/dashboard'
 import { Route as ConsoleApikeyRouteImport } from './routes/console/apikey'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthNewRouteImport } from './routes/auth/new'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as PublicStartRouteImport } from './routes/_public/start'
-import { Route as PublicFaqIndexRouteImport } from './routes/_public/faq/index'
 
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConsoleRoute = ConsoleRouteImport.update({
   id: '/console',
   path: '/console',
@@ -44,6 +50,11 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRoute,
+} as any)
+const ConsoleDashboardRoute = ConsoleDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => ConsoleRoute,
 } as any)
 const ConsoleApikeyRoute = ConsoleApikeyRouteImport.update({
   id: '/apikey',
@@ -70,48 +81,46 @@ const PublicStartRoute = PublicStartRouteImport.update({
   path: '/start',
   getParentRoute: () => PublicRoute,
 } as any)
-const PublicFaqIndexRoute = PublicFaqIndexRouteImport.update({
-  id: '/faq/',
-  path: '/faq/',
-  getParentRoute: () => PublicRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/console': typeof ConsoleRouteWithChildren
+  '/faq': typeof FaqRoute
   '/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/console/apikey': typeof ConsoleApikeyRoute
+  '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/': typeof ConsoleIndexRoute
-  '/faq/': typeof PublicFaqIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
+  '/faq': typeof FaqRoute
   '/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/console/apikey': typeof ConsoleApikeyRoute
+  '/console/dashboard': typeof ConsoleDashboardRoute
   '/': typeof PublicIndexRoute
   '/console': typeof ConsoleIndexRoute
-  '/faq': typeof PublicFaqIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_public': typeof PublicRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/console': typeof ConsoleRouteWithChildren
+  '/faq': typeof FaqRoute
   '/_public/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/console/apikey': typeof ConsoleApikeyRoute
+  '/console/dashboard': typeof ConsoleDashboardRoute
   '/_public/': typeof PublicIndexRoute
   '/console/': typeof ConsoleIndexRoute
-  '/_public/faq/': typeof PublicFaqIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -119,47 +128,58 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/console'
+    | '/faq'
     | '/start'
     | '/auth/login'
     | '/auth/new'
     | '/auth/reset-password'
     | '/console/apikey'
+    | '/console/dashboard'
     | '/console/'
-    | '/faq/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/faq'
     | '/start'
     | '/auth/login'
     | '/auth/new'
     | '/auth/reset-password'
     | '/console/apikey'
+    | '/console/dashboard'
     | '/'
     | '/console'
-    | '/faq'
   id:
     | '__root__'
     | '/_public'
     | '/auth'
     | '/console'
+    | '/faq'
     | '/_public/start'
     | '/auth/login'
     | '/auth/new'
     | '/auth/reset-password'
     | '/console/apikey'
+    | '/console/dashboard'
     | '/_public/'
     | '/console/'
-    | '/_public/faq/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   PublicRoute: typeof PublicRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   ConsoleRoute: typeof ConsoleRouteWithChildren
+  FaqRoute: typeof FaqRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/console': {
       id: '/console'
       path: '/console'
@@ -194,6 +214,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/console/dashboard': {
+      id: '/console/dashboard'
+      path: '/dashboard'
+      fullPath: '/console/dashboard'
+      preLoaderRoute: typeof ConsoleDashboardRouteImport
+      parentRoute: typeof ConsoleRoute
     }
     '/console/apikey': {
       id: '/console/apikey'
@@ -230,26 +257,17 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicStartRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_public/faq/': {
-      id: '/_public/faq/'
-      path: '/faq'
-      fullPath: '/faq/'
-      preLoaderRoute: typeof PublicFaqIndexRouteImport
-      parentRoute: typeof PublicRoute
-    }
   }
 }
 
 interface PublicRouteChildren {
   PublicStartRoute: typeof PublicStartRoute
   PublicIndexRoute: typeof PublicIndexRoute
-  PublicFaqIndexRoute: typeof PublicFaqIndexRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicStartRoute: PublicStartRoute,
   PublicIndexRoute: PublicIndexRoute,
-  PublicFaqIndexRoute: PublicFaqIndexRoute,
 }
 
 const PublicRouteWithChildren =
@@ -271,11 +289,13 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface ConsoleRouteChildren {
   ConsoleApikeyRoute: typeof ConsoleApikeyRoute
+  ConsoleDashboardRoute: typeof ConsoleDashboardRoute
   ConsoleIndexRoute: typeof ConsoleIndexRoute
 }
 
 const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleApikeyRoute: ConsoleApikeyRoute,
+  ConsoleDashboardRoute: ConsoleDashboardRoute,
   ConsoleIndexRoute: ConsoleIndexRoute,
 }
 
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRoute: PublicRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   ConsoleRoute: ConsoleRouteWithChildren,
+  FaqRoute: FaqRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

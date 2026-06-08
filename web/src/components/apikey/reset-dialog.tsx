@@ -53,10 +53,8 @@ export function ResetDialog({ open, onOpenChange, item }: ResetDialogProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={result ? undefined : onOpenChange}>
-      <DialogContent
-        onPointerDownOutside={result ? (e) => e.preventDefault() : undefined}
-      >
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent>
         {!result ? (
           <>
             <DialogHeader>
