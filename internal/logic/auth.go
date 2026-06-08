@@ -2,8 +2,6 @@ package logic
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"strings"
 	"time"
 
@@ -11,7 +9,6 @@ import (
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xUtil "github.com/bamboo-services/bamboo-base-go/common/utility"
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
-	"github.com/google/uuid"
 	apiAuth "github.com/xiaolfeng/Lumina/api/auth"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
@@ -151,15 +148,12 @@ func (l *AuthLogic) Login(ctx context.Context, req *apiAuth.LoginRequest) (*apiA
 		return nil, xError.NewError(ctx, xError.LoginFailed, "账号或密码错误", false, nil)
 	}
 
-	// 生成 AccessToken 和 RefreshToken
-	at := uuid.New().String()
-	atMD5Hash := md5.Sum([]byte(at))
-	atMD5 := hex.EncodeToString(atMD5Hash[:])
-
-	rt := uuid.New().String()
+	// 使用框架安全密钥生成 AccessToken 和 RefreshToken
+	at := xUtil.Security().GenerateKey()
+	rt := xUtil.Security().GenerateKey()
 
 	// 存储令牌到 Redis
-	if xErr := l.repo.token.SetAccessToken(ctx, atMD5); xErr != nil {
+	if xErr := l.repo.token.SetAccessToken(ctx, at); xErr != nil {
 		return nil, xErr
 	}
 	if xErr := l.repo.token.SetRefreshToken(ctx, rt); xErr != nil {
@@ -193,15 +187,12 @@ func (l *AuthLogic) Refresh(ctx context.Context, req *apiAuth.RefreshRequest) (*
 		return nil, xErr
 	}
 
-	// 生成新的 AccessToken 和 RefreshToken
-	at := uuid.New().String()
-	atMD5Hash := md5.Sum([]byte(at))
-	atMD5 := hex.EncodeToString(atMD5Hash[:])
-
-	rt := uuid.New().String()
+	// 使用框架安全密钥生成新的 AccessToken 和 RefreshToken
+	at := xUtil.Security().GenerateKey()
+	rt := xUtil.Security().GenerateKey()
 
 	// 存储新令牌到 Redis
-	if xErr := l.repo.token.SetAccessToken(ctx, atMD5); xErr != nil {
+	if xErr := l.repo.token.SetAccessToken(ctx, at); xErr != nil {
 		return nil, xErr
 	}
 	if xErr := l.repo.token.SetRefreshToken(ctx, rt); xErr != nil {
@@ -234,12 +225,8 @@ func (l *AuthLogic) Logout(ctx context.Context, refreshToken string) *xError.Err
 func (l *AuthLogic) ValidateAccessToken(ctx context.Context, accessToken string) (bool, *xError.Error) {
 	l.log.Info(ctx, "ValidateAccessToken - 验证访问令牌")
 
-	// 计算 AccessToken 的 MD5 摘要
-	atMD5Hash := md5.Sum([]byte(accessToken))
-	atMD5 := hex.EncodeToString(atMD5Hash[:])
-
 	// 从 Redis 检查令牌是否存在
-	found, xErr := l.repo.token.GetAccessToken(ctx, atMD5)
+	found, xErr := l.repo.token.GetAccessToken(ctx, accessToken)
 	if xErr != nil {
 		return false, xErr
 	}

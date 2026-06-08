@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"context"
-	"strings"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
+	xHttp "github.com/bamboo-services/bamboo-base-go/defined/http"
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
 	"github.com/gin-gonic/gin"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
@@ -26,20 +26,12 @@ func Auth(ctx context.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		log.Info(c, "Auth - 验证访问令牌")
 
-		// 提取 Authorization 头
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		// 使用框架工具解析 Authorization 头
+		accessToken, err := xHttp.GetAuthorization(c)
+		if err != nil {
 			xResult.AbortError(c, xError.TokenMissing, "未提供访问令牌", false)
 			return
 		}
-
-		// 解析 Bearer token
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			xResult.AbortError(c, xError.FormatError, "Authorization 头格式错误，应为 Bearer <token>", false)
-			return
-		}
-		accessToken := parts[1]
 
 		// 验证访问令牌
 		found, xErr := authLogic.ValidateAccessToken(c, accessToken)
