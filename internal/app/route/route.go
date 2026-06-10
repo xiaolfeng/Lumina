@@ -44,6 +44,7 @@ func NewRouteWithFrontend(frontendFS fs.FS) func(reg *xReg.Reg) {
 		r.authPublicRouter(apiRouter)
 		r.authProtectedRouter(apiRouter)
 		r.apikeyRouter(apiRouter)
+		r.projectRouter(apiRouter)
 
 		if r.frontendFS != nil {
 			r.frontendRouter()

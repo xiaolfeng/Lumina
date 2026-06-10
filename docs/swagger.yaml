@@ -86,6 +86,38 @@ definitions:
       overhead:
         type: integer
     type: object
+  project.CreateProjectRequest:
+    properties:
+      alias_name:
+        description: 项目别名列表
+        items:
+          type: string
+        type: array
+      description:
+        description: 项目描述
+        type: string
+      name:
+        description: 项目名称
+        type: string
+    required:
+    - name
+    type: object
+  project.UpdateProjectRequest:
+    properties:
+      alias_name:
+        description: 项目别名列表
+        items:
+          type: string
+        type: array
+      description:
+        description: 项目描述
+        type: string
+      name:
+        description: 项目名称
+        type: string
+    required:
+    - name
+    type: object
 info:
   contact: {}
 paths:
@@ -434,4 +466,177 @@ paths:
       summary: 系统初始化状态
       tags:
       - auth
+  /api/v1/project:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 获取项目列表
+      tags:
+      - project
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建项目请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/project.CreateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "409":
+          description: 项目名称已存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 创建项目
+      tags:
+      - project
+  /api/v1/project/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 项目不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 删除项目
+      tags:
+      - project
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 项目不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 获取项目详情
+      tags:
+      - project
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 更新项目请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/project.UpdateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 项目不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "409":
+          description: 项目名称已存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 更新项目
+      tags:
+      - project
 swagger: "2.0"

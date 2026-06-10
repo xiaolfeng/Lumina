@@ -11,6 +11,7 @@ type service struct {
 	healthLogic *logic.HealthLogic
 	authLogic   *logic.AuthLogic
 	apikeyLogic *logic.ApikeyLogic
+	projectLogic *logic.ProjectLogic
 }
 
 type handler struct {
@@ -32,9 +33,10 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 		name: handlerName,
 		log:  xLog.WithName(xLog.NamedCONT, handlerName),
 		service: &service{
-			healthLogic: logic.NewHealthLogic(ctx),
-			authLogic:   logic.NewAuthLogic(ctx),
-			apikeyLogic: logic.NewApikeyLogic(ctx),
+			healthLogic:  logic.NewHealthLogic(ctx),
+			authLogic:    logic.NewAuthLogic(ctx),
+			apikeyLogic:  logic.NewApikeyLogic(ctx),
+			projectLogic: logic.NewProjectLogic(ctx),
 		},
 	}
 }
@@ -44,4 +46,6 @@ type HealthHandler handler
 type AuthHandler handler
 
 type ApikeyHandler handler
+
+type ProjectHandler handler
 
