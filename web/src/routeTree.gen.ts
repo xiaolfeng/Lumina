@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as ConsoleIndexRouteImport } from './routes/console/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as ConsoleProjectRouteImport } from './routes/console/project'
 import { Route as ConsoleDashboardRouteImport } from './routes/console/dashboard'
 import { Route as ConsoleApikeyRouteImport } from './routes/console/apikey'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
@@ -50,6 +51,11 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRoute,
+} as any)
+const ConsoleProjectRoute = ConsoleProjectRouteImport.update({
+  id: '/project',
+  path: '/project',
+  getParentRoute: () => ConsoleRoute,
 } as any)
 const ConsoleDashboardRoute = ConsoleDashboardRouteImport.update({
   id: '/dashboard',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
+  '/console/project': typeof ConsoleProjectRoute
   '/console/': typeof ConsoleIndexRoute
 }
 export interface FileRoutesByTo {
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
+  '/console/project': typeof ConsoleProjectRoute
   '/': typeof PublicIndexRoute
   '/console': typeof ConsoleIndexRoute
 }
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
+  '/console/project': typeof ConsoleProjectRoute
   '/_public/': typeof PublicIndexRoute
   '/console/': typeof ConsoleIndexRoute
 }
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/console/apikey'
     | '/console/dashboard'
+    | '/console/project'
     | '/console/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/console/apikey'
     | '/console/dashboard'
+    | '/console/project'
     | '/'
     | '/console'
   id:
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/console/apikey'
     | '/console/dashboard'
+    | '/console/project'
     | '/_public/'
     | '/console/'
   fileRoutesById: FileRoutesById
@@ -214,6 +226,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/console/project': {
+      id: '/console/project'
+      path: '/project'
+      fullPath: '/console/project'
+      preLoaderRoute: typeof ConsoleProjectRouteImport
+      parentRoute: typeof ConsoleRoute
     }
     '/console/dashboard': {
       id: '/console/dashboard'
@@ -290,12 +309,14 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 interface ConsoleRouteChildren {
   ConsoleApikeyRoute: typeof ConsoleApikeyRoute
   ConsoleDashboardRoute: typeof ConsoleDashboardRoute
+  ConsoleProjectRoute: typeof ConsoleProjectRoute
   ConsoleIndexRoute: typeof ConsoleIndexRoute
 }
 
 const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleApikeyRoute: ConsoleApikeyRoute,
   ConsoleDashboardRoute: ConsoleDashboardRoute,
+  ConsoleProjectRoute: ConsoleProjectRoute,
   ConsoleIndexRoute: ConsoleIndexRoute,
 }
 

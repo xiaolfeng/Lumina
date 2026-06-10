@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from '#/components/ui/avatar'
 import {
   LayoutDashboard,
   KeyRound,
+  FolderKanban,
   MessageCircle,
   Sparkles,
   ExternalLink,
@@ -32,6 +33,11 @@ const navItems = [
     title: '令牌管理',
     to: '/console/apikey',
     icon: KeyRound,
+  },
+  {
+    title: '项目管理',
+    to: '/console/project',
+    icon: FolderKanban,
   },
   {
     title: '交互问答',
