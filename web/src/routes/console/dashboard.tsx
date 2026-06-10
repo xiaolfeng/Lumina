@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 import { Button } from '#/components/ui/button'
 import { Skeleton } from '#/components/ui/skeleton'
 import { getApikeyList } from '#/lib/apis/apikey'
-import { KeyRound, ShieldCheck, Clock, Plus } from 'lucide-react'
-import { staggerContainer, staggerItem } from '#/lib/motion'
+import { KeyRound, ShieldCheck, Clock, Plus, Sparkles } from 'lucide-react'
+import { staggerContainer, staggerItem, staggerItemLeft } from '#/lib/motion'
 
 export const Route = createFileRoute('/console/dashboard')({
   component: DashboardPage,
@@ -31,27 +31,53 @@ function DashboardPage() {
       variants={staggerContainer}
     >
       {/* 标题行 */}
+      <motion.div variants={staggerItemLeft} className="relative pl-1.5">
+        <div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-(--lagoon) to-(--palm)" />
+        <h1 className="text-2xl font-bold tracking-tight text-(--sea-ink)">
+          看板
+        </h1>
+        <p className="text-(--sea-ink-soft)">
+          Lumina Console 概览
+        </p>
+      </motion.div>
+
+      {/* 欢迎横幅 */}
       <motion.div variants={staggerItem}>
-        <h1 className="text-2xl font-bold tracking-tight">看板</h1>
-        <p className="text-muted-foreground">Lumina Console 概览</p>
+        <Card className="border-(--chip-line) bg-gradient-to-r from-(--surface-strong) to-(--surface) overflow-hidden">
+          <CardContent className="flex items-center gap-4 py-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--lagoon)/15 text-(--lagoon)">
+              <Sparkles className="size-5" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-(--sea-ink)">
+                欢迎回来，管理员
+              </p>
+              <p className="text-xs text-(--sea-ink-soft)">
+                这是你的 Lumina 管理面板，在这里管理项目、令牌和系统配置
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         {/* 令牌总数 */}
         <motion.div variants={staggerItem}>
-          <Card>
+          <Card className="transition-shadow duration-200 hover:shadow-md hover:shadow-(--hero-a)">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-sm font-medium text-(--sea-ink-soft)">
                 令牌总数
               </CardTitle>
-              <KeyRound className="size-4 text-muted-foreground" />
+              <div className="flex size-8 items-center justify-center rounded-lg bg-(--lagoon)/10 text-(--lagoon)">
+                <KeyRound className="size-4" />
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <Skeleton className="h-8 w-20" />
               ) : (
-                <div className="text-2xl font-bold">{totalCount}</div>
+                <div className="text-2xl font-bold text-(--sea-ink)">{totalCount}</div>
               )}
             </CardContent>
           </Card>
@@ -59,18 +85,20 @@ function DashboardPage() {
 
         {/* 活跃令牌 */}
         <motion.div variants={staggerItem}>
-          <Card>
+          <Card className="transition-shadow duration-200 hover:shadow-md hover:shadow-(--hero-b)">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-sm font-medium text-(--sea-ink-soft)">
                 活跃令牌
               </CardTitle>
-              <ShieldCheck className="size-4 text-muted-foreground" />
+              <div className="flex size-8 items-center justify-center rounded-lg bg-(--palm)/10 text-(--palm)">
+                <ShieldCheck className="size-4" />
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <Skeleton className="h-8 w-20" />
               ) : (
-                <div className="text-2xl font-bold">{activeCount}</div>
+                <div className="text-2xl font-bold text-(--sea-ink)">{activeCount}</div>
               )}
             </CardContent>
           </Card>
@@ -78,22 +106,24 @@ function DashboardPage() {
 
         {/* 最近创建 */}
         <motion.div variants={staggerItem}>
-          <Card>
+          <Card className="transition-shadow duration-200 hover:shadow-md hover:shadow-(--hero-a)">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-sm font-medium text-(--sea-ink-soft)">
                 最近创建
               </CardTitle>
-              <Clock className="size-4 text-muted-foreground" />
+              <div className="flex size-8 items-center justify-center rounded-lg bg-(--kicker)/10 text-(--kicker)">
+                <Clock className="size-4" />
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <Skeleton className="h-8 w-32" />
               ) : latestCreated ? (
-                <div className="text-lg font-bold">
+                <div className="text-lg font-bold text-(--sea-ink)">
                   {new Date(latestCreated).toLocaleDateString('zh-CN')}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">暂无令牌</div>
+                <div className="text-sm text-(--sea-ink-soft)">暂无令牌</div>
               )}
             </CardContent>
           </Card>
@@ -102,15 +132,17 @@ function DashboardPage() {
 
       {/* 快速操作 */}
       <motion.div variants={staggerItem}>
-        <h2 className="mb-4 text-lg font-semibold">快速操作</h2>
+        <h2 className="mb-4 text-lg font-semibold text-(--sea-ink)">快速操作</h2>
         {!isLoading && totalCount === 0 ? (
-          <Card className="border-dashed">
+          <Card className="border-dashed border-(--chip-line)">
             <CardContent className="flex flex-col items-center gap-3 py-8">
-              <KeyRound className="size-8 text-muted-foreground" />
-              <p className="text-center text-muted-foreground">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-(--lagoon)/10 text-(--lagoon)">
+                <KeyRound className="size-6" />
+              </div>
+              <p className="text-center text-(--sea-ink-soft)">
                 还没有创建任何 API 令牌
               </p>
-              <Button asChild>
+              <Button asChild className="bg-(--lagoon) text-(--foam) hover:bg-(--lagoon-deep)">
                 <Link to="/console/apikey">
                   <Plus className="mr-2 size-4" />
                   去创建
@@ -119,7 +151,7 @@ function DashboardPage() {
             </CardContent>
           </Card>
         ) : (
-          <Button asChild>
+          <Button asChild className="bg-(--lagoon) text-(--foam) hover:bg-(--lagoon-deep)">
             <Link to="/console/apikey">
               <Plus className="mr-2 size-4" />
               创建新令牌

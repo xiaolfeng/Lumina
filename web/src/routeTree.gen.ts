@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as ConsoleIndexRouteImport } from './routes/console/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as ConsoleSettingsRouteImport } from './routes/console/settings'
 import { Route as ConsoleProjectRouteImport } from './routes/console/project'
 import { Route as ConsoleDashboardRouteImport } from './routes/console/dashboard'
 import { Route as ConsoleApikeyRouteImport } from './routes/console/apikey'
@@ -51,6 +52,11 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRoute,
+} as any)
+const ConsoleSettingsRoute = ConsoleSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ConsoleRoute,
 } as any)
 const ConsoleProjectRoute = ConsoleProjectRouteImport.update({
   id: '/project',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/project': typeof ConsoleProjectRoute
+  '/console/settings': typeof ConsoleSettingsRoute
   '/console/': typeof ConsoleIndexRoute
 }
 export interface FileRoutesByTo {
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/project': typeof ConsoleProjectRoute
+  '/console/settings': typeof ConsoleSettingsRoute
   '/': typeof PublicIndexRoute
   '/console': typeof ConsoleIndexRoute
 }
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/project': typeof ConsoleProjectRoute
+  '/console/settings': typeof ConsoleSettingsRoute
   '/_public/': typeof PublicIndexRoute
   '/console/': typeof ConsoleIndexRoute
 }
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
     | '/console/apikey'
     | '/console/dashboard'
     | '/console/project'
+    | '/console/settings'
     | '/console/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/console/apikey'
     | '/console/dashboard'
     | '/console/project'
+    | '/console/settings'
     | '/'
     | '/console'
   id:
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/console/apikey'
     | '/console/dashboard'
     | '/console/project'
+    | '/console/settings'
     | '/_public/'
     | '/console/'
   fileRoutesById: FileRoutesById
@@ -226,6 +238,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/console/settings': {
+      id: '/console/settings'
+      path: '/settings'
+      fullPath: '/console/settings'
+      preLoaderRoute: typeof ConsoleSettingsRouteImport
+      parentRoute: typeof ConsoleRoute
     }
     '/console/project': {
       id: '/console/project'
@@ -310,6 +329,7 @@ interface ConsoleRouteChildren {
   ConsoleApikeyRoute: typeof ConsoleApikeyRoute
   ConsoleDashboardRoute: typeof ConsoleDashboardRoute
   ConsoleProjectRoute: typeof ConsoleProjectRoute
+  ConsoleSettingsRoute: typeof ConsoleSettingsRoute
   ConsoleIndexRoute: typeof ConsoleIndexRoute
 }
 
@@ -317,6 +337,7 @@ const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleApikeyRoute: ConsoleApikeyRoute,
   ConsoleDashboardRoute: ConsoleDashboardRoute,
   ConsoleProjectRoute: ConsoleProjectRoute,
+  ConsoleSettingsRoute: ConsoleSettingsRoute,
   ConsoleIndexRoute: ConsoleIndexRoute,
 }
 

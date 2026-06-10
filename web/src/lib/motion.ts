@@ -25,19 +25,29 @@ export const staggerItem: Variants = {
   },
 }
 
-/** 交错子元素入场 — Sidebar 菜单项从左向右滑入 */
+/** 交错子元素入场 — 从左向右滑入（仅标题行使用） */
+export const staggerItemLeft: Variants = {
+  hidden: { opacity: 0, x: -12 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.4, ease },
+  },
+}
+
+/** Sidebar 整体交错容器 — header → 各分组 → footer 按顺序载入 */
 export const sidebarStaggerContainer: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.06,
+      staggerChildren: 0.08,
       delayChildren: 0.15,
     },
   },
 }
 
-/** Sidebar 菜单项从左向右滑入 */
+/** Sidebar 子项从左向右滑入 */
 export const sidebarItem: Variants = {
   hidden: { opacity: 0, x: -16 },
   visible: {

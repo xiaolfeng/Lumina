@@ -59,11 +59,14 @@ function ConsoleLayout() {
           variants={headerVariants}
           onAnimationComplete={() => setHeaderDone(true)}
         >
-          <SidebarTrigger className="-ml-1" />
+          <SidebarTrigger className="-ml-1 transition-colors hover:text-(--lagoon)" />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink asChild>
+                <BreadcrumbLink
+                  asChild
+                  className="text-(--sea-ink-soft) transition-colors hover:text-(--lagoon)"
+                >
                   <Link to="/console/dashboard">Console</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>

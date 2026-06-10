@@ -13,7 +13,7 @@ import { EditDialog } from '#/components/apikey/edit-dialog'
 import { DeleteDialog } from '#/components/apikey/delete-dialog'
 import { ResetDialog } from '#/components/apikey/reset-dialog'
 import type { ApikeyItem } from '#/lib/models/response/apikey'
-import { staggerContainer, staggerItem } from '#/lib/motion'
+import { staggerContainer, staggerItem, staggerItemLeft } from '#/lib/motion'
 
 export const Route = createFileRoute('/console/apikey')({
   component: ApikeyPage,
@@ -58,14 +58,18 @@ function ApikeyPage() {
     >
       {/* 标题行 */}
       <motion.div
-        className="flex items-center justify-between"
-        variants={staggerItem}
+        className="relative flex items-center justify-between pl-1.5"
+        variants={staggerItemLeft}
       >
+        <div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-(--lagoon) to-(--palm)" />
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">令牌管理</h1>
-          <p className="text-muted-foreground">管理你的 API 访问令牌</p>
+          <h1 className="text-2xl font-bold tracking-tight text-(--sea-ink)">令牌管理</h1>
+          <p className="text-(--sea-ink-soft)">管理你的 API 访问令牌</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button
+          onClick={() => setCreateOpen(true)}
+          className="bg-(--lagoon) text-(--foam) hover:bg-(--lagoon-deep)"
+        >
           <Plus className="mr-2 size-4" />
           创建令牌
         </Button>

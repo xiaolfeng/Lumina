@@ -12,7 +12,7 @@ import { CreateDialog } from '#/components/project/create-dialog'
 import { EditDialog } from '#/components/project/edit-dialog'
 import { DeleteDialog } from '#/components/project/delete-dialog'
 import type { ProjectItem } from '#/lib/models/response/project'
-import { staggerContainer, staggerItem } from '#/lib/motion'
+import { staggerContainer, staggerItem, staggerItemLeft } from '#/lib/motion'
 
 export const Route = createFileRoute('/console/project')({
   component: ProjectPage,
@@ -52,16 +52,20 @@ function ProjectPage() {
     >
       {/* 标题行 */}
       <motion.div
-        className="flex items-center justify-between"
-        variants={staggerItem}
+        className="relative flex items-center justify-between pl-1.5"
+        variants={staggerItemLeft}
       >
+        <div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-(--lagoon) to-(--palm)" />
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">项目管理</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-(--sea-ink)">项目管理</h1>
+          <p className="text-(--sea-ink-soft)">
             管理你的项目，用于组织 Pin 和 Q&A
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button
+          onClick={() => setCreateOpen(true)}
+          className="bg-(--lagoon) text-(--foam) hover:bg-(--lagoon-deep)"
+        >
           <Plus className="mr-2 size-4" />
           创建项目
         </Button>
