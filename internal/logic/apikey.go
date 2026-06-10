@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"strconv"
+	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
@@ -249,6 +250,28 @@ func (l *ApikeyLogic) Reset(ctx *gin.Context, id string) (*apiApikey.ResetRespon
 		IsActive:    ak.IsActive,
 		CreatedAt:   ak.BaseEntity.CreatedAt.Format("2006-01-02T15:04:05-07:00"),
 	}, nil
+}
+
+// ValidateAPIKey 验证 API Key 是否有效，通过 prefix 查找密钥记录并校验 bcrypt 哈希
+func (l *ApikeyLogic) ValidateAPIKey(ctx context.Context, prefix, fullKey string) (*xError.ErrorCode, string) {
+	ak, xErr := l.repo.apikey.GetByPrefix(ctx, prefix)
+	if xErr != nil {
+		return xError.TokenInvalid, "API Key 无效"
+	}
+
+	if !ak.IsActive {
+		return xError.TokenInvalid, "API Key 已被禁用"
+	}
+
+	if ak.ExpiresAt != nil && time.Now().After(*ak.ExpiresAt) {
+		return xError.TokenExpired, "API Key 已过期"
+	}
+
+	if !xUtil.Password().IsValid(fullKey, ak.KeyHash) {
+		return xError.TokenInvalid, "API Key 无效"
+	}
+
+	return nil, ""
 }
 
 // maskKey 将密钥前缀和后缀拼接为脱敏展示格式

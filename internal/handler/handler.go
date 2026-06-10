@@ -8,10 +8,11 @@ import (
 )
 
 type service struct {
-	healthLogic *logic.HealthLogic
-	authLogic   *logic.AuthLogic
-	apikeyLogic *logic.ApikeyLogic
+	healthLogic  *logic.HealthLogic
+	authLogic    *logic.AuthLogic
+	apikeyLogic  *logic.ApikeyLogic
 	projectLogic *logic.ProjectLogic
+	qaLogic      *logic.QaLogic
 }
 
 type handler struct {
@@ -37,6 +38,7 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 			authLogic:    logic.NewAuthLogic(ctx),
 			apikeyLogic:  logic.NewApikeyLogic(ctx),
 			projectLogic: logic.NewProjectLogic(ctx),
+			qaLogic:      logic.NewQaLogic(ctx),
 		},
 	}
 }
@@ -48,4 +50,6 @@ type AuthHandler handler
 type ApikeyHandler handler
 
 type ProjectHandler handler
+
+type QaHandler handler
 

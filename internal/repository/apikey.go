@@ -83,6 +83,23 @@ func (r *ApikeyRepo) Update(ctx context.Context, apikey *entity.Apikey) *xError.
 	return nil
 }
 
+// GetByPrefix 根据密钥前缀查找活跃的 API Key
+func (r *ApikeyRepo) GetByPrefix(ctx context.Context, prefix string) (*entity.Apikey, *xError.Error) {
+	r.log.Info(ctx, "GetByPrefix - 根据密钥前缀查找API密钥")
+
+	var apikey entity.Apikey
+	if err := r.db.WithContext(ctx).
+		Where("key_prefix = ? AND is_active = ?", prefix, true).
+		First(&apikey).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, xError.NewError(ctx, xError.NotFound, "API密钥不存在或已禁用", false, nil)
+		}
+		return nil, xError.NewError(ctx, xError.DatabaseError, "查询API密钥失败", false, err)
+	}
+
+	return &apikey, nil
+}
+
 // Delete 删除API密钥（硬删除）
 func (r *ApikeyRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID) *xError.Error {
 	r.log.Info(ctx, "Delete - 删除API密钥")

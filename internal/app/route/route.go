@@ -33,6 +33,11 @@ func NewRouteWithFrontend(frontendFS fs.FS) func(reg *xReg.Reg) {
 
 		r.engine.NoMethod(xRoute.NoMethod)
 
+		// MCP 路由必须在 engine.Use() 之前注册，以绕开 ResponseMiddleware
+		// Gin 的 engine.Group() 在创建时复制当前 engine.Handlers，
+		// 因此在此之前创建的 group 不会包含后续注册的全局中间件
+		r.mcpRouter(r.engine.Group("/api/v1"))
+
 		r.engine.Use(xMiddle.ResponseMiddleware)
 		r.engine.Use(xMiddle.ReleaseAllCors)
 		r.engine.Use(xMiddle.AllowOption)
@@ -45,6 +50,8 @@ func NewRouteWithFrontend(frontendFS fs.FS) func(reg *xReg.Reg) {
 		r.authProtectedRouter(apiRouter)
 		r.apikeyRouter(apiRouter)
 		r.projectRouter(apiRouter)
+		r.qaRouter(apiRouter)
+		r.wsRouter(apiRouter)
 
 		if r.frontendFS != nil {
 			r.frontendRouter()

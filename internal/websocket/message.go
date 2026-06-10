@@ -1,0 +1,27 @@
+package websocket
+
+// MessageType 定义 WebSocket 消息类型
+type MessageType string
+
+const (
+	// Server → Client 消息类型
+	MsgQuestionPush   MessageType = "question_push"    // 推送新问题
+	MsgSupplementPush MessageType = "supplement_push"  // 推送补充内容
+	MsgAnswerSync     MessageType = "answer_sync"      // 回答同步（跨设备）
+	MsgHeartbeat      MessageType = "heartbeat"        // 心跳
+	MsgSessionEnd     MessageType = "session_end"      // 会话结束通知
+
+	// Client → Server 消息类型
+	MsgAnswerSubmit      MessageType = "answer_submit"       // 提交回答
+	MsgRequestSupplement MessageType = "request_supplement"  // 请求补充
+	MsgSkip              MessageType = "skip"                // 跳过问题
+	MsgHeartbeatAck      MessageType = "heartbeat_ack"       // 心跳响应
+)
+
+// Message WebSocket 通信消息
+type Message struct {
+	Type      MessageType `json:"type"`                  // 消息类型
+	SessionID string      `json:"session_id,omitempty"`  // 会话ID
+	Data      any         `json:"data,omitempty"`         // 消息数据
+	Timestamp int64       `json:"timestamp"`              // 时间戳（毫秒）
+}

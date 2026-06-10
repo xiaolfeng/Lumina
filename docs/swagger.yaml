@@ -118,6 +118,15 @@ definitions:
     required:
     - name
     type: object
+  qa.UpdateQaConfigRequest:
+    properties:
+      runtime_domain:
+        description: 运行时域名，nil不更新
+        type: string
+      session_ttl:
+        description: Session TTL（秒），nil不更新
+        type: integer
+    type: object
 info:
   contact: {}
 paths:
@@ -639,4 +648,197 @@ paths:
       summary: 更新项目
       tags:
       - project
+  /api/v1/qa/config:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 获取Q&A配置
+      tags:
+      - QA管理
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 配置信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/qa.UpdateQaConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 更新Q&A配置
+      tags:
+      - QA管理
+  /api/v1/qa/sessions:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: size
+        type: integer
+      - description: 状态过滤(active/expired/deleted)
+        in: query
+        name: status
+        type: string
+      - description: 类型过滤(temporary/permanent)
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 分页获取QA会话列表
+      tags:
+      - QA管理
+  /api/v1/qa/sessions/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 会话ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 会话不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 删除QA会话
+      tags:
+      - QA管理
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 会话ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 会话不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 获取QA会话详情
+      tags:
+      - QA管理
+  /api/v1/qa/sessions/{id}/questions/{qid}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 会话ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 问题ID
+        in: path
+        name: qid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 问题不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 获取问题详情
+      tags:
+      - QA管理
 swagger: "2.0"

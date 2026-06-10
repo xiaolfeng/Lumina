@@ -20,6 +20,7 @@ func Init() (context.Context, []xRegNode.RegNodeList) {
 	regNode := []xRegNode.RegNodeList{
 		{Key: xCtx.DatabaseKey, Node: businessReg.databaseInit},
 		{Key: xCtx.RedisClientKey, Node: businessReg.nosqlInit},
+		{Key: MCPHandlerKey, Node: businessReg.mcpInit},
 		{Key: xCtx.Exec, Node: businessReg.businessDataPrepare},
 	}
 

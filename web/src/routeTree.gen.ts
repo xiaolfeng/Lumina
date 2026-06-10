@@ -9,13 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as FaqRouteImport } from './routes/faq'
+import { Route as InteractRouteImport } from './routes/interact'
 import { Route as ConsoleRouteImport } from './routes/console'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PublicRouteImport } from './routes/_public'
+import { Route as InteractIndexRouteImport } from './routes/interact/index'
 import { Route as ConsoleIndexRouteImport } from './routes/console/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as ConsoleSettingsRouteImport } from './routes/console/settings'
+import { Route as ConsoleQaRouteImport } from './routes/console/qa'
 import { Route as ConsoleProjectRouteImport } from './routes/console/project'
 import { Route as ConsoleDashboardRouteImport } from './routes/console/dashboard'
 import { Route as ConsoleApikeyRouteImport } from './routes/console/apikey'
@@ -23,10 +25,11 @@ import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-passw
 import { Route as AuthNewRouteImport } from './routes/auth/new'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as PublicStartRouteImport } from './routes/_public/start'
+import { Route as ConsoleQaSessionIdRouteImport } from './routes/console/qa/$sessionId'
 
-const FaqRoute = FaqRouteImport.update({
-  id: '/faq',
-  path: '/faq',
+const InteractRoute = InteractRouteImport.update({
+  id: '/interact',
+  path: '/interact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConsoleRoute = ConsoleRouteImport.update({
@@ -43,6 +46,11 @@ const PublicRoute = PublicRouteImport.update({
   id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InteractIndexRoute = InteractIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => InteractRoute,
+} as any)
 const ConsoleIndexRoute = ConsoleIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -56,6 +64,11 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
 const ConsoleSettingsRoute = ConsoleSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => ConsoleRoute,
+} as any)
+const ConsoleQaRoute = ConsoleQaRouteImport.update({
+  id: '/qa',
+  path: '/qa',
   getParentRoute: () => ConsoleRoute,
 } as any)
 const ConsoleProjectRoute = ConsoleProjectRouteImport.update({
@@ -93,12 +106,17 @@ const PublicStartRoute = PublicStartRouteImport.update({
   path: '/start',
   getParentRoute: () => PublicRoute,
 } as any)
+const ConsoleQaSessionIdRoute = ConsoleQaSessionIdRouteImport.update({
+  id: '/$sessionId',
+  path: '/$sessionId',
+  getParentRoute: () => ConsoleQaRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/console': typeof ConsoleRouteWithChildren
-  '/faq': typeof FaqRoute
+  '/interact': typeof InteractRouteWithChildren
   '/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
@@ -106,12 +124,14 @@ export interface FileRoutesByFullPath {
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/project': typeof ConsoleProjectRoute
+  '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
   '/console/': typeof ConsoleIndexRoute
+  '/interact/': typeof InteractIndexRoute
+  '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
-  '/faq': typeof FaqRoute
   '/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
@@ -119,16 +139,19 @@ export interface FileRoutesByTo {
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/project': typeof ConsoleProjectRoute
+  '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
   '/': typeof PublicIndexRoute
   '/console': typeof ConsoleIndexRoute
+  '/interact': typeof InteractIndexRoute
+  '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_public': typeof PublicRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/console': typeof ConsoleRouteWithChildren
-  '/faq': typeof FaqRoute
+  '/interact': typeof InteractRouteWithChildren
   '/_public/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
@@ -136,9 +159,12 @@ export interface FileRoutesById {
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/project': typeof ConsoleProjectRoute
+  '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
   '/_public/': typeof PublicIndexRoute
   '/console/': typeof ConsoleIndexRoute
+  '/interact/': typeof InteractIndexRoute
+  '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -146,7 +172,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/console'
-    | '/faq'
+    | '/interact'
     | '/start'
     | '/auth/login'
     | '/auth/new'
@@ -154,12 +180,14 @@ export interface FileRouteTypes {
     | '/console/apikey'
     | '/console/dashboard'
     | '/console/project'
+    | '/console/qa'
     | '/console/settings'
     | '/console/'
+    | '/interact/'
+    | '/console/qa/$sessionId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
-    | '/faq'
     | '/start'
     | '/auth/login'
     | '/auth/new'
@@ -167,15 +195,18 @@ export interface FileRouteTypes {
     | '/console/apikey'
     | '/console/dashboard'
     | '/console/project'
+    | '/console/qa'
     | '/console/settings'
     | '/'
     | '/console'
+    | '/interact'
+    | '/console/qa/$sessionId'
   id:
     | '__root__'
     | '/_public'
     | '/auth'
     | '/console'
-    | '/faq'
+    | '/interact'
     | '/_public/start'
     | '/auth/login'
     | '/auth/new'
@@ -183,25 +214,28 @@ export interface FileRouteTypes {
     | '/console/apikey'
     | '/console/dashboard'
     | '/console/project'
+    | '/console/qa'
     | '/console/settings'
     | '/_public/'
     | '/console/'
+    | '/interact/'
+    | '/console/qa/$sessionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   PublicRoute: typeof PublicRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   ConsoleRoute: typeof ConsoleRouteWithChildren
-  FaqRoute: typeof FaqRoute
+  InteractRoute: typeof InteractRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/faq': {
-      id: '/faq'
-      path: '/faq'
-      fullPath: '/faq'
-      preLoaderRoute: typeof FaqRouteImport
+    '/interact': {
+      id: '/interact'
+      path: '/interact'
+      fullPath: '/interact'
+      preLoaderRoute: typeof InteractRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/console': {
@@ -225,6 +259,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/interact/': {
+      id: '/interact/'
+      path: '/'
+      fullPath: '/interact/'
+      preLoaderRoute: typeof InteractIndexRouteImport
+      parentRoute: typeof InteractRoute
+    }
     '/console/': {
       id: '/console/'
       path: '/'
@@ -244,6 +285,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/console/settings'
       preLoaderRoute: typeof ConsoleSettingsRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
+    '/console/qa': {
+      id: '/console/qa'
+      path: '/qa'
+      fullPath: '/console/qa'
+      preLoaderRoute: typeof ConsoleQaRouteImport
       parentRoute: typeof ConsoleRoute
     }
     '/console/project': {
@@ -295,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicStartRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/console/qa/$sessionId': {
+      id: '/console/qa/$sessionId'
+      path: '/$sessionId'
+      fullPath: '/console/qa/$sessionId'
+      preLoaderRoute: typeof ConsoleQaSessionIdRouteImport
+      parentRoute: typeof ConsoleQaRoute
+    }
   }
 }
 
@@ -325,10 +380,23 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface ConsoleQaRouteChildren {
+  ConsoleQaSessionIdRoute: typeof ConsoleQaSessionIdRoute
+}
+
+const ConsoleQaRouteChildren: ConsoleQaRouteChildren = {
+  ConsoleQaSessionIdRoute: ConsoleQaSessionIdRoute,
+}
+
+const ConsoleQaRouteWithChildren = ConsoleQaRoute._addFileChildren(
+  ConsoleQaRouteChildren,
+)
+
 interface ConsoleRouteChildren {
   ConsoleApikeyRoute: typeof ConsoleApikeyRoute
   ConsoleDashboardRoute: typeof ConsoleDashboardRoute
   ConsoleProjectRoute: typeof ConsoleProjectRoute
+  ConsoleQaRoute: typeof ConsoleQaRouteWithChildren
   ConsoleSettingsRoute: typeof ConsoleSettingsRoute
   ConsoleIndexRoute: typeof ConsoleIndexRoute
 }
@@ -337,6 +405,7 @@ const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleApikeyRoute: ConsoleApikeyRoute,
   ConsoleDashboardRoute: ConsoleDashboardRoute,
   ConsoleProjectRoute: ConsoleProjectRoute,
+  ConsoleQaRoute: ConsoleQaRouteWithChildren,
   ConsoleSettingsRoute: ConsoleSettingsRoute,
   ConsoleIndexRoute: ConsoleIndexRoute,
 }
@@ -344,11 +413,23 @@ const ConsoleRouteChildren: ConsoleRouteChildren = {
 const ConsoleRouteWithChildren =
   ConsoleRoute._addFileChildren(ConsoleRouteChildren)
 
+interface InteractRouteChildren {
+  InteractIndexRoute: typeof InteractIndexRoute
+}
+
+const InteractRouteChildren: InteractRouteChildren = {
+  InteractIndexRoute: InteractIndexRoute,
+}
+
+const InteractRouteWithChildren = InteractRoute._addFileChildren(
+  InteractRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   PublicRoute: PublicRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   ConsoleRoute: ConsoleRouteWithChildren,
-  FaqRoute: FaqRoute,
+  InteractRoute: InteractRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

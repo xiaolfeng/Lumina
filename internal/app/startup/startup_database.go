@@ -18,6 +18,9 @@ var migrateTables = []interface{}{
 	&entity.Info{},
 	&entity.Apikey{},
 	&entity.Project{},
+	&entity.QaSession{},
+	&entity.QaQuestion{},
+	&entity.QaSupplement{},
 }
 
 func (r *reg) databaseInit(ctx context.Context) (any, error) {
