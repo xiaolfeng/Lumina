@@ -30,11 +30,16 @@ export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean)
-    createMutation.mutate({
-      name: name.trim(),
-      alias_name: aliases.length > 0 ? aliases : undefined,
-      description: description.trim() || undefined,
-    })
+    createMutation.mutate(
+      {
+        name: name.trim(),
+        alias_name: aliases.length > 0 ? aliases : undefined,
+        description: description.trim() || undefined,
+      },
+      {
+        onSuccess: () => handleClose(),
+      },
+    )
   }
 
   const handleClose = () => {

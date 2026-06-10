@@ -15,12 +15,34 @@ export const staggerContainer: Variants = {
   },
 }
 
-/** 交错子元素入场（y 方向轻滑） */
+/** 交错子元素入场 — Main 区域从右向左滑入 */
 export const staggerItem: Variants = {
-  hidden: { opacity: 0, y: 12 },
+  hidden: { opacity: 0, x: 20 },
   visible: {
     opacity: 1,
-    y: 0,
+    x: 0,
     transition: { duration: 0.4, ease },
+  },
+}
+
+/** 交错子元素入场 — Sidebar 菜单项从左向右滑入 */
+export const sidebarStaggerContainer: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.06,
+      delayChildren: 0.15,
+    },
+  },
+}
+
+/** Sidebar 菜单项从左向右滑入 */
+export const sidebarItem: Variants = {
+  hidden: { opacity: 0, x: -16 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.35, ease },
   },
 }

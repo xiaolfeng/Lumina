@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
 import { useLocation } from '@tanstack/react-router'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   SidebarProvider,
@@ -30,18 +31,18 @@ export const Route = createFileRoute('/console')({
   component: ConsoleLayout,
 })
 
-/** Header 入场动画 */
 const headerVariants = {
-  hidden: { opacity: 0, y: -8 },
+  hidden: { opacity: 0, x: 20 },
   visible: {
     opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease, delay: 0.25 },
+    x: 0,
+    transition: { duration: 0.35, ease },
   },
 }
 
 function ConsoleLayout() {
   const location = useLocation()
+  const [headerDone, setHeaderDone] = useState(false)
 
   return (
     <SidebarProvider>
@@ -50,12 +51,13 @@ function ConsoleLayout() {
 
       {/* Main 区域 */}
       <SidebarInset>
-        {/* Header 入场 */}
+        {/* Header 入场 — 最先出现 */}
         <motion.div
           className="flex h-16 shrink-0 items-center gap-2 px-4"
           initial="hidden"
           animate="visible"
           variants={headerVariants}
+          onAnimationComplete={() => setHeaderDone(true)}
         >
           <SidebarTrigger className="-ml-1" />
           <Breadcrumb>
@@ -69,18 +71,20 @@ function ConsoleLayout() {
           </Breadcrumb>
         </motion.div>
 
-        {/* 页面切换动画 */}
+        {/* 页面切换动画 — Header 完成后才开始 */}
         <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -15 }}
-              transition={{ duration: 0.3, ease }}
-            >
-              <Outlet />
-            </motion.div>
+            {headerDone && (
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -15 }}
+                transition={{ duration: 0.3, ease }}
+              >
+                <Outlet />
+              </motion.div>
+            )}
           </AnimatePresence>
         </main>
       </SidebarInset>

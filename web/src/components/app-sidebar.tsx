@@ -21,7 +21,7 @@ import {
   Sparkles,
   ExternalLink,
 } from 'lucide-react'
-import { ease } from '#/lib/motion'
+import { ease, sidebarStaggerContainer, sidebarItem } from '#/lib/motion'
 
 const navItems = [
   {
@@ -82,37 +82,45 @@ export function AppSidebar() {
             <SidebarGroupLabel>导航</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {navItems.map((item) => {
-                  const isActive =
-                    location.pathname === item.to ||
-                    location.pathname.startsWith(item.to + '/')
-                  return (
-                    <SidebarMenuItem key={item.to}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        tooltip={item.title}
-                      >
-                        {item.external ? (
-                          <a
-                            href={item.to}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={sidebarStaggerContainer}
+                >
+                  {navItems.map((item) => {
+                    const isActive =
+                      location.pathname === item.to ||
+                      location.pathname.startsWith(item.to + '/')
+                    return (
+                      <motion.div key={item.to} variants={sidebarItem}>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={isActive}
+                            tooltip={item.title}
                           >
-                            <item.icon />
-                            <span>{item.title}</span>
-                            <ExternalLink className="ml-auto size-3.5 text-muted-foreground" />
-                          </a>
-                        ) : (
-                          <Link to={item.to}>
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </Link>
-                        )}
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )
-                })}
+                            {item.external ? (
+                              <a
+                                href={item.to}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <item.icon />
+                                <span>{item.title}</span>
+                                <ExternalLink className="ml-auto size-3.5 text-muted-foreground" />
+                              </a>
+                            ) : (
+                              <Link to={item.to}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </Link>
+                            )}
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      </motion.div>
+                    )
+                  })}
+                </motion.div>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
