@@ -2,7 +2,7 @@
 
 ## 概述
 
-TanStack Start（React 19）+ Tailwind CSS 4 + shadcn/ui 构建的 Lumina 前端应用，通过 REST API + SSE 与后端通信。前端构建产物通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。
+TanStack Start（React 19）+ Tailwind CSS 4 + shadcn/ui 构建的 Lumina 前端应用，通过 REST API + WebSocket 与后端通信。前端构建产物通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。
 
 ## 目录结构
 
@@ -38,8 +38,12 @@ web/
     │   │   ├── dashboard.tsx   # 仪表盘
     │   │   ├── apikey.tsx      # API Key 管理
     │   │   ├── project.tsx     # 项目管理
+    │   │   ├── qa.tsx          # Q&A 会话管理（状态筛选 + 分页列表 + 删除）
+    │   │   ├── qa/$sessionId.tsx  # Q&A 会话详情（问题列表）
     │   │   └── settings.tsx    # 系统设置
-    │   └── faq.tsx             # FAQ 页面
+    │   └── interact.tsx        # Interact 交互布局（品牌栏 + 三栏主体）
+    │   └── interact/
+    │       └── index.tsx       # Interact 交互主页（WebSocket 连接 + 问题展示）
     ├── components/             # 组件
     │   ├── Navbar.tsx          # 公开页面导航栏
     │   ├── Footer.tsx          # 公开页面页脚
@@ -57,11 +61,42 @@ web/
     │   │   ├── create-dialog.tsx   # 创建对话框
     │   │   ├── edit-dialog.tsx     # 编辑对话框
     │   │   └── delete-dialog.tsx   # 删除确认对话框
+    │   ├── qa/                 # Q&A 管理业务组件
+    │   │   ├── columns.tsx     # 会话列表列定义
+    │   │   ├── delete-dialog.tsx   # 删除确认对话框
+    │   │   ├── question-card.tsx   # 问题卡片展示
+    │   │   └── session-detail.tsx  # 会话详情组件
+    │   ├── interact/           # Interact 交互组件
+    │   │   ├── types.ts        # 类型定义（Question/Session/SupplementItem）
+    │   │   ├── session-sidebar.tsx # 会话侧边栏
+    │   │   ├── question-card.tsx   # 问题卡片（统一渲染入口）
+    │   │   ├── question-select.tsx # 单选题组件
+    │   │   ├── question-multi-select.tsx # 多选题组件
+    │   │   ├── question-boolean.tsx # 布尔题组件
+    │   │   ├── question-text.tsx   # 文本题组件
+    │   │   ├── question-code.tsx   # 代码题组件
+    │   │   ├── question-image.tsx # 图片题组件
+    │   │   ├── question-file.tsx   # 文件题组件
+    │   │   ├── question-slider.tsx # 滑块题组件
+    │   │   ├── question-rate.tsx   # 评分题组件
+    │   │   ├── question-rank.tsx   # 排序题组件
+    │   │   ├── question-options.tsx # 选项题通用组件
+    │   │   ├── question-plan.tsx   # 计划题组件
+    │   │   ├── question-review.tsx # 审查题组件
+    │   │   ├── question-diff.tsx   # Diff 对比题组件
+    │   │   ├── detail-panel.tsx    # 详情面板
+    │   │   ├── history-card.tsx    # 历史卡片
+    │   │   ├── debug-dialog.tsx    # 调试对话框
+    │   │   ├── motion-demo-panel.tsx # 动画演示面板
+    │   │   └── mock-data.ts        # 模拟数据（开发用）
     │   └── ui/                 # shadcn/ui 组件（通过 CLI 添加）
     ├── hooks/                  # React Hooks
     │   ├── useAuth.ts          # 认证 Hook（登录/登出/刷新/初始化/自动续期）
     │   ├── useApikey.ts        # API Key 数据 Hook（CRUD + 分页）
     │   ├── useProject.ts       # 项目数据 Hook（CRUD + 分页）
+    │   ├── useQaAdmin.ts       # Q&A 管理 Hook（会话列表/详情/删除/配置）
+    │   ├── useQaSession.ts     # Q&A 会话 Hook（问题状态管理 + 回答提交）
+    │   ├── useQaWebSocket.ts   # Q&A WebSocket Hook（连接管理 + 消息回调）
     │   └── use-mobile.ts       # 移动端检测 Hook
     └── lib/
         ├── utils.ts            # cn() 工具（clsx + tailwind-merge）
@@ -70,18 +105,21 @@ web/
         │   ├── client.ts       # axios 实例（拦截器：自动附加 Token、401 清理跳转）
         │   ├── auth.ts         # 认证 API
         │   ├── apikey.ts       # API Key API
-        │   └── project.ts      # 项目 API
+        │   ├── project.ts      # 项目 API
+        │   └── qa-admin.ts     # Q&A 管理 API（会话/问题/配置）
         └── models/             # TypeScript 类型定义
             ├── request/        # 请求 DTO
             │   ├── auth.ts
             │   ├── apikey.ts
-            │   └── project.ts
+            │   ├── project.ts
+            │   └── qa-admin.ts # Q&A 请求参数（SessionListParams/UpdateQaConfigRequest）
             └── response/       # 响应 DTO
                 ├── common.ts   # BaseResponse 通用响应
                 ├── page.ts     # 分页响应
                 ├── auth.ts
                 ├── apikey.ts
-                └── project.ts
+                ├── project.ts
+                └── qa-admin.ts # Q&A 响应类型（Session/Question/Config）
 ```
 
 ## 导航指南
@@ -90,9 +128,11 @@ web/
 |---|---|---|
 | 新增页面 | `src/routes/` | 文件路径即路由路径；布局路由以 `_` 前缀 |
 | 新增控制台子页面 | `src/routes/console/` | 在 `console.tsx` 布局下添加，自动继承 Sidebar + Breadcrumb |
+| 新增 Interact 子页面 | `src/routes/interact/` | 在 `interact.tsx` 布局下添加 |
 | 新增布局路由 | `src/routes/<name>.tsx` | 含 `Outlet` 的布局组件 |
 | 新增通用组件 | `src/components/` | Navbar/Footer/Sidebar 级别的全局组件 |
-| 新增业务组件 | `src/components/<domain>/` | 按业务域组织（如 apikey/、project/） |
+| 新增业务组件 | `src/components/<domain>/` | 按业务域组织（如 apikey/、project/、qa/、interact/） |
+| 新增题型组件 | `src/components/interact/question-*.tsx` | 遵循 `question-<type>.tsx` 命名 |
 | 新增 shadcn/ui 组件 | `src/components/ui/` | 通过 `pnpm dlx shadcn@latest add <name>` |
 | 新增 API 接口 | `src/lib/apis/` | 使用 apiClient 封装，返回类型化响应 |
 | 新增数据 Hook | `src/hooks/` | 基于 TanStack Query 的 useMutation/useQuery |
@@ -118,6 +158,9 @@ web/
 - **主题配色**：微明色盘（烛光暖褐系），亮/暗模式通过 `:root` / `.dark` CSS 变量切换；shadcn/ui 变量已兼容主题。
 - **Toast 通知**：使用 `sonner`（shadcn/ui 集成），在 `console.tsx` 布局中挂载 `<Toaster />`。
 - **前端嵌入**：构建产物输出到 `web/dist`，通过 `go:embed` 嵌入 Go 二进制实现单文件部署。
+- **Q&A 实时通信**：Interact 页面通过 WebSocket 与后端通信，`useQaWebSocket` 管理连接状态和消息分发。
+- **Q&A 管理端**：Console Q&A 页面通过 REST API 管理会话，使用 `useQaAdmin` Hook。
+- **题型组件**：Interact 页面每种题型对应独立的 `question-<type>.tsx` 组件，通过 `question-card.tsx` 统一分发渲染。
 
 ## 反模式
 
@@ -140,3 +183,5 @@ web/
 7. 动画不播放 → 确认 `motion` 导入是否正确（`motion/react`）；检查 `prefers-reduced-motion` 设置。
 8. API 请求 401 → 检查 `lib/apis/client.ts` 拦截器是否正确附加 Token，Cookie 是否过期。
 9. 数据表格不刷新 → 检查 `useQuery` 的 `queryKey` 和 `staleTime` 配置。
+10. Q&A WebSocket 断连 → 检查 `useQaWebSocket.ts` 连接状态和后端 `route_ws.go` 端点。
+11. Interact 题型渲染异常 → 检查 `components/interact/question-card.tsx` 的题型分发逻辑。
