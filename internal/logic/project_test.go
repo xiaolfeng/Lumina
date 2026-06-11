@@ -21,7 +21,8 @@ func TestProjectLogic_Create(t *testing.T) {
 
 	req := &apiProject.CreateProjectRequest{
 		Name:        "test-project-unique",
-		AliasName:   []string{"test-alias"},
+		AliasName:   "test-alias",
+		MatchPath:   []string{"/test/path"},
 		Description: "test description",
 	}
 
@@ -38,8 +39,8 @@ func TestProjectLogic_Create(t *testing.T) {
 	if resp.Description != req.Description {
 		t.Errorf("expected description %q, got %q", req.Description, resp.Description)
 	}
-	if len(resp.AliasName) != len(req.AliasName) {
-		t.Errorf("expected %d aliases, got %d", len(req.AliasName), len(resp.AliasName))
+	if resp.AliasName != req.AliasName {
+		t.Errorf("expected alias %q, got %q", req.AliasName, resp.AliasName)
 	}
 
 	// Cleanup
@@ -53,7 +54,8 @@ func TestProjectLogic_Create_DuplicateName(t *testing.T) {
 
 	req := &apiProject.CreateProjectRequest{
 		Name:        "test-dup-name",
-		AliasName:   []string{},
+		AliasName:   "",
+		MatchPath:   []string{"/test/dup"},
 		Description: "",
 	}
 
@@ -80,7 +82,8 @@ func TestProjectLogic_GetByID(t *testing.T) {
 	// 先创建项目
 	createReq := &apiProject.CreateProjectRequest{
 		Name:        "test-get-by-id",
-		AliasName:   []string{"alias-get"},
+		AliasName:   "alias-get",
+		MatchPath:   []string{"/test/get-by-id"},
 		Description: "test get by id",
 	}
 	created, xErr := l.Create(ctx, createReq)
@@ -118,7 +121,8 @@ func TestProjectLogic_List(t *testing.T) {
 	for _, name := range names {
 		req := &apiProject.CreateProjectRequest{
 			Name:        name,
-			AliasName:   []string{},
+			AliasName:   "",
+			MatchPath:   []string{"/test/" + name},
 			Description: "for list test",
 		}
 		resp, xErr := l.Create(ctx, req)
@@ -154,7 +158,8 @@ func TestProjectLogic_Update(t *testing.T) {
 	// 先创建
 	createReq := &apiProject.CreateProjectRequest{
 		Name:        "test-update-original",
-		AliasName:   []string{},
+		AliasName:   "",
+		MatchPath:   []string{"/test/update"},
 		Description: "original description",
 	}
 	created, xErr := l.Create(ctx, createReq)
@@ -165,7 +170,8 @@ func TestProjectLogic_Update(t *testing.T) {
 	// 更新字段
 	updateReq := &apiProject.UpdateProjectRequest{
 		Name:        "test-updated-name",
-		AliasName:   []string{"updated-alias"},
+		AliasName:   "updated-alias",
+		MatchPath:   []string{"/test/updated"},
 		Description: "updated description",
 	}
 	updated, xErr := l.Update(ctx, created.ID, updateReq)
@@ -178,8 +184,8 @@ func TestProjectLogic_Update(t *testing.T) {
 	if updated.Description != updateReq.Description {
 		t.Errorf("expected description %q, got %q", updateReq.Description, updated.Description)
 	}
-	if len(updated.AliasName) != len(updateReq.AliasName) {
-		t.Errorf("expected %d aliases, got %d", len(updateReq.AliasName), len(updated.AliasName))
+	if updated.AliasName != updateReq.AliasName {
+		t.Errorf("expected alias %q, got %q", updateReq.AliasName, updated.AliasName)
 	}
 
 	// Cleanup
@@ -194,7 +200,8 @@ func TestProjectLogic_Delete(t *testing.T) {
 	// 先创建
 	req := &apiProject.CreateProjectRequest{
 		Name:        "test-delete-me",
-		AliasName:   []string{},
+		AliasName:   "",
+		MatchPath:   []string{"/test/delete"},
 		Description: "will be deleted",
 	}
 	created, xErr := l.Create(ctx, req)

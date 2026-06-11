@@ -18,8 +18,9 @@ import (
 const (
 	cacheKeyProjectID    = "project:id:%d"    // cacheKeyProjectID 项目详情缓存
 	cacheKeyProjectName  = "project:name:%s"  // cacheKeyProjectName 项目名称→ID映射
-	cacheKeyProjectAlias = "project:alias:%s" // cacheKeyProjectAlias 别名→ID映射
-	cacheTTLProject      = 30 * time.Minute   // cacheTTLProject 项目缓存过期时间
+	cacheKeyProjectAlias     = "project:alias:%s"     // cacheKeyProjectAlias 别名→ID映射
+	cacheKeyProjectMatchPath = "project:match_path:%s" // cacheKeyProjectMatchPath 项目路径匹配→ID映射
+	cacheTTLProject          = 30 * time.Minute       // cacheTTLProject 项目缓存过期时间
 )
 
 // ProjectRepo 项目数据访问层，提供完整 CRUD 操作与 Redis 缓存层
@@ -252,6 +253,35 @@ func (r *ProjectRepo) FindByAliasName(ctx context.Context, alias string) (*entit
 	return &project, nil
 }
 
+// FindByMatchPath 根据路径匹配查询项目
+//
+// 使用 PostgreSQL JSON 展开匹配：检查 MatchPath 数组中是否有任一元素是
+// 查询路径的前缀（即项目路径是查询路径的父目录或匹配路径）。
+// 例如：MatchPath=["/home/user/Lumina"] 可以匹配 "/home/user/Lumina/src/main.go"
+//
+// 参数:
+//   - ctx:  上下文对象
+//   - path: 待匹配的路径
+//
+// 返回值:
+//   - *entity.Project: 第一个匹配的项目实体
+//   - *xError.Error:   查询过程中的错误
+func (r *ProjectRepo) FindByMatchPath(ctx context.Context, path string) (*entity.Project, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("FindByMatchPath - 根据路径匹配项目 [%s]", path))
+
+	var project entity.Project
+	if err := r.db.WithContext(ctx).
+		Where("EXISTS (SELECT 1 FROM jsonb_array_elements_text(match_path) AS elem WHERE ? LIKE (elem || '%'))", path).
+		First(&project).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, xError.NewError(ctx, xError.NotFound, "项目不存在", false, nil)
+		}
+		return nil, xError.NewError(ctx, xError.DatabaseError, "根据路径匹配项目失败", false, err)
+	}
+
+	return &project, nil
+}
+
 // cacheProject 将项目详情写入 Redis 缓存
 //
 // 写入三组缓存键：
@@ -271,9 +301,14 @@ func (r *ProjectRepo) cacheProject(ctx context.Context, project *entity.Project)
 	// Name → ID
 	r.rdb.Set(ctx, r.cacheKey(cacheKeyProjectName, project.Name), project.ID.String(), cacheTTLProject)
 
-	// Alias → ID
-	for _, alias := range project.AliasName {
-		r.rdb.Set(ctx, r.cacheKey(cacheKeyProjectAlias, alias), project.ID.String(), cacheTTLProject)
+	// AliasName → ID（单字符串）
+	if project.AliasName != "" {
+		r.rdb.Set(ctx, r.cacheKey(cacheKeyProjectAlias, project.AliasName), project.ID.String(), cacheTTLProject)
+	}
+
+	// MatchPath → ID（每个路径一条映射）
+	for _, mp := range project.MatchPath {
+		r.rdb.Set(ctx, r.cacheKey(cacheKeyProjectMatchPath, mp), project.ID.String(), cacheTTLProject)
 	}
 }
 
@@ -287,8 +322,13 @@ func (r *ProjectRepo) clearProjectCache(ctx context.Context, project *entity.Pro
 	// 删除 Name 映射缓存
 	r.rdb.Del(ctx, r.cacheKey(cacheKeyProjectName, project.Name))
 
-	// 删除所有 Alias 映射缓存
-	for _, alias := range project.AliasName {
-		r.rdb.Del(ctx, r.cacheKey(cacheKeyProjectAlias, alias))
+	// 删除 Alias 映射缓存
+	if project.AliasName != "" {
+		r.rdb.Del(ctx, r.cacheKey(cacheKeyProjectAlias, project.AliasName))
+	}
+
+	// 删除所有 MatchPath 映射缓存
+	for _, mp := range project.MatchPath {
+		r.rdb.Del(ctx, r.cacheKey(cacheKeyProjectMatchPath, mp))
 	}
 }

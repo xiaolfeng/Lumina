@@ -25,7 +25,8 @@ func TestProjectRepo_Create(t *testing.T) {
 	project := &entity.Project{
 		BaseEntity:  xModels.BaseEntity{ID: xSnowflake.GenerateID(bConst.GeneProject)},
 		Name:        "test-project-repo-create",
-		AliasName:   []string{"test-create", "repo-create"},
+		AliasName:   "test-create",
+		MatchPath:   []string{"/test/repo-create"},
 		Description: "repository create test project",
 	}
 
@@ -52,7 +53,8 @@ func TestProjectRepo_GetByID(t *testing.T) {
 	project := &entity.Project{
 		BaseEntity:  xModels.BaseEntity{ID: id},
 		Name:        "test-project-repo-getbyid",
-		AliasName:   []string{"test-getbyid"},
+		AliasName:   "test-getbyid",
+		MatchPath:   []string{"/test/repo-getbyid"},
 		Description: "repository getbyid test project",
 	}
 	if xErr := repo.Create(ctx, project); xErr != nil {
@@ -82,7 +84,8 @@ func TestProjectRepo_GetByName(t *testing.T) {
 	project := &entity.Project{
 		BaseEntity:  xModels.BaseEntity{ID: xSnowflake.GenerateID(bConst.GeneProject)},
 		Name:        name,
-		AliasName:   []string{"test-getbyname"},
+		AliasName:   "test-getbyname",
+		MatchPath:   []string{"/test/repo-getbyname"},
 		Description: "repository getbyname test project",
 	}
 	if xErr := repo.Create(ctx, project); xErr != nil {
@@ -128,7 +131,8 @@ func TestProjectRepo_Update(t *testing.T) {
 	project := &entity.Project{
 		BaseEntity:  xModels.BaseEntity{ID: id},
 		Name:        "test-project-repo-update",
-		AliasName:   []string{"test-update"},
+		AliasName:   "test-update",
+		MatchPath:   []string{"/test/repo-update"},
 		Description: "original description",
 	}
 	if xErr := repo.Create(ctx, project); xErr != nil {
@@ -163,7 +167,8 @@ func TestProjectRepo_Delete(t *testing.T) {
 	project := &entity.Project{
 		BaseEntity:  xModels.BaseEntity{ID: id},
 		Name:        "test-project-repo-delete",
-		AliasName:   []string{"test-delete"},
+		AliasName:   "test-delete",
+		MatchPath:   []string{"/test/repo-delete"},
 		Description: "repository delete test project",
 	}
 	if xErr := repo.Create(ctx, project); xErr != nil {
@@ -191,7 +196,8 @@ func TestProjectRepo_FindByAliasName(t *testing.T) {
 	project := &entity.Project{
 		BaseEntity:  xModels.BaseEntity{ID: xSnowflake.GenerateID(bConst.GeneProject)},
 		Name:        "test-project-repo-findalias",
-		AliasName:   []string{alias, "another-alias"},
+		AliasName:   "test-findalias",
+		MatchPath:   []string{"/test/repo-findalias"},
 		Description: "repository findbyalias test project",
 	}
 	if xErr := repo.Create(ctx, project); xErr != nil {

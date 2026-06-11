@@ -25,6 +25,8 @@ type SessionResponse struct {
 	ExpiresAt     string `json:"expires_at"`     // 过期时间（永久为空）
 	CreatedAt     string `json:"created_at"`     // 创建时间
 	UpdatedAt     string `json:"updated_at"`     // 更新时间
+	ProjectID     string `json:"project_id"`      // 关联项目ID
+	ProjectName   string `json:"project_name"`    // 关联项目名称
 }
 
 // SessionDetailResponse Session详情响应（含问题列表）
@@ -39,6 +41,8 @@ type SessionDetailResponse struct {
 	CreatedAt     string                    `json:"created_at"`     // 创建时间
 	UpdatedAt     string                    `json:"updated_at"`     // 更新时间
 	Questions     []QuestionSummaryResponse `json:"questions"`     // 问题列表
+	ProjectID     string                    `json:"project_id"`      // 关联项目ID
+	ProjectName   string                    `json:"project_name"`    // 关联项目名称
 }
 
 // QuestionSummaryResponse 问题摘要（列表用）

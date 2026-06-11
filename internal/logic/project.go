@@ -66,6 +66,7 @@ func (l *ProjectLogic) Create(ctx context.Context, req *apiProject.CreateProject
 		BaseEntity:  xModels.BaseEntity{ID: id},
 		Name:        req.Name,
 		AliasName:   req.AliasName,
+		MatchPath:   req.MatchPath,
 		Description: req.Description,
 	}
 
@@ -158,6 +159,7 @@ func (l *ProjectLogic) Update(ctx context.Context, id string, req *apiProject.Up
 	// 更新字段
 	existing.Name = req.Name
 	existing.AliasName = req.AliasName
+	existing.MatchPath = req.MatchPath
 	existing.Description = req.Description
 
 	// 持久化
@@ -195,12 +197,40 @@ func (l *ProjectLogic) ResolveByAlias(ctx context.Context, alias string) (*apiPr
 	return l.toResponse(project), nil
 }
 
+// GetByName 根据名称获取项目详情
+func (l *ProjectLogic) GetByName(ctx context.Context, name string) (*apiProject.ProjectResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("GetByName - 根据名称获取项目 [%s]", name))
+
+	project, xErr := l.repo.project.GetByName(ctx, name)
+	if xErr != nil {
+		return nil, xErr
+	}
+
+	return l.toResponse(project), nil
+}
+
+// GetByMatchPath 根据路径匹配查询项目（用于 MCP 工具 project_get）
+//
+// 通过 repo.FindByMatchPath 进行 JSON 数组前缀匹配。
+// 例如：match_path=["/home/user/Lumina"] 可以匹配 "/home/user/Lumina/src/main.go"
+func (l *ProjectLogic) GetByMatchPath(ctx context.Context, path string) (*apiProject.ProjectResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("GetByMatchPath - 根据路径匹配项目 [%s]", path))
+
+	project, xErr := l.repo.project.FindByMatchPath(ctx, path)
+	if xErr != nil {
+		return nil, xErr
+	}
+
+	return l.toResponse(project), nil
+}
+
 // toResponse 将实体映射为响应 DTO
 func (l *ProjectLogic) toResponse(project *entity.Project) *apiProject.ProjectResponse {
 	return &apiProject.ProjectResponse{
 		ID:          project.ID.String(),
 		Name:        project.Name,
 		AliasName:   project.AliasName,
+		MatchPath:   project.MatchPath,
 		Description: project.Description,
 		CreatedAt:   project.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:   project.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),

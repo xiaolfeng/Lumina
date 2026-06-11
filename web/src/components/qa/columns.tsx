@@ -30,6 +30,14 @@ export function getSessionColumns(onDelete: (session: SessionItem) => void): Col
 			},
 		},
 		{
+			accessorKey: 'project_name',
+			header: '关联项目',
+			cell: ({ row }) => {
+				const name = row.getValue('project_name') as string
+				return name || <span className="text-muted-foreground">—</span>
+			},
+		},
+		{
 			accessorKey: 'status',
 			header: '状态',
 			cell: ({ row }) => {

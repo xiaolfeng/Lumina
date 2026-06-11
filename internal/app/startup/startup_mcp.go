@@ -5,6 +5,7 @@ import (
 
 	xCtx "github.com/bamboo-services/bamboo-base-go/defined/context"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
+	"github.com/xiaolfeng/Lumina/internal/logic"
 	"github.com/xiaolfeng/Lumina/internal/mcp"
 )
 
@@ -15,6 +16,11 @@ const MCPHandlerKey xCtx.ContextKey = "mcp_handler"
 func (r *reg) mcpInit(ctx context.Context) (any, error) {
 	log := xLog.WithName(xLog.NamedINIT)
 	log.Debug(ctx, "正在初始化 MCP Server...")
+
+	qaLogic := logic.NewQaLogic(ctx)
+	projectLogic := logic.NewProjectLogic(ctx)
+	mcp.SetQaLogic(qaLogic)
+	mcp.SetProjectLogic(projectLogic)
 
 	handler := mcp.InitMCPServer(ctx)
 

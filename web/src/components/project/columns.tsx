@@ -28,14 +28,26 @@ export function getColumns(actions: ColumnActions): ColumnDef<ProjectItem>[] {
       accessorKey: 'alias_name',
       header: '别名',
       cell: ({ row }) => {
-        const aliases = row.getValue('alias_name') as string[]
-        if (!aliases || aliases.length === 0)
+        const alias = row.getValue('alias_name') as string
+        return (
+          <span className={alias ? '' : 'text-muted-foreground'}>
+            {alias || '-'}
+          </span>
+        )
+      },
+    },
+    {
+      accessorKey: 'match_path',
+      header: '匹配路径',
+      cell: ({ row }) => {
+        const paths = row.getValue('match_path') as string[]
+        if (!paths || paths.length === 0)
           return <span className="text-muted-foreground">-</span>
         return (
           <div className="flex flex-wrap gap-1">
-            {aliases.map((alias) => (
-              <Badge key={alias} variant="outline" className="text-xs">
-                {alias}
+            {paths.map((path) => (
+              <Badge key={path} variant="outline" className="font-mono text-xs">
+                {path}
               </Badge>
             ))}
           </div>

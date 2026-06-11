@@ -22,6 +22,7 @@ interface EditDialogProps {
 export function EditDialog({ open, onOpenChange, item }: EditDialogProps) {
   const [name, setName] = useState('')
   const [aliasName, setAliasName] = useState('')
+  const [matchPathInput, setMatchPathInput] = useState('')
   const [description, setDescription] = useState('')
 
   const updateMutation = useUpdateProject()
@@ -29,14 +30,15 @@ export function EditDialog({ open, onOpenChange, item }: EditDialogProps) {
   useEffect(() => {
     if (item) {
       setName(item.name)
-      setAliasName(item.alias_name?.join(', ') ?? '')
+      setAliasName(item.alias_name || '')
+      setMatchPathInput(item.match_path?.join(', ') ?? '')
       setDescription(item.description ?? '')
     }
   }, [item])
 
   const handleSubmit = () => {
     if (!item || !name.trim()) return
-    const aliases = aliasName
+    const matchPaths = matchPathInput
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean)
@@ -45,7 +47,8 @@ export function EditDialog({ open, onOpenChange, item }: EditDialogProps) {
         id: item.id,
         data: {
           name: name.trim(),
-          alias_name: aliases,
+          alias_name: aliasName.trim() || undefined,
+          match_path: matchPaths,
           description: description.trim() || undefined,
         },
       },
@@ -56,6 +59,7 @@ export function EditDialog({ open, onOpenChange, item }: EditDialogProps) {
   const handleClose = () => {
     setName('')
     setAliasName('')
+    setMatchPathInput('')
     setDescription('')
     onOpenChange(false)
   }
@@ -82,8 +86,20 @@ export function EditDialog({ open, onOpenChange, item }: EditDialogProps) {
               id="e-alias"
               value={aliasName}
               onChange={(e) => setAliasName(e.target.value)}
-              placeholder="逗号分隔"
+              placeholder="输入项目别名"
             />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="e-match-path">匹配路径</Label>
+            <Input
+              id="e-match-path"
+              value={matchPathInput}
+              onChange={(e) => setMatchPathInput(e.target.value)}
+              placeholder="逗号分隔，如: /api/v1/*,/docs/*"
+            />
+            <p className="text-xs text-muted-foreground">
+              支持通配符 * 匹配，用于自动关联请求路径
+            </p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="e-desc">描述</Label>

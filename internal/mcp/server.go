@@ -24,8 +24,11 @@ func InitMCPServer(ctx context.Context) http.Handler {
 	// 注册 Q&A 模块工具
 	RegisterQATools(server)
 
+	// 注册 Project 模块工具
+	RegisterProjectTools(server)
+
 	log := xLog.WithName(xLog.NamedINIT)
-	log.Info(ctx, "MCP Server initialized with QA tools registered")
+	log.Info(ctx, "MCP Server initialized with QA and Project tools registered")
 
 	// 创建 Streamable HTTP Handler，每个请求使用同一个 Server 实例
 	return mcp.NewStreamableHTTPHandler(

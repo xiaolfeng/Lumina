@@ -23,6 +23,10 @@ export function SessionDetail({ session }: SessionDetailProps) {
             <p className="font-medium">{session.agent}</p>
           </div>
           <div>
+            <span className="text-muted-foreground">关联项目</span>
+            <p className="font-medium">{session.project_name || '—'}</p>
+          </div>
+          <div>
             <span className="text-muted-foreground">类型</span>
             <p><Badge variant="secondary">{typeLabel}</Badge></p>
           </div>

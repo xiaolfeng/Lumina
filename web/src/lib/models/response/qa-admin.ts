@@ -8,6 +8,8 @@ export interface SessionItem {
   expires_at: string
   created_at: string
   updated_at: string
+  project_id: string
+  project_name: string
 }
 
 export interface SessionListResponse {
@@ -35,6 +37,8 @@ export interface SessionDetailResponse {
   created_at: string
   updated_at: string
   questions: QuestionSummary[]
+  project_id: string
+  project_name: string
 }
 
 export interface SupplementItem {

@@ -265,8 +265,18 @@ func (l *QaLogic) UpdateQaConfig(ctx context.Context, req *qa.UpdateQaConfigRequ
 // ─── MCP Tool Business Methods ──────────────────────────────────────────
 
 // CreateSession 创建QA会话（MCP工具）
-func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType string) (string, string, *xError.Error) {
+func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType, projectID string) (string, string, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("CreateSession - 创建QA会话 [%s]", title))
+
+	// 解析项目ID
+	var prjID int64
+	if projectID != "" {
+		var parseErr error
+		prjID, parseErr = strconv.ParseInt(projectID, 10, 64)
+		if parseErr != nil {
+			return "", "", xError.NewError(ctx, xError.BusinessError, "无效的项目ID格式", false, nil)
+		}
+	}
 
 	// 生成雪花ID
 	id := xSnowflake.GenerateID(bConst.GeneQaSession)
@@ -283,6 +293,7 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType s
 			Owner:      "system",
 			Type:       sessionType,
 			Status:     "active",
+			ProjectID:  prjID,
 			ExpiresAt:  &expiresAt,
 		}
 		if xErr := l.repo.session.Create(ctx, entity); xErr != nil {
@@ -297,6 +308,7 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType s
 			Owner:      "system",
 			Type:       sessionType,
 			Status:     "active",
+			ProjectID:  prjID,
 			ExpiresAt:  nil,
 		}
 		if xErr := l.repo.session.Create(ctx, entity); xErr != nil {
@@ -311,22 +323,22 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType s
 }
 
 // PushQuestion 推送问题到会话（MCP工具）
-func (l *QaLogic) PushQuestion(ctx context.Context, sessionID, qType, title, description string, options, config, batch any, groupLabel string) (string, *xError.Error) {
+func (l *QaLogic) PushQuestion(ctx context.Context, sessionID, qType, title, description string, options, config, batch any, groupLabel string) (string, map[string]string, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("PushQuestion - 推送问题 [session=%s, title=%s]", sessionID, title))
 
 	// 解析并验证会话
 	parsedSID, err := xSnowflake.ParseSnowflakeID(sessionID)
 	if err != nil {
-		return "", xError.NewError(ctx, xError.BusinessError, "无效的会话ID", false, nil)
+		return "", nil, xError.NewError(ctx, xError.BusinessError, "无效的会话ID", false, nil)
 	}
 
 	// 验证会话存在且为活跃状态
 	session, xErr := l.repo.session.GetByID(ctx, parsedSID)
 	if xErr != nil {
-		return "", xErr
+		return "", nil, xErr
 	}
 	if session.Status != "active" {
-		return "", xError.NewError(ctx, xError.BusinessError, "会话不是活跃状态，无法推送问题", false, nil)
+		return "", nil, xError.NewError(ctx, xError.BusinessError, "会话不是活跃状态，无法推送问题", false, nil)
 	}
 
 	// 生成问题ID
@@ -346,9 +358,39 @@ func (l *QaLogic) PushQuestion(ctx context.Context, sessionID, qType, title, des
 		Status:      "pending",
 	}
 
+	// 为每个 option 生成雪花 ID 并构建映射
+	optionIDMap := make(map[string]string)
+	if options != nil {
+		var rawOpts string
+		switch v := options.(type) {
+		case string:
+			rawOpts = v
+		default:
+			if optBytes, jsonErr := json.Marshal(options); jsonErr == nil {
+				rawOpts = string(optBytes)
+			}
+		}
+		if rawOpts != "" {
+			var optList []map[string]interface{}
+			if json.Unmarshal([]byte(rawOpts), &optList) == nil {
+				for i, opt := range optList {
+					optID := xSnowflake.GenerateID(bConst.GeneQaQuestion).String()
+					opt["id"] = optID
+					optList[i] = opt
+					if label, ok := opt["label"].(string); ok {
+						optionIDMap[label] = optID
+					}
+				}
+				if updated, jsonErr := json.Marshal(optList); jsonErr == nil {
+					questionEntity.Options = datatypes.JSON(updated)
+				}
+			}
+		}
+	}
+
 	// 持久化
 	if xErr := l.repo.question.Create(ctx, questionEntity); xErr != nil {
-		return "", xErr
+		return "", nil, xErr
 	}
 
 	// 通知 WebSocket 层广播新问题到在线设备
@@ -356,7 +398,7 @@ func (l *QaLogic) PushQuestion(ctx context.Context, sessionID, qType, title, des
 		OnQuestionPushed(sessionID, questionEntity)
 	}
 
-	return qID.String(), nil
+	return qID.String(), optionIDMap, nil
 }
 
 // PushSupplement 推送补充内容（MCP工具）
@@ -449,6 +491,44 @@ func (l *QaLogic) RegetAnswer(ctx context.Context, sessionID, questionID string,
 	return fmt.Sprintf("--- question:%s ---\n[ANSWERED] %s", questionID, summary), nil
 }
 
+// RegetAnswers 批量重新获取回答（MCP工具）
+//
+// 遍历所有 questionIDs，对每个执行：
+// - 已回答 → "[ANSWERED] {question_id}: {答案摘要}"
+// - 未回答 → "[PENDING] {question_id}: 请使用 qa_get_answer 阻塞等待用户回答。"
+// - 无效ID → "[ERROR] {question_id}: 无效的问题ID格式"
+// - 不存在 → "[ERROR] {question_id}: 问题不存在"
+func (l *QaLogic) RegetAnswers(ctx context.Context, sessionID string, questionIDs []string) (string, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("RegetAnswers - 批量重新获取回答 [session=%s, count=%d]", sessionID, len(questionIDs)))
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("批量查询结果（%d 个问题）:\n\n", len(questionIDs)))
+
+	for _, qid := range questionIDs {
+		parsedQID, err := xSnowflake.ParseSnowflakeID(qid)
+		if err != nil {
+			sb.WriteString(fmt.Sprintf("[ERROR] %s: 无效的问题ID格式\n", qid))
+			continue
+		}
+
+		question, xErr := l.repo.question.GetByID(ctx, parsedQID)
+		if xErr != nil {
+			sb.WriteString(fmt.Sprintf("[ERROR] %s: 问题不存在\n", qid))
+			continue
+		}
+
+		if question.Status == "answered" {
+			answerData := question.Answer
+			summary := formatAnswerData(qid, answerData)
+			sb.WriteString(fmt.Sprintf("[ANSWERED] %s: %s\n", qid, summary))
+		} else {
+			sb.WriteString(fmt.Sprintf("[PENDING] %s: 请使用 qa_get_answer 阻塞等待用户回答。\n", qid))
+		}
+	}
+
+	return sb.String(), nil
+}
+
 // GetSessionMCP 获取会话信息（MCP工具，返回人类可读字符串）
 func (l *QaLogic) GetSessionMCP(ctx context.Context, sessionID string) (string, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("GetSessionMCP - 获取会话信息 [%s]", sessionID))
@@ -472,6 +552,7 @@ func (l *QaLogic) GetSessionMCP(ctx context.Context, sessionID string) (string, 
 	sb.WriteString(fmt.Sprintf("Agent: %s\n", session.Agent))
 	sb.WriteString(fmt.Sprintf("类型: %s\n", session.Type))
 	sb.WriteString(fmt.Sprintf("状态: %s\n", session.Status))
+	sb.WriteString(fmt.Sprintf("关联项目: %d\n", session.ProjectID))
 	sb.WriteString(fmt.Sprintf("在线设备: %d\n", session.OnlineDevices))
 	if session.ExpiresAt != nil {
 		sb.WriteString(fmt.Sprintf("过期时间: %s\n", session.ExpiresAt.Format(time.RFC3339)))

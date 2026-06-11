@@ -20,20 +20,22 @@ interface CreateDialogProps {
 export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
   const [name, setName] = useState('')
   const [aliasName, setAliasName] = useState('')
+  const [matchPathInput, setMatchPathInput] = useState('')
   const [description, setDescription] = useState('')
 
   const createMutation = useCreateProject()
 
   const handleSubmit = () => {
     if (!name.trim()) return
-    const aliases = aliasName
+    const matchPaths = matchPathInput
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean)
     createMutation.mutate(
       {
         name: name.trim(),
-        alias_name: aliases.length > 0 ? aliases : undefined,
+        alias_name: aliasName.trim() || undefined,
+        match_path: matchPaths.length > 0 ? matchPaths : undefined,
         description: description.trim() || undefined,
       },
       {
@@ -45,6 +47,7 @@ export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
   const handleClose = () => {
     setName('')
     setAliasName('')
+    setMatchPathInput('')
     setDescription('')
     onOpenChange(false)
   }
@@ -74,8 +77,20 @@ export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
               id="p-alias"
               value={aliasName}
               onChange={(e) => setAliasName(e.target.value)}
-              placeholder="逗号分隔，如: lumina,微明"
+              placeholder="输入项目别名"
             />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="p-match-path">匹配路径</Label>
+            <Input
+              id="p-match-path"
+              value={matchPathInput}
+              onChange={(e) => setMatchPathInput(e.target.value)}
+              placeholder="逗号分隔，如: /api/v1/*,/docs/*"
+            />
+            <p className="text-xs text-muted-foreground">
+              支持通配符 * 匹配，用于自动关联请求路径
+            </p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="p-desc">描述</Label>
