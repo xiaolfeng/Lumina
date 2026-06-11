@@ -31,40 +31,55 @@ var wsLog = xLog.WithName(xLog.NamedCONT, "WSHandler")
 // WSHandler 创建 WebSocket 升级 Gin 处理器
 //
 // 升级流程：
-//  1. 从 query 中提取 session_id（必填）和 device_id（可选，不提供则自动生成）
-//  2. 将 HTTP 连接升级为 WebSocket
-//  3. 创建 Connection 并注册到 Hub
-//  4. 启动 ReadPump 和 WritePump goroutine
-func WSHandler(hub *Hub) gin.HandlerFunc {
+//  1. 从 query 中提取 session（Hash 标识，必填）和 device_id（可选，不提供则自动生成）
+//  2. 通过 Hash 解析为雪花 ID（调用 QaSessionRepo.GetByHash）
+//  3. 将 HTTP 连接升级为 WebSocket
+//  4. 创建 Connection 并注册到 Hub
+//  5. 启动 ReadPump 和 WritePump goroutine
+func WSHandler(hub *Hub, sessionRepo *repository.QaSessionRepo) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 1. 提取 session_id（必填）
-		sessionID := c.Query("session_id")
-		if sessionID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "session_id 参数必填"})
+		// 1. 提取 session hash（必填）
+		sessionHash := c.Query("session")
+		if sessionHash == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "session 参数必填"})
 			c.Abort()
 			return
 		}
 
-		// 2. 提取或生成 device_id
+		// 2. 通过 hash 解析为雪花 ID
+		session, xErr := sessionRepo.GetByHash(c.Request.Context(), sessionHash)
+		if xErr != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "会话不存在或已过期"})
+			c.Abort()
+			return
+		}
+		sessionID := session.ID.String() // snowflake ID 字符串，Hub 内部仍使用雪花 ID
+
+		// 3. 提取或生成 device_id
 		deviceID := c.Query("device_id")
 		if deviceID == "" {
 			deviceID = fmt.Sprintf("device_%s", uuid.New().String()[:8])
 		}
 
-		// 3. 升级 HTTP 连接为 WebSocket
+		// 4. 升级 HTTP 连接为 WebSocket
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
 			wsLog.Error(nil, "WebSocket 升级失败", slog.String("error", err.Error()))
 			return
 		}
 
-		wsLog.Info(nil, "WebSocket 连接建立", slog.String("sessionID", sessionID), slog.String("deviceID", deviceID))
+		wsLog.Info(nil, "WebSocket 连接建立",
+			slog.String("sessionHash", sessionHash),
+			slog.String("sessionID", sessionID),
+			slog.String("deviceID", deviceID),
+		)
 
-		// 4. 创建连接封装并注册到 Hub
+		// 5. 创建连接封装并注册到 Hub
 		wsConn := NewConnection(conn, sessionID, deviceID, hub)
+		wsConn.sessionHash = sessionHash
 		hub.Register(wsConn)
 
-		// 5. 启动读写泵
+		// 6. 启动读写泵
 		go wsConn.WritePump()
 		go wsConn.ReadPump()
 	}
@@ -89,6 +104,9 @@ func CreateMessageHandler(db *gorm.DB) MessageHandler {
 			handleRequestSupplement(ctx, conn, msg, queue, log)
 		case MsgSkip:
 			handleSkip(ctx, conn, msg, questionRepo, queue, log)
+		case MsgSessionLeave:
+			conn.isVoluntary = true
+			conn.Close()
 		case MsgHeartbeatAck:
 			// 心跳响应已在 Connection.ReadPump 中更新 lastPing，无需额外处理
 		default:

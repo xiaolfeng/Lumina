@@ -45,7 +45,7 @@ const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000] // exponential backoff
 // ── Hook ──
 
 export function useQaWebSocket(
-  sessionId: string | null,
+  sessionHash: string | null,
   options: UseQaWebSocketOptions = {},
 ) {
   const [status, setStatus] = useState<ConnectionStatus>('idle')
@@ -84,7 +84,7 @@ export function useQaWebSocket(
   // ── Schedule Reconnect ──
 
   const connect = useCallback(() => {
-    if (!sessionId) return
+    if (!sessionHash) return
 
     // Close existing connection
     if (wsRef.current) {
@@ -100,7 +100,7 @@ export function useQaWebSocket(
     localStorage.setItem('qa_device_id', deviceId)
 
     const token = getAccessToken()
-    const wsUrl = `${protocol}//${host}/api/v1/qa/ws?session_id=${sessionId}&device_id=${deviceId}&token=${token}`
+    const wsUrl = `${protocol}//${host}/api/v1/qa/ws?session=${sessionHash}&device_id=${deviceId}&token=${token}`
 
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
@@ -170,7 +170,7 @@ export function useQaWebSocket(
     ws.onerror = () => {
       // onclose will fire after onerror
     }
-  }, [sessionId, disconnect, clearTimers])
+  }, [sessionHash, disconnect, clearTimers])
 
   // ── Reconnect with exponential backoff ──
 
@@ -188,13 +188,13 @@ export function useQaWebSocket(
   // ── Lifecycle ──
 
   useEffect(() => {
-    if (sessionId) {
+    if (sessionHash) {
       connect()
     }
     return () => {
       disconnect()
     }
-  }, [sessionId, connect, disconnect])
+  }, [sessionHash, connect, disconnect])
 
   // ── Send Message ──
 
@@ -204,15 +204,43 @@ export function useQaWebSocket(
         wsRef.current.send(
           JSON.stringify({
             type,
-            session_id: sessionId,
+            session_id: sessionHash,
             data,
             timestamp: Date.now(),
           }),
         )
       }
     },
-    [sessionId],
+    [sessionHash],
   )
+
+  // ── Beforeunload: send session_leave on page close (skip refresh) ──
+
+  useEffect(() => {
+    function handleBeforeUnload() {
+      // Skip on refresh — navigation type 'reload' means F5/Cmd+R
+      const navEntries = performance.getEntriesByType('navigation')
+      if (
+        navEntries.length > 0 &&
+        (navEntries[0] as PerformanceNavigationTiming).type === 'reload'
+      ) {
+        return
+      }
+
+      // Best-effort: try to send session_leave via WS before tab closes
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'session_leave',
+            timestamp: Date.now(),
+          }),
+        )
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
 
   return {
     status,

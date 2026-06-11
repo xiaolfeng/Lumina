@@ -3,6 +3,15 @@ export interface SessionListParams {
   size?: number
   status?: 'active' | 'expired' | 'deleted' | ''
   type?: 'temporary' | 'permanent' | ''
+  hash?: string
+}
+
+export interface CreateSessionRequest {
+  project_id: string
+  title: string
+  agent: string
+  type: 'temporary' | 'permanent'
+  link_domain?: string
 }
 
 export interface UpdateQaConfigRequest {

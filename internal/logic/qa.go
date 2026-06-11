@@ -2,6 +2,8 @@ package logic
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -79,7 +81,7 @@ func (l *QaLogic) ListSessions(ctx context.Context, req *qa.ListSessionRequest) 
 	}
 
 	// 查询列表
-	sessions, total, xErr := l.repo.session.List(ctx, page, size, req.Status, req.Type)
+	sessions, total, xErr := l.repo.session.List(ctx, page, size, req.Status, req.Type, req.Hash)
 	if xErr != nil {
 		return nil, xErr
 	}
@@ -120,6 +122,7 @@ func (l *QaLogic) GetSessionDetail(ctx context.Context, id string) (*qa.SessionD
 
 	return &qa.SessionDetailResponse{
 		ID:            session.ID.String(),
+		Hash:          session.Hash,
 		Title:         session.Title,
 		Agent:         session.Agent,
 		Type:          session.Type,
@@ -156,7 +159,7 @@ func (l *QaLogic) GetQuestionDetail(ctx context.Context, sessionID, questionID s
 			{
 				ID:          supplement.ID.String(),
 				TargetType:  supplement.TargetType,
-				TargetID:    strconv.FormatInt(supplement.TargetID, 10),
+				TargetID:    strconv.FormatInt(supplement.TargetID.Int64(), 10),
 				ContentType: supplement.ContentType,
 				Content:     supplement.Content,
 				CreatedAt:   supplement.CreatedAt.Format(time.RFC3339),
@@ -269,17 +272,30 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType, 
 	l.log.Info(ctx, fmt.Sprintf("CreateSession - 创建QA会话 [%s]", title))
 
 	// 解析项目ID
-	var prjID int64
+	var prjID xSnowflake.SnowflakeID
 	if projectID != "" {
-		var parseErr error
-		prjID, parseErr = strconv.ParseInt(projectID, 10, 64)
+		parsedPrjID, parseErr := xSnowflake.ParseSnowflakeID(projectID)
 		if parseErr != nil {
 			return "", "", xError.NewError(ctx, xError.BusinessError, "无效的项目ID格式", false, nil)
 		}
+		prjID = parsedPrjID
 	}
 
 	// 生成雪花ID
 	id := xSnowflake.GenerateID(bConst.GeneQaSession)
+
+	// 生成 Hash（SHA256 前 16 位 hex，碰撞检测重试）
+	hash := generateSessionHash(id)
+	for {
+		// 碰撞检测
+		if _, xErr := l.repo.session.GetByHash(ctx, hash); xErr != nil {
+			// 未找到说明无碰撞，跳出
+			break
+		}
+		// 碰撞：重新生成 ID 和 Hash
+		id = xSnowflake.GenerateID(bConst.GeneQaSession)
+		hash = generateSessionHash(id)
+	}
 
 	// 处理会话类型和过期时间
 	sessionType = strings.ToLower(strings.TrimSpace(sessionType))
@@ -294,6 +310,7 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType, 
 			Type:       sessionType,
 			Status:     "active",
 			ProjectID:  prjID,
+			Hash:       hash,
 			ExpiresAt:  &expiresAt,
 		}
 		if xErr := l.repo.session.Create(ctx, entity); xErr != nil {
@@ -309,6 +326,7 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType, 
 			Type:       sessionType,
 			Status:     "active",
 			ProjectID:  prjID,
+			Hash:       hash,
 			ExpiresAt:  nil,
 		}
 		if xErr := l.repo.session.Create(ctx, entity); xErr != nil {
@@ -321,7 +339,7 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType, 
 	if err := l.db.WithContext(ctx).Where("`key` = ?", "runtime.domain").First(&domainInfo).Error; err != nil || domainInfo.Value == "" {
 		domainInfo.Value = "http://localhost:3000"
 	}
-	link := fmt.Sprintf("%s/interact?session=%s", strings.TrimRight(domainInfo.Value, "/"), id.String())
+	link := fmt.Sprintf("%s/interact?session=%s", strings.TrimRight(domainInfo.Value, "/"), hash)
 
 	return id.String(), link, nil
 }
@@ -351,7 +369,7 @@ func (l *QaLogic) PushQuestion(ctx context.Context, sessionID, qType, title, des
 	// 构建问题实体
 	questionEntity := &entity.QaQuestion{
 		BaseEntity:  xModels.BaseEntity{ID: qID},
-		SessionID:   parsedSID.Int64(),
+		SessionID:   parsedSID,
 		Type:        qType,
 		Title:       title,
 		Description: description,
@@ -406,7 +424,7 @@ func (l *QaLogic) PushQuestion(ctx context.Context, sessionID, qType, title, des
 }
 
 // PushSupplement 推送补充内容（MCP工具）
-func (l *QaLogic) PushSupplement(ctx context.Context, sessionID, targetType string, targetID int64, contentType, content string) *xError.Error {
+func (l *QaLogic) PushSupplement(ctx context.Context, sessionID, targetType string, targetID xSnowflake.SnowflakeID, contentType, content string) *xError.Error {
 	l.log.Info(ctx, fmt.Sprintf("PushSupplement - 推送补充内容 [session=%s, target=%s/%d]", sessionID, targetType, targetID))
 
 	// 解析会话ID
@@ -420,7 +438,7 @@ func (l *QaLogic) PushSupplement(ctx context.Context, sessionID, targetType stri
 
 	supplementEntity := &entity.QaSupplement{
 		BaseEntity:  xModels.BaseEntity{ID: sID},
-		SessionID:   parsedSID.Int64(),
+		SessionID:   parsedSID,
 		TargetType:  targetType,
 		TargetID:    targetID,
 		ContentType: contentType,
@@ -556,7 +574,7 @@ func (l *QaLogic) GetSessionMCP(ctx context.Context, sessionID string) (string, 
 	sb.WriteString(fmt.Sprintf("Agent: %s\n", session.Agent))
 	sb.WriteString(fmt.Sprintf("类型: %s\n", session.Type))
 	sb.WriteString(fmt.Sprintf("状态: %s\n", session.Status))
-	sb.WriteString(fmt.Sprintf("关联项目: %d\n", session.ProjectID))
+	sb.WriteString(fmt.Sprintf("关联项目: %d\n", session.ProjectID.Int64()))
 	sb.WriteString(fmt.Sprintf("在线设备: %d\n", session.OnlineDevices))
 	if session.ExpiresAt != nil {
 		sb.WriteString(fmt.Sprintf("过期时间: %s\n", session.ExpiresAt.Format(time.RFC3339)))
@@ -614,6 +632,7 @@ func (l *QaLogic) ArchiveSession(ctx context.Context, sessionID string) *xError.
 func toSessionResponse(session *entity.QaSession) qa.SessionResponse {
 	return qa.SessionResponse{
 		ID:            session.ID.String(),
+		Hash:          session.Hash,
 		Title:         session.Title,
 		Agent:         session.Agent,
 		Type:          session.Type,
@@ -759,4 +778,10 @@ func jsonOrNull(data datatypes.JSON) any {
 		return nil
 	}
 	return data
+}
+
+// generateSessionHash 基于雪花 ID 生成 16 位 hex 哈希标识
+func generateSessionHash(id xSnowflake.SnowflakeID) string {
+	sum := sha256.Sum256([]byte(id.String()))
+	return hex.EncodeToString(sum[:])[:16]
 }

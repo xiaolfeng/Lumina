@@ -6,6 +6,7 @@ type ListSessionRequest struct {
 	Size   int    `form:"size"`   // 每页数量
 	Status string `form:"status"` // 状态过滤 active/expired/deleted/空(全部)
 	Type   string `form:"type"`   // 类型过滤 temporary/permanent/空(全部)
+	Hash   string `form:"hash"`   // 哈希过滤
 }
 
 // UpdateQaConfigRequest 更新Q&A配置
@@ -14,10 +15,19 @@ type UpdateQaConfigRequest struct {
 	RuntimeDomain *string `json:"runtime_domain"` // 运行时域名，nil不更新
 }
 
+// CreateSessionRequest 创建QA会话请求
+type CreateSessionRequest struct {
+	ProjectID string `json:"project_id" binding:"required"` // 关联项目ID
+	Title     string `json:"title"`                          // 会话标题
+	Agent     string `json:"agent"`                          // Agent名称
+	Type      string `json:"type"`                           // temporary/permanent
+}
+
 // SessionResponse Session响应
 type SessionResponse struct {
-	ID            string `json:"id"`             // Session ID
-	Title         string `json:"title"`          // 会话标题
+	ID            string `json:"id"`     // Session ID
+	Hash          string `json:"hash"`   // 会话哈希标识
+	Title         string `json:"title"`  // 会话标题
 	Agent         string `json:"agent"`          // Agent名称
 	Type          string `json:"type"`           // temporary/permanent
 	Status        string `json:"status"`         // active/expired/deleted
@@ -31,8 +41,9 @@ type SessionResponse struct {
 
 // SessionDetailResponse Session详情响应（含问题列表）
 type SessionDetailResponse struct {
-	ID            string                    `json:"id"`             // Session ID
-	Title         string                    `json:"title"`          // 会话标题
+	ID            string                    `json:"id"`     // Session ID
+	Hash          string                    `json:"hash"`   // 会话哈希标识
+	Title         string                    `json:"title"`  // 会话标题
 	Agent         string                    `json:"agent"`          // Agent名称
 	Type          string                    `json:"type"`           // temporary/permanent
 	Status        string                    `json:"status"`         // active/expired/deleted

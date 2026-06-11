@@ -8,17 +8,22 @@ import (
 	"github.com/xiaolfeng/Lumina/internal/app/middleware"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/logic"
+	"github.com/xiaolfeng/Lumina/internal/repository"
 	"github.com/xiaolfeng/Lumina/internal/websocket"
 )
 
 func (r *route) wsRouter(route gin.IRouter) {
 	db := xCtxUtil.MustGetDB(r.context)
+	rdb := xCtxUtil.MustGetRDB(r.context)
+
+	// 创建 Session 仓库（用于 WebSocket 连接时 Hash→ID 解析）
+	sessionRepo := repository.NewQaSessionRepo(db, rdb)
 
 	// 创建业务消息处理器
 	msgHandler := websocket.CreateMessageHandler(db)
 
-	// 创建 Hub 并注入消息处理器
-	hub := websocket.GetHub(msgHandler)
+	// 创建 Hub 并注入消息处理器、Session 仓库和数据库实例
+	hub := websocket.GetHub(msgHandler, sessionRepo, db)
 
 	// 启动 Hub 主循环
 	go hub.Run(r.context)
@@ -47,5 +52,5 @@ func (r *route) wsRouter(route gin.IRouter) {
 	// Q&A WebSocket 端点（需认证）
 	wsGroup := route.Group("/qa")
 	wsGroup.Use(middleware.Auth(r.context))
-	wsGroup.GET("/ws", websocket.WSHandler(hub))
+	wsGroup.GET("/ws", websocket.WSHandler(hub, sessionRepo))
 }

@@ -26,4 +26,5 @@ func (p *Prepare) Prepare() {
 	p.prepareInfo()
 	p.prepareQa()
 	p.prepareProject()
+	p.prepareQaHash()
 }

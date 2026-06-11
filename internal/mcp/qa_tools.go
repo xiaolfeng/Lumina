@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	apiQa "github.com/xiaolfeng/Lumina/api/qa"
 	"github.com/xiaolfeng/Lumina/internal/logic"
 )
@@ -723,10 +724,12 @@ func handleQaPushSupplement(_ context.Context, req *mcp.CallToolRequest) (*mcp.C
 		targetIDStr = optID
 	}
 
-	// 解析 targetID 为 int64（雪花 ID）
-	var targetID int64
-	if _, err := fmt.Sscanf(targetIDStr, "%d", &targetID); err != nil {
+	// 解析 targetID 为 SnowflakeID
+	var targetID xSnowflake.SnowflakeID
+	if parsedTID, err := xSnowflake.ParseSnowflakeID(targetIDStr); err != nil {
 		return textResult(fmt.Sprintf("无效的 ID 格式: %s", targetIDStr)), nil
+	} else {
+		targetID = parsedTID
 	}
 
 	// 内容类型

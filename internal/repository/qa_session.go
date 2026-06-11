@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	cacheKeySessionDetail = "qa:session:%d"  // cacheKeySessionDetail Session详情缓存
+	cacheKeySessionDetail = "qa:session:%d"   // cacheKeySessionDetail Session详情缓存
+	cacheKeySessionHash   = "qa:session:hash:%s" // cacheKeySessionHash Hash→ID 缓存键
 	cacheTTLSession       = 10 * time.Minute // cacheTTLSession Session缓存TTL
 )
 
@@ -76,6 +77,10 @@ func (r *QaSessionRepo) Create(ctx context.Context, session *entity.QaSession) *
 	}
 
 	r.cacheSession(ctx, session)
+	// 缓存 Hash→ID 映射
+	if session.Hash != "" {
+		r.rdb.Set(ctx, r.cacheKey(cacheKeySessionHash, session.Hash), session.ID.String(), cacheTTLSession)
+	}
 	return nil
 }
 
@@ -123,6 +128,50 @@ func (r *QaSessionRepo) GetByID(ctx context.Context, id xSnowflake.SnowflakeID) 
 	return &session, nil
 }
 
+// GetByHash 根据 Hash 获取QA会话，优先读取 Hash→ID 缓存（Cache-First）
+//
+// 先通过 Hash→ID 映射缓存获取会话 ID，命中后复用 GetByID 完成完整缓存链路；
+// 未命中则查询数据库并回填 Hash→ID 和 ID→详情两组缓存。
+//
+// 参数:
+//   - ctx:  上下文对象
+//   - hash: 会话哈希标识（16位字符串）
+//
+// 返回值:
+//   - *entity.QaSession: 查询到的QA会话实体
+//   - *xError.Error:     查询过程中的错误
+func (r *QaSessionRepo) GetByHash(ctx context.Context, hash string) (*entity.QaSession, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("GetByHash - 根据Hash获取QA会话 [%s]", hash))
+
+	// 1. 尝试从 Hash→ID 缓存获取会话 ID
+	cachedID, err := r.rdb.Get(ctx, r.cacheKey(cacheKeySessionHash, hash)).Result()
+	if err == nil && cachedID != "" {
+		id, parseErr := xSnowflake.ParseSnowflakeID(cachedID)
+		if parseErr == nil {
+			r.log.Info(ctx, fmt.Sprintf("GetByHash - Hash缓存命中 [%s] → ID [%d]", hash, id.Int64()))
+			return r.GetByID(ctx, id)
+		}
+	}
+
+	// 2. 缓存未命中，查询数据库
+	var session entity.QaSession
+	if err = r.db.WithContext(ctx).Where("hash = ?", hash).First(&session).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, xError.NewError(ctx, xError.NotFound, "QA会话不存在", false, nil)
+		}
+		return nil, xError.NewError(ctx, xError.DatabaseError, "查询QA会话失败", false, err)
+	}
+
+	// 3. 检查过期状态
+	r.expireCheck(ctx, &session)
+
+	// 4. 回填缓存（ID→详情 + Hash→ID）
+	r.cacheSession(ctx, &session)
+	r.rdb.Set(ctx, r.cacheKey(cacheKeySessionHash, hash), session.ID.String(), cacheTTLSession)
+
+	return &session, nil
+}
+
 // GetByIDWithQuestions 根据 ID 获取QA会话及其关联问题列表
 //
 // 内部调用 GetByID 以复用缓存和过期检查逻辑，
@@ -165,13 +214,14 @@ func (r *QaSessionRepo) GetByIDWithQuestions(ctx context.Context, id xSnowflake.
 //   - size:        每页数量
 //   - statusFilter: 状态过滤条件（空字符串表示不过滤）
 //   - typeFilter:   类型过滤条件（空字符串表示不过滤）
+//   - hashFilter:   哈希过滤条件（空字符串表示不过滤）
 //
 // 返回值:
 //   - []*entity.QaSession: 当前页的会话列表
 //   - int64:                符合条件的总记录数
 //   - *xError.Error:        查询过程中的错误
-func (r *QaSessionRepo) List(ctx context.Context, page, size int, statusFilter, typeFilter string) ([]*entity.QaSession, int64, *xError.Error) {
-	r.log.Info(ctx, fmt.Sprintf("List - 分页获取QA会话列表 [page=%d, size=%d, status=%s, type=%s]", page, size, statusFilter, typeFilter))
+func (r *QaSessionRepo) List(ctx context.Context, page, size int, statusFilter, typeFilter, hashFilter string) ([]*entity.QaSession, int64, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("List - 分页获取QA会话列表 [page=%d, size=%d, status=%s, type=%s, hash=%s]", page, size, statusFilter, typeFilter, hashFilter))
 
 	// 构建基础查询
 	query := r.db.WithContext(ctx).Model(&entity.QaSession{})
@@ -182,6 +232,9 @@ func (r *QaSessionRepo) List(ctx context.Context, page, size int, statusFilter, 
 	}
 	if typeFilter != "" {
 		query = query.Where("type = ?", typeFilter)
+	}
+	if hashFilter != "" {
+		query = query.Where("hash = ?", hashFilter)
 	}
 
 	// 统计总数
@@ -204,7 +257,7 @@ func (r *QaSessionRepo) List(ctx context.Context, page, size int, statusFilter, 
 	return sessions, total, nil
 }
 
-// Delete 软删除QA会话（将状态设为 deleted），成功后清除缓存
+// Delete 硬删除QA会话及关联数据（QaSupplement → QaQuestion → QaSession 级联删除），成功后清除缓存
 //
 // 参数:
 //   - ctx: 上下文对象
@@ -213,9 +266,9 @@ func (r *QaSessionRepo) List(ctx context.Context, page, size int, statusFilter, 
 // 返回值:
 //   - *xError.Error: 删除过程中的错误
 func (r *QaSessionRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID) *xError.Error {
-	r.log.Info(ctx, fmt.Sprintf("Delete - 软删除QA会话 [%d]", id.Int64()))
+	r.log.Info(ctx, fmt.Sprintf("Delete - 硬删除QA会话及关联数据 [%d]", id.Int64()))
 
-	// 先查找会话是否存在
+	// 先查找会话是否存在（用于获取 Hash 清理缓存）
 	var session entity.QaSession
 	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&session).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -224,17 +277,21 @@ func (r *QaSessionRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID) *
 		return xError.NewError(ctx, xError.DatabaseError, "查询待删除QA会话失败", false, err)
 	}
 
-	// 软删除：将状态设为 deleted
-	if err := r.db.WithContext(ctx).
-		Model(&entity.QaSession{}).
-		Where("id = ?", id).
-		Update("status", "deleted").Error; err != nil {
-		r.log.Warn(ctx, err.Error())
-		return xError.NewError(ctx, xError.DatabaseError, "软删除QA会话失败", false, err)
+	// 1. 级联删除 QaSupplement
+	r.db.WithContext(ctx).Where("session_id = ?", id).Delete(&entity.QaSupplement{})
+	// 2. 级联删除 QaQuestion
+	r.db.WithContext(ctx).Where("session_id = ?", id).Delete(&entity.QaQuestion{})
+	// 3. 硬删除 QaSession（Unscoped 跳过软删除）
+	result := r.db.WithContext(ctx).Unscoped().Where("id = ?", id).Delete(&entity.QaSession{})
+	if result.Error != nil {
+		return xError.NewError(ctx, xError.DatabaseError, "硬删除QA会话失败", false, result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return xError.NewError(ctx, xError.NotFound, "QA会话不存在", false, nil)
 	}
 
-	// 清除缓存
-	r.clearSessionCache(ctx, id)
+	// 4. 清除所有关联缓存（详情 + Hash→ID）
+	r.clearSessionCache(ctx, id, session.Hash)
 	return nil
 }
 
@@ -277,7 +334,10 @@ func (r *QaSessionRepo) cacheSession(ctx context.Context, session *entity.QaSess
 
 // clearSessionCache 清除QA会话关联的 Redis 缓存
 //
-// 清除范围：ID 详情键
-func (r *QaSessionRepo) clearSessionCache(ctx context.Context, id xSnowflake.SnowflakeID) {
+// 清除范围：ID 详情键 + Hash→ID 映射键
+func (r *QaSessionRepo) clearSessionCache(ctx context.Context, id xSnowflake.SnowflakeID, hash string) {
 	r.rdb.Del(ctx, r.cacheKey(cacheKeySessionDetail, id.Int64()))
+	if hash != "" {
+		r.rdb.Del(ctx, r.cacheKey(cacheKeySessionHash, hash))
+	}
 }

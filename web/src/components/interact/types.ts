@@ -41,8 +41,9 @@ export interface Question {
 }
 
 export interface Session {
-	id: string;
-	title: string;
+  id: string;
+  hash: string; // 会话唯一哈希标识
+  title: string;
 	agent: string;
 	type: 'temporary' | 'permanent';
 	status: 'active' | 'expired' | 'deleted';

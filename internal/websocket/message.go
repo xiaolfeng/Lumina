@@ -16,6 +16,11 @@ const (
 	MsgRequestSupplement MessageType = "request_supplement"  // 请求补充
 	MsgSkip              MessageType = "skip"                // 跳过问题
 	MsgHeartbeatAck      MessageType = "heartbeat_ack"       // 心跳响应
+
+	// 多设备协同消息类型
+	MsgDeviceJoin    MessageType = "device_join"     // 设备加入通知（Server → Client）
+	MsgDeviceLeave   MessageType = "device_leave"    // 设备离开通知（Server → Client）
+	MsgSessionLeave  MessageType = "session_leave"   // 主动离开（Client → Server）
 )
 
 // Message WebSocket 通信消息

@@ -45,7 +45,7 @@ func NewQaQuestionRepo(db *gorm.DB) *QaQuestionRepo {
 // 返回值:
 //   - *xError.Error: 创建过程中的错误
 func (r *QaQuestionRepo) Create(ctx context.Context, question *entity.QaQuestion) *xError.Error {
-	r.log.Info(ctx, fmt.Sprintf("Create - 创建QA问题 [session_id=%d]", question.SessionID))
+	r.log.Info(ctx, fmt.Sprintf("Create - 创建QA问题 [session_id=%d]", question.SessionID.Int64()))
 
 	if err := r.db.WithContext(ctx).Create(question).Error; err != nil {
 		r.log.Warn(ctx, err.Error())
@@ -87,8 +87,8 @@ func (r *QaQuestionRepo) GetByID(ctx context.Context, id xSnowflake.SnowflakeID)
 // 返回值:
 //   - []*entity.QaQuestion: 问题列表（无结果时返回空切片）
 //   - *xError.Error:        查询过程中的错误
-func (r *QaQuestionRepo) GetBySessionID(ctx context.Context, sessionID int64) ([]*entity.QaQuestion, *xError.Error) {
-	r.log.Info(ctx, fmt.Sprintf("GetBySessionID - 根据会话ID获取问题列表 [session_id=%d]", sessionID))
+func (r *QaQuestionRepo) GetBySessionID(ctx context.Context, sessionID xSnowflake.SnowflakeID) ([]*entity.QaQuestion, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("GetBySessionID - 根据会话ID获取问题列表 [session_id=%d]", sessionID.Int64()))
 
 	var questions []*entity.QaQuestion
 	if err := r.db.WithContext(ctx).

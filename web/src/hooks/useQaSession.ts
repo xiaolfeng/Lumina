@@ -9,12 +9,12 @@ import type {
 // ── Options ──
 
 interface UseQaSessionOptions {
-  sessionId: string | null
+  sessionHash: string | null
 }
 
 // ── Hook ──
 
-export function useQaSession({ sessionId }: UseQaSessionOptions) {
+export function useQaSession({ sessionHash }: UseQaSessionOptions) {
   const [questions, setQuestions] = useState<Question[]>([])
   const [activeSupplement, setActiveSupplement] =
     useState<SupplementItem | null>(null)
@@ -26,7 +26,7 @@ export function useQaSession({ sessionId }: UseQaSessionOptions) {
     (data: any) => {
       const question: Question = {
         id: data.id || data.ID,
-        sessionId: sessionId || '',
+        sessionId: sessionHash || '',
         content: data.title || data.Title || '',
         description: data.description || data.Description,
         type: data.type || data.Type || 'text',
@@ -43,7 +43,7 @@ export function useQaSession({ sessionId }: UseQaSessionOptions) {
       }
       setQuestions((prev) => [...prev, question])
     },
-    [sessionId],
+    [sessionHash],
   )
 
   // ── Supplement Push Handler ──
@@ -95,7 +95,7 @@ export function useQaSession({ sessionId }: UseQaSessionOptions) {
 
   // ── WebSocket Connection ──
 
-  const ws = useQaWebSocket(sessionId, {
+  const ws = useQaWebSocket(sessionHash, {
     onQuestionPush: handleQuestionPush,
     onSupplementPush: handleSupplementPush,
     onAnswerSync: handleAnswerSync,

@@ -96,6 +96,50 @@ func (h *QaHandler) DeleteSession(ctx *gin.Context) {
 	xResult.Success(ctx, "删除成功")
 }
 
+// CreateSession 创建QA会话
+//
+// @Summary      创建QA会话
+// @Tags         QA管理
+// @Accept       json
+// @Produce      json
+// @Param        request  body      apiQa.CreateSessionRequest  true  "创建请求"
+// @Success      200      {object}  apiCommon.BaseResponse     "创建成功"
+// @Failure      400      {object}  apiCommon.BaseResponse     "参数错误"
+// @Security     ApiKeyAuth
+// @Router       /api/v1/qa/sessions [post]
+func (h *QaHandler) CreateSession(ctx *gin.Context) {
+	h.log.Info(ctx, "CreateSession - 创建QA会话")
+
+	var req apiQa.CreateSessionRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		_ = ctx.Error(err)
+		return
+	}
+
+	agent := req.Agent
+	if agent == "" {
+		agent = "web"
+	}
+	sessionType := req.Type
+	if sessionType == "" {
+		sessionType = "temporary"
+	}
+
+	id, _, xErr := h.service.qaLogic.CreateSession(ctx.Request.Context(), req.Title, agent, sessionType, req.ProjectID)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	detailResp, xErr := h.service.qaLogic.GetSessionDetail(ctx.Request.Context(), id)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.SuccessHasData(ctx, "创建成功", detailResp)
+}
+
 // GetQuestion 获取问题详情（含回答+补充内容）
 //
 // @Summary      获取问题详情

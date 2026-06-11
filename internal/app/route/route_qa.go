@@ -13,6 +13,7 @@ func (r *route) qaRouter(route gin.IRouter) {
 	qaGroup.Use(middleware.Auth(r.context))
 
 	qaGroup.GET("/sessions", qaHandler.ListSessions)
+	qaGroup.POST("/sessions", qaHandler.CreateSession)
 	qaGroup.GET("/sessions/:id", qaHandler.GetSession)
 	qaGroup.DELETE("/sessions/:id", qaHandler.DeleteSession)
 	qaGroup.GET("/sessions/:id/questions/:qid", qaHandler.GetQuestion)

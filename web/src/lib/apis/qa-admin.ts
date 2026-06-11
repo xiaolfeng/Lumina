@@ -9,6 +9,7 @@ import type {
 import type {
   SessionListParams,
   UpdateQaConfigRequest,
+  CreateSessionRequest,
 } from '../models/request/qa-admin'
 
 export function getSessionList(
@@ -44,4 +45,16 @@ export function updateQaConfig(
   data: UpdateQaConfigRequest,
 ): Promise<BaseResponse<QaConfigResponse>> {
   return apiClient.put('/api/v1/qa/config', data)
+}
+
+export function getSessionByHash(
+  hash: string,
+): Promise<BaseResponse<SessionListResponse>> {
+  return apiClient.get('/api/v1/qa/sessions', { params: { hash } })
+}
+
+export function createSession(
+  data: CreateSessionRequest,
+): Promise<BaseResponse<SessionDetailResponse>> {
+  return apiClient.post('/api/v1/qa/sessions', data)
 }

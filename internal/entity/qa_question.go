@@ -12,7 +12,7 @@ import (
 // QaQuestion QA问题表，存储会话中的问题及其回答
 type QaQuestion struct {
 	xModels.BaseEntity                                                                               // 基础实体（ID、创建时间、更新时间）
-	SessionID   int64           `gorm:"type:bigint;not null;index;comment:关联会话ID" json:"session_id"`    // 关联会话ID
+	SessionID   xSnowflake.SnowflakeID `gorm:"type:bigint;not null;index;comment:关联会话ID" json:"session_id"` // 关联会话ID
 	Type        string          `gorm:"type:varchar(16);not null;comment:题型 14种之一" json:"type"`       // 题型 14种之一
 	Title       string          `gorm:"type:text;not null;comment:问题标题 Markdown" json:"title"`          // 问题标题 Markdown
 	Description string          `gorm:"type:text;comment:问题描述" json:"description"`                     // 问题描述

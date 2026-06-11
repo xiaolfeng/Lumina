@@ -8,6 +8,10 @@ import (
 	"time"
 
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
+	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
+	"github.com/xiaolfeng/Lumina/internal/entity"
+	"github.com/xiaolfeng/Lumina/internal/repository"
+	"gorm.io/gorm"
 )
 
 // MessageHandler 消息处理回调函数
@@ -26,12 +30,14 @@ const heartbeatTimeout = 15 * time.Second
 // 管理所有活跃的 WebSocket 连接，按 sessionID → deviceID 二级索引组织。
 // 通过 register/unregister 通道实现并发安全的连接生命周期管理。
 type Hub struct {
-	sessions   map[string]map[string]*Connection // sessionID → deviceID → Connection
-	register   chan *Connection                   // 注册通道
-	unregister chan *Connection                   // 注销通道
-	mu         sync.RWMutex                       // sessions 读写锁
-	log        *xLog.LogNamedLogger               // 日志记录器
-	handler    MessageHandler                     // 消息处理回调
+	sessions    map[string]map[string]*Connection // sessionID → deviceID → Connection
+	register    chan *Connection                   // 注册通道
+	unregister  chan *Connection                   // 注销通道
+	mu          sync.RWMutex                       // sessions 读写锁
+	log         *xLog.LogNamedLogger               // 日志记录器
+	handler     MessageHandler                     // 消息处理回调
+	sessionRepo *repository.QaSessionRepo          // QA 会话仓库（用于临时会话硬删除）
+	db          *gorm.DB                           // 数据库实例（用于异步更新 OnlineDevices）
 }
 
 // 全局单例 Hub 实例
@@ -42,23 +48,25 @@ var (
 
 // GetHub 获取或创建全局 Hub 单例
 //
-// 首次调用时使用传入的 handler 创建 Hub 实例，后续调用忽略 handler 参数。
+// 首次调用时使用传入的参数创建 Hub 实例，后续调用忽略参数。
 // 当 handler 为 nil 时，收到的客户端消息仅记录日志不做处理。
-func GetHub(handler MessageHandler) *Hub {
+func GetHub(handler MessageHandler, sessionRepo *repository.QaSessionRepo, db *gorm.DB) *Hub {
 	hubOnce.Do(func() {
-		globalHub = NewHub(handler)
+		globalHub = NewHub(handler, sessionRepo, db)
 	})
 	return globalHub
 }
 
 // NewHub 创建 Hub 实例
-func NewHub(handler MessageHandler) *Hub {
+func NewHub(handler MessageHandler, sessionRepo *repository.QaSessionRepo, db *gorm.DB) *Hub {
 	return &Hub{
-		sessions:   make(map[string]map[string]*Connection),
-		register:   make(chan *Connection),
-		unregister: make(chan *Connection),
-		log:        xLog.WithName(xLog.NamedCONT, "WebSocketHub"),
-		handler:    handler,
+		sessions:    make(map[string]map[string]*Connection),
+		register:    make(chan *Connection),
+		unregister:  make(chan *Connection),
+		log:         xLog.WithName(xLog.NamedCONT, "WebSocketHub"),
+		handler:     handler,
+		sessionRepo: sessionRepo,
+		db:          db,
 	}
 }
 
@@ -183,17 +191,43 @@ func (h *Hub) registerConn(conn *Connection) {
 		h.sessions[conn.sessionID] = make(map[string]*Connection)
 	}
 
+	deviceCount := len(h.sessions[conn.sessionID])
 	h.sessions[conn.sessionID][conn.deviceID] = conn
-	h.log.Info(nil, "设备上线", slog.String("sessionID", conn.sessionID), slog.String("deviceID", conn.deviceID), slog.Int("online", len(h.sessions[conn.sessionID])))
+
+	h.log.Info(nil, "设备上线",
+		slog.String("sessionID", conn.sessionID),
+		slog.String("deviceID", conn.deviceID),
+		slog.Int("online", deviceCount+1),
+	)
+
+	// 向同会话的其他设备广播 device_join
+	if deviceCount > 0 {
+		joinMsg := &Message{
+			Type:      MsgDeviceJoin,
+			SessionID: conn.sessionID,
+			Data: map[string]interface{}{
+				"device_id": conn.deviceID,
+				"hash":      conn.sessionHash,
+			},
+			Timestamp: time.Now().UnixMilli(),
+		}
+		for devID, existingConn := range h.sessions[conn.sessionID] {
+			if devID != conn.deviceID {
+				_ = existingConn.SendMessage(joinMsg)
+			}
+		}
+	}
+
+	// 异步同步 OnlineDevices 到数据库
+	go h.syncOnlineDevices(conn.sessionID, deviceCount+1)
 }
 
 // unregisterConn 从 sessions 映射中移除连接
 func (h *Hub) unregisterConn(conn *Connection) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	devices, ok := h.sessions[conn.sessionID]
 	if !ok {
+		h.mu.Unlock()
 		return
 	}
 
@@ -201,12 +235,47 @@ func (h *Hub) unregisterConn(conn *Connection) {
 		delete(devices, conn.deviceID)
 		conn.Close()
 
+		remainingCount := len(devices)
+
+		h.log.Info(nil, "设备离线",
+			slog.String("sessionID", conn.sessionID),
+			slog.String("deviceID", conn.deviceID),
+			slog.Bool("voluntary", conn.isVoluntary),
+			slog.Int("remaining", remainingCount),
+		)
+
 		// 会话无在线设备时清理映射
-		if len(devices) == 0 {
+		if remainingCount == 0 {
 			delete(h.sessions, conn.sessionID)
 		}
+		h.mu.Unlock()
 
-		h.log.Info(nil, "设备离线", slog.String("sessionID", conn.sessionID), slog.String("deviceID", conn.deviceID))
+		// 向剩余设备广播 device_leave
+		if remainingCount > 0 {
+			leaveMsg := &Message{
+				Type:      MsgDeviceLeave,
+				SessionID: conn.sessionID,
+				Data: map[string]interface{}{
+					"device_id": conn.deviceID,
+				},
+				Timestamp: time.Now().UnixMilli(),
+			}
+			h.mu.RLock()
+			for _, remainingConn := range devices {
+				_ = remainingConn.SendMessage(leaveMsg)
+			}
+			h.mu.RUnlock()
+		}
+
+		// 异步同步 OnlineDevices 到数据库
+		go h.syncOnlineDevices(conn.sessionID, remainingCount)
+
+		// 最后一个设备主动离开的临时会话 → 触发硬删除
+		if remainingCount == 0 && conn.isVoluntary {
+			go h.checkAndDeleteTemporarySession(conn.sessionID)
+		}
+	} else {
+		h.mu.Unlock()
 	}
 }
 
@@ -243,5 +312,29 @@ func (h *Hub) shutdownAll() {
 			h.log.Info(nil, "关闭连接", slog.String("sessionID", sessionID), slog.String("deviceID", deviceID))
 		}
 		delete(h.sessions, sessionID)
+	}
+}
+
+// syncOnlineDevices 异步更新数据库中的 OnlineDevices 字段
+func (h *Hub) syncOnlineDevices(sessionID string, count int) {
+	sid, err := xSnowflake.ParseSnowflakeID(sessionID)
+	if err != nil {
+		return
+	}
+	h.db.Model(&entity.QaSession{}).Where("id = ?", sid).Update("online_devices", count)
+}
+
+// checkAndDeleteTemporarySession 检查并删除临时会话（最后一个设备主动离开时触发硬删除）
+func (h *Hub) checkAndDeleteTemporarySession(sessionID string) {
+	sid, err := xSnowflake.ParseSnowflakeID(sessionID)
+	if err != nil {
+		return
+	}
+	session, xErr := h.sessionRepo.GetByID(context.Background(), sid)
+	if xErr != nil {
+		return
+	}
+	if session.Type == "temporary" {
+		h.sessionRepo.Delete(context.Background(), sid)
 	}
 }

@@ -3,6 +3,7 @@ import type { Question, Session } from "./types";
 export const mockSessions: Session[] = [
 	{
 		id: "session-1",
+		hash: "mock-hash-1",
 		title: "项目架构确认",
 		agent: "RepoWiki Agent",
 		type: "temporary",
@@ -70,6 +71,7 @@ export const mockSessions: Session[] = [
 	},
 	{
 		id: "session-2",
+		hash: "mock-hash-2",
 		title: "编码风格偏好",
 		agent: "Memory Agent",
 		type: "temporary",
@@ -113,6 +115,7 @@ export const mockSessions: Session[] = [
 	},
 	{
 		id: "session-3",
+		hash: "mock-hash-3",
 		title: "部署环境配置",
 		agent: "RepoWiki Agent",
 		type: "temporary",

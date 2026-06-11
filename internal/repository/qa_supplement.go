@@ -49,7 +49,7 @@ func NewQaSupplementRepo(db *gorm.DB) *QaSupplementRepo {
 //   - *entity.QaSupplement: 持久化后的实体
 //   - *xError.Error:         操作过程中的错误
 func (r *QaSupplementRepo) CreateOrUpdate(ctx context.Context, supplement *entity.QaSupplement) (*entity.QaSupplement, *xError.Error) {
-	r.log.Info(ctx, fmt.Sprintf("CreateOrUpdate - 创建或更新补充说明 [%s/%d]", supplement.TargetType, supplement.TargetID))
+	r.log.Info(ctx, fmt.Sprintf("CreateOrUpdate - 创建或更新补充说明 [%s/%d]", supplement.TargetType, supplement.TargetID.Int64()))
 
 	var existing entity.QaSupplement
 	err := r.db.WithContext(ctx).

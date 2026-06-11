@@ -1,5 +1,6 @@
 export interface SessionItem {
   id: string
+  hash: string
   title: string
   agent: string
   type: 'temporary' | 'permanent'
@@ -28,6 +29,7 @@ export interface QuestionSummary {
 
 export interface SessionDetailResponse {
   id: string
+  hash: string
   title: string
   agent: string
   type: 'temporary' | 'permanent'
