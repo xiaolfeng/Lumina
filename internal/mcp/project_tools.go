@@ -27,17 +27,13 @@ var projectToolDefs = []struct {
 }{
 	{
 		name: "project_create",
-		description: `创建一个新项目。项目用于标识和组织代码库，AI Agent 通过该项目关联代码上下文。
+		description: `创建一个新项目，将代码库注册到 Lumina 系统。后续 Q&A 等模块的会话需要关联到具体项目。
 
-必填参数：
-- name: 项目名称（全局唯一）
-- match_path: 路径匹配列表（用于 AI 根据文件路径自动识别项目）
+触发场景：用户提到"新项目"、"初始化项目"，或 Agent 发现当前工作目录尚未注册为项目时主动建议创建。
 
-可选参数：
-- alias_name: 项目别名（人类可读的中文/英文名称）
-- description: 项目描述
+match_path 填写项目根目录的绝对路径。Agent 应先执行 pwd（Unix/macOS）或 cd（Windows）获取当前工作目录绝对路径，将其作为 match_path 传入。AI 会根据该路径前缀自动将文件匹配到对应项目。
 
-创建成功后返回 project_id 和项目基本信息。`,
+创建成功后返回 project_id（雪花 ID）和项目基本信息，后续通过 project_id 或 name 查询详情。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -51,19 +47,13 @@ var projectToolDefs = []struct {
 	},
 	{
 		name: "project_get",
-		description: `查询项目详情。支持三种查询方式（按优先级从高到低）：
+		description: `查询项目详情。支持三种查询方式，按优先级依次取第一个非空条件：project_id > name > match_path。
 
-1. project_id: 通过项目 ID 精确查询
-2. name: 通过项目名称精确查询
-3. match_path: 通过路径前缀匹配查询
+触发场景：需要获取 project_id、确认项目是否存在、查看项目的完整配置信息时调用。
 
-至少指定一个查询条件。多个条件同时传入时按优先级取第一个非空条件。
+match_path 匹配逻辑：项目的 MatchPath 字段中任一元素是查询路径的前缀时命中。例如项目 MatchPath=["/home/user/Lumina"] 可匹配查询路径 "/home/user/Lumina/src/main.go"。
 
-match_path 查询示例：
-- MatchPath=["/home/user/Lumina"] 可匹配 "/home/user/Lumina/src/main.go"
-- 匹配逻辑：match_path 中的任一元素是查询路径的前缀
-
-返回项目完整信息（ID、名称、别名、路径匹配列表、描述等）。`,
+返回项目完整信息（ID、名称、别名、路径匹配列表、描述等），若不存在会返回错误提示。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -75,11 +65,11 @@ match_path 查询示例：
 	},
 	{
 		name: "project_list",
-		description: `获取项目列表。不传 match_path 时返回全部项目。
+		description: `获取项目列表。支持按路径前缀过滤，不传过滤条件时返回全部项目。
 
-支持分页：page（页码，从 1 开始）、size（每页数量，默认 20，最大 100）。
+触发场景：Agent 不知道 project_id 但需要找到对应项目时，可用当前工作目录的绝对路径作为 match_path 过滤匹配。
 
-可选 match_path 参数用于按路径前缀过滤项目。`,
+返回分页结果，每项包含项目 ID、名称、别名和路径匹配列表。需要查看完整详情时使用 project_get。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

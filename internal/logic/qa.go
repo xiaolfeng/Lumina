@@ -576,6 +576,34 @@ func (l *QaLogic) DeleteSessionMCP(ctx context.Context, sessionID string) *xErro
 	return l.DeleteSession(ctx, sessionID)
 }
 
+// ArchiveSession 归档会话（MCP工具），将 active 会话转为 expired 只读状态。
+func (l *QaLogic) ArchiveSession(ctx context.Context, sessionID string) *xError.Error {
+	l.log.Info(ctx, fmt.Sprintf("ArchiveSession - 归档会话 [%s]", sessionID))
+
+	parsedID, err := xSnowflake.ParseSnowflakeID(sessionID)
+	if err != nil {
+		return xError.NewError(ctx, xError.BusinessError, "无效的会话ID", false, nil)
+	}
+
+	session, xErr := l.repo.session.GetByID(ctx, parsedID)
+	if xErr != nil {
+		return xErr
+	}
+	if session.Status != "active" {
+		return xError.NewError(ctx, xError.BusinessError, "仅 active 状态的会话可以归档", false, nil)
+	}
+
+	if err := l.db.WithContext(ctx).
+		Model(&entity.QaSession{}).
+		Where("id = ?", parsedID).
+		Update("status", "expired").Error; err != nil {
+		return xError.NewError(ctx, xError.DatabaseError, "归档会话失败", false, err)
+	}
+
+	l.queue.RemoveQueue(sessionID)
+	return nil
+}
+
 // ─── Helper Methods ─────────────────────────────────────────────────────
 
 // toSessionResponse 将会话实体映射为响应 DTO
