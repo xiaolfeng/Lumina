@@ -27,7 +27,17 @@ var projectToolDefs = []struct {
 }{
 	{
 		name: "project_create",
-		description: "创建一个新项目。项目用于标识和组织代码库，AI Agent 通过该项目关联代码上下文。\n\n必填参数：\n- name: 项目名称（全局唯一）\n- match_path: 路径匹配列表（用于 AI 根据文件路径自动识别项目）\n\n可选参数：\n- alias_name: 项目别名（人类可读的中文/英文名称）\n- description: 项目描述\n\n创建成功后返回 project_id 和项目基本信息。",
+		description: `创建一个新项目。项目用于标识和组织代码库，AI Agent 通过该项目关联代码上下文。
+
+必填参数：
+- name: 项目名称（全局唯一）
+- match_path: 路径匹配列表（用于 AI 根据文件路径自动识别项目）
+
+可选参数：
+- alias_name: 项目别名（人类可读的中文/英文名称）
+- description: 项目描述
+
+创建成功后返回 project_id 和项目基本信息。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -41,7 +51,19 @@ var projectToolDefs = []struct {
 	},
 	{
 		name: "project_get",
-		description: "查询项目详情。支持三种查询方式（按优先级从高到低）：\n\n1. project_id: 通过项目 ID 精确查询\n2. name: 通过项目名称精确查询\n3. match_path: 通过路径前缀匹配查询\n\n至少指定一个查询条件。多个条件同时传入时按优先级取第一个非空条件。\n\nmatch_path 查询示例：\n- MatchPath=[\"/home/user/Lumina\"] 可匹配 \"/home/user/Lumina/src/main.go\"\n- 匹配逻辑：match_path 中的任一元素是查询路径的前缀\n\n返回项目完整信息（ID、名称、别名、路径匹配列表、描述等）。",
+		description: `查询项目详情。支持三种查询方式（按优先级从高到低）：
+
+1. project_id: 通过项目 ID 精确查询
+2. name: 通过项目名称精确查询
+3. match_path: 通过路径前缀匹配查询
+
+至少指定一个查询条件。多个条件同时传入时按优先级取第一个非空条件。
+
+match_path 查询示例：
+- MatchPath=["/home/user/Lumina"] 可匹配 "/home/user/Lumina/src/main.go"
+- 匹配逻辑：match_path 中的任一元素是查询路径的前缀
+
+返回项目完整信息（ID、名称、别名、路径匹配列表、描述等）。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -53,7 +75,11 @@ var projectToolDefs = []struct {
 	},
 	{
 		name: "project_list",
-		description: "获取项目列表。不传 match_path 时返回全部项目。\n\n支持分页：page（页码，从 1 开始）、size（每页数量，默认 20，最大 100）。\n\n可选 match_path 参数用于按路径前缀过滤项目。",
+		description: `获取项目列表。不传 match_path 时返回全部项目。
+
+支持分页：page（页码，从 1 开始）、size（每页数量，默认 20，最大 100）。
+
+可选 match_path 参数用于按路径前缀过滤项目。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -95,7 +121,13 @@ func handleProjectCreate(_ context.Context, req *mcp.CallToolRequest) (*mcp.Call
 	if xErr != nil {
 		return textResult(fmt.Sprintf("创建项目失败: %s", xErr.Error())), nil
 	}
-	return textResult(fmt.Sprintf("项目创建成功！\n\n项目 ID: %s\n名称: %s\n别名: %s\n路径匹配: %v\n描述: %s",
+	return textResult(fmt.Sprintf(`项目创建成功！
+
+项目 ID: %s
+名称: %s
+别名: %s
+路径匹配: %v
+描述: %s`,
 		resp.ID, resp.Name, resp.AliasName, resp.MatchPath, resp.Description)), nil
 }
 
@@ -110,24 +142,51 @@ func handleProjectGet(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToo
 		if xErr != nil {
 			return textResult(fmt.Sprintf("查询项目失败: %s", xErr.Error())), nil
 		}
-		return textResult(fmt.Sprintf("项目详情:\n\nID: %s\n名称: %s\n别名: %s\n路径匹配: %v\n描述: %s\n创建时间: %s\n更新时间: %s",
-			resp.ID, resp.Name, resp.AliasName, resp.MatchPath, resp.Description, resp.CreatedAt, resp.UpdatedAt)), nil
+		detail := fmt.Sprintf(`项目详情：
+
+ID: %s
+名称: %s
+别名: %s
+路径匹配: %v
+描述: %s
+创建时间: %s
+更新时间: %s`,
+			resp.ID, resp.Name, resp.AliasName, resp.MatchPath, resp.Description, resp.CreatedAt, resp.UpdatedAt)
+		return textResult(detail), nil
 	}
 	if name, _ := args["name"].(string); name != "" {
 		resp, xErr := projectLogic.GetByName(context.Background(), name)
 		if xErr != nil {
 			return textResult(fmt.Sprintf("查询项目失败: %s", xErr.Error())), nil
 		}
-		return textResult(fmt.Sprintf("项目详情:\n\nID: %s\n名称: %s\n别名: %s\n路径匹配: %v\n描述: %s\n创建时间: %s\n更新时间: %s",
-			resp.ID, resp.Name, resp.AliasName, resp.MatchPath, resp.Description, resp.CreatedAt, resp.UpdatedAt)), nil
+		detail := fmt.Sprintf(`项目详情：
+
+ID: %s
+名称: %s
+别名: %s
+路径匹配: %v
+描述: %s
+创建时间: %s
+更新时间: %s`,
+			resp.ID, resp.Name, resp.AliasName, resp.MatchPath, resp.Description, resp.CreatedAt, resp.UpdatedAt)
+		return textResult(detail), nil
 	}
 	if mp, _ := args["match_path"].(string); mp != "" {
 		resp, xErr := projectLogic.GetByMatchPath(context.Background(), mp)
 		if xErr != nil {
 			return textResult(fmt.Sprintf("查询项目失败: %s", xErr.Error())), nil
 		}
-		return textResult(fmt.Sprintf("项目详情:\n\nID: %s\n名称: %s\n别名: %s\n路径匹配: %v\n描述: %s\n创建时间: %s\n更新时间: %s",
-			resp.ID, resp.Name, resp.AliasName, resp.MatchPath, resp.Description, resp.CreatedAt, resp.UpdatedAt)), nil
+		detail := fmt.Sprintf(`项目详情：
+
+ID: %s
+名称: %s
+别名: %s
+路径匹配: %v
+描述: %s
+创建时间: %s
+更新时间: %s`,
+			resp.ID, resp.Name, resp.AliasName, resp.MatchPath, resp.Description, resp.CreatedAt, resp.UpdatedAt)
+		return textResult(detail), nil
 	}
 	return textResult("请至少指定一个查询条件: project_id、name 或 match_path"), nil
 }
@@ -165,7 +224,9 @@ func handleProjectList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallTo
 		resp.Total = int64(len(filtered))
 	}
 	totalPages := (resp.Total + int64(size) - 1) / int64(size)
-	result := fmt.Sprintf("项目列表（共 %d 个，第 %d/%d 页）:\n\n", resp.Total, page, totalPages)
+	result := fmt.Sprintf(`项目列表（共 %d 个，第 %d/%d 页）：
+
+`, resp.Total, page, totalPages)
 	for i, p := range resp.Items {
 		result += fmt.Sprintf("%d. [%s] %s", i+1, p.ID, p.Name)
 		if p.AliasName != "" {

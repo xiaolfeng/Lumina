@@ -8,11 +8,17 @@ const queryClient = new QueryClient()
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
-    const res = await queryClient.ensureQueryData({
-      queryKey: ['auth', 'status'],
-      queryFn: getStatus,
-      staleTime: 0,
-    })
+    let res
+    try {
+      res = await queryClient.ensureQueryData({
+        queryKey: ['auth', 'status'],
+        queryFn: getStatus,
+        staleTime: 0,
+      })
+    } catch {
+      // 后端不可达（502/网络错误/超时），静默放行避免白屏崩溃
+      return
+    }
 
     if (res.data?.is_initial === true && location.pathname !== '/auth/new') {
       throw redirect({ to: '/auth/new' })
