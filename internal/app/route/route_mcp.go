@@ -19,6 +19,7 @@ func (r *route) mcpRouter(route gin.IRouter) {
 	}
 
 	mcpGroup := route.Group("/mcp")
+	mcpGroup.Use(middleware.MCPCompat) // 兼容性处理：补全客户端缺失的 Accept 头
 	mcpGroup.Use(middleware.ApikeyAuth(r.context))
 	mcpGroup.Any("", gin.WrapH(handler))
 	mcpGroup.Any("/*path", gin.WrapH(handler))
