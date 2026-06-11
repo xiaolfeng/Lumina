@@ -125,6 +125,23 @@ definitions:
     required:
     - name
     type: object
+  qa.CreateSessionRequest:
+    properties:
+      agent:
+        description: Agent名称
+        type: string
+      project_id:
+        description: 关联项目ID
+        type: string
+      title:
+        description: 会话标题
+        type: string
+      type:
+        description: temporary/permanent
+        type: string
+    required:
+    - project_id
+    type: object
   qa.UpdateQaConfigRequest:
     properties:
       runtime_domain:
@@ -740,6 +757,32 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: 分页获取QA会话列表
+      tags:
+      - QA管理
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/qa.CreateSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 创建QA会话
       tags:
       - QA管理
   /api/v1/qa/sessions/{id}:

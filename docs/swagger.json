@@ -959,6 +959,48 @@
                         }
                     }
                 }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "QA管理"
+                ],
+                "summary": "创建QA会话",
+                "parameters": [
+                    {
+                        "description": "创建请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/qa.CreateSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/qa/sessions/{id}": {
@@ -1303,6 +1345,30 @@
                 },
                 "name": {
                     "description": "项目名称",
+                    "type": "string"
+                }
+            }
+        },
+        "qa.CreateSessionRequest": {
+            "type": "object",
+            "required": [
+                "project_id"
+            ],
+            "properties": {
+                "agent": {
+                    "description": "Agent名称",
+                    "type": "string"
+                },
+                "project_id": {
+                    "description": "关联项目ID",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "会话标题",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "temporary/permanent",
                     "type": "string"
                 }
             }
