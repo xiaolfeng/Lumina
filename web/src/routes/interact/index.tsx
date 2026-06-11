@@ -55,18 +55,20 @@ function InteractPage() {
 			const existingHash = sessionStorage.getItem(SESSION_VISITED_KEY);
 
 			if (hashParam) {
-				// 模式 1：URL 中有 hash → 通过 hash 查找 session
+				// 模式 1：URL 中有 hash → 立即设置 hash 以触发 WS 连接
+				setSessionHash(hashParam);
 				setIsLoading(true);
 				try {
+					// REST API 仅获取展示信息（标题、ID 等），不影响 WS 连接
 					const res = await getSessionByHash(hashParam);
 					const sessionData = res.data?.items?.[0];
 					if (sessionData) {
 						setSelectedSessionId(sessionData.id);
-						setSessionHash(hashParam);
 						sessionStorage.setItem(SESSION_VISITED_KEY, hashParam);
 					}
 				} catch (e) {
-					console.error("Failed to load session by hash:", e);
+					console.error("Failed to load session info:", e);
+					// WS 仍可连接，仅会话详情缺失
 				} finally {
 					setIsLoading(false);
 				}

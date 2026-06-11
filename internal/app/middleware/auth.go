@@ -26,11 +26,14 @@ func Auth(ctx context.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		log.Info(c, "Auth - 验证访问令牌")
 
-		// 使用框架工具解析 Authorization 头
+		// 优先从 Authorization 头提取，兼容 WebSocket 浏览器端无法设置 Header 的场景从 query 获取
 		accessToken, err := xHttp.GetAuthorization(c)
 		if err != nil {
-			xResult.AbortError(c, xError.TokenMissing, "未提供访问令牌", false)
-			return
+			accessToken = c.Query("token")
+			if accessToken == "" {
+				xResult.AbortError(c, xError.TokenMissing, "未提供访问令牌", false)
+				return
+			}
 		}
 
 		// 验证访问令牌
