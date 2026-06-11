@@ -89,29 +89,36 @@ definitions:
   project.CreateProjectRequest:
     properties:
       alias_name:
-        description: 项目别名列表
-        items:
-          type: string
-        type: array
+        description: 项目别名
+        type: string
       description:
         description: 项目描述
         type: string
+      match_path:
+        description: 项目路径匹配列表
+        items:
+          type: string
+        type: array
       name:
         description: 项目名称
         type: string
     required:
+    - match_path
     - name
     type: object
   project.UpdateProjectRequest:
     properties:
       alias_name:
-        description: 项目别名列表
-        items:
-          type: string
-        type: array
+        description: 项目别名
+        type: string
       description:
         description: 项目描述
         type: string
+      match_path:
+        description: 项目路径匹配列表
+        items:
+          type: string
+        type: array
       name:
         description: 项目名称
         type: string

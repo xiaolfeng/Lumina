@@ -1266,19 +1266,24 @@ const docTemplate = `{
         "project.CreateProjectRequest": {
             "type": "object",
             "required": [
+                "match_path",
                 "name"
             ],
             "properties": {
                 "alias_name": {
-                    "description": "项目别名列表",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "description": "项目别名",
+                    "type": "string"
                 },
                 "description": {
                     "description": "项目描述",
                     "type": "string"
+                },
+                "match_path": {
+                    "description": "项目路径匹配列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "name": {
                     "description": "项目名称",
@@ -1293,15 +1298,19 @@ const docTemplate = `{
             ],
             "properties": {
                 "alias_name": {
-                    "description": "项目别名列表",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "description": "项目别名",
+                    "type": "string"
                 },
                 "description": {
                     "description": "项目描述",
                     "type": "string"
+                },
+                "match_path": {
+                    "description": "项目路径匹配列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "name": {
                     "description": "项目名称",
