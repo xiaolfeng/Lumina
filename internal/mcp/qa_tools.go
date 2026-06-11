@@ -53,6 +53,10 @@ var qaToolDefs = []struct {
 					"type":        "string",
 					"description": "会话标题，用于浏览器展示，可选",
 				},
+				"agent_name": map[string]any{
+					"type":        "string",
+					"description": "Agent 名称标识，用于区分不同 Agent 创建的会话，可选（默认 mcp-agent）",
+				},
 			},
 			"required": []string{"project_id"},
 		},
@@ -61,9 +65,9 @@ var qaToolDefs = []struct {
 		name: "qa_session_list",
 		description: `获取 Q&A 会话列表，支持按状态和类型过滤。
 
-触发场景：Agent 需要查找已有的活跃会话以复用（避免重复创建）、查看当前有多少会话、或清理过期会话前先列出。创建新会话前建议先调用此工具检查是否有可复用的 active 临时会话。
+触发场景：创建新会话前先调用此工具检查是否有可复用的 active 临时会话，避免创建过多会话。也可以用于查看当前有多少活跃会话、或归档/清理过期会话前先列出。
 
-返回每项包含会话 ID、标题、类型、状态、在线设备数、过期时间和关联项目信息。需要查看完整问题列表时使用 qa_session_get。`,
+使用建议：如果返回结果中有 status=active 且 type=temporary 的会话，可直接复用该会话推送新问题，无需创建新会话。若会话已不活跃或已过期，再使用 qa_session_create 创建新会话。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -90,12 +94,12 @@ var qaToolDefs = []struct {
 		name: "qa_session_get",
 		description: `获取 Q&A 会话的状态信息，包含会话元数据和所有问题列表。
 
-推荐在以下时机调用：
-- 推送问题前：确认会话仍然活跃（状态为 active）
-- 推送问题后：查看用户回答进度（已答/总数）
-- qa_get_answer 长时间无响应时：确认用户是否仍在线（查看在线设备数）
+决策引导：
+- 确认会话仍然活跃：如果 status 不是 active，不要再推送问题，应先创建新会话
+- 查看回答进度：对比已回答/总数，判断是否还有待回答的问题
+- 确认用户在线：如果 qa_get_answer 长时间无响应，检查 online_devices 是否为 0（用户已断开）
 
-返回包含会话标题、状态、过期时间、所有问题及其状态。如果会话不存在或已删除，将返回引导提示。`,
+如果会话不存在或已删除，将返回错误提示。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -117,7 +121,7 @@ var qaToolDefs = []struct {
 			"properties": map[string]any{
 				"session_id": map[string]any{
 					"type":        "string",
-					"description": "要删除的会话 ID",
+					"description": "要归档的会话 ID",
 				},
 			},
 			"required": []string{"session_id"},
@@ -480,12 +484,23 @@ var qaTypeDetails = map[string]string{
 }
 
 // parseArgs 将 json.RawMessage 格式的参数解析为 map[string]any。
+// 解析失败时返回包含 __parse_error 键的 map，供调用方判断并返回具体错误信息。
 func parseArgs(raw json.RawMessage) map[string]any {
 	args := make(map[string]any)
 	if len(raw) > 0 {
-		_ = json.Unmarshal(raw, &args)
+		if err := json.Unmarshal(raw, &args); err != nil {
+			args["__parse_error"] = err.Error()
+		}
 	}
 	return args
+}
+
+// checkParseError 检查参数是否因 JSON 解析失败而包含错误信息。
+func checkParseError(args map[string]any) string {
+	if errMsg, ok := args["__parse_error"].(string); ok {
+		return fmt.Sprintf("参数 JSON 解析失败: %s", errMsg)
+	}
+	return ""
 }
 
 // ─── Tool Handlers ──────────────────────────────────────────────────────
@@ -497,6 +512,9 @@ func handleQaSessionCreate(_ context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	}
 
 	args := parseArgs(req.Params.Arguments)
+	if errMsg := checkParseError(args); errMsg != "" {
+		return textResult(errMsg), nil
+	}
 	projectID, _ := args["project_id"].(string)
 	if projectID == "" {
 		return textResult("缺少必填参数: project_id"), nil
@@ -504,8 +522,12 @@ func handleQaSessionCreate(_ context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 
 	title, _ := args["title"].(string)
 	sessionType, _ := args["session_type"].(string)
+	agentName, _ := args["agent_name"].(string)
+	if agentName == "" {
+		agentName = "mcp-agent"
+	}
 
-	id, link, xErr := qaLogic.CreateSession(context.Background(), title, "open-code-agent", sessionType, projectID)
+	id, link, xErr := qaLogic.CreateSession(context.Background(), title, agentName, sessionType, projectID)
 	if xErr != nil {
 		return textResult(fmt.Sprintf("创建会话失败: %s", xErr.Error())), nil
 	}
@@ -523,6 +545,9 @@ func handleQaSessionList(_ context.Context, req *mcp.CallToolRequest) (*mcp.Call
 	}
 
 	args := parseArgs(req.Params.Arguments)
+	if errMsg := checkParseError(args); errMsg != "" {
+		return textResult(errMsg), nil
+	}
 	page := 1
 	size := 20
 	if p, ok := args["page"].(float64); ok && p > 0 {
@@ -570,6 +595,9 @@ func handleQaSessionGet(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallT
 	}
 
 	args := parseArgs(req.Params.Arguments)
+	if errMsg := checkParseError(args); errMsg != "" {
+		return textResult(errMsg), nil
+	}
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
 		return textResult("缺少必填参数: session_id"), nil
@@ -590,6 +618,9 @@ func handleQaSessionArchive(_ context.Context, req *mcp.CallToolRequest) (*mcp.C
 	}
 
 	args := parseArgs(req.Params.Arguments)
+	if errMsg := checkParseError(args); errMsg != "" {
+		return textResult(errMsg), nil
+	}
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
 		return textResult("缺少必填参数: session_id"), nil
@@ -610,6 +641,9 @@ func handleQaPushQuestion(_ context.Context, req *mcp.CallToolRequest) (*mcp.Cal
 	}
 
 	args := parseArgs(req.Params.Arguments)
+	if errMsg := checkParseError(args); errMsg != "" {
+		return textResult(errMsg), nil
+	}
 
 	// 提取必填参数
 	sessionID, _ := args["session_id"].(string)
@@ -663,6 +697,9 @@ func handleQaPushSupplement(_ context.Context, req *mcp.CallToolRequest) (*mcp.C
 	}
 
 	args := parseArgs(req.Params.Arguments)
+	if errMsg := checkParseError(args); errMsg != "" {
+		return textResult(errMsg), nil
+	}
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
 		return textResult("缺少必填参数: session_id"), nil
@@ -709,6 +746,9 @@ func handleQaPushSupplement(_ context.Context, req *mcp.CallToolRequest) (*mcp.C
 // handleQaWhatQuestion 返回问题类型帮助信息
 func handleQaWhatQuestion(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args := parseArgs(req.Params.Arguments)
+	if errMsg := checkParseError(args); errMsg != "" {
+		return textResult(errMsg), nil
+	}
 
 	// 如果指定了具体类型，返回该类型的详细帮助
 	if qType, _ := args["question_type"].(string); qType != "" {
@@ -729,6 +769,9 @@ func handleGetAnswer(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallTool
 	}
 
 	args := parseArgs(req.Params.Arguments)
+	if errMsg := checkParseError(args); errMsg != "" {
+		return textResult(errMsg), nil
+	}
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
 		return textResult("缺少必填参数: session_id"), nil
@@ -761,6 +804,9 @@ func handleRegetAnswer(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallTo
 	}
 
 	args := parseArgs(req.Params.Arguments)
+	if errMsg := checkParseError(args); errMsg != "" {
+		return textResult(errMsg), nil
+	}
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
 		return textResult("缺少必填参数: session_id"), nil

@@ -316,8 +316,12 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType, 
 		}
 	}
 
-	// 生成浏览器链接
-	link := fmt.Sprintf("http://localhost:3000/interact?session=%s", id.String())
+	// 读取运行时域名配置，生成浏览器链接
+	var domainInfo entity.Info
+	if err := l.db.WithContext(ctx).Where("`key` = ?", "runtime.domain").First(&domainInfo).Error; err != nil || domainInfo.Value == "" {
+		domainInfo.Value = "http://localhost:3000"
+	}
+	link := fmt.Sprintf("%s/interact?session=%s", strings.TrimRight(domainInfo.Value, "/"), id.String())
 
 	return id.String(), link, nil
 }
@@ -507,22 +511,22 @@ func (l *QaLogic) RegetAnswers(ctx context.Context, sessionID string, questionID
 	for _, qid := range questionIDs {
 		parsedQID, err := xSnowflake.ParseSnowflakeID(qid)
 		if err != nil {
-			sb.WriteString(fmt.Sprintf("[ERROR] %s: 无效的问题ID格式\n", qid))
+			sb.WriteString(fmt.Sprintf("--- question:%s ---\n[ERROR] 无效的问题ID格式\n", qid))
 			continue
 		}
 
 		question, xErr := l.repo.question.GetByID(ctx, parsedQID)
 		if xErr != nil {
-			sb.WriteString(fmt.Sprintf("[ERROR] %s: 问题不存在\n", qid))
+			sb.WriteString(fmt.Sprintf("--- question:%s ---\n[ERROR] 问题不存在\n", qid))
 			continue
 		}
 
+		answerData := question.Answer
+		summary := formatAnswerData(qid, answerData)
 		if question.Status == "answered" {
-			answerData := question.Answer
-			summary := formatAnswerData(qid, answerData)
-			sb.WriteString(fmt.Sprintf("[ANSWERED] %s: %s\n", qid, summary))
+			sb.WriteString(fmt.Sprintf("--- question:%s ---\n[ANSWERED] %s\n", qid, summary))
 		} else {
-			sb.WriteString(fmt.Sprintf("[PENDING] %s: 请使用 qa_get_answer 阻塞等待用户回答。\n", qid))
+			sb.WriteString(fmt.Sprintf("--- question:%s ---\n[PENDING] 请使用 qa_get_answer 阻塞等待用户回答。\n", qid))
 		}
 	}
 
@@ -634,14 +638,40 @@ func toQuestionSummary(q *entity.QaQuestion) qa.QuestionSummaryResponse {
 }
 
 // formatAnswerString 将多条回答格式化为人类可读字符串
+//
+// 根据回答数据的实际类型选择正确的标记：
+//   - [ANSWERED]  用户已回答（正常回答数据）
+//   - [SKIPPED]   用户跳过了此问题
+//   - [NEED_SUPPLEMENT] 用户请求补充内容
 func formatAnswerString(answers []qaQueue.Answer) string {
 	var sb strings.Builder
 	for i, a := range answers {
 		if i > 0 {
 			sb.WriteString("\n")
 		}
-		summary := formatAnswerData(a.QuestionID, a.Data)
-		sb.WriteString(fmt.Sprintf("--- question:%s ---\n[ANSWERED] %s\n", a.QuestionID, summary))
+
+		dataStr := formatAnswerData(a.QuestionID, a.Data)
+
+		// 根据回答数据内容判断标记类型
+		var marker, content string
+		switch {
+		case dataStr == `"[SKIPPED]"` || dataStr == "[SKIPPED]":
+			marker = "[SKIPPED]"
+			content = "用户跳过了此问题"
+		case strings.HasPrefix(dataStr, `"`) && strings.Contains(dataStr, "NEED_SUPPLEMENT"):
+			// JSON 序列化后的字符串（带引号），去除引号后提取内容
+			cleaned := strings.Trim(dataStr, `"`)
+			marker = "[NEED_SUPPLEMENT]"
+			content = strings.TrimPrefix(cleaned, "[NEED_SUPPLEMENT] ")
+		case strings.HasPrefix(dataStr, "[NEED_SUPPLEMENT]"):
+			marker = "[NEED_SUPPLEMENT]"
+			content = strings.TrimPrefix(dataStr, "[NEED_SUPPLEMENT] ")
+		default:
+			marker = "[ANSWERED]"
+			content = dataStr
+		}
+
+		sb.WriteString(fmt.Sprintf("--- question:%s ---\n%s %s\n", a.QuestionID, marker, content))
 	}
 	return sb.String()
 }
