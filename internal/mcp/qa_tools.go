@@ -27,28 +27,28 @@ var qaToolDefs = []struct {
 }{
 	{
 		name: "qa_session_create",
-		description: `创建一个 Q&A 问答会话。Agent 通过此工具与用户进行富交互式问答。
+		description: `创建一个 Q&A 问答会话，用于与用户进行富交互式问答。
 
 创建成功后返回 session_id 和浏览器访问链接，用户在浏览器中实时接收问题并回答。
 
-支持两种会话类型：
-- temporary（默认）：48 小时后过期，适合临时问答场景
-- permanent：永不过期，支持跨设备协同（手机、电脑同时在线）
+推荐使用流程：
+1. 先用 qa_session_get 检查是否已有活跃的临时会话，避免创建过多会话
+2. 创建会话（默认 temporary 即可，长期协作场景用 permanent）
+3. 用 qa_push_question 推送问题
+4. 用 get_answer 阻塞等待用户回答
 
-使用流程：创建会话 → qa_push_question 推送问题 → get_answer 阻塞等待回答。
-
-注意：如果已有活跃的临时会话可直接复用，请先用 qa_session_get 检查，避免创建过多会话。`,
+temporary 会话 48 小时过期，适合临时问答；permanent 永不过期，支持跨设备协同。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"session_type": map[string]any{
 					"type":        "string",
-					"description": "Session type: 'temporary' (48h TTL) or 'permanent'",
+					"description": "会话类型：temporary（48 小时过期）或 permanent（永久）",
 					"enum":        []string{"temporary", "permanent"},
 				},
 				"title": map[string]any{
 					"type":        "string",
-					"description": "Optional session title for display",
+					"description": "会话标题，用于浏览器展示，可选",
 				},
 			},
 		},
@@ -57,20 +57,19 @@ var qaToolDefs = []struct {
 		name: "qa_session_get",
 		description: `获取 Q&A 会话的状态信息，包含会话元数据和所有问题列表。
 
-返回内容：会话标题、状态（active/expired/deleted）、Agent 名称、在线设备数、进度（已答/总数）、过期时间、所有问题及其状态。
+推荐在以下时机调用：
+- 推送问题前：确认会话仍然活跃（状态为 active）
+- 推送问题后：查看用户回答进度（已答/总数）
+- 创建会话前：检查是否存在可复用的活跃临时会话
+- get_answer 长时间无响应时：确认用户是否仍在线（查看在线设备数）
 
-使用场景：
-- 推送问题前检查会话是否仍然活跃
-- 查看用户的回答进度
-- 检查是否存在可复用的活跃会话
-
-如果会话不存在或已删除，将返回引导提示帮助定位问题。`,
+返回包含会话标题、状态、过期时间、所有问题及其状态。如果会话不存在或已删除，将返回引导提示。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"session_id": map[string]any{
 					"type":        "string",
-					"description": "The session ID to query",
+					"description": "要查询的会话 ID",
 				},
 			},
 			"required": []string{"session_id"},
@@ -78,19 +77,17 @@ var qaToolDefs = []struct {
 	},
 	{
 		name: "qa_session_delete",
-		description: `删除一个 Q&A 会话。删除后所有问题和回答数据将不可恢复。
+		description: `删除一个 Q&A 会话，删除后所有问题和回答数据不可恢复。
 
-仅在确认不再需要该会话时使用。活跃会话删除后，用户浏览器会收到通知并退出当前问答界面。
+仅在确认用户不再需要该会话时使用。活跃会话删除后，用户浏览器会收到通知并退出问答界面。
 
-如果需要保留历史记录，请勿删除——过期的会话会自动归档为只读状态，仍然可以查询。
-
-注意：删除前建议确认用户已不需要该会话的内容。`,
+如需保留历史记录请勿删除——过期会话会自动归档为只读状态，仍可通过 qa_session_get 查看。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"session_id": map[string]any{
 					"type":        "string",
-					"description": "The session ID to delete",
+					"description": "要删除的会话 ID",
 				},
 			},
 			"required": []string{"session_id"},
@@ -98,53 +95,53 @@ var qaToolDefs = []struct {
 	},
 	{
 		name: "qa_push_question",
-		description: `向指定会话推送一个交互式问题。推送后问题通过 WebSocket 实时送达用户浏览器。
+		description: `向指定会话推送一个交互式问题，推送后实时送达用户浏览器。
 
-支持 14 种交互类型，每种类型有特定的参数要求。传入 need_help=true 可获取所有类型的详细用法说明，传入 need_help_type="select,diff" 可获取指定类型的参数格式和示例。
+14 种交互类型速查：
+  选择类：select、multi-select
+  输入类：text、boolean、code、image、file
+  展示类：diff、plan、options、review
+  评分类：slider、rank、rate
 
-【快速参考 — 14 种类型】
-选择类：select（单选）、multi-select（多选）
-输入类：text（文本）、boolean（是/否）、code（代码）、image（图片）、file（文件）
-展示类：diff（代码差异）、plan（方案展示）、options（带优劣选项）、review（内容审阅）
-评分类：slider（滑动条）、rank（排序）、rate（评分）
+不确定如何构造某种类型的参数时，设 need_help=true 获取完整用法说明，设 need_help_type 为具体类型名可获取该类型的参数格式和示例。
 
-推送成功后返回 question_id 和每个选项的 option_id（若有选项）。
-这些 ID 用于后续操作：get_answer 等待回答、qa_push_supplement 推送补充内容。
-
-选项描述应简洁，如需详细说明可通过 qa_push_supplement 单独推送 Markdown/HTML 补充内容，右侧面板即时渲染。`,
+推荐实践：
+- 选项的 label 应简洁（1-5 词），详细说明通过 qa_push_supplement 补充到右侧面板
+- 推送后立即调用 get_answer 等待回答，避免推送后忘记等待
+- 连续推送多个问题时，最后一次性 get_answer 即可收取所有回答`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"session_id": map[string]any{
 					"type":        "string",
-					"description": "Target session ID",
+					"description": "目标会话 ID",
 				},
 				"question_type": map[string]any{
 					"type":        "string",
-					"description": "Question type identifier (e.g. text_input, single_choice, multi_choice, etc.)",
+					"description": "问题类型标识符，如 text、select、multi-select 等",
 				},
 				"content": map[string]any{
 					"type":        "string",
-					"description": "Question content in Markdown format",
+					"description": "问题内容，支持 Markdown 格式",
 				},
 				"options": map[string]any{
 					"type":        "array",
-					"description": "Options for choice-type questions",
+					"description": "选项列表，选择类问题必填",
 					"items": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
-							"label":       map[string]any{"type": "string", "description": "Option label"},
-							"description": map[string]any{"type": "string", "description": "Optional option description"},
+							"label":       map[string]any{"type": "string", "description": "选项标签"},
+							"description": map[string]any{"type": "string", "description": "选项说明，可选"},
 						},
 					},
 				},
 				"need_help": map[string]any{
 					"type":        "boolean",
-					"description": "If true, returns a usage guide instead of creating a question",
+					"description": "设为 true 时返回使用指南而非创建问题",
 				},
 				"need_help_type": map[string]any{
 					"type":        "string",
-					"description": "Specific question type to get help for (used with need_help=true)",
+					"description": "指定需要帮助的问题类型，需配合 need_help=true 使用",
 				},
 			},
 			"required": []string{"session_id", "question_type", "content"},
@@ -152,43 +149,34 @@ var qaToolDefs = []struct {
 	},
 	{
 		name: "qa_push_supplement",
-		description: `为已推送的问题或选项补充详细内容。补充内容在用户浏览器右侧面板即时渲染。
+		description: `为已推送的问题或选项补充详细内容，补充内容在用户浏览器右侧面板即时渲染。
 
-支持 Markdown 和 HTML 两种格式：
-- Markdown：适合文本说明、代码块、表格、Mermaid 流程图
-- HTML：适合交互式预览、自定义布局、动画演示
+支持 Markdown 和 HTML 格式。Markdown 适合文本说明、代码块、表格、Mermaid 流程图；HTML 适合交互式预览、自定义布局。
 
-关联方式：
-- target_type="question" + target_id=question_id → 为整个问题补充背景信息
-- target_type="option" + target_id=option_id → 为特定选项补充详细说明
+关联方式：提供 option_id 时关联到特定选项（补充详细说明），否则关联到整个 question（补充背景信息）。每个目标是 1:1 映射，重复推送会覆盖之前内容。
 
-重要：每个目标是 1:1 映射，重复推送会覆盖之前的内容。
-
-使用场景：
-- 选项的 description 不够详细，需要展开说明
-- 展示架构图、流程图等可视化内容
-- 提供代码示例或配置模板
-- 用户主动请求补全时（get_answer 返回 [NEED_SUPPLEMENT]）
-
-推送后用户仍停留在当前问题，可继续回答。`,
+典型使用场景：
+- 选项 label 过于简洁，需要展开技术细节或对比说明
+- 展示架构图、流程图、代码示例等可视化内容
+- get_answer 返回 [NEED_SUPPLEMENT] 时响应用户的补充请求`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"session_id": map[string]any{
 					"type":        "string",
-					"description": "Target session ID",
+					"description": "目标会话 ID",
 				},
 				"question_id": map[string]any{
 					"type":        "string",
-					"description": "Question ID to supplement",
+					"description": "要补充内容的问题 ID",
 				},
 				"option_id": map[string]any{
 					"type":        "string",
-					"description": "Optional option ID for option-level supplement",
+					"description": "选项 ID，提供时关联到特定选项而非整个问题，可选",
 				},
 				"content": map[string]any{
 					"type":        "string",
-					"description": "Supplement content in Markdown or HTML format",
+					"description": "补充内容，支持 Markdown 或 HTML 格式",
 				},
 			},
 			"required": []string{"session_id", "question_id", "content"},
@@ -196,42 +184,34 @@ var qaToolDefs = []struct {
 	},
 	{
 		name: "get_answer",
-		description: `阻塞等待用户对当前会话的回答。调用后将挂起直到用户提交回答、跳过、或发送补全请求。
+		description: `阻塞等待用户对当前会话的回答。调用后挂起直到用户提交回答、跳过、或发送补全请求。
 
-用户可以自由选择优先回答哪个问题，因此不要求传入 question_id——返回的是当前所有待消费的回答，按用户实际回答顺序排列。
+用户可以自由选择优先回答哪个问题，因此返回的是当前所有待消费的回答，按用户实际回答顺序排列。
 
-返回格式为多行文本（非 JSON），多个回答之间用 "--- question:<id> ---" 分隔。
-每个回答使用前缀标识不同类型的响应：
-- [ANSWERED] 用户已回答，后接回答内容摘要
+返回文本格式说明：
+- [ANSWERED] 用户已回答
 - [SKIPPED] 用户跳过了此问题
-- [NEED_SUPPLEMENT] 用户请求补充内容，附目标 ID 和提示
-- [TIP] 操作引导（如如何推送补充内容）
-- [REF] 选项关联的参考内容（帮助理解用户选择的上下文）
-- [IMAGE_URL] / [IMAGE_BASE64] 多媒体附件
+- [NEED_SUPPLEMENT] 用户请求补充内容 → 用 qa_push_supplement 推送后再次 get_answer
+- [IMAGE_URL] / [IMAGE_BASE64] 多媒体附件（如需原始 base64 数据用 reget_answer）
 
-如果返回 [NEED_SUPPLEMENT]，请使用 qa_push_supplement 推送补充内容，然后再次调用 get_answer 继续等待回答。
+行为：队列有待消费回答时立即返回全部；队列为空时阻塞等待。消费后队列清空。
 
-行为说明：
-- 队列中有待消费回答：立即一次性消费完毕，按用户回答顺序返回
-- 队列为空：阻塞等待直到用户回答任意一个问题
-- 消费后队列清空
-
-注意：此工具是阻塞调用。如需非阻塞获取已有答案，请使用 reget_answer。`,
+此工具是阻塞调用。如需非阻塞获取已有答案，请用 reget_answer。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"session_id": map[string]any{
 					"type":        "string",
-					"description": "Target session ID",
+					"description": "目标会话 ID",
 				},
 				"question_ids": map[string]any{
 					"type":        "array",
-					"description": "Question IDs to wait for answers",
+					"description": "要等待回答的问题 ID 列表",
 					"items":       map[string]any{"type": "string"},
 				},
 				"timeout": map[string]any{
 					"type":        "integer",
-					"description": "Maximum wait time in seconds",
+					"description": "最大等待时间（秒）",
 				},
 			},
 			"required": []string{"session_id", "question_ids"},
@@ -239,33 +219,31 @@ var qaToolDefs = []struct {
 	},
 	{
 		name: "reget_answer",
-		description: `非阻塞获取已回答问题的内容。立即返回，不等待。
+		description: `非阻塞获取已回答问题的内容，立即返回不等待。
 
-与 get_answer 的区别：
-- get_answer：阻塞等待首次回答（用于问题推送后的等待循环）
-- reget_answer：立即返回已有答案（用于重取、获取多媒体 base64 数据）
+与 get_answer 的区别：get_answer 是阻塞等待首次回答（用于推送后的等待循环），reget_answer 是立即返回已有答案（用于重取和获取多媒体数据）。
 
-使用场景：
-- get_answer 返回了图片 URL 但 Agent 无法访问，传入 base64=true 获取原始数据
+典型使用场景：
+- get_answer 返回了图片 URL 但 Agent 无法访问，设 base64=true 获取原始 base64 数据
 - 需要重新查看已回答问题的内容
 - 获取回答中的多媒体附件
 
-如果问题尚未回答，将返回引导提示（提示使用 get_answer 阻塞等待），不会报错。`,
+如果问题尚未回答，返回引导提示而非报错。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"session_id": map[string]any{
 					"type":        "string",
-					"description": "Target session ID",
+					"description": "目标会话 ID",
 				},
 				"question_ids": map[string]any{
 					"type":        "array",
-					"description": "Question IDs to retrieve answers for",
+					"description": "要获取回答的问题 ID 列表",
 					"items":       map[string]any{"type": "string"},
 				},
 				"base64": map[string]any{
 					"type":        "boolean",
-					"description": "If true, return media data as base64 encoded strings",
+					"description": "设为 true 时将多媒体数据以 base64 编码返回",
 				},
 			},
 			"required": []string{"session_id", "question_ids"},
