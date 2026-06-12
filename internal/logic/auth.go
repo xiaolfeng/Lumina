@@ -10,6 +10,7 @@ import (
 	xUtil "github.com/bamboo-services/bamboo-base-go/common/utility"
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
 	apiAuth "github.com/xiaolfeng/Lumina/api/auth"
+	apiUser "github.com/xiaolfeng/Lumina/api/user"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
 	"gorm.io/gorm"
@@ -235,4 +236,28 @@ func (l *AuthLogic) ValidateAccessToken(ctx context.Context, accessToken string)
 	}
 
 	return true, nil
+}
+
+// GetCurrentUser 获取当前用户信息（单用户模式，从 Info 表读取）
+func (l *AuthLogic) GetCurrentUser(ctx context.Context) (*apiUser.UserInfoResponse, *xError.Error) {
+	l.log.Info(ctx, "GetCurrentUser - 获取当前用户信息")
+
+	// 从 Info 表读取 owner 用户名
+	var usernameInfo entity.Info
+	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "owner_username").First(&usernameInfo).Error; err != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, err)
+	}
+
+	// 从 Info 表读取 owner 邮箱
+	var emailInfo entity.Info
+	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "owner_email").First(&emailInfo).Error; err != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, err)
+	}
+
+	l.log.Info(ctx, "GetCurrentUser - 获取当前用户信息成功")
+
+	return &apiUser.UserInfoResponse{
+		Username: usernameInfo.Value,
+		Email:    emailInfo.Value,
+	}, nil
 }

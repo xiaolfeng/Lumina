@@ -53,3 +53,5 @@ type ProjectHandler handler
 
 type QaHandler handler
 
+type UserHandler handler
+
