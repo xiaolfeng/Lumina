@@ -20,6 +20,7 @@ type QaQuestion struct {
 	Config      datatypes.JSON  `gorm:"type:jsonb;comment:题型特有配置" json:"config"`                      // 题型特有配置
 	Batch       datatypes.JSON  `gorm:"type:jsonb;comment:分批信息" json:"batch"`                           // 分批信息
 	GroupLabel  string          `gorm:"type:varchar(255);comment:分组标签" json:"group_label"`            // 分组标签
+	Supplement  bool            `gorm:"type:boolean;default:false;comment:是否携带补充内容" json:"supplement"` // 是否携带补充内容
 	Status      string          `gorm:"type:varchar(16);not null;default:pending;comment:状态 pending/answered/skipped" json:"status"` // 状态 pending/answered/skipped
 	Answer      datatypes.JSON  `gorm:"type:jsonb;comment:回答数据" json:"answer"`                           // 回答数据
 	Media       datatypes.JSON  `gorm:"type:jsonb;comment:多媒体数据" json:"media"`                           // 多媒体数据

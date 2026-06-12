@@ -29,15 +29,17 @@ const heartbeatTimeout = 15 * time.Second
 //
 // 管理所有活跃的 WebSocket 连接，按 sessionID → deviceID 二级索引组织。
 // 通过 register/unregister 通道实现并发安全的连接生命周期管理。
+// 新连接注册时自动推送该会话下所有待回答问题（用于前端重连恢复）。
 type Hub struct {
-	sessions    map[string]map[string]*Connection // sessionID → deviceID → Connection
-	register    chan *Connection                   // 注册通道
-	unregister  chan *Connection                   // 注销通道
-	mu          sync.RWMutex                       // sessions 读写锁
-	log         *xLog.LogNamedLogger               // 日志记录器
-	handler     MessageHandler                     // 消息处理回调
-	sessionRepo *repository.QaSessionRepo          // QA 会话仓库（用于临时会话硬删除）
-	db          *gorm.DB                           // 数据库实例（用于异步更新 OnlineDevices）
+	sessions     map[string]map[string]*Connection // sessionID → deviceID → Connection
+	register     chan *Connection                   // 注册通道
+	unregister   chan *Connection                   // 注销通道
+	mu           sync.RWMutex                       // sessions 读写锁
+	log          *xLog.LogNamedLogger               // 日志记录器
+	handler      MessageHandler                     // 消息处理回调
+	sessionRepo  *repository.QaSessionRepo          // QA 会话仓库（用于临时会话硬删除）
+	questionRepo *repository.QaQuestionRepo          // QA 问题仓库（用于连接时推送 pending 问题）
+	db           *gorm.DB                           // 数据库实例（用于异步更新 OnlineDevices）
 }
 
 // 全局单例 Hub 实例
@@ -60,13 +62,14 @@ func GetHub(handler MessageHandler, sessionRepo *repository.QaSessionRepo, db *g
 // NewHub 创建 Hub 实例
 func NewHub(handler MessageHandler, sessionRepo *repository.QaSessionRepo, db *gorm.DB) *Hub {
 	return &Hub{
-		sessions:    make(map[string]map[string]*Connection),
-		register:    make(chan *Connection),
-		unregister:  make(chan *Connection),
-		log:         xLog.WithName(xLog.NamedCONT, "WebSocketHub"),
-		handler:     handler,
-		sessionRepo: sessionRepo,
-		db:          db,
+		sessions:     make(map[string]map[string]*Connection),
+		register:     make(chan *Connection),
+		unregister:   make(chan *Connection),
+		log:          xLog.WithName(xLog.NamedCONT, "WebSocketHub"),
+		handler:      handler,
+		sessionRepo:  sessionRepo,
+		questionRepo: repository.NewQaQuestionRepo(db),
+		db:           db,
 	}
 }
 
@@ -220,6 +223,9 @@ func (h *Hub) registerConn(conn *Connection) {
 
 	// 异步同步 OnlineDevices 到数据库
 	go h.syncOnlineDevices(conn.sessionID, deviceCount+1)
+
+	// 向新连接推送该会话下所有待回答问题（支持前端重连恢复）
+	go h.pushPendingQuestions(conn)
 }
 
 // unregisterConn 从 sessions 映射中移除连接
@@ -336,5 +342,29 @@ func (h *Hub) checkAndDeleteTemporarySession(sessionID string) {
 	}
 	if session.Type == "temporary" {
 		h.sessionRepo.Delete(context.Background(), sid)
+	}
+}
+
+// pushPendingQuestions 向新连接推送该会话下所有待回答问题
+func (h *Hub) pushPendingQuestions(conn *Connection) {
+	sid, err := xSnowflake.ParseSnowflakeID(conn.sessionID)
+	if err != nil {
+		return
+	}
+
+	questions, xErr := h.questionRepo.GetPendingBySessionID(context.Background(), sid)
+	if xErr != nil {
+		h.log.Warn(nil, "推送待回答问题失败", slog.String("error", xErr.Error()))
+		return
+	}
+
+	for _, q := range questions {
+		msg := &Message{
+			Type:      MsgQuestionPush,
+			SessionID: conn.sessionID,
+			Data:      q,
+			Timestamp: time.Now().UnixMilli(),
+		}
+		_ = conn.SendMessage(msg)
 	}
 }

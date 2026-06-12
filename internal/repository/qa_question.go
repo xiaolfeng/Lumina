@@ -106,6 +106,34 @@ func (r *QaQuestionRepo) GetBySessionID(ctx context.Context, sessionID xSnowflak
 	return questions, nil
 }
 
+// GetPendingBySessionID 根据会话ID获取该会话下所有待回答的问题（按创建时间升序）
+//
+// 参数:
+//   - ctx:       上下文对象
+//   - sessionID: 会话 ID
+//
+// 返回值:
+//   - []*entity.QaQuestion: 待回答问题列表（无结果时返回空切片）
+//   - *xError.Error:        查询过程中的错误
+func (r *QaQuestionRepo) GetPendingBySessionID(ctx context.Context, sessionID xSnowflake.SnowflakeID) ([]*entity.QaQuestion, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("GetPendingBySessionID - 根据会话ID获取待回答问题列表 [session_id=%d]", sessionID.Int64()))
+
+	var questions []*entity.QaQuestion
+	if err := r.db.WithContext(ctx).
+		Where("session_id = ? AND status = ?", sessionID, "pending").
+		Order("created_at ASC").
+		Find(&questions).Error; err != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "查询会话待回答问题列表失败", false, err)
+	}
+
+	// 保证返回空切片而非 nil
+	if questions == nil {
+		questions = make([]*entity.QaQuestion, 0)
+	}
+
+	return questions, nil
+}
+
 // UpdateStatus 更新问题状态，当状态为 answered 时同步设置 answered_at
 //
 // 参数:

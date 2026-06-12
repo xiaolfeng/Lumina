@@ -345,7 +345,7 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType, 
 }
 
 // PushQuestion 推送问题到会话（MCP工具）
-func (l *QaLogic) PushQuestion(ctx context.Context, sessionID, qType, title, description string, options, config, batch any, groupLabel string) (string, map[string]string, *xError.Error) {
+func (l *QaLogic) PushQuestion(ctx context.Context, sessionID, qType, title, description string, options, config, batch any, groupLabel string, supplement bool) (string, map[string]string, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("PushQuestion - 推送问题 [session=%s, title=%s]", sessionID, title))
 
 	// 解析并验证会话
@@ -377,6 +377,7 @@ func (l *QaLogic) PushQuestion(ctx context.Context, sessionID, qType, title, des
 		Config:      toJSON(config),
 		Batch:       toJSON(batch),
 		GroupLabel:  groupLabel,
+		Supplement:  supplement,
 		Status:      "pending",
 	}
 
@@ -474,8 +475,8 @@ func (l *QaLogic) GetAnswer(ctx context.Context, sessionID string, timeout time.
 		return "", nil
 	}
 
-	// 格式化回答字符串
-	return formatAnswerString(answers), nil
+	// 格式化回答字符串（需要查询问题元数据）
+	return l.formatAnswerString(ctx, answers), nil
 }
 
 // RegetAnswer 重新获取已回答的问题（MCP工具）
@@ -509,8 +510,9 @@ func (l *QaLogic) RegetAnswer(ctx context.Context, sessionID, questionID string,
 
 	// 构造单条回答格式
 	answerData := question.Answer
-	summary := formatAnswerData(questionID, answerData)
-	return fmt.Sprintf("--- question:%s ---\n[ANSWERED] %s", questionID, summary), nil
+	questionType, questionOptions := parseQuestionMetadata(question)
+	summary := formatAnswerData(questionID, answerData, questionType, questionOptions)
+	return fmt.Sprintf("--- question:%s ---\n[ANSWER] %s", questionID, summary), nil
 }
 
 // RegetAnswers 批量重新获取回答（MCP工具）
@@ -540,9 +542,10 @@ func (l *QaLogic) RegetAnswers(ctx context.Context, sessionID string, questionID
 		}
 
 		answerData := question.Answer
-		summary := formatAnswerData(qid, answerData)
+		questionType, questionOptions := parseQuestionMetadata(question)
+		summary := formatAnswerData(qid, answerData, questionType, questionOptions)
 		if question.Status == "answered" {
-			sb.WriteString(fmt.Sprintf("--- question:%s ---\n[ANSWERED] %s\n", qid, summary))
+			sb.WriteString(fmt.Sprintf("--- question:%s ---\n[ANSWER] %s\n", qid, summary))
 		} else {
 			sb.WriteString(fmt.Sprintf("--- question:%s ---\n[PENDING] 请使用 qa_get_answer 阻塞等待用户回答。\n", qid))
 		}
@@ -615,11 +618,8 @@ func (l *QaLogic) ArchiveSession(ctx context.Context, sessionID string) *xError.
 		return xError.NewError(ctx, xError.BusinessError, "仅 active 状态的会话可以归档", false, nil)
 	}
 
-	if err := l.db.WithContext(ctx).
-		Model(&entity.QaSession{}).
-		Where("id = ?", parsedID).
-		Update("status", "expired").Error; err != nil {
-		return xError.NewError(ctx, xError.DatabaseError, "归档会话失败", false, err)
+	if xErr := l.repo.session.UpdateStatus(ctx, parsedID, "expired"); xErr != nil {
+		return xError.NewError(ctx, xError.UnknownError, "归档会话失败", false, xErr)
 	}
 
 	l.queue.RemoveQueue(sessionID)
@@ -657,28 +657,21 @@ func toQuestionSummary(q *entity.QaQuestion) qa.QuestionSummaryResponse {
 }
 
 // formatAnswerString 将多条回答格式化为人类可读字符串
-//
-// 根据回答数据的实际类型选择正确的标记：
-//   - [ANSWERED]  用户已回答（正常回答数据）
-//   - [SKIPPED]   用户跳过了此问题
-//   - [NEED_SUPPLEMENT] 用户请求补充内容
-func formatAnswerString(answers []qaQueue.Answer) string {
+func (l *QaLogic) formatAnswerString(ctx context.Context, answers []qaQueue.Answer) string {
 	var sb strings.Builder
 	for i, a := range answers {
 		if i > 0 {
 			sb.WriteString("\n")
 		}
 
-		dataStr := formatAnswerData(a.QuestionID, a.Data)
+		dataStr := formatAnswerData(a.QuestionID, a.Data, "", nil)
 
-		// 根据回答数据内容判断标记类型
 		var marker, content string
 		switch {
 		case dataStr == `"[SKIPPED]"` || dataStr == "[SKIPPED]":
 			marker = "[SKIPPED]"
 			content = "用户跳过了此问题"
 		case strings.HasPrefix(dataStr, `"`) && strings.Contains(dataStr, "NEED_SUPPLEMENT"):
-			// JSON 序列化后的字符串（带引号），去除引号后提取内容
 			cleaned := strings.Trim(dataStr, `"`)
 			marker = "[NEED_SUPPLEMENT]"
 			content = strings.TrimPrefix(cleaned, "[NEED_SUPPLEMENT] ")
@@ -686,7 +679,16 @@ func formatAnswerString(answers []qaQueue.Answer) string {
 			marker = "[NEED_SUPPLEMENT]"
 			content = strings.TrimPrefix(dataStr, "[NEED_SUPPLEMENT] ")
 		default:
-			marker = "[ANSWERED]"
+			marker = "[ANSWER]"
+			// 尝试从 DB 查询问题元数据以获取更精确的格式
+			parsedQID, err := xSnowflake.ParseSnowflakeID(a.QuestionID)
+			if err == nil {
+				question, xErr := l.repo.question.GetByID(ctx, parsedQID)
+				if xErr == nil {
+					questionType, questionOptions := parseQuestionMetadata(question)
+					dataStr = formatAnswerData(a.QuestionID, a.Data, questionType, questionOptions)
+				}
+			}
 			content = dataStr
 		}
 
@@ -695,61 +697,250 @@ func formatAnswerString(answers []qaQueue.Answer) string {
 	return sb.String()
 }
 
+// parseQuestionMetadata 从 QaQuestion 实体提取题型和选项列表
+func parseQuestionMetadata(q *entity.QaQuestion) (string, []map[string]interface{}) {
+	if q == nil {
+		return "", nil
+	}
+	questionType := q.Type
+	var options []map[string]interface{}
+	if q.Options != nil {
+		_ = json.Unmarshal(q.Options, &options)
+	}
+	return questionType, options
+}
+
 // formatAnswerData 格式化单条回答数据
-func formatAnswerData(questionID string, data any) string {
+func formatAnswerData(questionID string, data any, questionType string, options []map[string]interface{}) string {
 	if data == nil {
 		return ""
 	}
 
-	// 尝试解析为 map 以判断回答类型
 	m, ok := data.(map[string]interface{})
 	if !ok {
-		// 非对象类型，JSON 序列化
-		bytes, err := json.Marshal(data)
-		if err != nil {
-			return fmt.Sprintf("%v", data)
-		}
-		return string(bytes)
-	}
-
-	// 选择题型：有 selected 字段
-	if selected, exists := m["selected"]; exists {
-		if selMap, ok := selected.(map[string]interface{}); ok {
-			label, _ := selMap["label"].(string)
-			id, _ := selMap["id"]
-			return fmt.Sprintf("选择: %s (id: %v)", label, id)
-		}
-	}
-
-	// 文本题型：有 text 字段
-	if text, exists := m["text"]; exists {
-		if textStr, ok := text.(string); ok {
-			return textStr
-		}
-	}
-
-	// 布尔题型：有 choice 字段
-	if choice, exists := m["choice"]; exists {
-		if choiceStr, ok := choice.(string); ok {
-			if choiceStr == "yes" {
-				return "是"
-			}
-			return "否"
-		}
-		if choiceBool, ok := choice.(bool); ok {
-			if choiceBool {
-				return "是"
-			}
-			return "否"
-		}
-	}
-
-	// 默认：JSON 序列化
-	bytes, err := json.Marshal(data)
-	if err != nil {
 		return fmt.Sprintf("%v", data)
 	}
-	return string(bytes)
+
+	switch questionType {
+	case "select":
+		return formatSelectAnswer(m, options)
+	case "multi-select":
+		return formatMultiSelectAnswer(m, options)
+	case "text":
+		return formatTextAnswer(m)
+	case "boolean":
+		return formatBooleanAnswer(m)
+	case "code", "image", "file":
+		return formatMediaAnswer(m, questionType)
+	case "diff", "plan", "options", "review":
+		return "已提交"
+	case "slider":
+		return formatSliderAnswer(m)
+	case "rank":
+		return formatRankAnswer(m)
+	case "rate":
+		return formatRateAnswer(m)
+	default:
+		// 未知题型，尝试通用解析
+		return formatGenericAnswer(m)
+	}
+}
+
+// formatSelectAnswer 格式化单选回答
+func formatSelectAnswer(m map[string]interface{}, options []map[string]interface{}) string {
+	selected, exists := m["selected"]
+	if !exists {
+		return fmt.Sprintf("%v", m)
+	}
+
+	label, desc := resolveOptionLabel(selected, options)
+	result := label
+	if desc != "" {
+		result = label + "\n" + desc
+		result += "\n----DETAIL----"
+	}
+	return result
+}
+
+// formatMultiSelectAnswer 格式化多选回答
+func formatMultiSelectAnswer(m map[string]interface{}, options []map[string]interface{}) string {
+	selected, exists := m["selected"]
+	if !exists {
+		return fmt.Sprintf("%v", m)
+	}
+
+	var labels []string
+	var descs []string
+
+	switch v := selected.(type) {
+	case []interface{}:
+		for _, item := range v {
+			label, desc := resolveOptionLabel(item, options)
+			if label != "" {
+				labels = append(labels, label)
+			}
+			if desc != "" {
+				descs = append(descs, desc)
+			}
+		}
+	default:
+		label, desc := resolveOptionLabel(selected, options)
+		if label != "" {
+			labels = append(labels, label)
+		}
+		if desc != "" {
+			descs = append(descs, desc)
+		}
+	}
+
+	result := strings.Join(labels, ", ")
+	if len(descs) > 0 {
+		result += "\n" + strings.Join(descs, "\n")
+		result += "\n----DETAIL----"
+	}
+	return result
+}
+
+// resolveOptionLabel 从选项列表中解析选项的标签和描述
+func resolveOptionLabel(selected any, options []map[string]interface{}) (string, string) {
+	// 直接是 map（含 id + label）
+	if selMap, ok := selected.(map[string]interface{}); ok {
+		label, _ := selMap["label"].(string)
+		desc, _ := selMap["description"].(string)
+		return label, desc
+	}
+
+	// 纯 ID 字符串 → 从 options 反查
+	selStr, ok := selected.(string)
+	if !ok || len(options) == 0 {
+		return fmt.Sprintf("%v", selected), ""
+	}
+
+	for _, opt := range options {
+		if optID, _ := opt["id"].(string); optID == selStr {
+			label, _ := opt["label"].(string)
+			desc, _ := opt["description"].(string)
+			return label, desc
+		}
+	}
+	return selStr, ""
+}
+
+// formatTextAnswer 格式化文本回答
+func formatTextAnswer(m map[string]interface{}) string {
+	if text, ok := m["text"].(string); ok {
+		return text
+	}
+	return fmt.Sprintf("%v", m)
+}
+
+// formatBooleanAnswer 格式化布尔回答
+func formatBooleanAnswer(m map[string]interface{}) string {
+	if choice, ok := m["choice"].(string); ok {
+		if choice == "yes" {
+			return "是"
+		}
+		return "否"
+	}
+	if choice, ok := m["choice"].(bool); ok {
+		if choice {
+			return "是"
+		}
+		return "否"
+	}
+	return fmt.Sprintf("%v", m)
+}
+
+// formatMediaAnswer 格式化代码/图片/文件回答
+func formatMediaAnswer(m map[string]interface{}, questionType string) string {
+	switch questionType {
+	case "code":
+		if code, ok := m["code"].(string); ok {
+			return code
+		}
+	case "image":
+		if images, ok := m["images"].([]interface{}); ok && len(images) > 0 {
+			var names []string
+			for _, img := range images {
+				if imgMap, ok := img.(map[string]interface{}); ok {
+					if name, ok := imgMap["name"].(string); ok {
+						names = append(names, name)
+					}
+				}
+			}
+			if len(names) > 0 {
+				return strings.Join(names, ", ")
+			}
+		}
+	case "file":
+		if files, ok := m["files"].([]interface{}); ok && len(files) > 0 {
+			var names []string
+			for _, f := range files {
+				if fMap, ok := f.(map[string]interface{}); ok {
+					if name, ok := fMap["name"].(string); ok {
+						names = append(names, name)
+					}
+				}
+			}
+			if len(names) > 0 {
+				return strings.Join(names, ", ")
+			}
+		}
+	}
+	return fmt.Sprintf("%v", m)
+}
+
+// formatSliderAnswer 格式化滑块回答
+func formatSliderAnswer(m map[string]interface{}) string {
+	if value, ok := m["value"]; ok {
+		return fmt.Sprintf("%v", value)
+	}
+	return fmt.Sprintf("%v", m)
+}
+
+// formatRankAnswer 格式化排名回答
+func formatRankAnswer(m map[string]interface{}) string {
+	if ranked, ok := m["ranked"].([]interface{}); ok {
+		var items []string
+		for i, item := range ranked {
+			if rMap, ok := item.(map[string]interface{}); ok {
+				if label, ok := rMap["label"].(string); ok {
+					items = append(items, fmt.Sprintf("%d. %s", i+1, label))
+				}
+			} else {
+				items = append(items, fmt.Sprintf("%d. %v", i+1, item))
+			}
+		}
+		if len(items) > 0 {
+			return strings.Join(items, ", ")
+		}
+	}
+	return fmt.Sprintf("%v", m)
+}
+
+// formatRateAnswer 格式化评分回答
+func formatRateAnswer(m map[string]interface{}) string {
+	if ratings, ok := m["ratings"].(map[string]interface{}); ok {
+		var parts []string
+		for k, v := range ratings {
+			parts = append(parts, fmt.Sprintf("%s: %v", k, v))
+		}
+		if len(parts) > 0 {
+			return strings.Join(parts, ", ")
+		}
+	}
+	return fmt.Sprintf("%v", m)
+}
+
+// formatGenericAnswer 未知题型的通用格式化
+func formatGenericAnswer(m map[string]interface{}) string {
+	if selected, ok := m["selected"]; ok {
+		return fmt.Sprintf("%v", selected)
+	}
+	if text, ok := m["text"].(string); ok {
+		return text
+	}
+	return fmt.Sprintf("%v", m)
 }
 
 // formatTimePtr 格式化时间指针，nil 返回空字符串
@@ -784,4 +975,17 @@ func jsonOrNull(data datatypes.JSON) any {
 func generateSessionHash(id xSnowflake.SnowflakeID) string {
 	sum := sha256.Sum256([]byte(id.String()))
 	return hex.EncodeToString(sum[:])[:16]
+}
+
+// GetQuestionByID 根据 ID 获取问题实体，供 MCP 层查询问题选项等场景使用
+//
+// 参数:
+//   - ctx:       上下文对象
+//   - questionID: 问题雪花 ID
+//
+// 返回值:
+//   - *entity.QaQuestion: 问题实体
+//   - *xError.Error:      查询过程中的错误
+func (l *QaLogic) GetQuestionByID(ctx context.Context, questionID xSnowflake.SnowflakeID) (*entity.QaQuestion, *xError.Error) {
+	return l.repo.question.GetByID(ctx, questionID)
 }

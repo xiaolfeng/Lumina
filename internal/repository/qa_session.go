@@ -295,6 +295,23 @@ func (r *QaSessionRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID) *
 	return nil
 }
 
+// UpdateStatus 更新会话状态
+//
+// 参数:
+//   - ctx:    上下文对象
+//   - id:     会话雪花 ID
+//   - status: 目标状态值
+//
+// 返回值:
+//   - *xError.Error: 更新过程中的错误
+func (r *QaSessionRepo) UpdateStatus(ctx context.Context, id xSnowflake.SnowflakeID, status string) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("UpdateStatus - 更新会话状态 [id=%d, status=%s]", id.Int64(), status))
+	if err := r.db.WithContext(ctx).Model(&entity.QaSession{}).Where("id = ?", id).Update("status", status).Error; err != nil {
+		return xError.NewError(ctx, xError.DatabaseError, "更新会话状态失败", false, err)
+	}
+	return nil
+}
+
 // expireCheck 检查会话是否已过期，若 active 且 ExpiresAt 已过则更新为 expired
 //
 // 参数:

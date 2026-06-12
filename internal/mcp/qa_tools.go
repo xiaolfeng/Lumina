@@ -186,6 +186,10 @@ var qaToolDefs = []struct {
 					"type":        "string",
 					"description": "问题分组标签，可选",
 				},
+				"supplement": map[string]any{
+					"type":        "boolean",
+					"description": "是否携带补充内容，若为 true 前端将等待补充内容推送后才允许用户操作",
+				},
 			},
 			"required": []string{"session_id", "question_type", "content"},
 		},
@@ -348,6 +352,7 @@ var qaTypeDetails = map[string]string{
   "session_id": "123456",
   "question_type": "select",
   "content": "请选择部署环境",
+  "supplement": true,
   "options": [
     {"label": "开发环境", "description": "用于本地开发和调试"},
     {"label": "测试环境", "description": "用于集成测试和 QA"},
@@ -359,6 +364,7 @@ var qaTypeDetails = map[string]string{
   "session_id": "123456",
   "question_type": "multi-select",
   "content": "请选择需要启用的功能模块",
+  "supplement": true,
   "options": [
     {"label": "用户认证"},
     {"label": "数据导出"},
@@ -673,8 +679,12 @@ func handleQaPushQuestion(_ context.Context, req *mcp.CallToolRequest) (*mcp.Cal
 		batch = v
 	}
 	groupLabel, _ := args["group_label"].(string)
+	var supplement bool
+	if s, ok := args["supplement"].(bool); ok {
+		supplement = s
+	}
 
-	qID, optionIDMap, xErr := qaLogic.PushQuestion(context.Background(), sessionID, qType, content, description, options, config, batch, groupLabel)
+	qID, optionIDMap, xErr := qaLogic.PushQuestion(context.Background(), sessionID, qType, content, description, options, config, batch, groupLabel, supplement)
 	if xErr != nil {
 		return textResult(fmt.Sprintf("推送问题失败: %s", xErr.Error())), nil
 	}
@@ -743,7 +753,32 @@ func handleQaPushSupplement(_ context.Context, req *mcp.CallToolRequest) (*mcp.C
 		return textResult(fmt.Sprintf("推送补充内容失败: %s", xErr.Error())), nil
 	}
 
-	return textResult("补充内容已推送成功。"), nil
+	// 查询关联问题的选项列表，静默降级
+	var optionLines []string
+	if parsedQID, err := xSnowflake.ParseSnowflakeID(questionID); err == nil {
+		if q, qErr := qaLogic.GetQuestionByID(context.Background(), parsedQID); qErr == nil && len(q.Options) > 0 {
+			var options []map[string]interface{}
+			if json.Unmarshal(q.Options, &options) == nil {
+				for _, opt := range options {
+					if label, _ := opt["label"].(string); label != "" {
+						if id, _ := opt["id"].(string); id != "" {
+							optionLines = append(optionLines, fmt.Sprintf("  - %s → %s", label, id))
+						}
+					}
+				}
+			}
+		}
+	}
+
+	result := "补充内容已推送成功。"
+	if len(optionLines) > 0 {
+		result += "\n\n[TIP] 具体选项可以单独提交详细信息，使用 qa_push_supplement 并传入 option_id 参数\n\n关联选项:\n"
+		for _, line := range optionLines {
+			result += line + "\n"
+		}
+	}
+
+	return textResult(result), nil
 }
 
 // handleQaWhatQuestion 返回问题类型帮助信息
