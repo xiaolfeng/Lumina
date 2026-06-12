@@ -16,6 +16,41 @@ const AUTH_ERROR_CODES = new Set([40101, 40102, 40103, 40104, 40105])
 const AT_EXPIRED_CODES = new Set([40101])
 
 const REFRESH_URL = '/api/v1/auth/refresh'
+const LOGIN_PATH = '/auth/login'
+const AUTH_PATH_PREFIX = '/auth/'
+
+// ── 安全重定向工具 ──
+
+export function getSafeRedirect(
+  redirect: unknown,
+  fallback = '/console/dashboard',
+  currentOrigin = typeof window !== 'undefined' ? window.location.origin : '',
+): string {
+  if (!redirect || typeof redirect !== 'string') return fallback
+
+  const trimmed = redirect.trim()
+  if (!trimmed) return fallback
+
+  let target: string
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    target = trimmed
+  } else {
+    try {
+      const url = new URL(trimmed)
+      if (!currentOrigin || url.origin !== currentOrigin) return fallback
+      target = url.pathname + url.search + url.hash
+    } catch {
+      return fallback
+    }
+  }
+
+  // 避免跳转回登录/鉴权页造成循环
+  if (target === LOGIN_PATH || target.startsWith(AUTH_PATH_PREFIX)) {
+    return fallback
+  }
+
+  return target
+}
 
 // ── 刷新状态机 ──
 let isRefreshing = false
@@ -31,11 +66,18 @@ function onTokenRefreshed(newToken: string, error?: Error) {
   refreshSubscribers = []
 }
 
-function clearAuthAndRedirect() {
+function clearAuthAndRedirect(currentPath?: string) {
   Cookies.remove('access_token', { path: '/' })
   Cookies.remove('refresh_token', { path: '/' })
   Cookies.remove('expires_at', { path: '/' })
-  window.location.href = '/auth/login'
+
+  const raw =
+    currentPath ??
+    (typeof window !== 'undefined'
+      ? window.location.pathname + window.location.search + window.location.hash
+      : '')
+  const redirect = getSafeRedirect(raw, '/console/dashboard')
+  window.location.href = `${LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}`
 }
 
 function refreshToken(): Promise<string> {

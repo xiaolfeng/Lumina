@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { FormEvent } from 'react'
-import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link, useRouter, useSearch } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Eye, EyeOff, Github, LogIn } from 'lucide-react'
 
@@ -9,16 +9,31 @@ import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Separator } from '#/components/ui/separator'
 
-import { useLogin } from '#/hooks/useAuth'
+import { useLogin, useAuth } from '#/hooks/useAuth'
+import { getSafeRedirect } from '#/lib/apis/client'
 import { rightItemVariants } from '../auth'
 
-export const Route = createFileRoute('/auth/login')({ component: LoginPage })
+interface LoginSearch {
+  redirect?: string
+}
+
+export const Route = createFileRoute('/auth/login')({
+  validateSearch: (search: Record<string, unknown>): LoginSearch => {
+    return {
+      redirect:
+        typeof search.redirect === 'string' ? search.redirect : undefined,
+    }
+  },
+  component: LoginPage,
+})
 
 /* ─── Component ────────────────────────────────────────── */
 
 function LoginPage() {
   const router = useRouter()
+  const search = useSearch({ from: '/auth/login' })
   const login = useLogin()
+  const { isAuthenticated } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -28,6 +43,13 @@ function LoginPage() {
   const [globalError, setGlobalError] = useState<string | null>(null)
   const emailInputRef = useRef<HTMLInputElement>(null)
   const passwordInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const target = getSafeRedirect(search.redirect, '/console/dashboard')
+      void router.navigate({ to: target })
+    }
+  }, [isAuthenticated, search.redirect, router])
 
   function validate(): boolean {
     const next: typeof errors = {}
@@ -49,7 +71,8 @@ function LoginPage() {
       { account: email, password },
       {
         onSuccess: () => {
-          router.navigate({ to: '/' })
+          const target = getSafeRedirect(search.redirect, '/console/dashboard')
+          void router.navigate({ to: target })
         },
         onError: (error) => {
           setGlobalError(error.message)

@@ -23,6 +23,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "#/components/ui/sidebar";
+import { useAuth } from "#/hooks/useAuth";
 import { sidebarItem, sidebarStaggerContainer } from "#/lib/motion";
 
 interface NavItem {
@@ -68,6 +69,12 @@ const navGroups: NavGroup[] = [
 
 export function AppSidebar() {
 	const location = useLocation();
+	const { currentUser } = useAuth();
+
+	const user = currentUser.data?.data;
+	const displayName = user?.username || "管理员";
+	const subtitle = user?.email || "Lumina Console";
+	const fallbackInitial = displayName.slice(0, 1) || "管";
 
 	return (
 		<Sidebar variant="inset">
@@ -165,15 +172,15 @@ export function AppSidebar() {
 								>
 									<Avatar className="size-8 rounded-lg">
 										<AvatarFallback className="rounded-lg bg-(--accent) text-(--lagoon) text-sm font-medium">
-											管
+											{fallbackInitial}
 										</AvatarFallback>
 									</Avatar>
 									<div className="flex flex-col gap-0.5 leading-none">
 										<span className="text-sm font-medium text-(--sea-ink)">
-											管理员
+											{displayName}
 										</span>
 										<span className="text-xs text-(--sea-ink-soft)">
-											Lumina Console
+											{subtitle}
 										</span>
 									</div>
 								</SidebarMenuButton>

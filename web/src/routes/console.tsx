@@ -16,6 +16,7 @@ import {
 import { Toaster } from '#/components/ui/sonner'
 import Cookies from 'js-cookie'
 import { ease } from '#/lib/motion'
+import { getSafeRedirect } from '#/lib/apis/client'
 
 export const Route = createFileRoute('/console')({
   beforeLoad: ({ location }) => {
@@ -24,7 +25,7 @@ export const Route = createFileRoute('/console')({
     if (!token && !refreshToken) {
       throw redirect({
         to: '/auth/login',
-        search: { redirect: location.href },
+        search: { redirect: getSafeRedirect(location.href, '/console/dashboard') },
       })
     }
   },

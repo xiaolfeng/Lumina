@@ -2,12 +2,14 @@ import { useEffect, useRef } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
 import * as api from '#/lib/apis/auth'
+import { getCurrentUser } from '#/lib/apis/user'
 import type {
   InitializeRequest,
   LoginRequest,
   RefreshRequest,
 } from '#/lib/models/request/auth'
 import type { TokenResponse, StatusResponse } from '#/lib/models/response/auth'
+import type { UserInfoResponse } from '#/lib/models/response/user'
 import type { BaseResponse } from '#/lib/models/response/common'
 
 export const getCookie = Cookies.get
@@ -104,6 +106,17 @@ export function useStatus() {
   })
 }
 
+export function useCurrentUser() {
+  const hasToken = !!Cookies.get('access_token') || !!Cookies.get('refresh_token')
+  return useQuery<BaseResponse<UserInfoResponse>, Error>({
+    queryKey: ['user', 'current'],
+    queryFn: getCurrentUser,
+    staleTime: 5 * 60 * 1000,
+    enabled: hasToken,
+    retry: false,
+  })
+}
+
 // ── Composite hook ──
 
 export function useAuth() {
@@ -112,8 +125,9 @@ export function useAuth() {
   const logout = useLogout()
   const refresh = useRefresh()
   const status = useStatus()
+  const currentUser = useCurrentUser()
 
-  const isAuthenticated = !!Cookies.get('access_token')
+  const isAuthenticated = !!Cookies.get('access_token') || !!Cookies.get('refresh_token')
 
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
@@ -152,6 +166,7 @@ export function useAuth() {
 
   return {
     isAuthenticated,
+    currentUser,
     initialize,
     login,
     logout,
