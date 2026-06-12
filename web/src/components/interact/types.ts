@@ -35,6 +35,7 @@ export interface Question {
 	answered: boolean;
 	answer?: any;
 	supplements?: SupplementItem[];
+	supplement?: boolean; // 是否携带补充内容
 	media?: any;
 	createdAt: string;
 	answeredAt?: string;

@@ -26,6 +26,8 @@ interface QuestionCardProps {
 	onSubmit: (answer: any) => void;
 	onSkip: () => void;
 	onRequestSupplement: (targets: string[]) => void;
+	isSupplementLoading?: boolean;
+	onViewOptionDetail?: (optId: string) => void;
 }
 
 export function QuestionCard({
@@ -33,6 +35,8 @@ export function QuestionCard({
 	onSubmit,
 	onSkip,
 	onRequestSupplement,
+	isSupplementLoading = false,
+	onViewOptionDetail,
 }: QuestionCardProps) {
 	if (!question) {
 		return (
@@ -51,6 +55,8 @@ export function QuestionCard({
 		onSubmit,
 		onSkip,
 		onRequestSupplement,
+		isSupplementLoading,
+		onViewOptionDetail,
 	};
 
 	return (

@@ -2,6 +2,39 @@ import { Check } from "lucide-react";
 
 import type { Question } from "./types";
 
+/** 将各题型提交的 answer 格式化为可读字符串 */
+function formatAnswer(answer: unknown): string {
+	if (answer == null) return "—"
+	if (typeof answer === "string") return answer
+	if (typeof answer === "number" || typeof answer === "boolean") return String(answer)
+	if (Array.isArray(answer)) return answer.join(", ")
+	if (typeof answer === "object") {
+		const obj = answer as Record<string, unknown>
+		// 单选/多选: { selected: string | string[] }
+		if ("selected" in obj && !("text" in obj)) {
+			const sel = Array.isArray(obj.selected) ? obj.selected : [obj.selected]
+			return sel.join(", ")
+		}
+		// 文本: { text: string }
+		if ("text" in obj) return String(obj.text)
+		// 布尔: { choice: "yes" | "no" }
+		if ("choice" in obj) return String(obj.choice)
+		// 滑块: { value: number }
+		if ("value" in obj) return String(obj.value)
+		// 排序: { ranking: string[] }
+		if ("ranking" in obj && Array.isArray(obj.ranking)) return obj.ranking.join(" → ")
+		// 评分: { ratings: Record<string, number> }
+		if ("ratings" in obj && typeof obj.ratings === "object") {
+			return Object.entries(obj.ratings as Record<string, unknown>)
+				.map(([k, v]) => `${k}: ${v}`)
+				.join(", ")
+		}
+		// 兜底
+		return JSON.stringify(obj)
+	}
+	return String(answer)
+}
+
 interface HistoryCardProps {
 	answeredQuestions: Question[];
 	groupedHistory: Record<string, Question[]>;
@@ -43,7 +76,7 @@ export function HistoryCard({
 											{q.content}
 										</p>
 										<p className="mt-0.5 text-xs font-medium text-[var(--sea-ink)]">
-											→ {q.answer}
+											→ {formatAnswer(q.answer)}
 										</p>
 									</div>
 								</div>

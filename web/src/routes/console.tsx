@@ -1,5 +1,4 @@
-import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
-import { useLocation } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, redirect, useLocation } from '@tanstack/react-router'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import {
@@ -21,7 +20,8 @@ import { ease } from '#/lib/motion'
 export const Route = createFileRoute('/console')({
   beforeLoad: ({ location }) => {
     const token = Cookies.get('access_token')
-    if (!token) {
+    const refreshToken = Cookies.get('refresh_token')
+    if (!token && !refreshToken) {
       throw redirect({
         to: '/auth/login',
         search: { redirect: location.href },

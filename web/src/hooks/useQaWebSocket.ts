@@ -20,7 +20,7 @@ export interface WsMessage {
   timestamp: number
 }
 
-export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected'
+export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'rejected'
 
 // ── Hook Options ──
 
@@ -35,6 +35,10 @@ interface UseQaWebSocketOptions {
   onSessionEnd?: () => void
   /** Callback for connection status changes */
   onStatusChange?: (status: ConnectionStatus) => void
+  /** Callback for when the server rejects the connection (session invalid/expired) */
+  onReject?: () => void
+  /** Callback for when the connection is established (initial + reconnect) */
+  onConnect?: () => void
 }
 
 // ── Constants ──
@@ -54,6 +58,9 @@ export function useQaWebSocket(
   const reconnectAttemptRef = useRef(0)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const optionsRef = useRef(options)
+  const everConnectedRef = useRef(false)
+  const rejectedRef = useRef(false)
+  const scheduleReconnectRef = useRef<() => void>(() => {})
   optionsRef.current = options
 
   // ── Timer Cleanup ──
@@ -91,6 +98,8 @@ export function useQaWebSocket(
       wsRef.current.close()
     }
 
+    everConnectedRef.current = false
+    rejectedRef.current = false
     setStatus('connecting')
 
     // Build WebSocket URL (upgrade http → ws)
@@ -109,8 +118,10 @@ export function useQaWebSocket(
 
     ws.onopen = () => {
       setStatus('connected')
+      everConnectedRef.current = true
       reconnectAttemptRef.current = 0
       optionsRef.current.onStatusChange?.('connected')
+      optionsRef.current.onConnect?.()
 
       // Start heartbeat
       heartbeatTimerRef.current = setInterval(() => {
@@ -162,7 +173,15 @@ export function useQaWebSocket(
       optionsRef.current.onStatusChange?.('disconnected')
       clearTimers()
       wsRef.current = null
-      scheduleReconnect()
+
+      if (!everConnectedRef.current) {
+        rejectedRef.current = true
+        setStatus('rejected')
+        optionsRef.current.onReject?.()
+        return
+      }
+
+      scheduleReconnectRef.current()
     }
 
     // ── Error ──
@@ -184,6 +203,8 @@ export function useQaWebSocket(
       connect()
     }, delay)
   }, [connect])
+
+  scheduleReconnectRef.current = scheduleReconnect
 
   // ── Lifecycle ──
 

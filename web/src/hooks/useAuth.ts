@@ -119,7 +119,7 @@ export function useAuth() {
   refreshRef.current = refresh
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
+    const tryRefreshIfNeeded = () => {
       const expiresAt = Cookies.get('expires_at')
       if (!expiresAt) return
 
@@ -133,9 +133,21 @@ export function useAuth() {
           refreshRef.current.mutate({ refresh_token: refreshToken })
         }
       }
-    }, 30 * 1000)
+    }
 
-    return () => clearInterval(intervalId)
+    const intervalId = setInterval(tryRefreshIfNeeded, 30 * 1000)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        tryRefreshIfNeeded()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   return {

@@ -1,5 +1,6 @@
-import { Pencil, Send, SkipForward } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Pencil, Send, SkipForward } from "lucide-react";
+import { useRef, useState } from "react";
+import { motion } from "motion/react";
 
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -11,11 +12,50 @@ import { Label } from "#/components/ui/label";
 
 import type { QuestionComponentProps } from "./question-select";
 
+function OptionDetailLabel({ optId: _optId, onClick }: { optId: string; onClick: () => void }) {
+	const [isHovered, setIsHovered] = useState(false)
+	const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+	const handleMouseEnter = () => {
+		hoverTimerRef.current = setTimeout(() => setIsHovered(true), 500)
+	}
+	const handleMouseLeave = () => {
+		if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+		setIsHovered(false)
+	}
+
+	return (
+		<motion.div
+			className="absolute right-1 top-1 z-10 flex items-center gap-0.5 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 cursor-pointer overflow-hidden whitespace-nowrap"
+			animate={{ width: isHovered ? "auto" : 22 }}
+			initial={{ width: 22 }}
+			transition={{ duration: 0.3, ease: "easeOut" }}
+			onMouseEnter={handleMouseEnter}
+			onMouseLeave={handleMouseLeave}
+			onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClick() }}
+			style={{ maxWidth: 200 }}
+		>
+			<span className="shrink-0">→</span>
+			{isHovered && (
+				<motion.span
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					transition={{ delay: 0.1 }}
+				>
+					点击查看选项详情
+				</motion.span>
+			)}
+		</motion.div>
+	)
+}
+
 export function QuestionMultiSelect({
 	question,
 	onSubmit,
 	onSkip,
 	onRequestSupplement,
+	isSupplementLoading = false,
+	onViewOptionDetail,
 }: QuestionComponentProps) {
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [otherChecked, setOtherChecked] = useState(false);
@@ -24,6 +64,14 @@ export function QuestionMultiSelect({
 	const options = question.options ?? [];
 	const minSelect = question.config?.min ?? 0;
 	const maxSelect = question.config?.max ?? options.length;
+	const hasSupplements =
+		(question.supplements?.length ?? 0) > 0;
+
+	const hasOptionSupplement = (optId: string): boolean => {
+		return question.supplements?.some(
+			(s) => s.target_type === "option" && s.target_id === optId,
+		) ?? false;
+	};
 
 	const toggleOption = (id: string) => {
 	 setSelected((prev) => {
@@ -72,12 +120,20 @@ export function QuestionMultiSelect({
 			)}
 
 			{/* Options */}
-			<div className="space-y-2">
+			{isSupplementLoading && (
+				<div className="flex items-center gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-600">
+					<Loader2 className="size-4 animate-spin" aria-hidden />
+					正在加载补充内容...
+				</div>
+			)}
+			<div
+				className={`space-y-2 ${isSupplementLoading ? "pointer-events-none opacity-50" : ""}`}
+			>
 				{options.map((opt) => (
 					<Label
 						key={opt.id}
 						htmlFor={`multi-${question.id}-${opt.id}`}
-						className="flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--line)] bg-[var(--foam)] px-3 py-2.5 transition-colors duration-150 has-[data-state=checked]:border-[var(--lagoon)]/30 has-[data-state=checked]:bg-[var(--lagoon)]/10 hover:border-[var(--lagoon)]/30"
+						className="relative flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--line)] bg-[var(--foam)] px-3 py-2.5 transition-colors duration-150 has-[data-state=checked]:border-[var(--lagoon)]/30 has-[data-state=checked]:bg-[var(--lagoon)]/10 hover:border-[var(--lagoon)]/30"
 					>
 						<Checkbox
 							id={`multi-${question.id}-${opt.id}`}
@@ -95,6 +151,12 @@ export function QuestionMultiSelect({
 								</p>
 							)}
 						</div>
+						{hasOptionSupplement(opt.id) && (
+							<OptionDetailLabel
+								optId={opt.id}
+								onClick={() => onViewOptionDetail?.(opt.id)}
+							/>
+						)}
 					</Label>
 				))}
 
@@ -132,21 +194,25 @@ export function QuestionMultiSelect({
 
 			{/* Actions */}
 			<div className="flex items-center justify-between pt-1">
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={() =>
-						onRequestSupplement([question.id])
-					}
-					className="text-xs text-[var(--sea-ink-soft)]"
-				>
-					请求补充信息
-				</Button>
+				{!hasSupplements && (
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() =>
+							onRequestSupplement([question.id])
+						}
+						disabled={isSupplementLoading}
+						className="text-xs text-[var(--sea-ink-soft)]"
+					>
+						请求补充信息
+					</Button>
+				)}
 				<div className="flex gap-2">
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={onSkip}
+						disabled={isSupplementLoading}
 					>
 						<SkipForward className="mr-1 size-3.5" aria-hidden />
 						跳过
@@ -154,7 +220,7 @@ export function QuestionMultiSelect({
 					<Button
 						size="sm"
 						onClick={handleSubmit}
-						disabled={!canSubmit}
+						disabled={!canSubmit || isSupplementLoading}
 						className="rounded-lg bg-[var(--lagoon)] text-white hover:bg-[var(--lagoon)]/90"
 					>
 						<Send className="mr-1.5 size-3.5" aria-hidden />
