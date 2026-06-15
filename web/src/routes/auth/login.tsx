@@ -85,10 +85,10 @@ function LoginPage() {
     <>
       {/* Header */}
       <motion.div className="mb-8 text-center" variants={rightItemVariants}>
-        <h1 className="display-title text-2xl font-bold text-[var(--sea-ink)] lg:text-3xl">
+        <h1 className="display-title text-2xl font-bold text-sea-ink lg:text-3xl">
           欢迎回来
         </h1>
-        <p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
+        <p className="mt-2 text-sm text-sea-ink-soft">
           登录到你的知识中枢
         </p>
       </motion.div>
@@ -152,7 +152,7 @@ function LoginPage() {
             />
             <button
               type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer p-0.5 text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--sea-ink)]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer p-0.5 text-sea-ink-soft transition-colors hover:text-sea-ink"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? '隐藏密码' : '显示密码'}
               tabIndex={-1}
@@ -176,7 +176,7 @@ function LoginPage() {
         <div className="text-right">
           <Link
             to="/auth/reset-password"
-            className="text-sm text-[var(--lagoon-deep)] transition-colors hover:text-[var(--lagoon)]"
+            className="text-sm text-lagoon-deep transition-colors hover:text-lagoon"
             style={{ touchAction: 'manipulation' }}
           >
             忘记密码？
@@ -217,7 +217,7 @@ function LoginPage() {
         variants={rightItemVariants}
       >
         <Separator className="flex-1" />
-        <span className="text-xs text-[var(--sea-ink-soft)]">或</span>
+        <span className="text-xs text-sea-ink-soft">或</span>
         <Separator className="flex-1" />
       </motion.div>
 

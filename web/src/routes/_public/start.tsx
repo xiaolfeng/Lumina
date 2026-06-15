@@ -38,10 +38,10 @@ const viewportOnce = { once: true, margin: '-80px' } as const
 /* ─── Shared class strings ─────────────────────────────── */
 
 const shellBase =
-  'border border-[var(--line)] bg-[var(--surface)] shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-sm'
+  'border border-line bg-surface shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-sm'
 
 const kickerBase =
-  'text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--lagoon-deep)]'
+  'text-[11px] font-semibold uppercase tracking-[0.2em] text-lagoon-deep'
 
 /* ─── Data ─────────────────────────────────────────────── */
 
@@ -124,23 +124,23 @@ function StartPage() {
             className="mb-4 flex items-center justify-center gap-3"
             variants={fadeUp}
           >
-            <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--lagoon)]/30" />
+            <span className="h-px w-8 bg-gradient-to-r from-transparent to-lagoon/30" />
             <span className={kickerBase}>快速开始</span>
-            <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--lagoon)]/30" />
+            <span className="h-px w-8 bg-gradient-to-l from-transparent to-lagoon/30" />
           </motion.div>
 
           <motion.h1
-            className="display-title mb-4 text-4xl font-bold text-[var(--sea-ink)] sm:text-5xl"
+            className="display-title mb-4 text-4xl font-bold text-sea-ink sm:text-5xl"
             variants={fadeUp}
           >
             开始使用{' '}
-            <span className="bg-gradient-to-br from-[var(--lagoon-deep)] to-[var(--palm)] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-br from-lagoon-deep to-palm bg-clip-text text-transparent">
               Lumina
             </span>
           </motion.h1>
 
           <motion.p
-            className="mx-auto max-w-lg text-base leading-relaxed text-[var(--sea-ink-soft)] md:text-lg"
+            className="mx-auto max-w-lg text-base leading-relaxed text-sea-ink-soft md:text-lg"
             variants={fadeUp}
           >
             几步即可完成部署，让 AI 获得深度代码认知与长期记忆。
@@ -169,46 +169,46 @@ function StartPage() {
               }}
             >
               <div className="mb-4 flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--lagoon)]/10">
-                  <span className="display-title text-sm font-bold text-[var(--lagoon-deep)]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-lagoon/10">
+                  <span className="display-title text-sm font-bold text-lagoon-deep">
                     {item.step}
                   </span>
                 </div>
                 <div className="flex-1">
                   <div className="mb-1 flex items-center gap-2">
                     <item.icon
-                      className="h-4 w-4 text-[var(--lagoon)]"
+                      className="h-4 w-4 text-lagoon"
                       aria-hidden
                     />
-                    <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
+                    <h3 className="text-lg font-semibold text-sea-ink">
                       {item.title}
                     </h3>
                   </div>
-                  <p className="text-sm text-[var(--sea-ink-soft)]">
+                  <p className="text-sm text-sea-ink-soft">
                     {item.description}
                   </p>
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--foam)]">
-                <div className="flex items-center gap-2 border-b border-[var(--line)] px-4 py-2">
+              <div className="overflow-hidden rounded-lg border border-line bg-foam">
+                <div className="flex items-center gap-2 border-b border-line px-4 py-2">
                   <Terminal
-                    className="h-3.5 w-3.5 text-[var(--sea-ink-soft)]"
+                    className="h-3.5 w-3.5 text-sea-ink-soft"
                     aria-hidden
                   />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-sea-ink-soft">
                     终端
                   </span>
                 </div>
                 <pre className="overflow-x-auto px-4 py-3">
-                  <code className="text-sm text-[var(--sea-ink)]">
-                    <span className="text-[var(--lagoon-deep)]">$</span>{' '}
+                  <code className="text-sm text-sea-ink">
+                    <span className="text-lagoon-deep">$</span>{' '}
                     {item.code}
                   </code>
                 </pre>
               </div>
 
-              <p className="mt-3 text-sm leading-relaxed text-[var(--sea-ink-soft)]">
+              <p className="mt-3 text-sm leading-relaxed text-sea-ink-soft">
                 {item.detail}
               </p>
             </motion.article>
@@ -229,34 +229,34 @@ function StartPage() {
             className="mb-8 flex items-center justify-center gap-3"
             variants={fadeUp}
           >
-            <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--lagoon)]/30" />
+            <span className="h-px w-8 bg-gradient-to-r from-transparent to-lagoon/30" />
             <span className={kickerBase}>验证部署</span>
-            <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--lagoon)]/30" />
+            <span className="h-px w-8 bg-gradient-to-l from-transparent to-lagoon/30" />
           </motion.div>
 
           <motion.div
             className={`${shellBase} rounded-xl p-6`}
             variants={fadeUp}
           >
-            <p className="mb-4 text-sm text-[var(--sea-ink-soft)]">
+            <p className="mb-4 text-sm text-sea-ink-soft">
               服务启动后，使用以下命令验证部署是否成功：
             </p>
-            <div className="overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--foam)]">
-              <div className="flex items-center gap-2 border-b border-[var(--line)] px-4 py-2">
+            <div className="overflow-hidden rounded-lg border border-line bg-foam">
+              <div className="flex items-center gap-2 border-b border-line px-4 py-2">
                 <Terminal
-                  className="h-3.5 w-3.5 text-[var(--sea-ink-soft)]"
+                  className="h-3.5 w-3.5 text-sea-ink-soft"
                   aria-hidden
                 />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-sea-ink-soft">
                   终端
                 </span>
               </div>
               <pre className="overflow-x-auto px-4 py-3">
-                <code className="text-sm text-[var(--sea-ink)]">
-                  <span className="text-[var(--lagoon-deep)]">$</span> curl
+                <code className="text-sm text-sea-ink">
+                  <span className="text-lagoon-deep">$</span> curl
                   http://localhost:8080/api/v1/health/ping
                   {'\n'}
-                  <span className="text-[var(--lagoon-deep)]">{'>'}</span>{' '}
+                  <span className="text-lagoon-deep">{'>'}</span>{' '}
                   {'{'}"status":"ok"{'}'}
                 </code>
               </pre>
@@ -287,13 +287,13 @@ function StartPage() {
             className="mb-8 flex items-center justify-center gap-3"
             variants={fadeUp}
           >
-            <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--lagoon)]/30" />
+            <span className="h-px w-8 bg-gradient-to-r from-transparent to-lagoon/30" />
             <span className={kickerBase}>核心模块</span>
-            <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--lagoon)]/30" />
+            <span className="h-px w-8 bg-gradient-to-l from-transparent to-lagoon/30" />
           </motion.div>
 
           <motion.h2
-            className="display-title mb-8 text-center text-2xl font-bold text-[var(--sea-ink)] sm:text-3xl"
+            className="display-title mb-8 text-center text-2xl font-bold text-sea-ink sm:text-3xl"
             variants={fadeUp}
           >
             三大能力，统一接入
@@ -312,23 +312,23 @@ function StartPage() {
                   transition: { duration: 0.2 },
                 }}
               >
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--lagoon)]/10">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-lagoon/10">
                   <mod.icon
-                    className="h-5 w-5 text-[var(--lagoon-deep)]"
+                    className="h-5 w-5 text-lagoon-deep"
                     aria-hidden
                   />
                 </div>
-                <h3 className="mb-2 text-base font-semibold text-[var(--sea-ink)]">
+                <h3 className="mb-2 text-base font-semibold text-sea-ink">
                   {mod.title}
                 </h3>
-                <p className="mb-3 text-sm leading-relaxed text-[var(--sea-ink-soft)]">
+                <p className="mb-3 text-sm leading-relaxed text-sea-ink-soft">
                   {mod.description}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {mod.tools.map((tool) => (
                     <span
                       key={tool}
-                      className="inline-flex items-center rounded-full bg-gradient-to-r from-[var(--lagoon)]/5 to-[var(--palm)]/5 px-2.5 py-0.5 text-[10px] font-semibold text-[var(--lagoon-deep)] ring-1 ring-[var(--lagoon)]/10"
+                      className="inline-flex items-center rounded-full bg-gradient-to-r from-lagoon/5 to-palm/5 px-2.5 py-0.5 text-[10px] font-semibold text-lagoon-deep ring-1 ring-lagoon/10"
                     >
                       {tool}
                     </span>
@@ -354,18 +354,18 @@ function StartPage() {
         >
           <motion.div variants={fadeUp}>
             <Sparkles
-              className="mx-auto mb-5 h-10 w-10 text-[var(--lagoon)]"
+              className="mx-auto mb-5 h-10 w-10 text-lagoon"
               aria-hidden
             />
           </motion.div>
           <motion.h2
-            className="display-title mb-4 text-2xl font-bold text-[var(--sea-ink)] sm:text-3xl"
+            className="display-title mb-4 text-2xl font-bold text-sea-ink sm:text-3xl"
             variants={fadeUp}
           >
             准备好了吗？
           </motion.h2>
           <motion.p
-            className="mb-8 text-sm text-[var(--sea-ink-soft)]"
+            className="mb-8 text-sm text-sea-ink-soft"
             variants={fadeUp}
           >
             登录后即可开始使用 Lumina 的全部能力。
@@ -377,7 +377,7 @@ function StartPage() {
             <Button
               asChild
               size="lg"
-              className="group relative h-12 overflow-hidden rounded-full bg-gradient-to-r from-[var(--lagoon)] to-[var(--palm)] px-8 text-base font-semibold !text-white shadow-lg shadow-[var(--lagoon)]/25 transition-shadow duration-300 hover:shadow-xl hover:shadow-[var(--lagoon)]/40"
+              className="group relative h-12 overflow-hidden rounded-full bg-gradient-to-r from-lagoon to-palm px-8 text-base font-semibold !text-white shadow-lg shadow-lagoon/25 transition-shadow duration-300 hover:shadow-xl hover:shadow-lagoon/40"
             >
               <Link to="/auth/login" aria-label="登录 Lumina">
                 立即登录
@@ -391,7 +391,7 @@ function StartPage() {
               asChild
               variant="outline"
               size="lg"
-              className="h-12 rounded-full border-[var(--line)] px-8 text-base font-medium text-[var(--sea-ink-soft)] transition-colors duration-300 hover:border-[var(--lagoon)]/30 hover:bg-[var(--lagoon)]/5 hover:text-[var(--sea-ink)]"
+              className="h-12 rounded-full border-line px-8 text-base font-medium text-sea-ink-soft transition-colors duration-300 hover:border-lagoon/30 hover:bg-lagoon/5 hover:text-sea-ink"
             >
               <a
                 href="https://github.com/xiaolfeng/Lumina"

@@ -54,10 +54,10 @@ const viewportOnce = { once: true, margin: '-80px' } as const
 /* ─── Shared class strings ─────────────────────────────── */
 
 const shellBase =
-  'border border-[var(--line)] bg-[var(--surface)] shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-sm'
+  'border border-line bg-surface shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-sm'
 
 const kickerBase =
-  'text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--lagoon-deep)]'
+  'text-[11px] font-semibold uppercase tracking-[0.2em] text-lagoon-deep'
 
 /* ─── Data ─────────────────────────────────────────────── */
 
@@ -144,20 +144,20 @@ function Home() {
             className="display-title mb-6 text-[clamp(4rem,10vw+1rem,7rem)] font-bold leading-[1.02] tracking-tight md:mb-8"
             variants={fadeUp}
           >
-            <span className="bg-gradient-to-br from-[var(--sea-ink)] via-[var(--lagoon-deep)] to-[var(--palm)] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-br from-sea-ink via-lagoon-deep to-palm bg-clip-text text-transparent">
               Lumina
             </span>
           </motion.h1>
 
           <motion.p
-            className="mb-5 text-xl font-semibold text-[var(--lagoon-deep)] md:mb-6 md:text-[1.65rem]"
+            className="mb-5 text-xl font-semibold text-lagoon-deep md:mb-6 md:text-[1.65rem]"
             variants={fadeUp}
           >
             烛照幽微，知常曰明
           </motion.p>
 
           <motion.p
-            className="mx-auto mb-14 max-w-lg text-base leading-relaxed text-[var(--sea-ink-soft)] md:mb-16 md:max-w-xl md:text-lg"
+            className="mx-auto mb-14 max-w-lg text-base leading-relaxed text-sea-ink-soft md:mb-16 md:max-w-xl md:text-lg"
             variants={fadeUp}
           >
             万象隐于幽微，常理没于流转。微明不求如烈日灼目，只愿燃一寸静烛：为乱麻梳理脉络，使隐晦昭然；将瞬息沉淀为常识，让过往不再是流沙。
@@ -170,7 +170,7 @@ function Home() {
             <Button
               asChild
               size="lg"
-              className="group relative h-12 overflow-hidden rounded-full bg-gradient-to-r from-[var(--lagoon)] to-[var(--palm)] px-8 text-base font-semibold !text-white shadow-lg shadow-[var(--lagoon)]/25 transition-shadow duration-300 hover:shadow-xl hover:shadow-[var(--lagoon)]/40"
+              className="group relative h-12 overflow-hidden rounded-full bg-gradient-to-r from-lagoon to-palm px-8 text-base font-semibold !text-white shadow-lg shadow-lagoon/25 transition-shadow duration-300 hover:shadow-xl hover:shadow-lagoon/40"
             >
               <Link to="/auth/login" aria-label="开始使用 Lumina">
                 开始使用
@@ -185,7 +185,7 @@ function Home() {
               asChild
               variant="outline"
               size="lg"
-              className="h-12 rounded-full border-[var(--line)] px-8 text-base font-medium text-[var(--sea-ink-soft)] transition-colors duration-300 hover:border-[var(--lagoon)]/30 hover:bg-[var(--lagoon)]/5 hover:text-[var(--sea-ink)]"
+              className="h-12 rounded-full border-line px-8 text-base font-medium text-sea-ink-soft transition-colors duration-300 hover:border-lagoon/30 hover:bg-lagoon/5 hover:text-sea-ink"
             >
               <a href="#features" aria-label="了解更多关于 Lumina 的功能">
                 了解更多
@@ -195,7 +195,7 @@ function Home() {
 
           {/* 底部装饰线 */}
           <motion.div
-            className="mx-auto mt-20 h-px w-28 bg-gradient-to-r from-transparent via-[var(--lagoon)]/40 to-transparent md:mt-24"
+            className="mx-auto mt-20 h-px w-28 bg-gradient-to-r from-transparent via-lagoon/40 to-transparent md:mt-24"
             variants={fadeIn}
           />
         </div>
@@ -218,12 +218,12 @@ function Home() {
               className="mb-3 flex items-center justify-center gap-3"
               variants={fadeUp}
             >
-              <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--lagoon)]/30" />
+              <span className="h-px w-8 bg-gradient-to-r from-transparent to-lagoon/30" />
               <span className={kickerBase}>核心能力</span>
-              <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--lagoon)]/30" />
+              <span className="h-px w-8 bg-gradient-to-l from-transparent to-lagoon/30" />
             </motion.div>
             <motion.h2
-              className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl"
+              className="display-title text-3xl font-bold text-sea-ink sm:text-4xl"
               variants={fadeUp}
             >
               三大独立领域，统一知识中枢
@@ -243,18 +243,18 @@ function Home() {
                   transition: { duration: 0.2 },
                 }}
               >
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--lagoon)]/10">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-lagoon/10">
                   <feat.icon
-                    className="h-6 w-6 text-[var(--lagoon-deep)]"
+                    className="h-6 w-6 text-lagoon-deep"
                     aria-hidden
                   />
                 </div>
 
-                <h3 className="mb-2 text-lg font-semibold text-[var(--sea-ink)]">
+                <h3 className="mb-2 text-lg font-semibold text-sea-ink">
                   {feat.title}
                 </h3>
 
-                <p className="mb-4 text-sm leading-relaxed text-[var(--sea-ink-soft)]">
+                <p className="mb-4 text-sm leading-relaxed text-sea-ink-soft">
                   {feat.description}
                 </p>
 
@@ -262,7 +262,7 @@ function Home() {
                   {feat.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center rounded-full bg-gradient-to-r from-[var(--lagoon)]/5 to-[var(--palm)]/5 px-3 py-1 text-[11px] font-semibold text-[var(--lagoon-deep)] ring-1 ring-[var(--lagoon)]/10 backdrop-blur-sm transition-all duration-200 hover:from-[var(--lagoon)]/10 hover:to-[var(--palm)]/10 hover:ring-[var(--lagoon)]/25"
+                      className="inline-flex items-center rounded-full bg-gradient-to-r from-lagoon/5 to-palm/5 px-3 py-1 text-[11px] font-semibold text-lagoon-deep ring-1 ring-lagoon/10 backdrop-blur-sm transition-all duration-200 hover:from-lagoon/10 hover:to-palm/10 hover:ring-lagoon/25"
                     >
                       {tag}
                     </span>
@@ -287,12 +287,12 @@ function Home() {
               className="mb-3 flex items-center justify-center gap-3"
               variants={fadeUp}
             >
-              <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--lagoon)]/30" />
+              <span className="h-px w-8 bg-gradient-to-r from-transparent to-lagoon/30" />
               <span className={kickerBase}>架构设计</span>
-              <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--lagoon)]/30" />
+              <span className="h-px w-8 bg-gradient-to-l from-transparent to-lagoon/30" />
             </motion.div>
             <motion.h2
-              className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl"
+              className="display-title text-3xl font-bold text-sea-ink sm:text-4xl"
               variants={fadeUp}
             >
               三模块独立 + 统一基础设施
@@ -311,10 +311,10 @@ function Home() {
               ].map((item) => (
                 <span
                   key={item.label}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--surface-strong)] px-4 py-2 text-sm font-semibold text-[var(--sea-ink)] shadow-sm ring-1 ring-[var(--line)] backdrop-blur-md transition-all duration-200 hover:shadow-md hover:ring-[var(--lagoon)]/20 hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-surface-strong px-4 py-2 text-sm font-semibold text-sea-ink shadow-sm ring-1 ring-line backdrop-blur-md transition-all duration-200 hover:shadow-md hover:ring-lagoon/20 hover:-translate-y-0.5"
                 >
                   <item.icon
-                    className="h-4 w-4 text-[var(--lagoon)]"
+                    className="h-4 w-4 text-lagoon"
                     aria-hidden
                   />
                   {item.label}
@@ -322,20 +322,20 @@ function Home() {
               ))}
             </div>
 
-            <div className="mx-auto mb-8 h-px w-3/4 bg-gradient-to-b from-[var(--line)] to-transparent" />
+            <div className="mx-auto mb-8 h-px w-3/4 bg-gradient-to-b from-line to-transparent" />
 
             <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
               {['RepoWiki', 'Memory', 'Q&A'].map((mod) => (
                 <div
                   key={mod}
-                  className="rounded-lg border border-[var(--lagoon)]/20 bg-[var(--lagoon)]/5 px-4 py-3 text-center text-sm font-semibold text-[var(--sea-ink)]"
+                  className="rounded-lg border border-lagoon/20 bg-lagoon/5 px-4 py-3 text-center text-sm font-semibold text-sea-ink"
                 >
                   {mod}
                 </div>
               ))}
             </div>
 
-            <div className="mx-auto mb-8 h-px w-3/4 bg-gradient-to-b from-[var(--line)] to-transparent" />
+            <div className="mx-auto mb-8 h-px w-3/4 bg-gradient-to-b from-line to-transparent" />
 
             <div className="flex flex-wrap items-center justify-center gap-3">
               {[
@@ -345,10 +345,10 @@ function Home() {
               ].map((item) => (
                 <span
                   key={item.label}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--sea-ink-soft)] shadow-sm ring-1 ring-[var(--line)] backdrop-blur-md transition-all duration-200 hover:shadow-md hover:ring-[var(--palm)]/20 hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-surface px-4 py-2 text-sm font-semibold text-sea-ink-soft shadow-sm ring-1 ring-line backdrop-blur-md transition-all duration-200 hover:shadow-md hover:ring-palm/20 hover:-translate-y-0.5"
                 >
                   <item.icon
-                    className="h-4 w-4 text-[var(--palm)]"
+                    className="h-4 w-4 text-palm"
                     aria-hidden
                   />
                   {item.label}
@@ -372,18 +372,18 @@ function Home() {
             className="mb-3 flex items-center justify-center gap-3"
             variants={fadeUp}
           >
-            <span className="h-px w-8 bg-gradient-to-r from-transparent to-[var(--lagoon)]/30" />
+            <span className="h-px w-8 bg-gradient-to-r from-transparent to-lagoon/30" />
             <span className={kickerBase}>开放协议</span>
-            <span className="h-px w-8 bg-gradient-to-l from-transparent to-[var(--lagoon)]/30" />
+            <span className="h-px w-8 bg-gradient-to-l from-transparent to-lagoon/30" />
           </motion.div>
           <motion.h2
-            className="display-title mb-4 text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl"
+            className="display-title mb-4 text-3xl font-bold text-sea-ink sm:text-4xl"
             variants={fadeUp}
           >
             开放协议，无缝接入
           </motion.h2>
           <motion.p
-            className="mb-8 text-base leading-relaxed text-[var(--sea-ink-soft)]"
+            className="mb-8 text-base leading-relaxed text-sea-ink-soft"
             variants={fadeUp}
           >
             通过 Streamable MCP 标准协议，任何支持 MCP 的 AI Agent 均可接入
@@ -394,18 +394,18 @@ function Home() {
             className={`${shellBase} overflow-hidden rounded-xl text-left`}
             variants={scaleIn}
           >
-            <div className="flex items-center gap-2 border-b border-[var(--line)] bg-[var(--foam)] px-4 py-2.5">
-              <span className="inline-block h-2 w-2 rounded-full bg-[var(--lagoon)]/60" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
+            <div className="flex items-center gap-2 border-b border-line bg-foam px-4 py-2.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-lagoon/60" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-sea-ink-soft">
                 MCP Tools
               </span>
             </div>
             <pre className="overflow-x-auto px-5 py-4">
-              <code className="text-sm leading-relaxed text-[var(--sea-ink)]">
+              <code className="text-sm leading-relaxed text-sea-ink">
                 {mcpTools.map((tool, i) => (
                   <span key={tool}>
                     {i > 0 && '\n'}
-                    <span className="text-[var(--lagoon-deep)]">
+                    <span className="text-lagoon-deep">
                       {'>'}
                     </span>{' '}
                     {tool}
@@ -431,18 +431,18 @@ function Home() {
         >
           <motion.div variants={fadeUp}>
             <Sparkles
-              className="mx-auto mb-5 h-10 w-10 text-[var(--lagoon)]"
+              className="mx-auto mb-5 h-10 w-10 text-lagoon"
               aria-hidden
             />
           </motion.div>
           <motion.h2
-            className="display-title mb-4 text-2xl font-bold text-[var(--sea-ink)] sm:text-3xl"
+            className="display-title mb-4 text-2xl font-bold text-sea-ink sm:text-3xl"
             variants={fadeUp}
           >
             准备好让 AI 真正理解你的代码了吗？
           </motion.h2>
           <motion.p
-            className="mb-8 text-sm text-[var(--sea-ink-soft)]"
+            className="mb-8 text-sm text-sea-ink-soft"
             variants={fadeUp}
           >
             立即开始使用 Lumina，开启 AI 深度代码认知之旅。

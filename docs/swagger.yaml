@@ -144,6 +144,12 @@ definitions:
     type: object
   qa.UpdateQaConfigRequest:
     properties:
+      max_retries:
+        description: qa_get_answer 最大重试次数（达到后返回STOPPED），nil不更新
+        type: integer
+      poll_slice:
+        description: qa_get_answer 单次阻塞上限（秒），nil不更新
+        type: integer
       runtime_domain:
         description: 运行时域名，nil不更新
         type: string

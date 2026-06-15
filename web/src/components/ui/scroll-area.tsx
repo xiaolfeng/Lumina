@@ -6,8 +6,9 @@ import { cn } from "#/lib/utils.ts"
 function ScrollArea({
   className,
   children,
+  hideScrollbar,
   ...props
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Root>) {
+}: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & { hideScrollbar?: boolean }) {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
@@ -20,7 +21,12 @@ function ScrollArea({
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
-      <ScrollBar />
+      {/*
+        始终渲染 ScrollBar，仅用 CSS 隐藏。
+        Radix Viewport 的 overflowY 由 scrollbarYEnabled 控制：挂载 = scroll，卸载 = hidden。
+        移除 ScrollBar DOM 会关闭原生滚动。
+      */}
+      <ScrollBar className={hideScrollbar ? "opacity-0 pointer-events-none" : undefined} />
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
   )

@@ -3,6 +3,7 @@
 @plugin '@tailwindcss/typography';
 
 @import 'tw-animate-css';
+@import 'katex/dist/katex.min.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -134,6 +135,33 @@
 
 @theme inline {
   --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+
+  /* ── 微明色盘 · @theme 映射（自动生成语义工具类） ── */
+  /* 意象层 */
+  --color-sea-ink: var(--sea-ink);
+  --color-sea-ink-soft: var(--sea-ink-soft);
+  --color-lagoon: var(--lagoon);
+  --color-lagoon-deep: var(--lagoon-deep);
+  --color-palm: var(--palm);
+  --color-sand: var(--sand);
+  --color-foam: var(--foam);
+
+  /* 材质层 */
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-line: var(--line);
+  --color-bg-base: var(--bg-base);
+  --color-header-bg: var(--header-bg);
+  --color-chip-bg: var(--chip-bg);
+  --color-chip-line: var(--chip-line);
+  --color-kicker: var(--kicker);
+  --color-link-bg-hover: var(--link-bg-hover);
+
+  /* 光晕层 */
+  --color-hero-a: var(--hero-a);
+  --color-hero-b: var(--hero-b);
+
+  /* shadcn 兼容 */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -158,10 +186,14 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  /* 圆角 */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* 侧边栏 */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -275,4 +307,64 @@ body::after {
     background-color: var(--background);
     color: var(--foreground);
   }
+}
+
+/* ─── 代码高亮 · 微明主题（覆盖 highlight.js 默认） ─────── */
+/* 以烛光琥珀为标记色，墨褐为底，与微明色盘融为一体 */
+.hljs {
+  color: var(--sea-ink);
+  background: transparent;
+}
+.hljs-comment,
+.hljs-quote {
+  color: color-mix(in oklab, var(--sea-ink-soft) 75%, transparent);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-name,
+.hljs-tag {
+  color: var(--lagoon-deep);
+}
+.hljs-string,
+.hljs-title,
+.hljs-section,
+.hljs-attribute,
+.hljs-literal,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-addition {
+  color: var(--palm);
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-meta,
+.hljs-selector,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: var(--kicker);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
+}
+.hljs-deletion {
+  color: #b91c1c;
+}
+
+/* Mermaid 容器居中 */
+.prose :where(.mermaid) {
+  display: flex;
+  justify-content: center;
+  margin-block: 1rem;
+}
+.prose :where(.mermaid svg) {
+  max-width: 100%;
+  height: auto;
 }

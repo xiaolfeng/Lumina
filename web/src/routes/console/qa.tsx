@@ -41,10 +41,10 @@ function QaPage() {
 				className="relative flex items-center justify-between pl-1.5"
 				variants={staggerItemLeft}
 			>
-				<div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-(--lagoon) to-(--palm)" />
+				<div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-lagoon to-palm" />
 				<div>
-					<h1 className="text-2xl font-bold tracking-tight text-(--sea-ink)">问答管理</h1>
-					<p className="text-(--sea-ink-soft)">管理 Q&A 会话和问答记录</p>
+					<h1 className="text-2xl font-bold tracking-tight text-sea-ink">问答管理</h1>
+					<p className="text-sea-ink-soft">管理 Q&A 会话和问答记录</p>
 				</div>
 			</motion.div>
 

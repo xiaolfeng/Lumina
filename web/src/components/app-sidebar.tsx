@@ -91,17 +91,17 @@ export function AppSidebar() {
 								<SidebarMenuButton
 									size="lg"
 									asChild
-									className="hover:bg-(--link-bg-hover)"
+									className="hover:bg-link-bg-hover"
 								>
 									<Link to="/console/dashboard">
-										<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-(--lagoon) text-(--foam) shadow-sm shadow-(--hero-a)">
+										<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-lagoon text-foam shadow-sm shadow-hero-a">
 											<Sparkles className="size-4" />
 										</div>
 										<div className="flex flex-col gap-0.5 leading-none">
-											<span className="font-semibold text-(--sea-ink)">
+											<span className="font-semibold text-sea-ink">
 												微明 Lumina
 											</span>
-											<span className="text-xs text-(--sea-ink-soft)">
+											<span className="text-xs text-sea-ink-soft">
 												管理后台
 											</span>
 										</div>
@@ -132,8 +132,8 @@ export function AppSidebar() {
 														tooltip={item.title}
 														className={
 															isActive
-																? "bg-(--chip-bg) text-(--lagoon) border border-(--chip-line) font-medium"
-																: "hover:bg-(--link-bg-hover)"
+																? "bg-chip-bg text-lagoon border border-chip-line font-medium"
+																: "hover:bg-link-bg-hover"
 														}
 													>
 														{item.external ? (
@@ -162,24 +162,24 @@ export function AppSidebar() {
 						</SidebarGroup>
 					))}
 				</SidebarContent>
-				<SidebarFooter className="border-t border-(--line)">
+				<SidebarFooter className="border-t border-line">
 					<SidebarMenu>
 						<SidebarMenuItem>
 							<motion.div variants={sidebarItem}>
 								<SidebarMenuButton
 									size="lg"
-									className="hover:bg-(--link-bg-hover)"
+									className="hover:bg-link-bg-hover"
 								>
 									<Avatar className="size-8 rounded-lg">
-										<AvatarFallback className="rounded-lg bg-(--accent) text-(--lagoon) text-sm font-medium">
+										<AvatarFallback className="rounded-lg bg-(--accent) text-lagoon text-sm font-medium">
 											{fallbackInitial}
 										</AvatarFallback>
 									</Avatar>
 									<div className="flex flex-col gap-0.5 leading-none">
-										<span className="text-sm font-medium text-(--sea-ink)">
+										<span className="text-sm font-medium text-sea-ink">
 											{displayName}
 										</span>
-										<span className="text-xs text-(--sea-ink-soft)">
+										<span className="text-xs text-sea-ink-soft">
 											{subtitle}
 										</span>
 									</div>

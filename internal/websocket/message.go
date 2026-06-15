@@ -5,11 +5,14 @@ type MessageType string
 
 const (
 	// Server → Client 消息类型
-	MsgQuestionPush   MessageType = "question_push"    // 推送新问题
-	MsgSupplementPush MessageType = "supplement_push"  // 推送补充内容
-	MsgAnswerSync     MessageType = "answer_sync"      // 回答同步（跨设备）
-	MsgHeartbeat      MessageType = "heartbeat"        // 心跳
-	MsgSessionEnd     MessageType = "session_end"      // 会话结束通知
+	MsgQuestionPush    MessageType = "question_push"     // 推送新问题（pending）
+	MsgHistoryQuestion MessageType = "history_question"  // 推送历史问题（已回答/已跳过，连接恢复时）
+	MsgSupplementPush  MessageType = "supplement_push"   // 推送补充内容
+	MsgAnswerSync      MessageType = "answer_sync"       // 回答同步（跨设备）
+	MsgHeartbeat       MessageType = "heartbeat"         // 心跳
+	MsgSessionEnd      MessageType = "session_end"       // 会话结束通知
+
+	MsgAnswerUnhandled MessageType = "answer_unhandled" // 回答未消费通知（Server → Client）
 
 	// Client → Server 消息类型
 	MsgAnswerSubmit      MessageType = "answer_submit"       // 提交回答

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type WsMessageType =
   | 'question_push'
+  | 'history_question'
   | 'supplement_push'
   | 'answer_sync'
   | 'heartbeat'
@@ -12,6 +13,13 @@ export type WsMessageType =
   | 'answer_submit'
   | 'request_supplement'
   | 'skip'
+  | 'answer_unhandled'
+
+export interface AnswerUnhandledData {
+  question_id: string
+  answer: any
+  message: string
+}
 
 export interface WsMessage {
   type: WsMessageType
@@ -25,14 +33,18 @@ export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnect
 // ── Hook Options ──
 
 interface UseQaWebSocketOptions {
-  /** Callback for when a question is pushed */
+  /** Callback for when a question is pushed (pending) */
   onQuestionPush?: (data: any) => void
+  /** Callback for when a history question is pushed (answered/skipped) */
+  onHistoryQuestion?: (data: any) => void
   /** Callback for when a supplement is pushed */
   onSupplementPush?: (data: any) => void
   /** Callback for answer sync from other devices */
   onAnswerSync?: (data: any) => void
   /** Callback for session end */
   onSessionEnd?: () => void
+  /** Callback for when the server rejects an answer (unhandled) */
+  onAnswerUnhandled?: (data: AnswerUnhandledData) => void
   /** Callback for connection status changes */
   onStatusChange?: (status: ConnectionStatus) => void
   /** Callback for when the server rejects the connection (session invalid/expired) */
@@ -145,11 +157,17 @@ export function useQaWebSocket(
           case 'question_push':
             optionsRef.current.onQuestionPush?.(msg.data)
             break
+          case 'history_question':
+            optionsRef.current.onHistoryQuestion?.(msg.data)
+            break
           case 'supplement_push':
             optionsRef.current.onSupplementPush?.(msg.data)
             break
           case 'answer_sync':
             optionsRef.current.onAnswerSync?.(msg.data)
+            break
+          case 'answer_unhandled':
+            optionsRef.current.onAnswerUnhandled?.(msg.data)
             break
           case 'session_end':
             optionsRef.current.onSessionEnd?.()

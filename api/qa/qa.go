@@ -13,6 +13,8 @@ type ListSessionRequest struct {
 type UpdateQaConfigRequest struct {
 	SessionTTL    *int    `json:"session_ttl"`    // Session TTL（秒），nil不更新
 	RuntimeDomain *string `json:"runtime_domain"` // 运行时域名，nil不更新
+	PollSlice     *int    `json:"poll_slice"`     // qa_get_answer 单次阻塞上限（秒），nil不更新
+	MaxRetries    *int    `json:"max_retries"`    // qa_get_answer 最大重试次数（达到后返回STOPPED），nil不更新
 }
 
 // CreateSessionRequest 创建QA会话请求
@@ -57,13 +59,24 @@ type SessionDetailResponse struct {
 }
 
 // QuestionSummaryResponse 问题摘要（列表用）
+//
+// 用于会话详情接口返回完整历史问答（含回答内容、选项、补充等），
+// 支持前端 Interact 页面刷新后恢复历史问答。
 type QuestionSummaryResponse struct {
-	ID         string `json:"id"`          // 问题ID
-	Type       string `json:"type"`        // 题型
-	Title      string `json:"title"`       // 标题
-	Status     string `json:"status"`      // pending/answered/skipped
-	CreatedAt  string `json:"created_at"`  // 创建时间
-	AnsweredAt string `json:"answered_at"` // 回答时间
+	ID          string               `json:"id"`           // 问题ID
+	Type        string               `json:"type"`         // 题型
+	Title       string               `json:"title"`        // 标题
+	Options     any                  `json:"options"`      // 选项配置
+	Config      any                  `json:"config"`       // 题型特有配置
+	Batch       any                  `json:"batch"`        // 分批信息
+	GroupLabel  string               `json:"group_label"`  // 分组标签
+	Supplement  bool                 `json:"supplement"`   // 是否携带补充内容
+	Status      string               `json:"status"`       // pending/answered/skipped
+	Answer      any                  `json:"answer"`       // 回答数据
+	Media       any                  `json:"media"`        // 多媒体数据
+	Supplements []SupplementResponse `json:"supplements"`  // 关联补充内容
+	CreatedAt  string                `json:"created_at"`   // 创建时间
+	AnsweredAt string                `json:"answered_at"`  // 回答时间
 }
 
 // QuestionDetailResponse 问题详情（含回答+补充）
@@ -105,4 +118,6 @@ type SessionListResponse struct {
 type QaConfigResponse struct {
 	SessionTTL    int    `json:"session_ttl"`    // Session TTL（秒）
 	RuntimeDomain string `json:"runtime_domain"` // 运行时域名
+	PollSlice     int    `json:"poll_slice"`     // qa_get_answer 单次阻塞上限（秒）
+	MaxRetries    int    `json:"max_retries"`    // qa_get_answer 最大重试次数
 }

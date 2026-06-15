@@ -114,10 +114,33 @@ func (l *QaLogic) GetSessionDetail(ctx context.Context, id string) (*qa.SessionD
 		return nil, xErr
 	}
 
-	// 映射问题摘要
+	// 批量查询会话级全部补充内容（一次查询，避免 N+1），按问题 ID 分组
+	supplementMap := make(map[string][]qa.SupplementResponse)
+	supplements, suppErr := l.repo.supplement.GetBySessionID(ctx, parsedID)
+	if suppErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("GetSessionDetail - 查询补充内容失败（忽略，返回空补充）: %s", suppErr.Error()))
+	}
+	for _, s := range supplements {
+		// 仅聚合问题级补充（target_type=question），选项级补充由单题详情接口提供
+		if s.TargetType != "question" {
+			continue
+		}
+		key := strconv.FormatInt(s.TargetID.Int64(), 10)
+		supplementMap[key] = append(supplementMap[key], qa.SupplementResponse{
+			ID:          s.ID.String(),
+			TargetType:  s.TargetType,
+			TargetID:    key,
+			ContentType: s.ContentType,
+			Content:     s.Content,
+			CreatedAt:   s.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:   s.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+
+	// 映射问题摘要（含完整历史数据：回答、选项、补充内容）
 	questionSummaries := make([]qa.QuestionSummaryResponse, 0, len(questions))
 	for _, q := range questions {
-		questionSummaries = append(questionSummaries, toQuestionSummary(q))
+		questionSummaries = append(questionSummaries, toQuestionSummary(q, supplementMap[q.ID.String()]))
 	}
 
 	return &qa.SessionDetailResponse{
@@ -203,8 +226,10 @@ func (l *QaLogic) DeleteSession(ctx context.Context, id string) *xError.Error {
 		return xErr
 	}
 
-	// 清理队列
+	// 清理队列和重试计数器
 	l.queue.RemoveQueue(id)
+	retryKey := bConst.CacheQaGetAnswerRetry.Get(id).String()
+	_ = l.rdb.Del(ctx, retryKey).Err()
 
 	return nil
 }
@@ -215,7 +240,7 @@ func (l *QaLogic) GetQaConfig(ctx context.Context) (*qa.QaConfigResponse, *xErro
 
 	// 读取 Session TTL
 	var ttlInfo entity.Info
-	if err := l.db.WithContext(ctx).Where("`key` = ?", "qa.session.ttl").First(&ttlInfo).Error; err != nil {
+	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "qa.session.ttl").First(&ttlInfo).Error; err != nil {
 		l.log.Warn(ctx, fmt.Sprintf("读取qa.session.ttl失败: %s", err.Error()))
 		ttlInfo.Value = "604800" // 默认7天
 	}
@@ -226,14 +251,38 @@ func (l *QaLogic) GetQaConfig(ctx context.Context) (*qa.QaConfigResponse, *xErro
 
 	// 读取运行时域名
 	var domainInfo entity.Info
-	if err := l.db.WithContext(ctx).Where("`key` = ?", "runtime.domain").First(&domainInfo).Error; err != nil {
+	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "runtime.domain").First(&domainInfo).Error; err != nil {
 		l.log.Warn(ctx, fmt.Sprintf("读取runtime.domain失败: %s", err.Error()))
 		domainInfo.Value = "http://localhost:3000"
+	}
+
+	// 读取 qa_get_answer 单次阻塞上限（分片超时）
+	var sliceInfo entity.Info
+	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "qa.get_answer.poll_slice").First(&sliceInfo).Error; err != nil {
+		l.log.Warn(ctx, fmt.Sprintf("读取qa.get_answer.poll_slice失败: %s", err.Error()))
+		sliceInfo.Value = "25"
+	}
+	pollSlice, _ := strconv.Atoi(sliceInfo.Value)
+	if pollSlice <= 0 {
+		pollSlice = 25
+	}
+
+	// 读取 qa_get_answer 最大重试次数
+	var retryInfo entity.Info
+	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "qa.get_answer.max_retries").First(&retryInfo).Error; err != nil {
+		l.log.Warn(ctx, fmt.Sprintf("读取qa.get_answer.max_retries失败: %s", err.Error()))
+		retryInfo.Value = "36"
+	}
+	maxRetries, _ := strconv.Atoi(retryInfo.Value)
+	if maxRetries <= 0 {
+		maxRetries = 36
 	}
 
 	return &qa.QaConfigResponse{
 		SessionTTL:    ttl,
 		RuntimeDomain: domainInfo.Value,
+		PollSlice:     pollSlice,
+		MaxRetries:    maxRetries,
 	}, nil
 }
 
@@ -245,7 +294,7 @@ func (l *QaLogic) UpdateQaConfig(ctx context.Context, req *qa.UpdateQaConfigRequ
 	if req.SessionTTL != nil {
 		if err := l.db.WithContext(ctx).
 			Model(&entity.Info{}).
-			Where("`key` = ?", "qa.session.ttl").
+			Where("\"key\" = ?", "qa.session.ttl").
 			Update("value", strconv.Itoa(*req.SessionTTL)).Error; err != nil {
 			return nil, xError.NewError(ctx, xError.DatabaseError, "更新Session TTL失败", false, err)
 		}
@@ -255,9 +304,35 @@ func (l *QaLogic) UpdateQaConfig(ctx context.Context, req *qa.UpdateQaConfigRequ
 	if req.RuntimeDomain != nil {
 		if err := l.db.WithContext(ctx).
 			Model(&entity.Info{}).
-			Where("`key` = ?", "runtime.domain").
+			Where("\"key\" = ?", "runtime.domain").
 			Update("value", *req.RuntimeDomain).Error; err != nil {
 			return nil, xError.NewError(ctx, xError.DatabaseError, "更新运行时域名失败", false, err)
+		}
+	}
+
+	// 更新 qa_get_answer 单次阻塞上限（必须小于 MCP 客户端 tool 超时约 30s）
+	if req.PollSlice != nil {
+		if *req.PollSlice < 1 || *req.PollSlice > 28 {
+			return nil, xError.NewError(ctx, xError.BusinessError, "poll_slice 必须在 1-28 秒之间（需小于客户端 tool 超时）", false, nil)
+		}
+		if err := l.db.WithContext(ctx).
+			Model(&entity.Info{}).
+			Where("\"key\" = ?", "qa.get_answer.poll_slice").
+			Update("value", strconv.Itoa(*req.PollSlice)).Error; err != nil {
+			return nil, xError.NewError(ctx, xError.DatabaseError, "更新poll_slice失败", false, err)
+		}
+	}
+
+	// 更新 qa_get_answer 最大重试次数（必须 ≥1）
+	if req.MaxRetries != nil {
+		if *req.MaxRetries < 1 {
+			return nil, xError.NewError(ctx, xError.BusinessError, "max_retries 必须至少为 1", false, nil)
+		}
+		if err := l.db.WithContext(ctx).
+			Model(&entity.Info{}).
+			Where("\"key\" = ?", "qa.get_answer.max_retries").
+			Update("value", strconv.Itoa(*req.MaxRetries)).Error; err != nil {
+			return nil, xError.NewError(ctx, xError.DatabaseError, "更新max_retries失败", false, err)
 		}
 	}
 
@@ -336,7 +411,7 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType, 
 
 	// 读取运行时域名配置，生成浏览器链接
 	var domainInfo entity.Info
-	if err := l.db.WithContext(ctx).Where("`key` = ?", "runtime.domain").First(&domainInfo).Error; err != nil || domainInfo.Value == "" {
+	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "runtime.domain").First(&domainInfo).Error; err != nil || domainInfo.Value == "" {
 		domainInfo.Value = "http://localhost:3000"
 	}
 	link := fmt.Sprintf("%s/interact?session=%s", strings.TrimRight(domainInfo.Value, "/"), hash)
@@ -475,8 +550,33 @@ func (l *QaLogic) GetAnswer(ctx context.Context, sessionID string, timeout time.
 		return "", nil
 	}
 
+	// 成功消费回答，重置该会话的重试计数器
+	retryKey := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
+	if delErr := l.rdb.Del(ctx, retryKey).Err(); delErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("GetAnswer - 重置重试计数器失败（忽略）: %s", delErr.Error()))
+	}
+
 	// 格式化回答字符串（需要查询问题元数据）
 	return l.formatAnswerString(ctx, answers), nil
+}
+
+// IncrementGetAnswerRetry 增加指定会话的 qa_get_answer 重试计数器
+// 返回当前计数（递增后的值）。首次调用时自动设置过期时间为 Session TTL。
+func (l *QaLogic) IncrementGetAnswerRetry(ctx context.Context, sessionID string, ttlSeconds int) (int, *xError.Error) {
+	retryKey := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
+	count, err := l.rdb.Incr(ctx, retryKey).Result()
+	if err != nil {
+		return 0, xError.NewError(ctx, xError.UnknownError, "增加重试计数器失败", false, err)
+	}
+	// 首次设置时配置过期时间
+	if count == 1 {
+		ttl := time.Duration(ttlSeconds) * time.Second
+		if ttl <= 0 {
+			ttl = 48 * time.Hour
+		}
+		_ = l.rdb.Expire(ctx, retryKey, ttl).Err()
+	}
+	return int(count), nil
 }
 
 // RegetAnswer 重新获取已回答的问题（MCP工具）
@@ -497,7 +597,7 @@ func (l *QaLogic) RegetAnswer(ctx context.Context, sessionID, questionID string,
 
 	// 检查是否已回答
 	if question.Status != "answered" {
-		return "问题尚未回答，请使用 get_answer 阻塞等待回答", nil
+		return "该问题用户暂未回答，请使用 qa_get_answer 来获取用户最近的一次回答。", nil
 	}
 
 	// 如果需要 base64 且有媒体数据
@@ -519,7 +619,7 @@ func (l *QaLogic) RegetAnswer(ctx context.Context, sessionID, questionID string,
 //
 // 遍历所有 questionIDs，对每个执行：
 // - 已回答 → "[ANSWERED] {question_id}: {答案摘要}"
-// - 未回答 → "[PENDING] {question_id}: 请使用 qa_get_answer 阻塞等待用户回答。"
+// - 未回答 → "[PENDING] {question_id}: 该问题用户暂未回答，请使用 qa_get_answer 来获取用户最近的一次回答。"
 // - 无效ID → "[ERROR] {question_id}: 无效的问题ID格式"
 // - 不存在 → "[ERROR] {question_id}: 问题不存在"
 func (l *QaLogic) RegetAnswers(ctx context.Context, sessionID string, questionIDs []string) (string, *xError.Error) {
@@ -547,7 +647,7 @@ func (l *QaLogic) RegetAnswers(ctx context.Context, sessionID string, questionID
 		if question.Status == "answered" {
 			sb.WriteString(fmt.Sprintf("--- question:%s ---\n[ANSWER] %s\n", qid, summary))
 		} else {
-			sb.WriteString(fmt.Sprintf("--- question:%s ---\n[PENDING] 请使用 qa_get_answer 阻塞等待用户回答。\n", qid))
+			sb.WriteString(fmt.Sprintf("--- question:%s ---\n[PENDING] 该问题用户暂未回答，请使用 qa_get_answer 来获取用户最近的一次回答。\n", qid))
 		}
 	}
 
@@ -623,6 +723,8 @@ func (l *QaLogic) ArchiveSession(ctx context.Context, sessionID string) *xError.
 	}
 
 	l.queue.RemoveQueue(sessionID)
+	retryKey := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
+	_ = l.rdb.Del(ctx, retryKey).Err()
 	return nil
 }
 
@@ -645,14 +747,25 @@ func toSessionResponse(session *entity.QaSession) qa.SessionResponse {
 }
 
 // toQuestionSummary 将问题实体映射为摘要 DTO
-func toQuestionSummary(q *entity.QaQuestion) qa.QuestionSummaryResponse {
+//
+// supplements 为该问题关联的补充内容（按 question 维度分组后注入），
+// 支持 Interact 页面刷新后恢复完整历史问答（含回答、选项、补充内容）。
+func toQuestionSummary(q *entity.QaQuestion, supplements []qa.SupplementResponse) qa.QuestionSummaryResponse {
 	return qa.QuestionSummaryResponse{
-		ID:         q.ID.String(),
-		Type:       q.Type,
-		Title:      q.Title,
-		Status:     q.Status,
-		CreatedAt:  q.CreatedAt.Format(time.RFC3339),
-		AnsweredAt: formatTimePtr(q.AnsweredAt),
+		ID:          q.ID.String(),
+		Type:        q.Type,
+		Title:       q.Title,
+		Options:     jsonOrNull(q.Options),
+		Config:      jsonOrNull(q.Config),
+		Batch:       jsonOrNull(q.Batch),
+		GroupLabel:  q.GroupLabel,
+		Supplement:  q.Supplement,
+		Status:      q.Status,
+		Answer:      jsonOrNull(q.Answer),
+		Media:       jsonOrNull(q.Media),
+		Supplements: supplements,
+		CreatedAt:   q.CreatedAt.Format(time.RFC3339),
+		AnsweredAt:  formatTimePtr(q.AnsweredAt),
 	}
 }
 

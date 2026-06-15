@@ -76,7 +76,7 @@ function AuthLayout() {
     <div className="flex min-h-screen w-full flex-col lg:flex-row">
       {/* ════════ LEFT: Brand panel ════════ */}
       <motion.aside
-        className="relative hidden flex-col justify-between overflow-hidden bg-[var(--sea-ink)] p-10 text-[var(--sand)] lg:flex lg:w-[55%] xl:p-14 dark:bg-[#1a1512] dark:text-[#ede5d8]"
+        className="relative hidden flex-col justify-between overflow-hidden bg-sea-ink p-10 text-sand lg:flex lg:w-[55%] xl:p-14 dark:bg-[#1a1512] dark:text-[#ede5d8]"
         initial="hidden"
         animate="visible"
         variants={leftPanelVariants}
@@ -96,7 +96,7 @@ function AuthLayout() {
           <motion.div variants={itemVariants}>
             <Link
               to="/"
-              className="mb-10 inline-flex items-center gap-2 text-sm font-medium text-[var(--lagoon)] transition-colors hover:text-[var(--sand)] dark:hover:text-[#ede5d8]"
+              className="mb-10 inline-flex items-center gap-2 text-sm font-medium text-lagoon transition-colors hover:text-sand dark:hover:text-[#ede5d8]"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
               返回首页
@@ -107,7 +107,7 @@ function AuthLayout() {
             className="flex items-center gap-3"
             variants={itemVariants}
           >
-            <Sparkles className="h-7 w-7 text-[var(--lagoon)]" aria-hidden />
+            <Sparkles className="h-7 w-7 text-lagoon" aria-hidden />
             <span className="display-title text-2xl font-bold tracking-tight">
               Lumina · 微明
             </span>
@@ -122,7 +122,7 @@ function AuthLayout() {
           >
             烛照幽微
             <br />
-            <span className="text-[var(--lagoon)]">知常曰明</span>
+            <span className="text-lagoon">知常曰明</span>
           </motion.h1>
 
           <motion.p
@@ -140,7 +140,7 @@ function AuthLayout() {
                 key={h.label}
                 className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium backdrop-blur-sm"
               >
-                <h.icon className="h-4 w-4 text-[var(--lagoon)]" aria-hidden />
+                <h.icon className="h-4 w-4 text-lagoon" aria-hidden />
                 {h.label}
               </span>
             ))}
@@ -157,17 +157,17 @@ function AuthLayout() {
       </motion.aside>
 
       {/* ════════ RIGHT: Content area ════════ */}
-      <main className="relative flex flex-1 items-center justify-center bg-[var(--bg-base)] p-6 lg:w-[45%]">
+      <main className="relative flex flex-1 items-center justify-center bg-bg-base p-6 lg:w-[45%]">
         {/* Mobile top bar */}
         <div className="absolute left-0 right-0 top-0 flex items-center justify-between p-5 lg:hidden">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-[var(--sea-ink-soft)]"
+            className="inline-flex items-center gap-2 text-sm font-medium text-sea-ink-soft"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             返回
           </Link>
-          <span className="display-title text-lg font-bold text-[var(--sea-ink)]">
+          <span className="display-title text-lg font-bold text-sea-ink">
             Lumina
           </span>
         </div>

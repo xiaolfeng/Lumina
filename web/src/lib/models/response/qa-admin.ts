@@ -22,7 +22,15 @@ export interface QuestionSummary {
   id: string
   type: string
   title: string
+  options: any
+  config: any
+  batch: any
+  group_label: string
+  supplement: boolean
   status: 'pending' | 'answered' | 'skipped'
+  answer: any
+  media: any
+  supplements: SupplementItem[]
   created_at: string
   answered_at: string
 }

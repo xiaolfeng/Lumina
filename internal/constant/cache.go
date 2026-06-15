@@ -10,8 +10,9 @@ import (
 type RedisKey string
 
 const (
-	CacheAuthToken    RedisKey = "auth:at:%s" // CacheAuthToken AccessToken 认证标记缓存（%s = MD5(AT)）
-	CacheRefreshToken RedisKey = "auth:rt:%s" // CacheRefreshToken RefreshToken→UserID 缓存（%s = RT）
+	CacheAuthToken    RedisKey = "auth:at:%s"   // CacheAuthToken AccessToken 认证标记缓存（%s = MD5(AT)）
+	CacheRefreshToken RedisKey = "auth:rt:%s"   // CacheRefreshToken RefreshToken→UserID 缓存（%s = RT）
+	CacheQaGetAnswerRetry RedisKey = "qa:get_answer:retry:%s" // CacheQaGetAnswerRetry qa_get_answer 重试计数器（%s = sessionID）
 )
 
 // Get 格式化 Redis 键，自动拼接环境前缀

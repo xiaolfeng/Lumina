@@ -55,16 +55,16 @@ function ProjectPage() {
         className="relative flex items-center justify-between pl-1.5"
         variants={staggerItemLeft}
       >
-        <div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-(--lagoon) to-(--palm)" />
+        <div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-lagoon to-palm" />
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-(--sea-ink)">项目管理</h1>
-          <p className="text-(--sea-ink-soft)">
+          <h1 className="text-2xl font-bold tracking-tight text-sea-ink">项目管理</h1>
+          <p className="text-sea-ink-soft">
             管理你的项目，用于组织 Pin 和 Q&A
           </p>
         </div>
         <Button
           onClick={() => setCreateOpen(true)}
-          className="bg-(--lagoon) text-(--foam) hover:bg-(--lagoon-deep)"
+          className="bg-lagoon text-foam hover:bg-lagoon-deep"
         >
           <Plus className="mr-2 size-4" />
           创建项目

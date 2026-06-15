@@ -31,15 +31,16 @@ const heartbeatTimeout = 15 * time.Second
 // 通过 register/unregister 通道实现并发安全的连接生命周期管理。
 // 新连接注册时自动推送该会话下所有待回答问题（用于前端重连恢复）。
 type Hub struct {
-	sessions     map[string]map[string]*Connection // sessionID → deviceID → Connection
-	register     chan *Connection                   // 注册通道
-	unregister   chan *Connection                   // 注销通道
-	mu           sync.RWMutex                       // sessions 读写锁
-	log          *xLog.LogNamedLogger               // 日志记录器
-	handler      MessageHandler                     // 消息处理回调
-	sessionRepo  *repository.QaSessionRepo          // QA 会话仓库（用于临时会话硬删除）
-	questionRepo *repository.QaQuestionRepo          // QA 问题仓库（用于连接时推送 pending 问题）
-	db           *gorm.DB                           // 数据库实例（用于异步更新 OnlineDevices）
+	sessions      map[string]map[string]*Connection // sessionID → deviceID → Connection
+	register      chan *Connection                   // 注册通道
+	unregister    chan *Connection                   // 注销通道
+	mu            sync.RWMutex                       // sessions 读写锁
+	log           *xLog.LogNamedLogger               // 日志记录器
+	handler       MessageHandler                     // 消息处理回调
+	sessionRepo   *repository.QaSessionRepo          // QA 会话仓库（用于临时会话硬删除）
+	questionRepo  *repository.QaQuestionRepo         // QA 问题仓库（用于连接时推送 pending 问题）
+	supplementRepo *repository.QaSupplementRepo      // QA 补充仓库（用于连接时推送已存在 supplement）
+	db            *gorm.DB                           // 数据库实例（用于异步更新 OnlineDevices）
 }
 
 // 全局单例 Hub 实例
@@ -62,14 +63,15 @@ func GetHub(handler MessageHandler, sessionRepo *repository.QaSessionRepo, db *g
 // NewHub 创建 Hub 实例
 func NewHub(handler MessageHandler, sessionRepo *repository.QaSessionRepo, db *gorm.DB) *Hub {
 	return &Hub{
-		sessions:     make(map[string]map[string]*Connection),
-		register:     make(chan *Connection),
-		unregister:   make(chan *Connection),
-		log:          xLog.WithName(xLog.NamedCONT, "WebSocketHub"),
-		handler:      handler,
-		sessionRepo:  sessionRepo,
-		questionRepo: repository.NewQaQuestionRepo(db),
-		db:           db,
+		sessions:       make(map[string]map[string]*Connection),
+		register:       make(chan *Connection),
+		unregister:     make(chan *Connection),
+		log:            xLog.WithName(xLog.NamedCONT, "WebSocketHub"),
+		handler:        handler,
+		sessionRepo:    sessionRepo,
+		questionRepo:   repository.NewQaQuestionRepo(db),
+		supplementRepo: repository.NewQaSupplementRepo(db),
+		db:             db,
 	}
 }
 
@@ -224,8 +226,8 @@ func (h *Hub) registerConn(conn *Connection) {
 	// 异步同步 OnlineDevices 到数据库
 	go h.syncOnlineDevices(conn.sessionID, deviceCount+1)
 
-	// 向新连接推送该会话下所有待回答问题（支持前端重连恢复）
-	go h.pushPendingQuestions(conn)
+	// 向新连接推送该会话的全部问题历史及补充内容
+	go h.pushSessionHistory(conn)
 }
 
 // unregisterConn 从 sessions 映射中移除连接
@@ -345,24 +347,54 @@ func (h *Hub) checkAndDeleteTemporarySession(sessionID string) {
 	}
 }
 
-// pushPendingQuestions 向新连接推送该会话下所有待回答问题
-func (h *Hub) pushPendingQuestions(conn *Connection) {
+// pushSessionHistory 向新连接推送该会话的全部问题历史及补充内容
+//
+// 连接建立时调用。按问题状态区分推送方式：
+//   - pending 问题 → question_push（前端视为待回答的活跃问题）
+//   - 已回答/已跳过 → history_question（前端仅作历史展示，不激活交互）
+//
+// 随后推送该会话所有 supplement（supplement_push），前端自动恢复补充内容。
+func (h *Hub) pushSessionHistory(conn *Connection) {
 	sid, err := xSnowflake.ParseSnowflakeID(conn.sessionID)
 	if err != nil {
 		return
 	}
 
-	questions, xErr := h.questionRepo.GetPendingBySessionID(context.Background(), sid)
+	// 查询该会话全部问题（含已回答/已跳过/待回答）
+	questions, xErr := h.questionRepo.GetBySessionID(context.Background(), sid)
 	if xErr != nil {
-		h.log.Warn(nil, "推送待回答问题失败", slog.String("error", xErr.Error()))
+		h.log.Warn(nil, "推送会话历史失败", slog.String("error", xErr.Error()))
 		return
 	}
 
+	// 按状态区分推送
+	pendingIDs := make(map[string]bool, len(questions))
 	for _, q := range questions {
+		msgType := MsgHistoryQuestion
+		if q.Status == "pending" {
+			msgType = MsgQuestionPush
+			pendingIDs[q.ID.String()] = true
+		}
 		msg := &Message{
-			Type:      MsgQuestionPush,
+			Type:      msgType,
 			SessionID: conn.sessionID,
 			Data:      q,
+			Timestamp: time.Now().UnixMilli(),
+		}
+		_ = conn.SendMessage(msg)
+	}
+
+	// 推送该会话所有 supplement（问题级 + 选项级）
+	supplements, sErr := h.supplementRepo.GetBySessionID(context.Background(), sid)
+	if sErr != nil {
+		h.log.Warn(nil, "查询会话补充内容失败", slog.String("error", sErr.Error()))
+		return
+	}
+	for _, s := range supplements {
+		msg := &Message{
+			Type:      MsgSupplementPush,
+			SessionID: conn.sessionID,
+			Data:      s,
 			Timestamp: time.Now().UnixMilli(),
 		}
 		_ = conn.SendMessage(msg)

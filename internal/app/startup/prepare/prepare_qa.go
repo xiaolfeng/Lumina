@@ -22,6 +22,16 @@ func (p *Prepare) prepareQa() {
 			Value:       "",
 			Description: "运行时域名（用于内网判定多媒体返回策略）",
 		},
+		{
+			Key:         "qa.get_answer.poll_slice",
+			Value:       "25",
+			Description: "qa_get_answer 单次阻塞上限（秒），到点无回答返回 PENDING 引导重试",
+		},
+		{
+			Key:         "qa.get_answer.max_retries",
+			Value:       "36",
+			Description: "qa_get_answer 最大重试次数（默认36次≈15分钟），达到后返回 STOPPED 提示用户主动触发",
+		},
 	}
 
 	for _, info := range infos {

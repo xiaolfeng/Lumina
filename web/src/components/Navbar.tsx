@@ -37,7 +37,7 @@ export function Navbar() {
         className={
           'mx-auto grid max-w-6xl grid-cols-12 items-center gap-4 border transition-all duration-300 ' +
           (scrolled
-            ? 'mt-4 rounded-xl border-[var(--line)] bg-[var(--surface)] px-6 py-3 shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-md'
+            ? 'mt-4 rounded-xl border-line bg-surface px-6 py-3 shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-md'
             : 'border-transparent bg-transparent px-4 py-4 md:px-6 md:py-5')
         }
       >
@@ -49,15 +49,15 @@ export function Navbar() {
             aria-label="Lumina 首页"
           >
             <Sparkles
-              className="h-5 w-5 shrink-0 text-[var(--lagoon)]"
+              className="h-5 w-5 shrink-0 text-lagoon"
               aria-hidden
             />
-            <span className="display-title text-lg font-bold tracking-tight text-[var(--sea-ink)]">
+            <span className="display-title text-lg font-bold tracking-tight text-sea-ink">
               Lumina
             </span>
             <span className="hidden items-center gap-1.5 sm:inline-flex">
-              <span className="h-px w-3 bg-[var(--lagoon)]/40" />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--lagoon-deep)]">
+              <span className="h-px w-3 bg-lagoon/40" />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-lagoon-deep">
                 微明
               </span>
             </span>
@@ -70,11 +70,11 @@ export function Navbar() {
             <Link
               key={link.to}
               to={link.to}
-              className="group relative pb-0.5 text-sm font-medium text-[var(--sea-ink)] no-underline"
+              className="group relative pb-0.5 text-sm font-medium text-sea-ink no-underline"
               activeProps={{ className: 'is-active' }}
             >
               {link.label}
-              <span className="absolute bottom-0 left-1/2 h-[1.5px] w-0 -translate-x-1/2 bg-[var(--lagoon)] transition-all duration-250 group-hover:w-full group-hover:left-0 group-hover:translate-x-0 [.is-active_&]:w-full [.is-active_&]:left-0 [.is-active_&]:translate-x-0" />
+              <span className="absolute bottom-0 left-1/2 h-[1.5px] w-0 -translate-x-1/2 bg-lagoon transition-all duration-250 group-hover:w-full group-hover:left-0 group-hover:translate-x-0 [.is-active_&]:w-full [.is-active_&]:left-0 [.is-active_&]:translate-x-0" />
             </Link>
           ))}
         </div>
@@ -85,7 +85,7 @@ export function Navbar() {
             href="https://github.com/xiaolfeng/Lumina"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[var(--sea-ink-soft)] transition-colors duration-200 hover:bg-[var(--lagoon)]/10 hover:text-[var(--lagoon-deep)] cursor-pointer"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-sea-ink-soft transition-colors duration-200 hover:bg-lagoon/10 hover:text-lagoon-deep cursor-pointer"
             aria-label="GitHub 仓库"
           >
             <Github className="h-[1.15rem] w-[1.15rem]" aria-hidden />
@@ -101,7 +101,7 @@ export function Navbar() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-[var(--sea-ink-soft)]"
+                className="text-sea-ink-soft"
                 onClick={() =>
                   logout.mutate(
                     { refresh_token: getCookie('refresh_token') || '' },
@@ -126,7 +126,7 @@ export function Navbar() {
         <div className="col-span-6 flex items-center justify-end md:hidden">
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-md p-2 text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)] cursor-pointer"
+            className="inline-flex items-center justify-center rounded-md p-2 text-sea-ink-soft hover:text-sea-ink cursor-pointer"
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? '关闭菜单' : '打开菜单'}
             aria-expanded={open}
@@ -142,7 +142,7 @@ export function Navbar() {
         {/* ── Mobile menu panel ── */}
         {open && (
           <motion.div
-            className="col-span-12 flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-md md:hidden"
+            className="col-span-12 flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-md md:hidden"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -151,7 +151,7 @@ export function Navbar() {
               <Link
                 key={link.to}
                 to={link.to}
-                className="text-base font-medium text-[var(--sea-ink)] no-underline"
+                className="text-base font-medium text-sea-ink no-underline"
                 activeProps={{ className: 'is-active' }}
                 onClick={() => setOpen(false)}
               >
@@ -163,7 +163,7 @@ export function Navbar() {
               href="https://github.com/xiaolfeng/Lumina"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-base font-medium text-[var(--sea-ink)] no-underline"
+              className="inline-flex items-center gap-2 text-base font-medium text-sea-ink no-underline"
               onClick={() => setOpen(false)}
             >
               <Github className="h-[1.15rem] w-[1.15rem]" aria-hidden />
@@ -181,7 +181,7 @@ export function Navbar() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-full text-[var(--sea-ink-soft)]"
+                  className="w-full text-sea-ink-soft"
                   onClick={() =>
                     logout.mutate(
                       { refresh_token: getCookie('refresh_token') || '' },

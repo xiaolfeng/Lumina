@@ -2,9 +2,11 @@ package websocket
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
@@ -101,7 +103,7 @@ func CreateMessageHandler(db *gorm.DB) MessageHandler {
 		case MsgAnswerSubmit:
 			handleAnswerSubmit(ctx, conn, msg, questionRepo, queue, log)
 		case MsgRequestSupplement:
-			handleRequestSupplement(ctx, conn, msg, queue, log)
+			handleRequestSupplement(ctx, conn, msg, questionRepo, queue, log)
 		case MsgSkip:
 			handleSkip(ctx, conn, msg, questionRepo, queue, log)
 		case MsgSessionLeave:
@@ -148,6 +150,21 @@ func handleAnswerSubmit(ctx context.Context, conn *Connection, msg *Message, que
 		Timestamp:  time.Now(),
 	})
 
+	// 检查是否有消费者在等待，若无则广播未消费通知
+	if !queue.HasConsumer(conn.sessionID) {
+		unhandledMsg := &Message{
+			Type:      MsgAnswerUnhandled,
+			SessionID: conn.sessionID,
+			Data: map[string]interface{}{
+				"question_id": questionIDStr,
+				"answer":      answerData,
+				"message":     "回答已提交，但当前没有 AI Agent 在等待处理。请手动复制此提示词提供给 Agent。",
+			},
+			Timestamp: time.Now().UnixMilli(),
+		}
+		conn.hub.BroadcastToSession(conn.sessionID, unhandledMsg)
+	}
+
 	// 跨设备广播回答同步（通知同一会话的其他设备该问题已作答）
 	syncMsg := &Message{
 		Type:      MsgAnswerSync,
@@ -163,9 +180,10 @@ func handleAnswerSubmit(ctx context.Context, conn *Connection, msg *Message, que
 
 // handleRequestSupplement 处理补充内容请求消息
 //
-// 将补充请求以 [NEED_SUPPLEMENT] 标记格式推入回答队列，
+// 将补充请求以 [NEED_SUPPLEMENT] 富令牌格式推入回答队列，
 // Agent 端通过 get_answer 消费后可使用 qa_push_supplement 推送补充内容。
-func handleRequestSupplement(ctx context.Context, conn *Connection, msg *Message, queue *qa.AnswerQueue, log *xLog.LogNamedLogger) {
+// 令牌采用 [FIELD] value 序列格式，缺省字段整行省略。
+func handleRequestSupplement(ctx context.Context, conn *Connection, msg *Message, questionRepo *repository.QaQuestionRepo, queue *qa.AnswerQueue, log *xLog.LogNamedLogger) {
 	data, ok := msg.Data.(map[string]interface{})
 	if !ok {
 		log.Warn(ctx, "request_supplement 消息 data 格式无效")
@@ -173,15 +191,75 @@ func handleRequestSupplement(ctx context.Context, conn *Connection, msg *Message
 	}
 
 	questionIDStr, _ := data["question_id"].(string)
+	note, _ := data["note"].(string)
+	withOptions, _ := data["with_options"].(bool)
 
-	// 格式化为 Agent 可识别的补充请求标记
-	supplementMsg := fmt.Sprintf("[NEED_SUPPLEMENT] 用户请求补充内容\n目标: %v\n提示: 使用 qa_push_supplement 推送补充内容", data)
+	// 解析 option_ids（前端勾选开关时传入全部 option id）
+	var optionIDs []string
+	if rawIDs, ok := data["option_ids"].([]interface{}); ok {
+		for _, id := range rawIDs {
+			if s, ok := id.(string); ok && s != "" {
+				optionIDs = append(optionIDs, s)
+			}
+		}
+	}
+
+	// 构建 [NEED_SUPPLEMENT] 富令牌（缺省字段整行省略）
+	var sb strings.Builder
+	sb.WriteString("[NEED_SUPPLEMENT] 用户请求补充内容，请使用 qa_push_supplement 推送 Markdown 或 HTML 格式的详细说明，帮助用户更全面地理解问题\n")
+	sb.WriteString(fmt.Sprintf("[TARGET] question %s\n", questionIDStr))
+
+	if strings.TrimSpace(note) != "" {
+		sb.WriteString(fmt.Sprintf("[USER_NOTE] %s\n", note))
+	}
+
+	if withOptions && len(optionIDs) > 0 {
+		optionLabelMap := resolveOptionLabels(ctx, questionRepo, questionIDStr, optionIDs)
+		sb.WriteString("[WITH_OPTIONS] 用户期望你为问题补充内容后，也使用 qa_push_supplement 为以下每个选项逐一提供详细说明\n")
+		sb.WriteString("[OPTION_LIST]\n")
+		for _, optID := range optionIDs {
+			label := optionLabelMap[optID]
+			if label == "" {
+				label = optID
+			}
+			sb.WriteString(fmt.Sprintf("  - %s → %s\n", label, optID))
+		}
+	}
 
 	queue.Enqueue(conn.sessionID, qa.Answer{
 		QuestionID: questionIDStr,
-		Data:       supplementMsg,
+		Data:       sb.String(),
 		Timestamp:  time.Now(),
 	})
+}
+
+// resolveOptionLabels 查询问题实体，按 option_id 收集 label 映射。
+// 查询失败或选项缺失时静默降级（返回空 map，调用方用 optID 兜底）。
+func resolveOptionLabels(ctx context.Context, questionRepo *repository.QaQuestionRepo, questionIDStr string, optionIDs []string) map[string]string {
+	labelMap := make(map[string]string)
+	if len(optionIDs) == 0 {
+		return labelMap
+	}
+	parsedQID, err := xSnowflake.ParseSnowflakeID(questionIDStr)
+	if err != nil {
+		return labelMap
+	}
+	question, xErr := questionRepo.GetByID(ctx, parsedQID)
+	if xErr != nil || len(question.Options) == 0 {
+		return labelMap
+	}
+	var options []map[string]interface{}
+	if jsonErr := json.Unmarshal(question.Options, &options); jsonErr != nil {
+		return labelMap
+	}
+	for _, opt := range options {
+		id, _ := opt["id"].(string)
+		label, _ := opt["label"].(string)
+		if id != "" && label != "" {
+			labelMap[id] = label
+		}
+	}
+	return labelMap
 }
 
 // handleSkip 处理跳过问题消息
@@ -215,6 +293,21 @@ func handleSkip(ctx context.Context, conn *Connection, msg *Message, questionRep
 		Data:       "[SKIPPED]",
 		Timestamp:  time.Now(),
 	})
+
+	// 检查是否有消费者在等待，若无则广播未消费通知
+	if !queue.HasConsumer(conn.sessionID) {
+		unhandledMsg := &Message{
+			Type:      MsgAnswerUnhandled,
+			SessionID: conn.sessionID,
+			Data: map[string]interface{}{
+				"question_id": questionIDStr,
+				"answer":      "[SKIPPED]",
+				"message":     "回答已跳过，但当前没有 AI Agent 在等待处理。请手动复制此提示词提供给 Agent。",
+			},
+			Timestamp: time.Now().UnixMilli(),
+		}
+		conn.hub.BroadcastToSession(conn.sessionID, unhandledMsg)
+	}
 
 	// 跨设备广播跳过同步
 	syncMsg := &Message{

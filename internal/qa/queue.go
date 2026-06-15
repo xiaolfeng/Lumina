@@ -23,9 +23,11 @@ type Answer struct {
 // 每个 Q&A Session 拥有独立的回答队列。Enqueue 追加到尾部，
 // Consume 一次性取走全部待消费回答并清空队列。
 type sessionQueue struct {
-	answers  []Answer      // 待消费的回答列表
-	notifier chan struct{} // 通知通道（队列非空时唤醒阻塞的消费者）
-	mu       sync.Mutex    // answers 切片保护锁
+	answers       []Answer      // 待消费的回答列表
+	notifier      chan struct{} // 通知通道（队列非空时唤醒阻塞的消费者）
+	mu            sync.Mutex    // answers 切片保护锁
+	consumerCount int           // 等待中的消费者数量
+	consumerMu    sync.Mutex    // 消费者计数锁
 }
 
 // AnswerQueue 全局回答队列管理器
@@ -94,6 +96,16 @@ func (aq *AnswerQueue) Enqueue(sessionID string, answer Answer) {
 // 超时或无回答时返回 (nil, nil)。
 func (aq *AnswerQueue) Consume(ctx context.Context, sessionID string, timeout time.Duration) ([]Answer, error) {
 	q := aq.getOrCreateQueue(sessionID)
+
+	q.consumerMu.Lock()
+	q.consumerCount++
+	q.consumerMu.Unlock()
+
+	defer func() {
+		q.consumerMu.Lock()
+		q.consumerCount--
+		q.consumerMu.Unlock()
+	}()
 
 	// 快速路径：队列非空时直接取走
 	if answers := aq.tryDrain(q); len(answers) > 0 {
@@ -206,4 +218,22 @@ func (aq *AnswerQueue) queueSize(q *sessionQueue) int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return len(q.answers)
+}
+
+// GetConsumerCount 返回指定会话的当前等待消费者数量
+func (aq *AnswerQueue) GetConsumerCount(sessionID string) int {
+	aq.mu.RLock()
+	q, exists := aq.sessions[sessionID]
+	aq.mu.RUnlock()
+	if !exists {
+		return 0
+	}
+	q.consumerMu.Lock()
+	defer q.consumerMu.Unlock()
+	return q.consumerCount
+}
+
+// HasConsumer 检查指定会话是否有消费者在等待
+func (aq *AnswerQueue) HasConsumer(sessionID string) bool {
+	return aq.GetConsumerCount(sessionID) > 0
 }

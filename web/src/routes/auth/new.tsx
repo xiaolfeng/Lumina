@@ -113,10 +113,10 @@ function NewPage() {
     <>
       {/* Header */}
       <motion.div className="mb-8 text-center" variants={rightItemVariants}>
-        <h1 className="display-title text-2xl font-bold text-[var(--sea-ink)] lg:text-3xl">
+        <h1 className="display-title text-2xl font-bold text-sea-ink lg:text-3xl">
           初始化系统
         </h1>
-        <p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
+        <p className="mt-2 text-sm text-sea-ink-soft">
           创建首个管理员账户以开启 Lumina
         </p>
       </motion.div>
@@ -208,7 +208,7 @@ function NewPage() {
             />
             <button
               type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer p-0.5 text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--sea-ink)]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer p-0.5 text-sea-ink-soft transition-colors hover:text-sea-ink"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? '隐藏密码' : '显示密码'}
               tabIndex={-1}
@@ -255,7 +255,7 @@ function NewPage() {
             />
             <button
               type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer p-0.5 text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--sea-ink)]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer p-0.5 text-sea-ink-soft transition-colors hover:text-sea-ink"
               onClick={() => setShowConfirmPassword((v) => !v)}
               aria-label={showConfirmPassword ? '隐藏密码' : '显示密码'}
               tabIndex={-1}

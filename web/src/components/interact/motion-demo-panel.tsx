@@ -68,7 +68,7 @@ export function MotionDemoPanel({
 				<button
 					type="button"
 					onClick={onBack}
-					className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--sea-ink-soft)] shadow-sm transition-colors duration-150 hover:border-[var(--lagoon)]/30 hover:text-[var(--lagoon-deep)] cursor-pointer"
+					className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-medium text-sea-ink-soft shadow-sm transition-colors duration-150 hover:border-lagoon/30 hover:text-lagoon-deep cursor-pointer"
 				>
 					<ArrowLeft className="size-3.5" aria-hidden />
 					返回
@@ -76,7 +76,7 @@ export function MotionDemoPanel({
 				<button
 					type="button"
 					onClick={() => setReplayKey((k) => k + 1)}
-					className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--sea-ink-soft)] shadow-sm transition-colors duration-150 hover:border-[var(--lagoon)]/30 hover:text-[var(--lagoon-deep)] cursor-pointer"
+					className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-medium text-sea-ink-soft shadow-sm transition-colors duration-150 hover:border-lagoon/30 hover:text-lagoon-deep cursor-pointer"
 				>
 					⟳ 重播
 				</button>
@@ -84,19 +84,19 @@ export function MotionDemoPanel({
 
 			<div className="space-y-6">
 				<div>
-					<h2 className="display-title mb-2 text-xl font-bold text-[var(--sea-ink)]">
+					<h2 className="display-title mb-2 text-xl font-bold text-sea-ink">
 						{cfg.title}
 					</h2>
-					<p className="mb-4 text-sm leading-relaxed text-[var(--sea-ink-soft)]">
+					<p className="mb-4 text-sm leading-relaxed text-sea-ink-soft">
 						{cfg.desc}
 					</p>
-					<pre className="overflow-x-auto rounded-lg border border-[var(--line)] bg-[var(--foam)] p-4 text-xs leading-relaxed text-[var(--sea-ink)]">
+					<pre className="overflow-x-auto rounded-lg border border-line bg-foam p-4 text-xs leading-relaxed text-sea-ink">
 						<code>{cfg.code}</code>
 					</pre>
 				</div>
 
-				<div className="rounded-xl border border-[var(--line)] p-5">
-					<p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-[var(--sea-ink-soft)]">
+				<div className="rounded-xl border border-line p-5">
+					<p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-sea-ink-soft">
 						实际效果预览
 					</p>
 					<motion.div
@@ -104,15 +104,15 @@ export function MotionDemoPanel({
 						initial={cfg.initial}
 						animate={cfg.animate}
 						transition={cfg.transition}
-						className="rounded-lg bg-[var(--foam)] p-4"
+						className="rounded-lg bg-foam p-4"
 					>
 						<div className="flex items-center gap-3">
-							<div className="size-10 rounded-lg bg-[var(--lagoon)]/15" />
+							<div className="size-10 rounded-lg bg-lagoon/15" />
 							<div className="flex-1 space-y-1.5">
-								<div className="h-2.5 w-48 rounded-full bg-[var(--sea-ink)]/12" />
-								<div className="h-2 w-32 rounded-full bg-[var(--sea-ink)]/8" />
+								<div className="h-2.5 w-48 rounded-full bg-sea-ink/12" />
+								<div className="h-2 w-32 rounded-full bg-sea-ink/8" />
 							</div>
-							<div className="h-7 w-16 rounded-md bg-[var(--lagoon)]/20" />
+							<div className="h-7 w-16 rounded-md bg-lagoon/20" />
 						</div>
 					</motion.div>
 				</div>
@@ -121,7 +121,7 @@ export function MotionDemoPanel({
 					{cfg.tags.map((tag) => (
 						<span
 							key={tag}
-							className="rounded-md border border-[var(--line)] bg-[var(--foam)] px-2.5 py-1 text-xs text-[var(--sea-ink-soft)]"
+							className="rounded-md border border-line bg-foam px-2.5 py-1 text-xs text-sea-ink-soft"
 						>
 							{tag}
 						</span>
