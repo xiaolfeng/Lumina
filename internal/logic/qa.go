@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -43,6 +44,11 @@ var OnQuestionPushed func(sessionID string, question *entity.QaQuestion)
 
 // OnSupplementPushed 补充内容推送成功后的回调钩子，由 WebSocket 层设置以广播补充内容到在线设备
 var OnSupplementPushed func(sessionID string, supplement *entity.QaSupplement)
+
+// OnQuestionCancelled 问题取消后的回调钩子，由 WebSocket 层设置以广播取消通知到在线设备
+//
+// question 为 nil 时表示全部取消（cancelAll=true），非 nil 时表示单个问题取消
+var OnQuestionCancelled func(sessionID string, question *entity.QaQuestion)
 
 // NewQaLogic 创建QaLogic实例
 func NewQaLogic(ctx context.Context) *QaLogic {
@@ -801,6 +807,103 @@ func (l *QaLogic) ArchiveSession(ctx context.Context, sessionID string) *xError.
 	return nil
 }
 
+// CancelQuestion 取消指定问题或会话的全部待回答问题（MCP工具 qa_cancel_question）
+//
+// 行为：
+//   - cancelAll=false：取消单个问题（questionID 指定），状态 pending → cancelled
+//   - cancelAll=true：取消该会话全部 pending 问题，清空回答队列
+//
+// 已回答（answered/skipped/cancelled）的问题跳过，仅 pending 状态可取消。
+// 取消后通过 OnQuestionCancelled 回调广播通知在线设备（回调由 WebSocket 层注入）。
+//
+// 参数:
+//   - ctx:        上下文
+//   - sessionID:  会话 ID
+//   - questionID: 问题 ID（cancelAll=false 时使用，cancelAll=true 时忽略）
+//   - cancelAll:  true=取消全部 pending，false=取消指定问题
+//
+// 返回值:
+//   - cancelled: 成功取消的问题数
+//   - skipped:   跳过的问题数（非 pending 状态）
+//   - *xError.Error: 操作错误
+func (l *QaLogic) CancelQuestion(ctx context.Context, sessionID, questionID string, cancelAll bool) (int, int, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("CancelQuestion - 取消问题 [session=%s, question=%s, all=%v]", sessionID, questionID, cancelAll))
+
+	// 解析会话ID
+	parsedSID, err := xSnowflake.ParseSnowflakeID(sessionID)
+	if err != nil {
+		return 0, 0, xError.NewError(ctx, xError.BusinessError, "无效的会话ID", false, nil)
+	}
+
+	// 验证会话存在且为活跃状态
+	session, xErr := l.repo.session.GetByID(ctx, parsedSID)
+	if xErr != nil {
+		return 0, 0, xErr
+	}
+	if session.Status != "active" {
+		return 0, 0, xError.NewError(ctx, xError.BusinessError, "会话不是活跃状态，无法取消问题", false, nil)
+	}
+
+	cancelled := 0
+	skipped := 0
+
+	if cancelAll {
+		// 取消全部 pending 问题
+		questions, xErr := l.repo.question.GetPendingBySessionID(ctx, parsedSID)
+		if xErr != nil {
+			return 0, 0, xError.NewError(ctx, xError.UnknownError, "查询待回答问题失败", false, xErr)
+		}
+		for _, q := range questions {
+			if q.Status == "pending" {
+				if updateErr := l.repo.question.UpdateStatus(ctx, q.ID, "cancelled"); updateErr != nil {
+					l.log.Warn(ctx, fmt.Sprintf("CancelQuestion - 取消问题失败 [id=%s]: %s", q.ID.String(), updateErr.Error()))
+					skipped++
+				} else {
+					cancelled++
+				}
+			} else {
+				skipped++
+			}
+		}
+
+		// 清空回答队列（移除所有待消费回答）
+		l.queue.RemoveQueue(sessionID)
+
+		// 清除重试计数器
+		retryKey := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
+		_ = l.rdb.Del(ctx, retryKey).Err()
+
+		// WebSocket 通知：问题全部取消
+		if OnQuestionCancelled != nil {
+			OnQuestionCancelled(sessionID, nil)
+		}
+	} else {
+		// 取消单个问题
+		parsedQID, err := xSnowflake.ParseSnowflakeID(questionID)
+		if err != nil {
+			return 0, 0, xError.NewError(ctx, xError.BusinessError, "无效的问题ID", false, nil)
+		}
+		question, xErr := l.repo.question.GetByID(ctx, parsedQID)
+		if xErr != nil {
+			return 0, 0, xErr
+		}
+		if question.Status != "pending" {
+			return 0, 1, nil // 非 pending 状态跳过
+		}
+		if updateErr := l.repo.question.UpdateStatus(ctx, parsedQID, "cancelled"); updateErr != nil {
+			return 0, 0, xError.NewError(ctx, xError.UnknownError, "取消问题失败", false, updateErr)
+		}
+		cancelled = 1
+
+		// WebSocket 通知：单个问题取消
+		if OnQuestionCancelled != nil {
+			OnQuestionCancelled(sessionID, question)
+		}
+	}
+
+	return cancelled, skipped, nil
+}
+
 // ─── Helper Methods ─────────────────────────────────────────────────────
 
 // toSessionResponse 将会话实体映射为响应 DTO
@@ -1006,8 +1109,8 @@ func formatAnswerData(questionID string, data any, questionType string, options 
 		return formatDiffAnswer(m, fmtCtx.Config)
 	case "review":
 		return formatReviewAnswer(m)
-	case "options":
-		return formatOptionsAnswer(m, options)
+case "options":
+			return formatOptionsAnswer(m, options, fmtCtx)
 	case "slider":
 		return formatSliderAnswer(m)
 	case "rank":
@@ -1321,7 +1424,10 @@ func (l *QaLogic) enhanceMediaAnswerWithOTP(ctx context.Context, questionType, s
 		sb.WriteString(url)
 	}
 	sb.WriteString("\n[IMPORTANT] 下载链接为一次性令牌，使用后立即失效。若下载失败需重新下载，请重新调用 qa_reget_answer 获取新的下载链接。")
-	sb.WriteString("\n[TIP] 使用 curl/wget 下载到 DOWNLOAD_PATH（Mac/Linux: curl -o <path> <url>；Windows: Invoke-WebRequest -Uri <url> -OutFile <path>），AI 需要则直接引用对应路径拿到内容传入。")
+	sb.WriteString("\n[TIP] 下载并保存文件时，最终路径 = DOWNLOAD_PATH + FILE_NAME：")
+	sb.WriteString("\n  - Mac/Linux: curl -o \"<DOWNLOAD_PATH><FILE_NAME>\" <url>")
+	sb.WriteString("\n  - Windows:   Invoke-WebRequest -Uri <url> -OutFile \"<DOWNLOAD_PATH><FILE_NAME>\"")
+	sb.WriteString("\n  AI 引用该文件时，使用 <DOWNLOAD_PATH><FILE_NAME> 作为完整路径。")
 	sb.WriteString("\n[GIT_TIP] 若存在 git 等版本管理项目，需要把 .lumina/cache/* 加入忽略上传（如 .gitignore 使用分类模式：\n    ### Lumina ###\n    .lumina/cache/）")
 
 	return sb.String()
@@ -1348,7 +1454,12 @@ func formatImageAnswer(m map[string]interface{}) string {
 		filePath, _ := imgMap["filePath"].(string)
 		sb.WriteString(fmt.Sprintf("\n---\n[FILE_NAME] %s", name))
 		if filePath != "" {
-			sb.WriteString(fmt.Sprintf("\n[DOWNLOAD_PATH] %s", filePath))
+			// 输出目录级路径，去掉末尾 UUID 文件名，便于 Agent 拼接 FILE_NAME
+			dir := filepath.Dir(filePath)
+			if !strings.HasSuffix(dir, "/") {
+				dir += "/"
+			}
+			sb.WriteString(fmt.Sprintf("\n[DOWNLOAD_PATH] %s", dir))
 		}
 	}
 	return sb.String()
@@ -1378,7 +1489,12 @@ func formatFileAnswer(m map[string]interface{}) string {
 		filePath, _ := fMap["filePath"].(string)
 		sb.WriteString(fmt.Sprintf("\n---\n[FILE_NAME] %s", name))
 		if filePath != "" {
-			sb.WriteString(fmt.Sprintf("\n[DOWNLOAD_PATH] %s", filePath))
+			// 输出目录级路径，去掉末尾 UUID 文件名，便于 Agent 拼接 FILE_NAME
+			dir := filepath.Dir(filePath)
+			if !strings.HasSuffix(dir, "/") {
+				dir += "/"
+			}
+			sb.WriteString(fmt.Sprintf("\n[DOWNLOAD_PATH] %s", dir))
 		}
 	}
 	return sb.String()
@@ -1529,15 +1645,16 @@ func formatPlanAnswer(m map[string]interface{}, config map[string]interface{}) s
 //
 // options 题型与 select 行为相似，但无 [DESCRIPTION] 问题级描述输出，
 // 主要输出选中选项的 label + 可选的选项级 description + 用户反馈。
-func formatOptionsAnswer(m map[string]interface{}, options []map[string]interface{}) string {
+func formatOptionsAnswer(m map[string]interface{}, options []map[string]interface{}, fmtCtx AnswerFormatContext) string {
 	selected, exists := m["selected"]
 	if !exists {
 		return fmt.Sprintf("%v", m)
 	}
 
+	selectedID := getOptionID(selected)
 	label, desc := resolveOptionLabel(selected, options)
 	if label == "" {
-		label = getOptionID(selected)
+		label = selectedID
 	}
 
 	var sb strings.Builder
@@ -1546,6 +1663,12 @@ func formatOptionsAnswer(m map[string]interface{}, options []map[string]interfac
 		sb.WriteString("\n[DESCRIPTION] ")
 		sb.WriteString(desc)
 	}
+	// 选项级 supplement（Agent 为该选项推送的 markdown 内容）
+	if supp, ok := fmtCtx.OptionSupplements[selectedID]; ok && strings.TrimSpace(supp) != "" {
+		sb.WriteString("\n[SUPPLEMENT] ")
+		sb.WriteString(supp)
+	}
+	// 用户的选择理由（feedback）
 	if feedback, ok := m["feedback"].(string); ok && strings.TrimSpace(feedback) != "" {
 		sb.WriteString("\n[SUPPLEMENT] ")
 		sb.WriteString(feedback)

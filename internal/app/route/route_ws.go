@@ -49,6 +49,25 @@ func (r *route) wsRouter(route gin.IRouter) {
 		hub.BroadcastToSession(sessionID, msg)
 	}
 
+	// 问题取消回调：question 为 nil 时表示全部取消，非 nil 时表示单个问题取消
+	logic.OnQuestionCancelled = func(sessionID string, question *entity.QaQuestion) {
+		msg := &websocket.Message{
+			Type:      websocket.MsgQuestionCancel,
+			SessionID: sessionID,
+			Data: map[string]interface{}{
+				"question_id": func() string {
+					if question != nil {
+						return question.ID.String()
+					}
+					return ""
+				}(),
+				"cancel_all": question == nil,
+			},
+			Timestamp: time.Now().UnixMilli(),
+		}
+		hub.BroadcastToSession(sessionID, msg)
+	}
+
 	// Q&A WebSocket 端点（需认证）
 	wsGroup := route.Group("/qa")
 	wsGroup.Use(middleware.Auth(r.context))
