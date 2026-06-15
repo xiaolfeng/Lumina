@@ -166,19 +166,11 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
         }
       }),
     )
-    // 仅当目标问题仍处于 pending（用户正在回答）时才打开详情面板。
+    // 仅当存在 pending 问题（用户正在回答）时才打开详情面板。
     // 重连时后端推送的历史 supplement（目标问题已 answered/skipped）只作数据挂载，
     // 不激活面板，避免无 pending 问题时详情列空白占位、第一列无法居中。
-    // 用 questionsRef（同步镜像）判断，不依赖 setState updater 时序。
-    const belongsToPending = questionsRef.current.some(
-      (q) =>
-        q.status === 'pending' &&
-        ((supplement.target_type === 'question' &&
-          q.id === supplement.target_id) ||
-          (supplement.target_type === 'option' &&
-            (q.options ?? []).some((o) => o.id === supplement.target_id))),
-    )
-    if (belongsToPending) {
+    const hasPending = questionsRef.current.some((q) => q.status === 'pending')
+    if (hasPending) {
       setActiveSupplement(supplement)
     }
     stopSupplementLoading()
@@ -206,9 +198,10 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
   const handleAnswerUnhandled = useCallback((data: any) => {
     const promptText = `请处理以下回答：\n会话ID: ${sessionHash}\n问题ID: ${data.question_id}\n回答内容: ${JSON.stringify(data.answer, null, 2)}\n\n提示：使用 qa_reget_answer 工具获取最新回答。`
 
-    toast.warning('AI Agent 当前未在等待回答', {
-      description: '您的回答已保存，但 Agent 可能无法立即处理。点击复制按钮获取提示词。',
-      duration: 10000,
+    toast.info('等待 AI Agent 处理问题', {
+      description:
+        '您的回答已保存。AI Agent 可能正在处理其他任务或已停止获取回答，点击下方按钮可复制提示词手动提醒 Agent 继续处理。',
+      duration: 12000,
       action: {
         label: '复制提示词',
         onClick: () => navigator.clipboard.writeText(promptText),

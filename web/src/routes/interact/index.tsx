@@ -79,7 +79,7 @@ function InteractPage() {
 	useEffect(() => {
 		;(async () => {
 			try {
-				const res = await getSessionList({ status: 'active', size: 50 })
+				const res = await getSessionList({ status: 'active', type: 'permanent', size: 50 })
 				const apiSessions = res.data?.items || []
 
 				const mapped: Session[] = apiSessions.map((item) => ({
@@ -119,7 +119,7 @@ function InteractPage() {
 		onReject: () => {
 			setSessionHash('')
 			setSelectedSessionId('')
-			navigate({ to: '/interact', replace: true })
+			navigate({ to: '/interact/thank', replace: true })
 		},
 	})
 

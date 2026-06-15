@@ -10,9 +10,9 @@
  */
 
 const baseCode =
-	'[&_code]:rounded [&_code]:bg-lagoon/8 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-xs [&_code]:text-lagoon-deep'
+	'[&_code]:rounded [&_code]:bg-lagoon/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-xs [&_code]:font-mono [&_code]:text-lagoon-deep'
 const basePre =
-	'[&_pre]:rounded-lg [&_pre]:border [&_pre]:border-line [&_pre]:bg-foam [&_pre]:p-3 [&_pre]:text-xs [&_pre]:text-sea-ink'
+	'[&_pre]:rounded-lg [&_pre]:border [&_pre]:border-line [&_pre]:bg-white [&_pre]:p-3 [&_pre]:text-xs [&_pre]:leading-relaxed [&_pre]:font-mono [&_pre]:text-gray-800 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-inherit'
 const baseLink = '[&_a]:text-lagoon-deep [&_a]:underline'
 
 /** 问题主文案 —— 正文 14px，墨褐 */

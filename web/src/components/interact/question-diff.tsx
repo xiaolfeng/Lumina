@@ -1,11 +1,12 @@
 import { FileText } from 'lucide-react'
 import { useState } from 'react'
+import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued'
 
 import { Textarea } from '#/components/ui/textarea'
 
 import { DecisionButtons } from './decision-buttons'
-import { QuestionShell  } from './question-shell'
-import type {QuestionComponentProps} from './question-shell';
+import { QuestionShell } from './question-shell'
+import type { QuestionComponentProps } from './question-shell'
 
 type Decision = 'approve' | 'reject' | 'edit'
 
@@ -52,40 +53,69 @@ export function QuestionDiff({
 				</p>
 			)}
 
-			<div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+			{isEditing ? (
 				<div className="space-y-1.5">
-					<p className="text-xs font-semibold uppercase tracking-wide text-red-400">
-						修改前 (Before)
+					<p className="text-xs font-semibold uppercase tracking-wide text-amber-500">
+						编辑模式 — 修改后内容
 					</p>
-					<pre className="max-h-[360px] overflow-auto rounded-lg bg-gray-900 p-3 text-xs leading-relaxed text-gray-200">
-						<code>{before || '(无内容)'}</code>
-					</pre>
+					<Textarea
+						value={editedCode || after}
+						onChange={(e) => setEditedCode(e.target.value)}
+						disabled={isSupplementLoading}
+						className="min-h-[200px] resize-y rounded-lg border-line bg-foam font-mono text-xs tabular-nums disabled:opacity-50"
+						placeholder="编辑代码..."
+					/>
 				</div>
+			) : (
+				<div className="max-h-[400px] overflow-auto rounded-lg border border-line">
+					<ReactDiffViewer
+						oldValue={before}
+						newValue={after}
+						splitView={false}
+						compareMethod={DiffMethod.WORDS}
+						useDarkTheme={false}
+						hideLineNumbers={false}
+						showDiffOnly={false}
+						styles={{
+							variables: {
+								light: {
+									diffViewerBackground: '#ffffff',
+									diffViewerColor: '#2a2420',
+									addedBackground: '#f0fdf4',
+									addedColor: '#166534',
+									removedBackground: '#fef2f2',
+									removedColor: '#991b1b',
+									wordAddedBackground: '#bbf7d0',
+									wordRemovedBackground: '#fecaca',
+									addedGutterBackground: '#dcfce7',
+									removedGutterBackground: '#fee2e2',
+									gutterBackground: '#fafaf9',
+									diffViewerTitleBackground: '#f5f5f4',
+									diffViewerTitleColor: '#57534e',
+									diffViewerTitleBorderColor: '#e7e5e4',
+								},
+							},
+							diffContainer: {
+								minWidth: '100%',
+							},
+							line: {
+								padding: '2px 10px',
+							},
+							contentText: {
+								fontSize: '12px',
+								fontFamily:
+									'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
+							},
+						}}
+					/>
+				</div>
+			)}
 
-				<div className="space-y-1.5">
-					<p className="text-xs font-semibold uppercase tracking-wide text-emerald-400">
-						修改后 (After)
-						{language && (
-							<span className="ml-1.5 font-normal text-gray-400">
-								({language})
-							</span>
-						)}
-					</p>
-					{isEditing ? (
-						<Textarea
-							value={editedCode || after}
-							onChange={(e) => setEditedCode(e.target.value)}
-							disabled={isSupplementLoading}
-							className="min-h-[200px] resize-y rounded-lg border-line bg-foam font-mono text-xs tabular-nums disabled:opacity-50"
-							placeholder="编辑代码..."
-						/>
-					) : (
-						<pre className="max-h-[360px] overflow-auto rounded-lg bg-gray-900 p-3 text-xs leading-relaxed text-gray-200">
-							<code>{after || '(无内容)'}</code>
-						</pre>
-					)}
-				</div>
-			</div>
+			{language && (
+				<p className="text-center text-[10px] text-sea-ink-soft">
+					语言：{language}
+				</p>
+			)}
 
 			<DecisionButtons
 				variant="three"

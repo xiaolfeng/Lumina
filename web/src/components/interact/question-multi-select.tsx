@@ -82,9 +82,9 @@ export function QuestionMultiSelect({
 			{isSupplementLoading && (
 				<SupplementLoadingBanner onDismiss={() => onDismissSupplementLoading?.()} />
 			)}
-			<div
-				className={`space-y-2 ${isSupplementLoading ? 'pointer-events-none opacity-50' : ''}`}
-			>
+		<div
+			className="space-y-2"
+		>
 				{options.map((opt) => (
 					<Label
 						key={opt.id}

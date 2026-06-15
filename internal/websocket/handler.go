@@ -55,6 +55,14 @@ func WSHandler(hub *Hub, sessionRepo *repository.QaSessionRepo) gin.HandlerFunc 
 			c.Abort()
 			return
 		}
+
+		// 2.5 检查会话状态 —— expired/archived 会话拒绝连接，前端会触发 onReject 跳转感谢页
+		if session.Status != "active" {
+			c.JSON(http.StatusGone, gin.H{"error": "会话已归档", "status": session.Status})
+			c.Abort()
+			return
+		}
+
 		sessionID := session.ID.String() // snowflake ID 字符串，Hub 内部仍使用雪花 ID
 
 		// 3. 提取或生成 device_id
@@ -129,6 +137,8 @@ func handleAnswerSubmit(ctx context.Context, conn *Connection, msg *Message, que
 
 	questionIDStr, _ := data["question_id"].(string)
 	answerData := data["answer"]
+
+	answerData = sanitizeAnswer(answerData)
 
 	// 解析问题雪花 ID
 	qID, err := xSnowflake.ParseSnowflakeID(questionIDStr)
@@ -320,4 +330,32 @@ func handleSkip(ctx context.Context, conn *Connection, msg *Message, questionRep
 		Timestamp: time.Now().UnixMilli(),
 	}
 	conn.hub.BroadcastToSession(conn.sessionID, syncMsg)
+}
+
+// sanitizeAnswer 清洗回答数据，剥离 image/file 中体积过大的 base64 content 字段。
+//
+// 图片/文件题的回答结构为 { images: [{ filename, mimeType, content }] }，
+// 其中 content 是 base64 编码的完整文件数据。持久化到 DB 只需保留 filename + mimeType，
+// content 会通过独立的文件存储或 Media 字段处理，不应留在 answer JSON 中。
+func sanitizeAnswer(answer any) any {
+	m, ok := answer.(map[string]interface{})
+	if !ok {
+		return answer
+	}
+
+	for _, key := range []string{"images", "files"} {
+		if items, ok := m[key].([]interface{}); ok {
+			cleaned := make([]interface{}, 0, len(items))
+			for _, item := range items {
+				if itemMap, ok := item.(map[string]interface{}); ok {
+					delete(itemMap, "content")
+					delete(itemMap, "preview")
+					cleaned = append(cleaned, itemMap)
+				}
+			}
+			m[key] = cleaned
+		}
+	}
+
+	return m
 }

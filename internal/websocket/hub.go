@@ -37,7 +37,7 @@ type Hub struct {
 	mu            sync.RWMutex                       // sessions 读写锁
 	log           *xLog.LogNamedLogger               // 日志记录器
 	handler       MessageHandler                     // 消息处理回调
-	sessionRepo   *repository.QaSessionRepo          // QA 会话仓库（用于临时会话硬删除）
+	sessionRepo   *repository.QaSessionRepo          // QA 会话仓库
 	questionRepo  *repository.QaQuestionRepo         // QA 问题仓库（用于连接时推送 pending 问题）
 	supplementRepo *repository.QaSupplementRepo      // QA 补充仓库（用于连接时推送已存在 supplement）
 	db            *gorm.DB                           // 数据库实例（用于异步更新 OnlineDevices）
@@ -278,10 +278,8 @@ func (h *Hub) unregisterConn(conn *Connection) {
 		// 异步同步 OnlineDevices 到数据库
 		go h.syncOnlineDevices(conn.sessionID, remainingCount)
 
-		// 最后一个设备主动离开的临时会话 → 触发硬删除
-		if remainingCount == 0 && conn.isVoluntary {
-			go h.checkAndDeleteTemporarySession(conn.sessionID)
-		}
+		// 注：临时会话不再由 WS 断连触发硬删除，仅由 ExpiresAt（48h）自然过期。
+		// expireCheck 在会话被读取时自动将过期 active 会话转为 expired。
 	} else {
 		h.mu.Unlock()
 	}
@@ -332,28 +330,14 @@ func (h *Hub) syncOnlineDevices(sessionID string, count int) {
 	h.db.Model(&entity.QaSession{}).Where("id = ?", sid).Update("online_devices", count)
 }
 
-// checkAndDeleteTemporarySession 检查并删除临时会话（最后一个设备主动离开时触发硬删除）
-func (h *Hub) checkAndDeleteTemporarySession(sessionID string) {
-	sid, err := xSnowflake.ParseSnowflakeID(sessionID)
-	if err != nil {
-		return
-	}
-	session, xErr := h.sessionRepo.GetByID(context.Background(), sid)
-	if xErr != nil {
-		return
-	}
-	if session.Type == "temporary" {
-		h.sessionRepo.Delete(context.Background(), sid)
-	}
-}
-
 // pushSessionHistory 向新连接推送该会话的全部问题历史及补充内容
 //
 // 连接建立时调用。按问题状态区分推送方式：
 //   - pending 问题 → question_push（前端视为待回答的活跃问题）
 //   - 已回答/已跳过 → history_question（前端仅作历史展示，不激活交互）
 //
-// 随后推送该会话所有 supplement（supplement_push），前端自动恢复补充内容。
+// 补充内容（supplement_push）仅推送给目标问题仍为 pending 的内容，
+// 已回答/已跳过的问题无需恢复补充面板，避免前端布局异常。
 func (h *Hub) pushSessionHistory(conn *Connection) {
 	sid, err := xSnowflake.ParseSnowflakeID(conn.sessionID)
 	if err != nil {
@@ -384,13 +368,38 @@ func (h *Hub) pushSessionHistory(conn *Connection) {
 		_ = conn.SendMessage(msg)
 	}
 
-	// 推送该会话所有 supplement（问题级 + 选项级）
+	// 构建 optionID → questionID 映射，用于判断 option 级 supplement 所属问题状态
+	optionToQuestion := make(map[string]string)
+	for _, q := range questions {
+		if q.Options != nil {
+			var opts []map[string]interface{}
+			if json.Unmarshal(q.Options, &opts) == nil {
+				for _, opt := range opts {
+					if optID, ok := opt["id"].(string); ok && optID != "" {
+						optionToQuestion[optID] = q.ID.String()
+					}
+				}
+			}
+		}
+	}
+
+	// 推送该会话所有 supplement（仅目标问题仍为 pending 的才推送）
 	supplements, sErr := h.supplementRepo.GetBySessionID(context.Background(), sid)
 	if sErr != nil {
 		h.log.Warn(nil, "查询会话补充内容失败", slog.String("error", sErr.Error()))
 		return
 	}
 	for _, s := range supplements {
+		var belongsToPending bool
+		if s.TargetType == "question" {
+			belongsToPending = pendingIDs[s.TargetID.String()]
+		} else if s.TargetType == "option" {
+			qid := optionToQuestion[s.TargetID.String()]
+			belongsToPending = pendingIDs[qid]
+		}
+		if !belongsToPending {
+			continue
+		}
 		msg := &Message{
 			Type:      MsgSupplementPush,
 			SessionID: conn.sessionID,

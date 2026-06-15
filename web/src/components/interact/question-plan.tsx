@@ -6,6 +6,7 @@ import { Textarea } from '#/components/ui/textarea'
 import { DecisionButtons } from './decision-buttons'
 import { Markdown, proseQuestion } from './primitives'
 import { QuestionShell  } from './question-shell'
+import { SupplementLoadingBanner } from './supplement-loading-banner'
 import type {QuestionComponentProps} from './question-shell';
 
 interface PlanSection {
@@ -22,24 +23,19 @@ export function QuestionPlan({
 	onSkip,
 	onRequestSupplement,
 	isSupplementLoading = false,
+	onDismissSupplementLoading,
 }: QuestionComponentProps) {
 	const [decision, setDecision] = useState<PlanDecision | null>(null)
 	const [annotations, setAnnotations] = useState<Record<string, string>>({})
 	const [feedback, setFeedback] = useState('')
-	const [expandedSections, setExpandedSections] = useState<Set<string>>(
-		new Set(),
-	)
 
 	const sections = (question.config?.sections as PlanSection[]) ?? []
 	const markdown = (question.config?.markdown as string) ?? ''
 	const isRevising = decision === 'revise'
 
-	// Expand all by default on mount
-	if (sections.length > 0 && expandedSections.size === 0) {
-		setTimeout(() => {
-			setExpandedSections(new Set(sections.map((s) => s.id)))
-		}, 0)
-	}
+	const [expandedSections, setExpandedSections] = useState<Set<string>>(
+		() => new Set(sections.map((s) => s.id)),
+	)
 
 	const toggleSection = (id: string) => {
 		setExpandedSections((prev) => {
@@ -71,6 +67,9 @@ export function QuestionPlan({
 			submitDisabled={!decision}
 			onSubmit={handleSubmit}
 		>
+			{isSupplementLoading && (
+				<SupplementLoadingBanner onDismiss={() => onDismissSupplementLoading?.()} />
+			)}
 			{sections.length > 0 ? (
 				<div
 					className={`space-y-2 ${isSupplementLoading ? 'pointer-events-none opacity-50' : ''}`}

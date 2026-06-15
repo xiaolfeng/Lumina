@@ -43,7 +43,7 @@ export function SessionPanel({
 			<div
 				className={`flex items-center justify-between ${isMobile ? 'px-4 py-2' : 'px-3 py-2'}`}
 			>
-				<Kicker>会话列表</Kicker>
+				<Kicker>永久会话列表</Kicker>
 				{isMobile && onClose && (
 					<button
 						type="button"

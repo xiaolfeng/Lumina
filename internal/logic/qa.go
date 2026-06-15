@@ -845,8 +845,10 @@ func formatAnswerData(questionID string, data any, questionType string, options 
 		return formatBooleanAnswer(m)
 	case "code", "image", "file":
 		return formatMediaAnswer(m, questionType)
-	case "diff", "plan", "options", "review":
-		return "已提交"
+	case "plan":
+		return formatPlanAnswer(m)
+	case "diff", "review":
+		return formatDecisionAnswer(m)
 	case "slider":
 		return formatSliderAnswer(m)
 	case "rank":
@@ -976,7 +978,7 @@ func formatMediaAnswer(m map[string]interface{}, questionType string) string {
 			var names []string
 			for _, img := range images {
 				if imgMap, ok := img.(map[string]interface{}); ok {
-					if name, ok := imgMap["name"].(string); ok {
+					if name, ok := imgMap["filename"].(string); ok && name != "" {
 						names = append(names, name)
 					}
 				}
@@ -1054,6 +1056,80 @@ func formatGenericAnswer(m map[string]interface{}) string {
 		return text
 	}
 	return fmt.Sprintf("%v", m)
+}
+
+// formatPlanAnswer 格式化 Plan 计划题回答
+//
+// Plan 回答结构：{ decision: "approve"|"reject"|"revise", annotations?: [...], feedback?: "..." }
+// - approve → 用户批准该计划
+// - reject  → 用户拒绝该计划，附带拒绝原因
+// - revise  → 用户要求修订，附带逐章节修订意见
+func formatPlanAnswer(m map[string]interface{}) string {
+	decision, _ := m["decision"].(string)
+
+	var sb strings.Builder
+
+	switch decision {
+	case "approve":
+		sb.WriteString("[已批准] 用户批准了该计划")
+	case "reject":
+		sb.WriteString("[已拒绝] 用户拒绝了该计划")
+	case "revise":
+		sb.WriteString("[需修订] 用户要求修改该计划")
+	default:
+		sb.WriteString(fmt.Sprintf("[已提交] decision=%s", decision))
+	}
+
+	// 修订意见（逐章节）
+	if annotations, ok := m["annotations"].([]interface{}); ok && len(annotations) > 0 {
+		sb.WriteString("\n\n修订意见:")
+		for i, ann := range annotations {
+			if annMap, ok := ann.(map[string]interface{}); ok {
+				sectionID, _ := annMap["sectionId"].(string)
+				content, _ := annMap["content"].(string)
+				if content != "" {
+					sb.WriteString(fmt.Sprintf("\n  %d. [%s] %s", i+1, sectionID, content))
+				}
+			}
+		}
+	}
+
+	// 整体反馈
+	if feedback, ok := m["feedback"].(string); ok && strings.TrimSpace(feedback) != "" {
+		sb.WriteString(fmt.Sprintf("\n\n用户反馈: %s", feedback))
+	}
+
+	return sb.String()
+}
+
+// formatDecisionAnswer 格式化 Diff/Review 决策题回答
+//
+// 回答结构：{ decision: "approve"|"reject"|"edit", edited?: "...", feedback?: "..." }
+func formatDecisionAnswer(m map[string]interface{}) string {
+	decision, _ := m["decision"].(string)
+
+	var sb strings.Builder
+
+	switch decision {
+	case "approve":
+		sb.WriteString("[已批准] 用户批准了该修改")
+	case "reject":
+		sb.WriteString("[已拒绝] 用户拒绝了该修改")
+	case "edit":
+		sb.WriteString("[已编辑] 用户修改后提交")
+		if edited, ok := m["edited"].(string); ok && edited != "" {
+			sb.WriteString("\n\n修改后内容:\n")
+			sb.WriteString(edited)
+		}
+	default:
+		sb.WriteString(fmt.Sprintf("[已提交] decision=%s", decision))
+	}
+
+	if feedback, ok := m["feedback"].(string); ok && strings.TrimSpace(feedback) != "" {
+		sb.WriteString(fmt.Sprintf("\n\n用户反馈: %s", feedback))
+	}
+
+	return sb.String()
 }
 
 // formatTimePtr 格式化时间指针，nil 返回空字符串

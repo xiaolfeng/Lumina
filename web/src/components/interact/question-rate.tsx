@@ -42,8 +42,7 @@ export function QuestionRate({
 								key={val}
 								type="button"
 								onClick={() => setRating(optionId, val)}
-								disabled={isSupplementLoading}
-								className="group p-0.5 transition-transform hover:scale-110 disabled:cursor-not-allowed disabled:opacity-50"
+								className="group cursor-pointer rounded p-0.5 transition-transform hover:scale-110"
 								aria-label={`${val} 分`}
 							>
 								<Star
@@ -67,8 +66,7 @@ export function QuestionRate({
 				step={step}
 				value={current}
 				onChange={(e) => setRating(optionId, Number(e.target.value))}
-				disabled={isSupplementLoading}
-				className="w-24 rounded-lg border border-line bg-foam px-3 py-1.5 text-center font-mono text-sm tabular-nums disabled:opacity-50"
+				className="w-24 cursor-pointer rounded-lg border border-line bg-foam px-3 py-1.5 text-center font-mono text-sm tabular-nums"
 			/>
 		)
 	}
@@ -81,9 +79,7 @@ export function QuestionRate({
 			onRequestSupplement={onRequestSupplement}
 			onSubmit={() => onSubmit({ ratings: { ...ratings } })}
 		>
-			<div
-				className={`space-y-3 ${isSupplementLoading ? 'pointer-events-none opacity-50' : ''}`}
-			>
+			<div className="space-y-3">
 				{options.map((opt) => (
 					<div
 						key={opt.id}

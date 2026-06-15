@@ -61,6 +61,25 @@ function formatAnswer(answer: unknown, options?: OptionItem[]): string {
     }
     // 文本: { text: string }
     if ('text' in obj) return String(obj.text)
+    // 代码: { code: string, language?: string } — 历史列表仅显示语言标签
+    if ('code' in obj) {
+      const lang = 'language' in obj ? String(obj.language) : ''
+      return lang ? `[${lang}]` : '代码'
+    }
+    // 图片: { images: [{ filename, ... }] }
+    if ('images' in obj && Array.isArray(obj.images)) {
+      const names = obj.images
+        .map((i) => (i && typeof i === 'object' && 'filename' in i ? String((i as Record<string, unknown>).filename) : ''))
+        .filter(Boolean)
+      return names.length > 0 ? `📷 ${names.join('、')}` : `📷 ${obj.images.length} 张图片`
+    }
+    // 文件: { files: [{ filename, ... }] }
+    if ('files' in obj && Array.isArray(obj.files)) {
+      const names = obj.files
+        .map((f) => (f && typeof f === 'object' && 'filename' in f ? String((f as Record<string, unknown>).filename) : ''))
+        .filter(Boolean)
+      return names.length > 0 ? `📎 ${names.join('、')}` : `📎 ${obj.files.length} 个文件`
+    }
     // 布尔: { choice: "yes" | "no" }
     if ('choice' in obj) return String(obj.choice)
     // 滑块: { value: number }
@@ -75,8 +94,19 @@ function formatAnswer(answer: unknown, options?: OptionItem[]): string {
         .map(([k, v]) => `${labelOf(options, k)}: ${v}`)
         .join('、')
     }
-    // 兜底
-    return JSON.stringify(obj)
+    // 决策题 (diff/plan/review): { decision, feedback?, edited?, annotations? }
+    if ('decision' in obj) {
+      const decision = String(obj.decision)
+      const labels: Record<string, string> = { approve: '批准', reject: '拒绝', edit: '已编辑', revise: '需修订' }
+      const parts: string[] = [labels[decision] ?? decision]
+      if ('feedback' in obj && obj.feedback) parts.push(String(obj.feedback))
+      return parts.join('（') + (parts.length > 1 ? '）' : '')
+    }
+    // 兜底：过滤掉 content 等大字段后显示 JSON key 名
+    const { content: _c, ...rest } = obj as Record<string, unknown>
+    const keys = Object.keys(rest)
+    if (keys.length === 0) return '—'
+    return keys.map((k) => `${k}: ${typeof rest[k] === 'string' ? String(rest[k]) : JSON.stringify(rest[k])}`).join(', ')
   }
   return String(answer)
 }

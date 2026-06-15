@@ -310,14 +310,13 @@ body::after {
 }
 
 /* ─── 代码高亮 · 微明主题（覆盖 highlight.js 默认） ─────── */
-/* 以烛光琥珀为标记色，墨褐为底，与微明色盘融为一体 */
 .hljs {
-  color: var(--sea-ink);
+  color: #1e293b;
   background: transparent;
 }
 .hljs-comment,
 .hljs-quote {
-  color: color-mix(in oklab, var(--sea-ink-soft) 75%, transparent);
+  color: #94a3b8;
   font-style: italic;
 }
 .hljs-keyword,
@@ -325,7 +324,7 @@ body::after {
 .hljs-built_in,
 .hljs-name,
 .hljs-tag {
-  color: var(--lagoon-deep);
+  color: #7c3aed;
 }
 .hljs-string,
 .hljs-title,
@@ -336,7 +335,7 @@ body::after {
 .hljs-template-variable,
 .hljs-type,
 .hljs-addition {
-  color: var(--palm);
+  color: #059669;
 }
 .hljs-number,
 .hljs-symbol,
@@ -346,7 +345,19 @@ body::after {
 .hljs-selector,
 .hljs-selector-id,
 .hljs-selector-class {
-  color: var(--kicker);
+  color: #d97706;
+}
+.hljs-function .hljs-title,
+.hljs-title.function_ {
+  color: #2563eb;
+}
+.hljs-variable,
+.hljs-params {
+  color: #e11d48;
+}
+.hljs-attr,
+.hljs-property {
+  color: #0ea5e9;
 }
 .hljs-emphasis {
   font-style: italic;

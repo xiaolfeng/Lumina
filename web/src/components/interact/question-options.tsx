@@ -65,13 +65,12 @@ export function QuestionOptions({
 				value={selected}
 				onValueChange={setSelected}
 				className="space-y-3"
-				disabled={isSupplementLoading}
 			>
 				{options.map((opt) => (
 					<Label
 						key={opt.id}
 						htmlFor={`options-${question.id}-${opt.id}`}
-						className={`flex cursor-pointer flex-col gap-2 rounded-xl border px-4 py-3 transition-all duration-150 ${
+						className={`flex cursor-pointer flex-col items-start gap-2 rounded-xl border px-4 py-3 transition-all duration-150 ${
 							selected === opt.id
 								? 'border-lagoon/40 bg-lagoon/8 shadow-sm'
 								: 'border-line bg-foam hover:border-lagoon/25'

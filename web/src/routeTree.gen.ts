@@ -16,6 +16,7 @@ import { Route as PublicRouteImport } from './routes/_public'
 import { Route as InteractIndexRouteImport } from './routes/interact/index'
 import { Route as ConsoleIndexRouteImport } from './routes/console/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as InteractThankRouteImport } from './routes/interact/thank'
 import { Route as ConsoleSettingsRouteImport } from './routes/console/settings'
 import { Route as ConsoleQaRouteImport } from './routes/console/qa'
 import { Route as ConsoleProjectRouteImport } from './routes/console/project'
@@ -60,6 +61,11 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRoute,
+} as any)
+const InteractThankRoute = InteractThankRouteImport.update({
+  id: '/thank',
+  path: '/thank',
+  getParentRoute: () => InteractRoute,
 } as any)
 const ConsoleSettingsRoute = ConsoleSettingsRouteImport.update({
   id: '/settings',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/console/project': typeof ConsoleProjectRoute
   '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
+  '/interact/thank': typeof InteractThankRoute
   '/console/': typeof ConsoleIndexRoute
   '/interact/': typeof InteractIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/console/project': typeof ConsoleProjectRoute
   '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
+  '/interact/thank': typeof InteractThankRoute
   '/': typeof PublicIndexRoute
   '/console': typeof ConsoleIndexRoute
   '/interact': typeof InteractIndexRoute
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/console/project': typeof ConsoleProjectRoute
   '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
+  '/interact/thank': typeof InteractThankRoute
   '/_public/': typeof PublicIndexRoute
   '/console/': typeof ConsoleIndexRoute
   '/interact/': typeof InteractIndexRoute
@@ -182,6 +191,7 @@ export interface FileRouteTypes {
     | '/console/project'
     | '/console/qa'
     | '/console/settings'
+    | '/interact/thank'
     | '/console/'
     | '/interact/'
     | '/console/qa/$sessionId'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/console/project'
     | '/console/qa'
     | '/console/settings'
+    | '/interact/thank'
     | '/'
     | '/console'
     | '/interact'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/console/project'
     | '/console/qa'
     | '/console/settings'
+    | '/interact/thank'
     | '/_public/'
     | '/console/'
     | '/interact/'
@@ -279,6 +291,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/interact/thank': {
+      id: '/interact/thank'
+      path: '/thank'
+      fullPath: '/interact/thank'
+      preLoaderRoute: typeof InteractThankRouteImport
+      parentRoute: typeof InteractRoute
     }
     '/console/settings': {
       id: '/console/settings'
@@ -414,10 +433,12 @@ const ConsoleRouteWithChildren =
   ConsoleRoute._addFileChildren(ConsoleRouteChildren)
 
 interface InteractRouteChildren {
+  InteractThankRoute: typeof InteractThankRoute
   InteractIndexRoute: typeof InteractIndexRoute
 }
 
 const InteractRouteChildren: InteractRouteChildren = {
+  InteractThankRoute: InteractThankRoute,
   InteractIndexRoute: InteractIndexRoute,
 }
 

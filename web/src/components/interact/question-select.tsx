@@ -72,7 +72,6 @@ export function QuestionSelect({
 				value={selected}
 				onValueChange={handleRadioChange}
 				className="space-y-2"
-				disabled={isSupplementLoading}
 			>
 				{options.map((opt) => (
 					<Label
