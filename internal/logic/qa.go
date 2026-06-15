@@ -50,6 +50,9 @@ var OnSupplementPushed func(sessionID string, supplement *entity.QaSupplement)
 // question 为 nil 时表示全部取消（cancelAll=true），非 nil 时表示单个问题取消
 var OnQuestionCancelled func(sessionID string, question *entity.QaQuestion)
 
+// OnSessionArchived 会话归档后的回调钩子，由 WebSocket 层设置以广播 session_end 到在线设备
+var OnSessionArchived func(sessionID string)
+
 // NewQaLogic 创建QaLogic实例
 func NewQaLogic(ctx context.Context) *QaLogic {
 	db := xCtxUtil.MustGetDB(ctx)
@@ -804,6 +807,10 @@ func (l *QaLogic) ArchiveSession(ctx context.Context, sessionID string) *xError.
 	l.queue.RemoveQueue(sessionID)
 	retryKey := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
 	_ = l.rdb.Del(ctx, retryKey).Err()
+
+	if OnSessionArchived != nil {
+		OnSessionArchived(sessionID)
+	}
 	return nil
 }
 

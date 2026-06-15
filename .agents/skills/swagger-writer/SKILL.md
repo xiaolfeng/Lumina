@@ -54,7 +54,7 @@ allowed-tools: Read, Write, Edit, AskUserQuestion
 ```go
 // FuncName 中文一句话说明
 //
-// @Summary     [玩家/管理/超管] 接口名
+// @Summary     [用户/管理/超管] 接口名
 // @Description 说明接口做什么，输入输出是什么
 // @Tags        模块接口
 // @Accept      json

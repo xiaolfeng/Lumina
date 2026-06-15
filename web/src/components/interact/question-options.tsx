@@ -1,6 +1,7 @@
-import { Star } from 'lucide-react'
+import { Pencil, Star } from 'lucide-react'
 import { useState } from 'react'
 
+import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '#/components/ui/radio-group'
 import { Textarea } from '#/components/ui/textarea'
@@ -29,7 +30,9 @@ export function QuestionOptions({
 }: QuestionComponentProps) {
   const [selected, setSelected] = useState<string>('')
   const [feedback, setFeedback] = useState('')
+  const [otherText, setOtherText] = useState('')
 
+  const isOther = selected === '__other__'
   const options = (question.options ?? []) as OptionWithProsCons[]
   const hasSupplements = (question.supplements?.length ?? 0) > 0
 
@@ -43,10 +46,23 @@ export function QuestionOptions({
 
   const handleSubmit = () => {
     if (!selected) return
-    onSubmit({
+    const result: { selected: string; other?: string; feedback?: string } = {
       selected,
-      ...(feedback.trim() ? { feedback: feedback.trim() } : {}),
-    })
+    }
+    if (isOther && otherText.trim()) {
+      result.other = otherText.trim()
+    }
+    if (feedback.trim()) {
+      result.feedback = feedback.trim()
+    }
+    onSubmit(result)
+  }
+
+  const handleRadioChange = (value: string) => {
+    setSelected(value)
+    if (value !== '__other__' && hasOptionSupplement(value)) {
+      onViewOptionDetail?.(value)
+    }
   }
 
   return (
@@ -55,8 +71,13 @@ export function QuestionOptions({
       isSupplementLoading={isSupplementLoading}
       onSkip={onSkip}
       onRequestSupplement={onRequestSupplement}
+      supplement={{
+        kind: 'options',
+        optionCount: options.length,
+        optionIds: options.map((o) => o.id),
+      }}
       supplementButtonLabel={hasSupplements ? '重新获取详情' : '请求补充信息'}
-      submitDisabled={!selected}
+      submitDisabled={!selected || (isOther && !otherText.trim())}
       onSubmit={handleSubmit}
     >
       {isSupplementLoading && (
@@ -66,95 +87,110 @@ export function QuestionOptions({
       )}
       <RadioGroup
         value={selected}
-        onValueChange={setSelected}
+        onValueChange={handleRadioChange}
         className="space-y-2"
       >
         {options.map((opt) => (
           <Label
             key={opt.id}
             htmlFor={`options-${question.id}-${opt.id}`}
-            className={`flex cursor-pointer flex-col gap-2 rounded-lg border px-3 py-2.5 transition-colors duration-150 ${
-              selected === opt.id
-                ? 'border-lagoon/30 bg-lagoon/10'
-                : 'border-line bg-foam hover:border-lagoon/30'
-            }`}
+            className="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-foam px-3 py-2.5 transition-colors duration-150 has-[data-state=checked]:border-lagoon/30 has-[data-state=checked]:bg-lagoon/10 hover:border-lagoon/30"
           >
-            <div className="flex items-start gap-3">
-              <RadioGroupItem
-                value={opt.id}
-                id={`options-${question.id}-${opt.id}`}
-                className="mt-0.5"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start gap-2">
-                  <span className="min-w-0 flex-1 text-sm font-medium">
-                    {opt.label}
+            <RadioGroupItem
+              value={opt.id}
+              id={`options-${question.id}-${opt.id}`}
+              className="mt-0.5"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-2">
+                <span className="min-w-0 flex-1 text-sm font-medium">
+                  {opt.label}
+                </span>
+                {opt.recommended && (
+                  <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                    <Star className="size-2.5" aria-hidden />
+                    推荐
                   </span>
-                  {opt.recommended && (
-                    <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                      <Star className="size-2.5" aria-hidden />
-                      推荐
-                    </span>
+                )}
+                {hasOptionSupplement(opt.id) && (
+                  <OptionDetailLabel
+                    optId={opt.id}
+                    onClick={() => onViewOptionDetail?.(opt.id)}
+                    isActive={activeOptionId === opt.id}
+                  />
+                )}
+              </div>
+              {opt.description && (
+                <p className="mt-0.5 text-xs leading-relaxed text-sea-ink-soft">
+                  {opt.description}
+                </p>
+              )}
+              {(opt.pros?.length ?? 0) > 0 || (opt.cons?.length ?? 0) > 0 ? (
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {opt.pros && opt.pros.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
+                        优点
+                      </p>
+                      <ul className="space-y-0.5">
+                        {opt.pros.map((pro, idx) => (
+                          <li
+                            key={idx}
+                            className="flex items-start gap-1.5 text-xs text-emerald-700"
+                          >
+                            <span className="mt-1.5 size-1 shrink-0 rounded-full bg-emerald-500" />
+                            {pro}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
-                  {hasOptionSupplement(opt.id) && (
-                    <OptionDetailLabel
-                      optId={opt.id}
-                      onClick={() => onViewOptionDetail?.(opt.id)}
-                      isActive={activeOptionId === opt.id}
-                    />
+                  {opt.cons && opt.cons.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-red-500">
+                        缺点
+                      </p>
+                      <ul className="space-y-0.5">
+                        {opt.cons.map((con, idx) => (
+                          <li
+                            key={idx}
+                            className="flex items-start gap-1.5 text-xs text-red-600"
+                          >
+                            <span className="mt-1.5 size-1 shrink-0 rounded-full bg-red-400" />
+                            {con}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
-                {opt.description && (
-                  <p className="mt-0.5 text-xs leading-relaxed text-sea-ink-soft">
-                    {opt.description}
-                  </p>
-                )}
-              </div>
+              ) : null}
             </div>
-
-            {(opt.pros?.length ?? 0) > 0 || (opt.cons?.length ?? 0) > 0 ? (
-              <div className="ml-7 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {opt.pros && opt.pros.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
-                      优点
-                    </p>
-                    <ul className="space-y-0.5">
-                      {opt.pros.map((pro, idx) => (
-                        <li
-                          key={idx}
-                          className="flex items-start gap-1.5 text-xs text-emerald-700"
-                        >
-                          <span className="mt-1.5 size-1 shrink-0 rounded-full bg-emerald-500" />
-                          {pro}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {opt.cons && opt.cons.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-red-500">
-                      缺点
-                    </p>
-                    <ul className="space-y-0.5">
-                      {opt.cons.map((con, idx) => (
-                        <li
-                          key={idx}
-                          className="flex items-start gap-1.5 text-xs text-red-600"
-                        >
-                          <span className="mt-1.5 size-1 shrink-0 rounded-full bg-red-400" />
-                          {con}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ) : null}
           </Label>
         ))}
+
+        <Label
+          htmlFor={`options-${question.id}-other`}
+          className="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-foam px-3 py-2.5 transition-colors duration-150 has-[data-state=checked]:border-lagoon/30 has-[data-state=checked]:bg-lagoon/10 hover:border-lagoon/30"
+        >
+          <RadioGroupItem
+            value="__other__"
+            id={`options-${question.id}-other`}
+            className="mt-0.5"
+          />
+          <Pencil className="size-3.5 shrink-0 text-lagoon-deep" />
+          <span className="text-sm font-medium">其他</span>
+        </Label>
       </RadioGroup>
+
+      {isOther && (
+        <Input
+          placeholder="输入自定义选项..."
+          value={otherText}
+          onChange={(e) => setOtherText(e.target.value)}
+          className="rounded-lg border-line bg-foam"
+        />
+      )}
 
       <div className="mt-3 space-y-1.5">
         <div className="flex items-center gap-1.5">

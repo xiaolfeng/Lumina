@@ -53,6 +53,9 @@ export function QuestionSelect({
   const handleRadioChange = (value: string) => {
     setSelected(value)
     setShowOtherInput(value === '__other__')
+    if (value !== '__other__' && hasOptionSupplement(value)) {
+      onViewOptionDetail?.(value)
+    }
   }
 
   return (
@@ -113,20 +116,18 @@ export function QuestionSelect({
           </Label>
         ))}
 
-        {question.allowOther && (
-          <Label
-            htmlFor={`select-${question.id}-other`}
-            className="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-foam px-3 py-2.5 transition-colors duration-150 has-[data-state=checked]:border-lagoon/30 has-[data-state=checked]:bg-lagoon/10 hover:border-lagoon/30"
-          >
-            <RadioGroupItem
-              value="__other__"
-              id={`select-${question.id}-other`}
-              className="mt-0.5"
-            />
-            <Pencil className="size-3.5 shrink-0 text-lagoon-deep" />
-            <span className="text-sm font-medium">其他</span>
-          </Label>
-        )}
+        <Label
+          htmlFor={`select-${question.id}-other`}
+          className="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-foam px-3 py-2.5 transition-colors duration-150 has-[data-state=checked]:border-lagoon/30 has-[data-state=checked]:bg-lagoon/10 hover:border-lagoon/30"
+        >
+          <RadioGroupItem
+            value="__other__"
+            id={`select-${question.id}-other`}
+            className="mt-0.5"
+          />
+          <Pencil className="size-3.5 shrink-0 text-lagoon-deep" />
+          <span className="text-sm font-medium">其他</span>
+        </Label>
       </RadioGroup>
 
       {isOther && showOtherInput && (

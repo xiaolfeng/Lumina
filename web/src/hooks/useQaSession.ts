@@ -99,7 +99,9 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
   const handleHistoryQuestion = useCallback(
     (data: any) => {
       const qid = data.id || data.ID
-      const status = (data.status || data.Status || 'answered') as Question['status']
+      const status = (data.status ||
+        data.Status ||
+        'answered') as Question['status']
       updateQuestions((prev) => {
         // 去重：已存在则跳过
         if (prev.some((q) => q.id === qid)) return prev
@@ -131,83 +133,94 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
 
   // ── Supplement Push Handler ──
 
-  const handleSupplementPush = useCallback((data: any) => {
-    const supplement: SupplementItem = {
-      id: data.id || data.ID,
-      target_type: data.target_type || data.TargetType || 'question',
-      target_id: data.target_id || data.TargetID || '',
-      content_type: data.content_type || data.ContentType || 'markdown',
-      content: data.content || data.Content || '',
-      created_at: data.created_at || new Date().toISOString(),
-      updated_at: data.updated_at || new Date().toISOString(),
-    }
-    // 将 supplement 附加到对应 question 的 supplements 数组（数据层，历史卡片展示用）
-    // - 问题级（target_type=question）：直接按 target_id 匹配 question.id
-    // - 选项级（target_type=option）：按 target_id 匹配 question.options[].id
-    updateQuestions((prev) =>
-      prev.map((q) => {
-        const belongsToThis =
-          (supplement.target_type === 'question' &&
-            q.id === supplement.target_id) ||
-          (supplement.target_type === 'option' &&
-            (q.options ?? []).some((o) => o.id === supplement.target_id))
-        if (!belongsToThis) return q
-        // 覆写：按 target_type + target_id 替换同目标的旧 supplement（后端 CreateOrUpdate 会生成新 ID）
-        const filtered = (q.supplements ?? []).filter(
-          (s) =>
-            !(
-              s.target_type === supplement.target_type &&
-              s.target_id === supplement.target_id
-            ),
-        )
-        return {
-          ...q,
-          supplements: [...filtered, supplement],
-        }
-      }),
-    )
-    // 仅当存在 pending 问题（用户正在回答）时才打开详情面板。
-    // 重连时后端推送的历史 supplement（目标问题已 answered/skipped）只作数据挂载，
-    // 不激活面板，避免无 pending 问题时详情列空白占位、第一列无法居中。
-    const hasPending = questionsRef.current.some((q) => q.status === 'pending')
-    if (hasPending) {
-      setActiveSupplement(supplement)
-    }
-    stopSupplementLoading()
-  }, [updateQuestions, stopSupplementLoading])
+  const handleSupplementPush = useCallback(
+    (data: any) => {
+      const supplement: SupplementItem = {
+        id: data.id || data.ID,
+        target_type: data.target_type || data.TargetType || 'question',
+        target_id: data.target_id || data.TargetID || '',
+        content_type: data.content_type || data.ContentType || 'markdown',
+        content: data.content || data.Content || '',
+        created_at: data.created_at || new Date().toISOString(),
+        updated_at: data.updated_at || new Date().toISOString(),
+      }
+      // 将 supplement 附加到对应 question 的 supplements 数组（数据层，历史卡片展示用）
+      // - 问题级（target_type=question）：直接按 target_id 匹配 question.id
+      // - 选项级（target_type=option）：按 target_id 匹配 question.options[].id
+      updateQuestions((prev) =>
+        prev.map((q) => {
+          const belongsToThis =
+            (supplement.target_type === 'question' &&
+              q.id === supplement.target_id) ||
+            (supplement.target_type === 'option' &&
+              (q.options ?? []).some((o) => o.id === supplement.target_id))
+          if (!belongsToThis) return q
+          // 覆写：按 target_type + target_id 替换同目标的旧 supplement（后端 CreateOrUpdate 会生成新 ID）
+          const filtered = (q.supplements ?? []).filter(
+            (s) =>
+              !(
+                s.target_type === supplement.target_type &&
+                s.target_id === supplement.target_id
+              ),
+          )
+          return {
+            ...q,
+            supplements: [...filtered, supplement],
+          }
+        }),
+      )
+      // 仅当存在 pending 问题（用户正在回答）时才打开详情面板。
+      // 重连时后端推送的历史 supplement（目标问题已 answered/skipped）只作数据挂载，
+      // 不激活面板，避免无 pending 问题时详情列空白占位、第一列无法居中。
+      const hasPending = questionsRef.current.some(
+        (q) => q.status === 'pending',
+      )
+      if (hasPending) {
+        setActiveSupplement(supplement)
+      }
+      stopSupplementLoading()
+    },
+    [updateQuestions, stopSupplementLoading],
+  )
 
   // ── Answer Sync Handler ──
 
-  const handleAnswerSync = useCallback((data: any) => {
-    updateQuestions((prev) =>
-      prev.map((q) => {
-        if (q.id === data.question_id) {
-          return {
-            ...q,
-            status: data.status,
-            answered: data.status === 'answered',
+  const handleAnswerSync = useCallback(
+    (data: any) => {
+      updateQuestions((prev) =>
+        prev.map((q) => {
+          if (q.id === data.question_id) {
+            return {
+              ...q,
+              status: data.status,
+              answered: data.status === 'answered',
+            }
           }
-        }
-        return q
-      }),
-    )
-  }, [updateQuestions])
+          return q
+        }),
+      )
+    },
+    [updateQuestions],
+  )
 
   // ── Answer Unhandled Handler ──
 
-  const handleAnswerUnhandled = useCallback((data: any) => {
-    const promptText = `请处理以下回答：\n会话ID: ${sessionHash}\n问题ID: ${data.question_id}\n回答内容: ${JSON.stringify(data.answer, null, 2)}\n\n提示：使用 qa_reget_answer 工具获取最新回答。`
+  const handleAnswerUnhandled = useCallback(
+    (data: any) => {
+      const promptText = `请处理以下回答：\n会话ID: ${sessionHash}\n问题ID: ${data.question_id}\n回答内容: ${JSON.stringify(data.answer, null, 2)}\n\n提示：使用 qa_reget_answer 工具获取最新回答。`
 
-    toast.info('等待 AI Agent 处理问题', {
-      description:
-        '您的回答已保存。AI Agent 可能正在处理其他任务或已停止获取回答，点击下方按钮可复制提示词手动提醒 Agent 继续处理。',
-      duration: 12000,
-      action: {
-        label: '复制提示词',
-        onClick: () => navigator.clipboard.writeText(promptText),
-      },
-    })
-  }, [sessionHash])
+      toast.info('等待 AI Agent 处理问题', {
+        description:
+          '您的回答已保存。AI Agent 可能正在处理其他任务或已停止获取回答，点击下方按钮可复制提示词手动提醒 Agent 继续处理。',
+        duration: 12000,
+        action: {
+          label: '复制提示词',
+          onClick: () => navigator.clipboard.writeText(promptText),
+        },
+      })
+    },
+    [sessionHash],
+  )
 
   // ── WebSocket Connection ──
   // 连接建立时后端自动推送 pending 问题（question_push）及其 supplement（supplement_push），
@@ -219,6 +232,10 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
     onSupplementPush: handleSupplementPush,
     onAnswerSync: handleAnswerSync,
     onAnswerUnhandled: handleAnswerUnhandled,
+    onSessionEnd: () => {
+      setActiveSupplement(null)
+      onReject?.()
+    },
     onReject,
   })
 
@@ -246,9 +263,7 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
       ws.sendMessage('skip', { question_id: questionId })
       updateQuestions((prev) =>
         prev.map((q) =>
-          q.id === questionId
-            ? { ...q, status: 'skipped' as const }
-            : q,
+          q.id === questionId ? { ...q, status: 'skipped' as const } : q,
         ),
       )
       // 跳过后清除详情面板，避免残留上一个问题的补充内容
@@ -258,7 +273,12 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
   )
 
   const requestSupplement = useCallback(
-    (payload: { questionId: string; note?: string; withOptions?: boolean; optionIds?: string[] }) => {
+    (payload: {
+      questionId: string
+      note?: string
+      withOptions?: boolean
+      optionIds?: string[]
+    }) => {
       startSupplementLoading()
       ws.sendMessage('request_supplement', {
         question_id: payload.questionId,

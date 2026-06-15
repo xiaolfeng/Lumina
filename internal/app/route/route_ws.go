@@ -68,6 +68,18 @@ func (r *route) wsRouter(route gin.IRouter) {
 		hub.BroadcastToSession(sessionID, msg)
 	}
 
+	logic.OnSessionArchived = func(sessionID string) {
+		msg := &websocket.Message{
+			Type:      websocket.MsgSessionEnd,
+			SessionID: sessionID,
+			Data: map[string]interface{}{
+				"reason": "archived",
+			},
+			Timestamp: time.Now().UnixMilli(),
+		}
+		hub.BroadcastToSession(sessionID, msg)
+	}
+
 	// Q&A WebSocket 端点（需认证）
 	wsGroup := route.Group("/qa")
 	wsGroup.Use(middleware.Auth(r.context))

@@ -44,6 +44,9 @@ export function QuestionMultiSelect({
         next.delete(id)
       } else if (!maxSelect || next.size < maxSelect) {
         next.add(id)
+        if (hasOptionSupplement(id)) {
+          onViewOptionDetail?.(id)
+        }
       }
       return next
     })
@@ -124,30 +127,26 @@ export function QuestionMultiSelect({
           </Label>
         ))}
 
-        {question.allowOther && (
-          <>
-            <Label
-              htmlFor={`multi-${question.id}-other`}
-              className="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-foam px-3 py-2.5 transition-colors duration-150 has-[data-state=checked]:border-lagoon/30 has-[data-state=checked]:bg-lagoon/10 hover:border-lagoon/30"
-            >
-              <Checkbox
-                id={`multi-${question.id}-other`}
-                checked={otherChecked}
-                onCheckedChange={(v) => setOtherChecked(!!v)}
-                className="mt-0.5"
-              />
-              <Pencil className="size-3.5 shrink-0 text-lagoon-deep" />
-              <span className="text-sm font-medium">其他</span>
-            </Label>
-            {otherChecked && (
-              <Input
-                placeholder="输入自定义选项..."
-                value={otherText}
-                onChange={(e) => setOtherText(e.target.value)}
-                className="rounded-lg border-line bg-foam"
-              />
-            )}
-          </>
+        <Label
+          htmlFor={`multi-${question.id}-other`}
+          className="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-foam px-3 py-2.5 transition-colors duration-150 has-[data-state=checked]:border-lagoon/30 has-[data-state=checked]:bg-lagoon/10 hover:border-lagoon/30"
+        >
+          <Checkbox
+            id={`multi-${question.id}-other`}
+            checked={otherChecked}
+            onCheckedChange={(v) => setOtherChecked(!!v)}
+            className="mt-0.5"
+          />
+          <Pencil className="size-3.5 shrink-0 text-lagoon-deep" />
+          <span className="text-sm font-medium">其他</span>
+        </Label>
+        {otherChecked && (
+          <Input
+            placeholder="输入自定义选项..."
+            value={otherText}
+            onChange={(e) => setOtherText(e.target.value)}
+            className="rounded-lg border-line bg-foam"
+          />
         )}
       </div>
     </QuestionShell>
