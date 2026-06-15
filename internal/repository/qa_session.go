@@ -349,6 +349,37 @@ func (r *QaSessionRepo) cacheSession(ctx context.Context, session *entity.QaSess
 	r.rdb.Set(ctx, r.cacheKey(cacheKeySessionDetail, session.ID.Int64()), jsonData, cacheTTLSession)
 }
 
+// ClearCache 清除指定会话的 Redis 缓存（公开方法，供 Logic 层在归档/状态变更后调用）
+//
+// 与 clearSessionCache 的区别：ClearCache 自行查询会话 Hash（若缓存未命中则回源 DB），
+// 然后清除 ID→详情 和 Hash→ID 两组缓存键。适用于 ArchiveSession 等不经过 Delete 流程
+// 但需要刷新缓存的场景。
+//
+// 参数:
+//   - ctx: 上下文对象
+//   - id:  会话雪花 ID
+//
+// 返回值:
+//   - *xError.Error: 查询 Hash 过程中的错误（缓存删除失败仅记录日志，不返回错误）
+func (r *QaSessionRepo) ClearCache(ctx context.Context, id xSnowflake.SnowflakeID) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("ClearCache - 清除会话缓存 [%d]", id.Int64()))
+
+	// 尝试从数据库获取 Hash（用于清理 Hash→ID 映射缓存）
+	// 不走 GetByID 缓存链路，避免回填刚刚要删除的缓存
+	var session entity.QaSession
+	if err := r.db.WithContext(ctx).Select("hash").Where("id = ?", id).First(&session).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// 会话不存在，仅清理 ID 详情缓存（Hash 未知无法清理）
+			r.rdb.Del(ctx, r.cacheKey(cacheKeySessionDetail, id.Int64()))
+			return nil
+		}
+		return xError.NewError(ctx, xError.DatabaseError, "查询会话Hash失败", false, err)
+	}
+
+	r.clearSessionCache(ctx, id, session.Hash)
+	return nil
+}
+
 // clearSessionCache 清除QA会话关联的 Redis 缓存
 //
 // 清除范围：ID 详情键 + Hash→ID 映射键

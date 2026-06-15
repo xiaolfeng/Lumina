@@ -16,6 +16,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/xiaolfeng/Lumina/internal/qa"
 	"github.com/xiaolfeng/Lumina/internal/repository"
+	"github.com/xiaolfeng/Lumina/internal/service"
 	"gorm.io/gorm"
 )
 
@@ -127,7 +128,7 @@ func CreateMessageHandler(db *gorm.DB) MessageHandler {
 
 // handleAnswerSubmit 处理回答提交消息
 //
-// 流程：解析数据 → 更新 DB → 入队 → 跨设备广播同步
+// 流程：解析数据 → 查询问题类型 → image/file 类型 base64 落盘 → 更新 DB → 入队 → 跨设备广播同步
 func handleAnswerSubmit(ctx context.Context, conn *Connection, msg *Message, questionRepo *repository.QaQuestionRepo, queue *qa.AnswerQueue, log *xLog.LogNamedLogger) {
 	data, ok := msg.Data.(map[string]interface{})
 	if !ok {
@@ -138,14 +139,28 @@ func handleAnswerSubmit(ctx context.Context, conn *Connection, msg *Message, que
 	questionIDStr, _ := data["question_id"].(string)
 	answerData := data["answer"]
 
-	answerData = sanitizeAnswer(answerData)
-
 	// 解析问题雪花 ID
 	qID, err := xSnowflake.ParseSnowflakeID(questionIDStr)
 	if err != nil {
 		log.Warn(ctx, "解析 question_id 失败", slog.String("question_id", questionIDStr))
 		return
 	}
+
+	// 查询问题类型，image/file 类型需在 sanitize 前完成 base64→filePath 转换
+	question, qErr := questionRepo.GetByID(ctx, qID)
+	if qErr != nil {
+		log.Warn(ctx, "查询问题失败", slog.String("error", qErr.Error()))
+		return
+	}
+
+	// image/file 类型：base64 content 解码落盘，替换为 filePath
+	if question.Type == "image" || question.Type == "file" {
+		fileCacheSvc := service.NewFileCacheService()
+		answerData = processMediaAnswer(ctx, conn.sessionID, answerData, question.Type, fileCacheSvc, log)
+	}
+
+	// 清洗回答数据（剥离已被转换的 base64 残留字段，保留 filePath/mimeType/filename）
+	answerData = sanitizeAnswer(answerData)
 
 	// 更新问题状态为已回答，写入回答数据
 	if xErr := questionRepo.UpdateAnswer(ctx, qID, "answered", answerData); xErr != nil {
@@ -186,6 +201,63 @@ func handleAnswerSubmit(ctx context.Context, conn *Connection, msg *Message, que
 		Timestamp: time.Now().UnixMilli(),
 	}
 	conn.hub.BroadcastToSession(conn.sessionID, syncMsg)
+}
+
+// processMediaAnswer 处理 image/file 类型回答，将 base64 content 解码写入文件系统并替换为 filePath。
+//
+// image 题型遍历 images 数组，file 题型遍历 files 数组。
+// 每个元素的 content 字段（base64）被解码落盘，然后替换为 filePath 字段。
+// 落盘失败的文件跳过并记录日志，不影响其他文件处理。
+// 返回更新后的 answerData；若 answerData 不是预期 map 结构则原样返回。
+func processMediaAnswer(ctx context.Context, sessionID string, answerData any, qType string, svc *service.FileCacheService, log *xLog.LogNamedLogger) any {
+	m, ok := answerData.(map[string]interface{})
+	if !ok {
+		return answerData
+	}
+
+	fieldKey := "images"
+	if qType == "file" {
+		fieldKey = "files"
+	}
+
+	items, ok := m[fieldKey].([]interface{})
+	if !ok {
+		return answerData
+	}
+
+	for i, item := range items {
+		itemMap, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		content, hasContent := itemMap["content"].(string)
+		if !hasContent || content == "" {
+			continue
+		}
+
+		filename, _ := itemMap["filename"].(string)
+		if filename == "" {
+			filename, _ = itemMap["name"].(string)
+		}
+		mimeType, _ := itemMap["mimeType"].(string)
+
+		filePath, err := svc.SaveBase64File(ctx, sessionID, content, filename, mimeType)
+		if err != nil {
+			log.Warn(ctx, "文件保存失败",
+				slog.String("filename", filename),
+				slog.String("error", err.Error()),
+			)
+			continue
+		}
+
+		// 移除 base64 原始数据，写入磁盘路径
+		delete(itemMap, "content")
+		itemMap["filePath"] = filePath
+		items[i] = itemMap
+	}
+
+	m[fieldKey] = items
+	return m
 }
 
 // handleRequestSupplement 处理补充内容请求消息

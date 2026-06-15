@@ -30,6 +30,9 @@ go.work.sum
 build/
 lumina
 
+### Lumina ###
+.lumina/cache/
+
 ### AI ###
 .omo/
 docs/superpowers/

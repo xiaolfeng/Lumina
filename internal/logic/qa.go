@@ -19,6 +19,7 @@ import (
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
+	"github.com/xiaolfeng/Lumina/internal/service"
 	qaQueue "github.com/xiaolfeng/Lumina/internal/qa"
 	"gorm.io/datatypes"
 )
@@ -224,6 +225,12 @@ func (l *QaLogic) DeleteSession(ctx context.Context, id string) *xError.Error {
 	// 执行软删除
 	if xErr := l.repo.session.Delete(ctx, parsedID); xErr != nil {
 		return xErr
+	}
+
+	// P-16: 删除后同步清理会话级文件缓存（base64 媒体文件等）
+	fileCacheSvc := service.NewFileCacheService()
+	if cleanErr := fileCacheSvc.CleanSession(ctx, id); cleanErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("DeleteSession - 删除后清理文件缓存失败（忽略）: %s", cleanErr.Error()))
 	}
 
 	// 清理队列和重试计数器
@@ -438,6 +445,41 @@ func (l *QaLogic) PushQuestion(ctx context.Context, sessionID, qType, title, des
 		return "", nil, xError.NewError(ctx, xError.BusinessError, "会话不是活跃状态，无法推送问题", false, nil)
 	}
 
+	// ── 题型参数校验（P-01, P-15）──
+	requiresOptions := map[string]bool{
+		"select": true, "multi-select": true, "rank": true,
+		"rate": true, "options": true,
+	}
+	if requiresOptions[qType] {
+		if options == nil {
+			return "", nil, xError.NewError(ctx, xError.BusinessError,
+				xError.ErrMessage(fmt.Sprintf("题型 %s 必须提供 options 参数", qType)), false, nil)
+		}
+		var optList []map[string]interface{}
+		switch v := options.(type) {
+		case string:
+			_ = json.Unmarshal([]byte(v), &optList)
+		default:
+			optBytes, _ := json.Marshal(options)
+			_ = json.Unmarshal(optBytes, &optList)
+		}
+		if len(optList) == 0 {
+			return "", nil, xError.NewError(ctx, xError.BusinessError,
+				xError.ErrMessage(fmt.Sprintf("题型 %s 的 options 参数不能为空", qType)), false, nil)
+		}
+		// options 题型额外校验 pros/cons（P-01）
+		if qType == "options" {
+			for _, opt := range optList {
+				pros, _ := opt["pros"].([]interface{})
+				cons, _ := opt["cons"].([]interface{})
+				if len(pros) == 0 || len(cons) == 0 {
+					return "", nil, xError.NewError(ctx, xError.BusinessError,
+						"options 题型的每个选项必须包含 pros 和 cons（用于差异化对比）", false, nil)
+				}
+			}
+		}
+	}
+
 	// 生成问题ID
 	qID := xSnowflake.GenerateID(bConst.GeneQaQuestion)
 
@@ -609,9 +651,19 @@ func (l *QaLogic) RegetAnswer(ctx context.Context, sessionID, questionID string,
 	}
 
 	// 构造单条回答格式
-	answerData := question.Answer
-	questionType, questionOptions := parseQuestionMetadata(question)
-	summary := formatAnswerData(questionID, answerData, questionType, questionOptions)
+	var answerData interface{}
+	if question.Answer != nil {
+		_ = json.Unmarshal(question.Answer, &answerData)
+	}
+	questionType, questionOptions, config, description := parseQuestionMetadata(question)
+	fmtCtx := AnswerFormatContext{
+		Description:       description,
+		Config:            config,
+		OptionSupplements: l.buildOptionSupplementMap(ctx, sessionID, questionID),
+	}
+	summary := formatAnswerData(questionID, answerData, questionType, questionOptions, fmtCtx)
+	// image/file 类型：追加 OTP 下载令牌（P-11）
+	summary = l.enhanceMediaAnswerWithOTP(ctx, questionType, sessionID, summary, answerData)
 	return fmt.Sprintf("--- question:%s ---\n[ANSWER] %s", questionID, summary), nil
 }
 
@@ -641,9 +693,19 @@ func (l *QaLogic) RegetAnswers(ctx context.Context, sessionID string, questionID
 			continue
 		}
 
-		answerData := question.Answer
-		questionType, questionOptions := parseQuestionMetadata(question)
-		summary := formatAnswerData(qid, answerData, questionType, questionOptions)
+		var answerData interface{}
+		if question.Answer != nil {
+			_ = json.Unmarshal(question.Answer, &answerData)
+		}
+		questionType, questionOptions, config, description := parseQuestionMetadata(question)
+		fmtCtx := AnswerFormatContext{
+			Description:       description,
+			Config:            config,
+			OptionSupplements: l.buildOptionSupplementMap(ctx, sessionID, qid),
+		}
+		summary := formatAnswerData(qid, answerData, questionType, questionOptions, fmtCtx)
+		// image/file 类型：追加 OTP 下载令牌（P-11）
+		summary = l.enhanceMediaAnswerWithOTP(ctx, questionType, sessionID, summary, answerData)
 		if question.Status == "answered" {
 			sb.WriteString(fmt.Sprintf("--- question:%s ---\n[ANSWER] %s\n", qid, summary))
 		} else {
@@ -722,6 +784,17 @@ func (l *QaLogic) ArchiveSession(ctx context.Context, sessionID string) *xError.
 		return xError.NewError(ctx, xError.UnknownError, "归档会话失败", false, xErr)
 	}
 
+	// P-16: 归档后清除会话 Redis 缓存，避免后续读取到 active 状态的脏数据
+	if cacheErr := l.repo.session.ClearCache(ctx, parsedID); cacheErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("ArchiveSession - 归档后清除缓存失败（忽略）: %s", cacheErr.Error()))
+	}
+
+	// P-16: 清理会话级文件缓存（base64 媒体文件等）
+	fileCacheSvc := service.NewFileCacheService()
+	if cleanErr := fileCacheSvc.CleanSession(ctx, sessionID); cleanErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("ArchiveSession - 归档后清理文件缓存失败（忽略）: %s", cleanErr.Error()))
+	}
+
 	l.queue.RemoveQueue(sessionID)
 	retryKey := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
 	_ = l.rdb.Del(ctx, retryKey).Err()
@@ -750,7 +823,22 @@ func toSessionResponse(session *entity.QaSession) qa.SessionResponse {
 //
 // supplements 为该问题关联的补充内容（按 question 维度分组后注入），
 // 支持 Interact 页面刷新后恢复完整历史问答（含回答、选项、补充内容）。
+//
+// P-21 安全过滤：HTML 格式 supplement 仅用于浏览器渲染，不返回给 AI；
+// markdown 格式 supplement 检测危险 HTML 标签（<script>/<iframe> 等），含危险标签则跳过。
 func toQuestionSummary(q *entity.QaQuestion, supplements []qa.SupplementResponse) qa.QuestionSummaryResponse {
+	// P-21: 过滤 supplement — 仅保留安全的 markdown 格式内容给 AI
+	filtered := make([]qa.SupplementResponse, 0, len(supplements))
+	for _, s := range supplements {
+		if s.ContentType == "html" {
+			continue
+		}
+		if containsDangerousTags(s.Content) {
+			continue
+		}
+		filtered = append(filtered, s)
+	}
+
 	return qa.QuestionSummaryResponse{
 		ID:          q.ID.String(),
 		Type:        q.Type,
@@ -763,13 +851,33 @@ func toQuestionSummary(q *entity.QaQuestion, supplements []qa.SupplementResponse
 		Status:      q.Status,
 		Answer:      jsonOrNull(q.Answer),
 		Media:       jsonOrNull(q.Media),
-		Supplements: supplements,
+		Supplements: filtered,
 		CreatedAt:   q.CreatedAt.Format(time.RFC3339),
 		AnsweredAt:  formatTimePtr(q.AnsweredAt),
 	}
 }
 
-// formatAnswerString 将多条回答格式化为人类可读字符串
+// containsDangerousTags 检测内容中是否包含危险的 HTML 标签
+//
+// 检测 <script>、<style>、<iframe>、<object>、<embed>、<link>、<meta> 等
+// 可能导致 XSS 或内容注入的标签。大小写不敏感，匹配标签前缀（如 <script 可匹配 <script>、<script src=...>）。
+func containsDangerousTags(content string) bool {
+	lower := strings.ToLower(content)
+	dangerousTags := []string{"<script", "<style", "<iframe", "<object", "<embed", "<link", "<meta"}
+	for _, tag := range dangerousTags {
+		if strings.Contains(lower, tag) {
+			return true
+		}
+	}
+	return false
+}
+
+// formatAnswerString 将多条回答格式化为人类可读字符串（P-18 优化）
+//
+// 优化要点：skip/supplement 标记由 WebSocket handler 直接推入字符串（"[SKIPPED]" /
+// "[NEED_SUPPLEMENT] ..."），正常回答推入 map。通过类型判断直接区分两种路径，
+// 消除原来对每个回答先走一次 default 格式化再查 DB 再格式化的性能浪费。
+// 同时为 select/multi-select 题型注入选项级 supplement 映射。
 func (l *QaLogic) formatAnswerString(ctx context.Context, answers []qaQueue.Answer) string {
 	var sb strings.Builder
 	for i, a := range answers {
@@ -777,32 +885,43 @@ func (l *QaLogic) formatAnswerString(ctx context.Context, answers []qaQueue.Answ
 			sb.WriteString("\n")
 		}
 
-		dataStr := formatAnswerData(a.QuestionID, a.Data, "", nil)
-
 		var marker, content string
-		switch {
-		case dataStr == `"[SKIPPED]"` || dataStr == "[SKIPPED]":
-			marker = "[SKIPPED]"
-			content = "用户跳过了此问题"
-		case strings.HasPrefix(dataStr, `"`) && strings.Contains(dataStr, "NEED_SUPPLEMENT"):
-			cleaned := strings.Trim(dataStr, `"`)
-			marker = "[NEED_SUPPLEMENT]"
-			content = strings.TrimPrefix(cleaned, "[NEED_SUPPLEMENT] ")
-		case strings.HasPrefix(dataStr, "[NEED_SUPPLEMENT]"):
-			marker = "[NEED_SUPPLEMENT]"
-			content = strings.TrimPrefix(dataStr, "[NEED_SUPPLEMENT] ")
-		default:
+
+		// skip/supplement 标记是字符串类型（WebSocket handler 直接推入字符串）
+		if dataStr, ok := a.Data.(string); ok {
+			switch {
+			case dataStr == "[SKIPPED]":
+				marker = "[SKIPPED]"
+				content = "用户跳过了此问题"
+			case strings.HasPrefix(dataStr, "[NEED_SUPPLEMENT]"):
+				marker = "[NEED_SUPPLEMENT]"
+				content = strings.TrimPrefix(dataStr, "[NEED_SUPPLEMENT] ")
+			default:
+				marker = "[ANSWER]"
+				content = dataStr
+			}
+		} else {
+			// 正常回答（map 类型）— 查询 DB 获取题型元数据后格式化
 			marker = "[ANSWER]"
-			// 尝试从 DB 查询问题元数据以获取更精确的格式
 			parsedQID, err := xSnowflake.ParseSnowflakeID(a.QuestionID)
 			if err == nil {
 				question, xErr := l.repo.question.GetByID(ctx, parsedQID)
 				if xErr == nil {
-					questionType, questionOptions := parseQuestionMetadata(question)
-					dataStr = formatAnswerData(a.QuestionID, a.Data, questionType, questionOptions)
+					questionType, questionOptions, config, description := parseQuestionMetadata(question)
+					fmtCtx := AnswerFormatContext{
+						Description:       description,
+						Config:            config,
+						OptionSupplements: l.buildOptionSupplementMap(ctx, question.SessionID.String(), a.QuestionID),
+					}
+					content = formatAnswerData(a.QuestionID, a.Data, questionType, questionOptions, fmtCtx)
+					// image/file 类型：追加 OTP 下载令牌（P-11）
+					content = l.enhanceMediaAnswerWithOTP(ctx, questionType, question.SessionID.String(), content, a.Data)
+				} else {
+					content = formatAnswerData(a.QuestionID, a.Data, "", nil, AnswerFormatContext{})
 				}
+			} else {
+				content = formatAnswerData(a.QuestionID, a.Data, "", nil, AnswerFormatContext{})
 			}
-			content = dataStr
 		}
 
 		sb.WriteString(fmt.Sprintf("--- question:%s ---\n%s %s\n", a.QuestionID, marker, content))
@@ -810,21 +929,53 @@ func (l *QaLogic) formatAnswerString(ctx context.Context, answers []qaQueue.Answ
 	return sb.String()
 }
 
-// parseQuestionMetadata 从 QaQuestion 实体提取题型和选项列表
-func parseQuestionMetadata(q *entity.QaQuestion) (string, []map[string]interface{}) {
+// AnswerFormatContext 封装格式化回答所需的 question 级上下文
+type AnswerFormatContext struct {
+	Description       string                // 问题级描述（question.description）
+	Config            map[string]interface{} // 问题配置（plan sections / diff before-after 等）
+	OptionSupplements map[string]string      // 选项级 supplement 映射（key=optionID, value=markdown 内容，HTML 已过滤）
+}
+
+// parseQuestionMetadata 从 QaQuestion 实体提取题型、选项列表、配置和描述
+func parseQuestionMetadata(q *entity.QaQuestion) (string, []map[string]interface{}, map[string]interface{}, string) {
 	if q == nil {
-		return "", nil
+		return "", nil, nil, ""
 	}
 	questionType := q.Type
 	var options []map[string]interface{}
 	if q.Options != nil {
 		_ = json.Unmarshal(q.Options, &options)
 	}
-	return questionType, options
+	var config map[string]interface{}
+	if q.Config != nil {
+		_ = json.Unmarshal(q.Config, &config)
+	}
+	return questionType, options, config, q.Description
+}
+
+// buildOptionSupplementMap 查询问题关联的选项级 supplement，构建 map[optionID]content
+// 仅包含 content_type=markdown 的 supplement（HTML 格式不返回给 AI）
+func (l *QaLogic) buildOptionSupplementMap(ctx context.Context, sessionID string, questionID string) map[string]string {
+	parsedSID, err := xSnowflake.ParseSnowflakeID(sessionID)
+	if err != nil {
+		return nil
+	}
+	supplements, xErr := l.repo.supplement.GetBySessionID(ctx, parsedSID)
+	if xErr != nil {
+		return nil
+	}
+	result := make(map[string]string)
+	for _, s := range supplements {
+		if s.TargetType != "option" || s.ContentType != "markdown" {
+			continue
+		}
+		result[s.TargetID.String()] = s.Content
+	}
+	return result
 }
 
 // formatAnswerData 格式化单条回答数据
-func formatAnswerData(questionID string, data any, questionType string, options []map[string]interface{}) string {
+func formatAnswerData(questionID string, data any, questionType string, options []map[string]interface{}, fmtCtx AnswerFormatContext) string {
 	if data == nil {
 		return ""
 	}
@@ -836,84 +987,156 @@ func formatAnswerData(questionID string, data any, questionType string, options 
 
 	switch questionType {
 	case "select":
-		return formatSelectAnswer(m, options)
+		return formatSelectAnswer(m, options, fmtCtx)
 	case "multi-select":
-		return formatMultiSelectAnswer(m, options)
+		return formatMultiSelectAnswer(m, options, fmtCtx)
 	case "text":
 		return formatTextAnswer(m)
 	case "boolean":
 		return formatBooleanAnswer(m)
-	case "code", "image", "file":
-		return formatMediaAnswer(m, questionType)
+	case "code":
+		return formatCodeAnswer(m)
+	case "image":
+		return formatImageAnswer(m)
+	case "file":
+		return formatFileAnswer(m)
 	case "plan":
-		return formatPlanAnswer(m)
-	case "diff", "review":
-		return formatDecisionAnswer(m)
+		return formatPlanAnswer(m, fmtCtx.Config)
+	case "diff":
+		return formatDiffAnswer(m, fmtCtx.Config)
+	case "review":
+		return formatReviewAnswer(m)
+	case "options":
+		return formatOptionsAnswer(m, options)
 	case "slider":
 		return formatSliderAnswer(m)
 	case "rank":
-		return formatRankAnswer(m)
+		return formatRankAnswer(m, options)
 	case "rate":
-		return formatRateAnswer(m)
+		return formatRateAnswer(m, options)
 	default:
-		// 未知题型，尝试通用解析
 		return formatGenericAnswer(m)
 	}
 }
 
 // formatSelectAnswer 格式化单选回答
-func formatSelectAnswer(m map[string]interface{}, options []map[string]interface{}) string {
+//
+// 输出格式（P-05）：
+//   - 用户选择：<label>
+//   - [DESCRIPTION] <question.description>          （问题级，可选）
+//   - [OPTION_DESCRIPTION] <option.description>      （选项级，可选）
+//   - [SUPPLEMENT] <agent option supplement | other> （选项级补充或自定义输入，可选）
+//
+// 每级信息为空时整行省略。
+func formatSelectAnswer(m map[string]interface{}, options []map[string]interface{}, fmtCtx AnswerFormatContext) string {
 	selected, exists := m["selected"]
 	if !exists {
 		return fmt.Sprintf("%v", m)
 	}
 
-	label, desc := resolveOptionLabel(selected, options)
-	result := label
-	if desc != "" {
-		result = label + "\n" + desc
-		result += "\n----DETAIL----"
+	selectedID := getOptionID(selected)
+	label, optionDesc := resolveOptionLabel(selected, options)
+	if label == "" {
+		label = selectedID
 	}
-	return result
+
+	var sb strings.Builder
+	sb.WriteString("用户选择：" + label)
+
+	if strings.TrimSpace(fmtCtx.Description) != "" {
+		sb.WriteString("\n[DESCRIPTION] ")
+		sb.WriteString(fmtCtx.Description)
+	}
+	if optionDesc != "" {
+		sb.WriteString("\n[OPTION_DESCRIPTION] ")
+		sb.WriteString(optionDesc)
+	}
+	if supp, ok := fmtCtx.OptionSupplements[selectedID]; ok && strings.TrimSpace(supp) != "" {
+		sb.WriteString("\n[SUPPLEMENT] ")
+		sb.WriteString(supp)
+	}
+	if other, ok := m["other"].(string); ok && strings.TrimSpace(other) != "" {
+		sb.WriteString("\n[SUPPLEMENT] ")
+		sb.WriteString(other)
+	}
+
+	return sb.String()
 }
 
 // formatMultiSelectAnswer 格式化多选回答
-func formatMultiSelectAnswer(m map[string]interface{}, options []map[string]interface{}) string {
+//
+// 输出格式（P-08）：
+//   - 用户选择 N 项
+//   - [DESCRIPTION] <question.description>                  （问题级，可选）
+//   - ---
+//   - [OPTION] <label>                                      （逐项）
+//   - [OPTION_DESCRIPTION] <option.description>             （选项级，可选）
+//   - [SUPPLEMENT] <agent option supplement>                （选项级补充，可选）
+//
+// 每级信息为空时整行省略；选项之间以 `---` 分隔。
+func formatMultiSelectAnswer(m map[string]interface{}, options []map[string]interface{}, fmtCtx AnswerFormatContext) string {
 	selected, exists := m["selected"]
 	if !exists {
 		return fmt.Sprintf("%v", m)
 	}
 
-	var labels []string
-	var descs []string
-
+	var selectedList []interface{}
 	switch v := selected.(type) {
 	case []interface{}:
-		for _, item := range v {
-			label, desc := resolveOptionLabel(item, options)
-			if label != "" {
-				labels = append(labels, label)
-			}
-			if desc != "" {
-				descs = append(descs, desc)
-			}
-		}
+		selectedList = v
 	default:
-		label, desc := resolveOptionLabel(selected, options)
-		if label != "" {
-			labels = append(labels, label)
+		selectedList = []interface{}{selected}
+	}
+
+	otherCount := 0
+	if others, ok := m["other"].([]interface{}); ok {
+		otherCount = len(others)
+	}
+	totalCount := len(selectedList) + otherCount
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("用户选择 %d 项", totalCount))
+
+	if strings.TrimSpace(fmtCtx.Description) != "" {
+		sb.WriteString("\n[DESCRIPTION] ")
+		sb.WriteString(fmtCtx.Description)
+	}
+
+	for _, item := range selectedList {
+		selectedID := getOptionID(item)
+		label, optionDesc := resolveOptionLabel(item, options)
+		if label == "" {
+			label = selectedID
 		}
-		if desc != "" {
-			descs = append(descs, desc)
+
+		sb.WriteString("\n---")
+		sb.WriteString("\n[OPTION] ")
+		sb.WriteString(label)
+
+		if optionDesc != "" {
+			sb.WriteString("\n[OPTION_DESCRIPTION] ")
+			sb.WriteString(optionDesc)
+		}
+		if supp, ok := fmtCtx.OptionSupplements[selectedID]; ok && strings.TrimSpace(supp) != "" {
+			sb.WriteString("\n[SUPPLEMENT] ")
+			sb.WriteString(supp)
 		}
 	}
 
-	result := strings.Join(labels, ", ")
-	if len(descs) > 0 {
-		result += "\n" + strings.Join(descs, "\n")
-		result += "\n----DETAIL----"
+	if others, ok := m["other"].([]interface{}); ok && len(others) > 0 {
+		for _, other := range others {
+			s, ok := other.(string)
+			if !ok || strings.TrimSpace(s) == "" {
+				continue
+			}
+			sb.WriteString("\n---")
+			sb.WriteString("\n[OPTION] __other__")
+			sb.WriteString("\n[SUPPLEMENT] ")
+			sb.WriteString(s)
+		}
 	}
-	return result
+
+	return sb.String()
 }
 
 // resolveOptionLabel 从选项列表中解析选项的标签和描述
@@ -941,6 +1164,37 @@ func resolveOptionLabel(selected any, options []map[string]interface{}) (string,
 	return selStr, ""
 }
 
+// resolveLabelByID 从选项列表反查 label，找不到则返回 ID 本身（降级）
+//
+// 用于 rank/rate 等仅持有 ID 列表的场景，避免直接向 Agent 暴露雪花 ID。
+func resolveLabelByID(id string, options []map[string]interface{}) string {
+	for _, opt := range options {
+		if optID, _ := opt["id"].(string); optID == id {
+			if label, _ := opt["label"].(string); label != "" {
+				return label
+			}
+		}
+	}
+	return id
+}
+
+// getOptionID 从 selected 值中提取 optionID
+//
+// 兼容两种前端提交格式：
+//   - string（纯 ID，主流格式）
+//   - map[string]interface{}（含 id 字段，历史兼容）
+func getOptionID(selected any) string {
+	if idStr, ok := selected.(string); ok {
+		return idStr
+	}
+	if selMap, ok := selected.(map[string]interface{}); ok {
+		if id, ok := selMap["id"].(string); ok {
+			return id
+		}
+	}
+	return fmt.Sprintf("%v", selected)
+}
+
 // formatTextAnswer 格式化文本回答
 func formatTextAnswer(m map[string]interface{}) string {
 	if text, ok := m["text"].(string); ok {
@@ -966,43 +1220,168 @@ func formatBooleanAnswer(m map[string]interface{}) string {
 	return fmt.Sprintf("%v", m)
 }
 
-// formatMediaAnswer 格式化代码/图片/文件回答
-func formatMediaAnswer(m map[string]interface{}, questionType string) string {
-	switch questionType {
-	case "code":
-		if code, ok := m["code"].(string); ok {
-			return code
+// formatCodeAnswer 格式化代码回答（P-10，从 formatMediaAnswer 拆分）
+//
+// 输出 code + 可选的 [LANGUAGE] 标记，便于 Agent 识别代码语言。
+func formatCodeAnswer(m map[string]interface{}) string {
+	code, ok := m["code"].(string)
+	if !ok {
+		return fmt.Sprintf("%v", m)
+	}
+	var sb strings.Builder
+	sb.WriteString(code)
+	if lang, ok := m["language"].(string); ok && lang != "" {
+		sb.WriteString("\n[LANGUAGE] ")
+		sb.WriteString(lang)
+	}
+	return sb.String()
+}
+
+// enhanceMediaAnswerWithOTP 为 image/file 类型的格式化回答追加 OTP 下载令牌链接
+//
+// 后处理注入策略：formatImageAnswer/formatFileAnswer 是纯函数，无法访问 Redis，
+// 故在 QaLogic 方法层（可访问 l.rdb）对格式化结果做后处理，为每个文件生成一次性令牌。
+//
+// 输出标记（P-11 核心交付物）：
+//   - [DOWNLOAD_URL]  每行一个 OTP 下载链接（<domain>/api/v1/qa/download/<token>）
+//   - [IMPORTANT]     一次性令牌提示
+//   - [TIP]           curl/wget 下载指引
+//   - [GIT_TIP]       .lumina/cache 忽略建议
+//
+// 参数:
+//   - ctx: 上下文（用于 Redis 读写和 DB 查询）
+//   - questionType: 题型（仅 "image"/"file" 触发增强，其他类型直接返回原字符串）
+//   - sessionID: 会话 ID（当前未参与令牌生成，预留扩展）
+//   - formatted: formatAnswerData 已格式化的回答字符串
+//   - answerData: 原始回答数据（用于提取 images/files 列表）
+//
+// 返回增强后的字符串；若无需增强（非 media 类型 / 无文件 / 令牌生成失败）则原样返回。
+func (l *QaLogic) enhanceMediaAnswerWithOTP(ctx context.Context, questionType, sessionID, formatted string, answerData any) string {
+	// 仅 image/file 类型需要追加 OTP 令牌
+	if questionType != "image" && questionType != "file" {
+		return formatted
+	}
+
+	m, ok := answerData.(map[string]interface{})
+	if !ok {
+		return formatted
+	}
+
+	fieldKey := "images"
+	if questionType == "file" {
+		fieldKey = "files"
+	}
+	items, ok := m[fieldKey].([]interface{})
+	if !ok || len(items) == 0 {
+		return formatted
+	}
+
+	// 读取运行时域名配置（Info 表 key=runtime.domain）
+	domain := "http://localhost:8080"
+	var domainInfo entity.Info
+	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "runtime.domain").First(&domainInfo).Error; err == nil && domainInfo.Value != "" {
+		domain = strings.TrimRight(domainInfo.Value, "/")
+	}
+
+	// 为每个文件生成 OTP 令牌
+	tokenSvc := service.NewDownloadTokenService(l.rdb)
+	var tokenUrls []string
+	for _, item := range items {
+		itemMap, ok := item.(map[string]interface{})
+		if !ok {
+			continue
 		}
-	case "image":
-		if images, ok := m["images"].([]interface{}); ok && len(images) > 0 {
-			var names []string
-			for _, img := range images {
-				if imgMap, ok := img.(map[string]interface{}); ok {
-					if name, ok := imgMap["filename"].(string); ok && name != "" {
-						names = append(names, name)
-					}
-				}
-			}
-			if len(names) > 0 {
-				return strings.Join(names, ", ")
-			}
+		filePath, _ := itemMap["filePath"].(string)
+		if filePath == "" {
+			continue
 		}
-	case "file":
-		if files, ok := m["files"].([]interface{}); ok && len(files) > 0 {
-			var names []string
-			for _, f := range files {
-				if fMap, ok := f.(map[string]interface{}); ok {
-					if name, ok := fMap["name"].(string); ok {
-						names = append(names, name)
-					}
-				}
-			}
-			if len(names) > 0 {
-				return strings.Join(names, ", ")
-			}
+		filename, _ := itemMap["filename"].(string)
+		if filename == "" {
+			filename, _ = itemMap["name"].(string)
+		}
+		mimeType, _ := itemMap["mimeType"].(string)
+
+		token, err := tokenSvc.GenerateToken(ctx, filePath, filename, mimeType)
+		if err != nil {
+			l.log.Warn(ctx, fmt.Sprintf("enhanceMediaAnswerWithOTP - 生成下载令牌失败 [file=%s]: %v", filePath, err))
+			continue
+		}
+		tokenUrls = append(tokenUrls, fmt.Sprintf("    - %s/api/v1/qa/download/%s", domain, token))
+	}
+
+	if len(tokenUrls) == 0 {
+		return formatted
+	}
+
+	var sb strings.Builder
+	sb.WriteString(formatted)
+	sb.WriteString("\n[DOWNLOAD_URL]")
+	for _, url := range tokenUrls {
+		sb.WriteString("\n")
+		sb.WriteString(url)
+	}
+	sb.WriteString("\n[IMPORTANT] 下载链接为一次性令牌，使用后立即失效。若下载失败需重新下载，请重新调用 qa_reget_answer 获取新的下载链接。")
+	sb.WriteString("\n[TIP] 使用 curl/wget 下载到 DOWNLOAD_PATH（Mac/Linux: curl -o <path> <url>；Windows: Invoke-WebRequest -Uri <url> -OutFile <path>），AI 需要则直接引用对应路径拿到内容传入。")
+	sb.WriteString("\n[GIT_TIP] 若存在 git 等版本管理项目，需要把 .lumina/cache/* 加入忽略上传（如 .gitignore 使用分类模式：\n    ### Lumina ###\n    .lumina/cache/）")
+
+	return sb.String()
+}
+
+// formatImageAnswer 格式化图片回答（P-11，从 formatMediaAnswer 拆分）
+//
+// 注意：OTP 令牌生成（[DOWNLOAD_URL]/[TIP]/[IMPORTANT]）在 enhanceMediaAnswerWithOTP 中后处理注入，
+// 本函数仅输出文件名和内部存储路径信息。
+func formatImageAnswer(m map[string]interface{}) string {
+	images, ok := m["images"].([]interface{})
+	if !ok || len(images) == 0 {
+		return fmt.Sprintf("%v", m)
+	}
+
+	var sb strings.Builder
+	sb.WriteString("用户已上传内容")
+	for _, img := range images {
+		imgMap, ok := img.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		name, _ := imgMap["filename"].(string)
+		filePath, _ := imgMap["filePath"].(string)
+		sb.WriteString(fmt.Sprintf("\n---\n[FILE_NAME] %s", name))
+		if filePath != "" {
+			sb.WriteString(fmt.Sprintf("\n[DOWNLOAD_PATH] %s", filePath))
 		}
 	}
-	return fmt.Sprintf("%v", m)
+	return sb.String()
+}
+
+// formatFileAnswer 格式化文件回答（P-11，从 formatMediaAnswer 拆分）
+//
+// 注意：OTP 令牌生成（[DOWNLOAD_URL]/[TIP]/[IMPORTANT]）在 Task 12 完整集成，
+// 当前 Wave 2 仅输出文件名和内部存储路径信息。兼容 filename 和 name 两种字段。
+func formatFileAnswer(m map[string]interface{}) string {
+	files, ok := m["files"].([]interface{})
+	if !ok || len(files) == 0 {
+		return fmt.Sprintf("%v", m)
+	}
+
+	var sb strings.Builder
+	sb.WriteString("用户已上传内容")
+	for _, f := range files {
+		fMap, ok := f.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		name, _ := fMap["filename"].(string)
+		if name == "" {
+			name, _ = fMap["name"].(string)
+		}
+		filePath, _ := fMap["filePath"].(string)
+		sb.WriteString(fmt.Sprintf("\n---\n[FILE_NAME] %s", name))
+		if filePath != "" {
+			sb.WriteString(fmt.Sprintf("\n[DOWNLOAD_PATH] %s", filePath))
+		}
+	}
+	return sb.String()
 }
 
 // formatSliderAnswer 格式化滑块回答
@@ -1014,37 +1393,74 @@ func formatSliderAnswer(m map[string]interface{}) string {
 }
 
 // formatRankAnswer 格式化排名回答
-func formatRankAnswer(m map[string]interface{}) string {
-	if ranked, ok := m["ranked"].([]interface{}); ok {
-		var items []string
-		for i, item := range ranked {
-			if rMap, ok := item.(map[string]interface{}); ok {
-				if label, ok := rMap["label"].(string); ok {
-					items = append(items, fmt.Sprintf("%d. %s", i+1, label))
-				}
-			} else {
-				items = append(items, fmt.Sprintf("%d. %v", i+1, item))
-			}
-		}
-		if len(items) > 0 {
-			return strings.Join(items, ", ")
-		}
+//
+// 兼容前端 "ranking"（主）和 "ranked"（向后兼容）两种字段名；
+// 纯 ID 列表会通过 options 反查 label，避免向 Agent 暴露雪花 ID。
+// 输出形如 `1. A → 2. B → 3. C`。
+func formatRankAnswer(m map[string]interface{}, options []map[string]interface{}) string {
+	var ranked []interface{}
+	if v, ok := m["ranking"].([]interface{}); ok {
+		ranked = v
+	} else if v, ok := m["ranked"].([]interface{}); ok {
+		ranked = v
 	}
-	return fmt.Sprintf("%v", m)
+	if len(ranked) == 0 {
+		return fmt.Sprintf("%v", m)
+	}
+
+	items := make([]string, 0, len(ranked))
+	for i, item := range ranked {
+		var label string
+		if idStr, ok := item.(string); ok {
+			label = resolveLabelByID(idStr, options)
+		} else if rMap, ok := item.(map[string]interface{}); ok {
+			if l, ok := rMap["label"].(string); ok && l != "" {
+				label = l
+			} else {
+				label = fmt.Sprintf("%v", item)
+			}
+		} else {
+			label = fmt.Sprintf("%v", item)
+		}
+		items = append(items, fmt.Sprintf("%d. %s", i+1, label))
+	}
+	return strings.Join(items, " → ")
 }
 
 // formatRateAnswer 格式化评分回答
-func formatRateAnswer(m map[string]interface{}) string {
-	if ratings, ok := m["ratings"].(map[string]interface{}); ok {
-		var parts []string
+//
+// 按 options 顺序输出评分（保持稳定输出顺序，避免 map 随机迭代）；
+// 空 ratings 或无 options 匹配时降级为原始 map 输出。
+// 无评分数据时返回友好提示而非原始 JSON。
+func formatRateAnswer(m map[string]interface{}, options []map[string]interface{}) string {
+	ratings, ok := m["ratings"].(map[string]interface{})
+	if !ok || len(ratings) == 0 {
+		return "用户未提供评分"
+	}
+
+	// 按选项顺序输出（稳定排序），避免 map 随机迭代
+	parts := make([]string, 0, len(ratings))
+	for _, opt := range options {
+		optID, _ := opt["id"].(string)
+		if optID == "" {
+			continue
+		}
+		if score, exists := ratings[optID]; exists {
+			label, _ := opt["label"].(string)
+			if label == "" {
+				label = optID
+			}
+			parts = append(parts, fmt.Sprintf("%s: %v", label, score))
+		}
+	}
+
+	// 降级：没有 options 或无匹配项时直接输出原始 map
+	if len(parts) == 0 {
 		for k, v := range ratings {
 			parts = append(parts, fmt.Sprintf("%s: %v", k, v))
 		}
-		if len(parts) > 0 {
-			return strings.Join(parts, ", ")
-		}
 	}
-	return fmt.Sprintf("%v", m)
+	return strings.Join(parts, ", ")
 }
 
 // formatGenericAnswer 未知题型的通用格式化
@@ -1058,75 +1474,140 @@ func formatGenericAnswer(m map[string]interface{}) string {
 	return fmt.Sprintf("%v", m)
 }
 
-// formatPlanAnswer 格式化 Plan 计划题回答
+// formatPlanAnswer 格式化 Plan 计划题回答（P-07 重写）
 //
-// Plan 回答结构：{ decision: "approve"|"reject"|"revise", annotations?: [...], feedback?: "..." }
-// - approve → 用户批准该计划
-// - reject  → 用户拒绝该计划，附带拒绝原因
-// - revise  → 用户要求修订，附带逐章节修订意见
-func formatPlanAnswer(m map[string]interface{}) string {
+// 回答结构：{ decision: "approve"|"reject"|"revise", annotations?: [...], feedback?: "..." }
+// - approve → 输出 [PLAN_DETAIL]，让 Agent 知道用户批准了什么
+// - reject  → 仅提示拒绝
+// - revise  → 输出 [REVISIONS] 逐章节修订意见
+// config 来源：question.config（含 sections）
+func formatPlanAnswer(m map[string]interface{}, config map[string]interface{}) string {
 	decision, _ := m["decision"].(string)
-
 	var sb strings.Builder
 
 	switch decision {
 	case "approve":
-		sb.WriteString("[已批准] 用户批准了该计划")
-	case "reject":
-		sb.WriteString("[已拒绝] 用户拒绝了该计划")
-	case "revise":
-		sb.WriteString("[需修订] 用户要求修改该计划")
-	default:
-		sb.WriteString(fmt.Sprintf("[已提交] decision=%s", decision))
-	}
-
-	// 修订意见（逐章节）
-	if annotations, ok := m["annotations"].([]interface{}); ok && len(annotations) > 0 {
-		sb.WriteString("\n\n修订意见:")
-		for i, ann := range annotations {
-			if annMap, ok := ann.(map[string]interface{}); ok {
-				sectionID, _ := annMap["sectionId"].(string)
-				content, _ := annMap["content"].(string)
-				if content != "" {
-					sb.WriteString(fmt.Sprintf("\n  %d. [%s] %s", i+1, sectionID, content))
+		sb.WriteString("用户已批准该计划")
+		if sections, ok := config["sections"].([]interface{}); ok && len(sections) > 0 {
+			sb.WriteString("\n[PLAN_DETAIL]")
+			for i, sec := range sections {
+				if secMap, ok := sec.(map[string]interface{}); ok {
+					title, _ := secMap["title"].(string)
+					content, _ := secMap["content"].(string)
+					sb.WriteString(fmt.Sprintf("\n%d. %s\n   %s", i+1, title, content))
 				}
 			}
 		}
+	case "reject":
+		sb.WriteString("用户已拒绝该计划")
+	case "revise":
+		sb.WriteString("用户要求修改该计划")
+		if annotations, ok := m["annotations"].([]interface{}); ok && len(annotations) > 0 {
+			sb.WriteString("\n[REVISIONS]")
+			for i, ann := range annotations {
+				if annMap, ok := ann.(map[string]interface{}); ok {
+					sectionID, _ := annMap["sectionId"].(string)
+					content, _ := annMap["content"].(string)
+					if content != "" {
+						sb.WriteString(fmt.Sprintf("\n%d. [%s] %s", i+1, sectionID, content))
+					}
+				}
+			}
+		}
+	default:
+		sb.WriteString(fmt.Sprintf("decision=%s", decision))
 	}
 
-	// 整体反馈
 	if feedback, ok := m["feedback"].(string); ok && strings.TrimSpace(feedback) != "" {
-		sb.WriteString(fmt.Sprintf("\n\n用户反馈: %s", feedback))
+		sb.WriteString(fmt.Sprintf("\n[FEEDBACK] %s", feedback))
 	}
 
 	return sb.String()
 }
 
-// formatDecisionAnswer 格式化 Diff/Review 决策题回答
+// formatOptionsAnswer 格式化通用 options 题型回答（P-03 新增）
+//
+// options 题型与 select 行为相似，但无 [DESCRIPTION] 问题级描述输出，
+// 主要输出选中选项的 label + 可选的选项级 description + 用户反馈。
+func formatOptionsAnswer(m map[string]interface{}, options []map[string]interface{}) string {
+	selected, exists := m["selected"]
+	if !exists {
+		return fmt.Sprintf("%v", m)
+	}
+
+	label, desc := resolveOptionLabel(selected, options)
+	if label == "" {
+		label = getOptionID(selected)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(label)
+	if desc != "" {
+		sb.WriteString("\n[DESCRIPTION] ")
+		sb.WriteString(desc)
+	}
+	if feedback, ok := m["feedback"].(string); ok && strings.TrimSpace(feedback) != "" {
+		sb.WriteString("\n[SUPPLEMENT] ")
+		sb.WriteString(feedback)
+	}
+	return sb.String()
+}
+
+// formatDiffAnswer 格式化 Diff 决策题回答（P-09，从 formatDecisionAnswer 拆分）
 //
 // 回答结构：{ decision: "approve"|"reject"|"edit", edited?: "...", feedback?: "..." }
-func formatDecisionAnswer(m map[string]interface{}) string {
+// - approve → 输出 config.after 作为 [FINAL] 最终代码，让 Agent 知道实际写入内容
+// - reject  → 仅提示拒绝
+// - edit    → 输出用户编辑后的 m.edited 作为 [FINAL]
+func formatDiffAnswer(m map[string]interface{}, config map[string]interface{}) string {
 	decision, _ := m["decision"].(string)
-
 	var sb strings.Builder
 
 	switch decision {
 	case "approve":
-		sb.WriteString("[已批准] 用户批准了该修改")
+		sb.WriteString("用户已批准该修改")
+		if after, ok := config["after"].(string); ok && after != "" {
+			sb.WriteString("\n[FINAL]\n")
+			sb.WriteString(after)
+		}
 	case "reject":
-		sb.WriteString("[已拒绝] 用户拒绝了该修改")
+		sb.WriteString("用户已拒绝该修改")
 	case "edit":
-		sb.WriteString("[已编辑] 用户修改后提交")
+		sb.WriteString("用户修改后提交")
 		if edited, ok := m["edited"].(string); ok && edited != "" {
-			sb.WriteString("\n\n修改后内容:\n")
+			sb.WriteString("\n[FINAL]\n")
 			sb.WriteString(edited)
 		}
 	default:
-		sb.WriteString(fmt.Sprintf("[已提交] decision=%s", decision))
+		sb.WriteString(fmt.Sprintf("decision=%s", decision))
 	}
 
 	if feedback, ok := m["feedback"].(string); ok && strings.TrimSpace(feedback) != "" {
-		sb.WriteString(fmt.Sprintf("\n\n用户反馈: %s", feedback))
+		sb.WriteString(fmt.Sprintf("\n[FEEDBACK] %s", feedback))
+	}
+
+	return sb.String()
+}
+
+// formatReviewAnswer 格式化 Review 决策题回答（P-12，从 formatDecisionAnswer 拆分）
+//
+// 回答结构：{ decision: "approve"|"revise", feedback?: "..." }
+// 去除 [已批准]/[已拒绝] 前缀（外层 [ANSWER] 已有标记，避免语义重复）。
+func formatReviewAnswer(m map[string]interface{}) string {
+	decision, _ := m["decision"].(string)
+	var sb strings.Builder
+
+	switch decision {
+	case "approve":
+		sb.WriteString("用户批准了该修改")
+	case "revise":
+		sb.WriteString("用户要求修改")
+	default:
+		sb.WriteString(fmt.Sprintf("decision=%s", decision))
+	}
+
+	if feedback, ok := m["feedback"].(string); ok && strings.TrimSpace(feedback) != "" {
+		sb.WriteString(fmt.Sprintf("\n[FEEDBACK] %s", feedback))
 	}
 
 	return sb.String()
