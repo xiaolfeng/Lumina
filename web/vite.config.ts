@@ -27,6 +27,27 @@ const config = defineConfig({
     tailwindcss(),
     viteReact(),
   ],
+  build: {
+    chunkSizeWarningLimit: 700,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vendor-react',
+              test: /node_modules[\/](react|react-dom|scheduler)/,
+              priority: 20,
+            },
+            {
+              name: 'vendor-ui',
+              test: /node_modules[\/](lucide-react|@radix-ui|class-variance-authority|tailwind-merge|clsx|@tailwindcss|sonner)/,
+              priority: 15,
+            },
+          ],
+        },
+      },
+    },
+  },
 })
 
 export default config
