@@ -2,62 +2,56 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
+	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	"github.com/xiaolfeng/Lumina/internal/entity"
+	"github.com/xiaolfeng/Lumina/internal/repository/cache"
 
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-const (
-	cacheKeySessionDetail = "qa:session:%d"   // cacheKeySessionDetail Session详情缓存
-	cacheKeySessionHash   = "qa:session:hash:%s" // cacheKeySessionHash Hash→ID 缓存键
-	cacheTTLSession       = 10 * time.Minute // cacheTTLSession Session缓存TTL
-)
+// cacheTTLSession QA 会话缓存 TTL（Cache-Aside 模式）
+const cacheTTLSession = 10 * time.Minute
 
 // QaSessionRepo QA会话数据访问层，提供完整 CRUD 操作与 Redis Cache-Aside 缓存
 //
 // 缓存策略采用 Cache-Aside 模式：读取时优先命中缓存，未命中则回源数据库并回填缓存；
-// 写入时同步写入缓存；删除时清除关联缓存键。缓存键采用 ID→详情映射，TTL 统一 10 分钟。
+// 写入时同步写入缓存；删除时清除关联缓存键。缓存读写委托给 QaSessionCache
+// （位于 repository/cache 子层），通过 constant.RedisKey 统一管理缓存键。
 // 额外提供 TTL 过期检查：当 Session 状态为 active 且 ExpiresAt 已过期时，自动更新为 expired。
 //
 // 字段说明:
-//   - db:  GORM 数据库实例，执行持久化操作
-//   - rdb: Redis 客户端实例，执行缓存读写
-//   - log: 带命名空间的结构化日志记录器
+//   - db:    GORM 数据库实例，执行持久化操作
+//   - cache: 会话多维度缓存管理器（ID→详情 + Hash→ID）
+//   - log:   带命名空间的结构化日志记录器
 type QaSessionRepo struct {
-	db  *gorm.DB
-	rdb *redis.Client
-	log *xLog.LogNamedLogger
+	db    *gorm.DB
+	cache *cache.QaSessionCache
+	log   *xLog.LogNamedLogger
 }
 
 // NewQaSessionRepo 创建 QaSessionRepo 实例
 //
 // 参数说明:
 //   - db:  已初始化的 GORM 数据库实例
-//   - rdb: 已初始化的 Redis 客户端实例
+//   - rdb: 已初始化的 Redis 客户端实例（用于构造缓存管理器）
 //
 // 返回值:
 //   - *QaSessionRepo: 配置完成的 QaSessionRepo 实例指针
 func NewQaSessionRepo(db *gorm.DB, rdb *redis.Client) *QaSessionRepo {
 	return &QaSessionRepo{
-		db:  db,
-		rdb: rdb,
+		db: db,
+		cache: &cache.QaSessionCache{
+			Cache: &xCache.Cache{RDB: rdb, TTL: cacheTTLSession},
+		},
 		log: xLog.WithName(xLog.NamedREPO, "QaSessionRepo"),
 	}
-}
-
-// cacheKey 构建带环境前缀的 Redis 缓存键
-func (r *QaSessionRepo) cacheKey(pattern string, args ...interface{}) string {
-	prefix := xEnv.GetEnvString(xEnv.NoSqlPrefix, "lum:")
-	return prefix + fmt.Sprintf(pattern, args...)
 }
 
 // Create 创建QA会话，成功后同步写入缓存
@@ -76,10 +70,8 @@ func (r *QaSessionRepo) Create(ctx context.Context, session *entity.QaSession) *
 		return xError.NewError(ctx, xError.DatabaseError, "创建QA会话失败", false, err)
 	}
 
-	r.cacheSession(ctx, session)
-	// 缓存 Hash→ID 映射
-	if session.Hash != "" {
-		r.rdb.Set(ctx, r.cacheKey(cacheKeySessionHash, session.Hash), session.ID.String(), cacheTTLSession)
+	if err := r.cache.SetSession(ctx, session); err != nil {
+		r.log.Warn(ctx, err.Error())
 	}
 	return nil
 }
@@ -100,20 +92,16 @@ func (r *QaSessionRepo) GetByID(ctx context.Context, id xSnowflake.SnowflakeID) 
 	r.log.Info(ctx, fmt.Sprintf("GetByID - 根据ID获取QA会话 [%d]", id.Int64()))
 
 	// 尝试从缓存读取
-	cacheData, err := r.rdb.Get(ctx, r.cacheKey(cacheKeySessionDetail, id.Int64())).Result()
-	if err == nil && cacheData != "" {
-		var session entity.QaSession
-		if unmarshalErr := json.Unmarshal([]byte(cacheData), &session); unmarshalErr == nil {
-			r.log.Info(ctx, fmt.Sprintf("GetByID - 缓存命中 [%d]", id.Int64()))
-			// 缓存数据也需要检查过期
-			r.expireCheck(ctx, &session)
-			return &session, nil
-		}
+	if session, ok, _ := r.cache.GetByID(ctx, id.Int64()); ok {
+		r.log.Info(ctx, fmt.Sprintf("GetByID - 缓存命中 [%d]", id.Int64()))
+		// 缓存数据也需要检查过期
+		r.expireCheck(ctx, session)
+		return session, nil
 	}
 
 	// 缓存未命中，查询数据库
 	var session entity.QaSession
-	if err = r.db.WithContext(ctx).Where("id = ?", id).First(&session).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&session).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, xError.NewError(ctx, xError.NotFound, "QA会话不存在", false, nil)
 		}
@@ -124,7 +112,9 @@ func (r *QaSessionRepo) GetByID(ctx context.Context, id xSnowflake.SnowflakeID) 
 	r.expireCheck(ctx, &session)
 
 	// 回填缓存
-	r.cacheSession(ctx, &session)
+	if err := r.cache.SetSession(ctx, &session); err != nil {
+		r.log.Warn(ctx, err.Error())
+	}
 	return &session, nil
 }
 
@@ -144,18 +134,14 @@ func (r *QaSessionRepo) GetByHash(ctx context.Context, hash string) (*entity.QaS
 	r.log.Info(ctx, fmt.Sprintf("GetByHash - 根据Hash获取QA会话 [%s]", hash))
 
 	// 1. 尝试从 Hash→ID 缓存获取会话 ID
-	cachedID, err := r.rdb.Get(ctx, r.cacheKey(cacheKeySessionHash, hash)).Result()
-	if err == nil && cachedID != "" {
-		id, parseErr := xSnowflake.ParseSnowflakeID(cachedID)
-		if parseErr == nil {
-			r.log.Info(ctx, fmt.Sprintf("GetByHash - Hash缓存命中 [%s] → ID [%d]", hash, id.Int64()))
-			return r.GetByID(ctx, id)
-		}
+	if cachedID, ok, _ := r.cache.GetIDByHash(ctx, hash); ok {
+		r.log.Info(ctx, fmt.Sprintf("GetByHash - Hash缓存命中 [%s] → ID [%d]", hash, cachedID.Int64()))
+		return r.GetByID(ctx, cachedID)
 	}
 
 	// 2. 缓存未命中，查询数据库
 	var session entity.QaSession
-	if err = r.db.WithContext(ctx).Where("hash = ?", hash).First(&session).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("hash = ?", hash).First(&session).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, xError.NewError(ctx, xError.NotFound, "QA会话不存在", false, nil)
 		}
@@ -166,8 +152,9 @@ func (r *QaSessionRepo) GetByHash(ctx context.Context, hash string) (*entity.QaS
 	r.expireCheck(ctx, &session)
 
 	// 4. 回填缓存（ID→详情 + Hash→ID）
-	r.cacheSession(ctx, &session)
-	r.rdb.Set(ctx, r.cacheKey(cacheKeySessionHash, hash), session.ID.String(), cacheTTLSession)
+	if err := r.cache.SetSession(ctx, &session); err != nil {
+		r.log.Warn(ctx, err.Error())
+	}
 
 	return &session, nil
 }
@@ -291,7 +278,7 @@ func (r *QaSessionRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID) *
 	}
 
 	// 4. 清除所有关联缓存（详情 + Hash→ID）
-	r.clearSessionCache(ctx, id, session.Hash)
+	r.cache.DeleteSession(ctx, id.Int64(), session.Hash)
 	return nil
 }
 
@@ -330,28 +317,15 @@ func (r *QaSessionRepo) expireCheck(ctx context.Context, session *entity.QaSessi
 		}
 
 		// 更新缓存中的过期状态
-		r.cacheSession(ctx, session)
+		if err := r.cache.SetSession(ctx, session); err != nil {
+			r.log.Warn(ctx, err.Error())
+		}
 	}
-}
-
-// cacheSession 将QA会话详情写入 Redis 缓存
-//
-// 写入一组缓存键：
-//   - ID → 会话 JSON 详情（TTL 10 分钟）
-func (r *QaSessionRepo) cacheSession(ctx context.Context, session *entity.QaSession) {
-	jsonData, err := json.Marshal(session)
-	if err != nil {
-		r.log.Warn(ctx, fmt.Sprintf("缓存序列化失败: %s", err.Error()))
-		return
-	}
-
-	// ID → 详情
-	r.rdb.Set(ctx, r.cacheKey(cacheKeySessionDetail, session.ID.Int64()), jsonData, cacheTTLSession)
 }
 
 // ClearCache 清除指定会话的 Redis 缓存（公开方法，供 Logic 层在归档/状态变更后调用）
 //
-// 与 clearSessionCache 的区别：ClearCache 自行查询会话 Hash（若缓存未命中则回源 DB），
+// 与 Delete 的缓存清理区别：ClearCache 自行查询会话 Hash（若缓存未命中则回源 DB），
 // 然后清除 ID→详情 和 Hash→ID 两组缓存键。适用于 ArchiveSession 等不经过 Delete 流程
 // 但需要刷新缓存的场景。
 //
@@ -370,22 +344,12 @@ func (r *QaSessionRepo) ClearCache(ctx context.Context, id xSnowflake.SnowflakeI
 	if err := r.db.WithContext(ctx).Select("hash").Where("id = ?", id).First(&session).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			// 会话不存在，仅清理 ID 详情缓存（Hash 未知无法清理）
-			r.rdb.Del(ctx, r.cacheKey(cacheKeySessionDetail, id.Int64()))
+			r.cache.DeleteSession(ctx, id.Int64(), "")
 			return nil
 		}
 		return xError.NewError(ctx, xError.DatabaseError, "查询会话Hash失败", false, err)
 	}
 
-	r.clearSessionCache(ctx, id, session.Hash)
+	r.cache.DeleteSession(ctx, id.Int64(), session.Hash)
 	return nil
-}
-
-// clearSessionCache 清除QA会话关联的 Redis 缓存
-//
-// 清除范围：ID 详情键 + Hash→ID 映射键
-func (r *QaSessionRepo) clearSessionCache(ctx context.Context, id xSnowflake.SnowflakeID, hash string) {
-	r.rdb.Del(ctx, r.cacheKey(cacheKeySessionDetail, id.Int64()))
-	if hash != "" {
-		r.rdb.Del(ctx, r.cacheKey(cacheKeySessionHash, hash))
-	}
 }

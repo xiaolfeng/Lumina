@@ -14,12 +14,14 @@ import (
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
+	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
 	"github.com/xiaolfeng/Lumina/api/qa"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
+	"github.com/xiaolfeng/Lumina/internal/repository/cache"
 	"github.com/xiaolfeng/Lumina/internal/service"
 	qaQueue "github.com/xiaolfeng/Lumina/internal/qa"
 	"gorm.io/datatypes"
@@ -27,9 +29,12 @@ import (
 
 // qaRepo QA模块依赖的仓储集合
 type qaRepo struct {
-	session    *repository.QaSessionRepo
-	question   *repository.QaQuestionRepo
-	supplement *repository.QaSupplementRepo
+	session      *repository.QaSessionRepo
+	question     *repository.QaQuestionRepo
+	supplement   *repository.QaSupplementRepo
+	info         *repository.InfoRepo
+	retryCache   *cache.QaRetryCache
+	downloadToken *service.DownloadTokenService
 }
 
 // QaLogic QA问答业务编排层
@@ -60,14 +65,15 @@ func NewQaLogic(ctx context.Context) *QaLogic {
 
 	return &QaLogic{
 		logic: logic{
-			db:  db,
-			rdb: rdb,
 			log: xLog.WithName(xLog.NamedLOGC, "QaLogic"),
 		},
 		repo: qaRepo{
-			session:    repository.NewQaSessionRepo(db, rdb),
-			question:   repository.NewQaQuestionRepo(db),
-			supplement: repository.NewQaSupplementRepo(db),
+			session:       repository.NewQaSessionRepo(db, rdb),
+			question:      repository.NewQaQuestionRepo(db),
+			supplement:    repository.NewQaSupplementRepo(db),
+			info:          repository.NewInfoRepo(db),
+			retryCache:    &cache.QaRetryCache{Cache: &xCache.Cache{RDB: rdb}},
+			downloadToken: service.NewDownloadTokenService(rdb),
 		},
 		queue: qaQueue.GetAnswerQueue(),
 	}
@@ -244,8 +250,9 @@ func (l *QaLogic) DeleteSession(ctx context.Context, id string) *xError.Error {
 
 	// 清理队列和重试计数器
 	l.queue.RemoveQueue(id)
-	retryKey := bConst.CacheQaGetAnswerRetry.Get(id).String()
-	_ = l.rdb.Del(ctx, retryKey).Err()
+	if resetErr := l.repo.retryCache.Reset(ctx, id); resetErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("DeleteSession - 重置重试计数器失败（忽略）: %s", resetErr.Error()))
+	}
 
 	return nil
 }
@@ -254,49 +261,49 @@ func (l *QaLogic) DeleteSession(ctx context.Context, id string) *xError.Error {
 func (l *QaLogic) GetQaConfig(ctx context.Context) (*qa.QaConfigResponse, *xError.Error) {
 	l.log.Info(ctx, "GetQaConfig - 获取Q&A配置")
 
-	// 读取 Session TTL
-	var ttlInfo entity.Info
-	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "qa.session.ttl").First(&ttlInfo).Error; err != nil {
-		l.log.Warn(ctx, fmt.Sprintf("读取qa.session.ttl失败: %s", err.Error()))
-		ttlInfo.Value = "604800" // 默认7天
+	// 读取 Session TTL（读失败兜底默认 7 天）
+	ttlStr, xErr := l.repo.info.GetByKey(ctx, "qa.session.ttl")
+	if xErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("读取qa.session.ttl失败: %s，使用默认值", xErr.GetMessage()))
+		ttlStr = "604800"
 	}
-	ttl, _ := strconv.Atoi(ttlInfo.Value)
+	ttl, _ := strconv.Atoi(ttlStr)
 	if ttl <= 0 {
 		ttl = 604800
 	}
 
-	// 读取运行时域名
-	var domainInfo entity.Info
-	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "runtime.domain").First(&domainInfo).Error; err != nil {
-		l.log.Warn(ctx, fmt.Sprintf("读取runtime.domain失败: %s", err.Error()))
-		domainInfo.Value = "http://localhost:3000"
+	// 读取运行时域名（读失败兜底 localhost）
+	domain, xErr := l.repo.info.GetByKey(ctx, "runtime.domain")
+	if xErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("读取runtime.domain失败: %s，使用默认值", xErr.GetMessage()))
+		domain = "http://localhost:3000"
 	}
 
 	// 读取 qa_get_answer 单次阻塞上限（分片超时）
-	var sliceInfo entity.Info
-	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "qa.get_answer.poll_slice").First(&sliceInfo).Error; err != nil {
-		l.log.Warn(ctx, fmt.Sprintf("读取qa.get_answer.poll_slice失败: %s", err.Error()))
-		sliceInfo.Value = "25"
+	sliceStr, xErr := l.repo.info.GetByKey(ctx, "qa.get_answer.poll_slice")
+	if xErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("读取qa.get_answer.poll_slice失败: %s，使用默认值", xErr.GetMessage()))
+		sliceStr = "25"
 	}
-	pollSlice, _ := strconv.Atoi(sliceInfo.Value)
+	pollSlice, _ := strconv.Atoi(sliceStr)
 	if pollSlice <= 0 {
 		pollSlice = 25
 	}
 
 	// 读取 qa_get_answer 最大重试次数
-	var retryInfo entity.Info
-	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "qa.get_answer.max_retries").First(&retryInfo).Error; err != nil {
-		l.log.Warn(ctx, fmt.Sprintf("读取qa.get_answer.max_retries失败: %s", err.Error()))
-		retryInfo.Value = "36"
+	retryStr, xErr := l.repo.info.GetByKey(ctx, "qa.get_answer.max_retries")
+	if xErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("读取qa.get_answer.max_retries失败: %s，使用默认值", xErr.GetMessage()))
+		retryStr = "36"
 	}
-	maxRetries, _ := strconv.Atoi(retryInfo.Value)
+	maxRetries, _ := strconv.Atoi(retryStr)
 	if maxRetries <= 0 {
 		maxRetries = 36
 	}
 
 	return &qa.QaConfigResponse{
 		SessionTTL:    ttl,
-		RuntimeDomain: domainInfo.Value,
+		RuntimeDomain: domain,
 		PollSlice:     pollSlice,
 		MaxRetries:    maxRetries,
 	}, nil
@@ -308,21 +315,15 @@ func (l *QaLogic) UpdateQaConfig(ctx context.Context, req *qa.UpdateQaConfigRequ
 
 	// 更新 Session TTL
 	if req.SessionTTL != nil {
-		if err := l.db.WithContext(ctx).
-			Model(&entity.Info{}).
-			Where("\"key\" = ?", "qa.session.ttl").
-			Update("value", strconv.Itoa(*req.SessionTTL)).Error; err != nil {
-			return nil, xError.NewError(ctx, xError.DatabaseError, "更新Session TTL失败", false, err)
+		if xErr := l.repo.info.UpdateValue(ctx, "qa.session.ttl", strconv.Itoa(*req.SessionTTL)); xErr != nil {
+			return nil, xError.NewError(ctx, xError.DatabaseError, "更新Session TTL失败", false, nil)
 		}
 	}
 
 	// 更新运行时域名
 	if req.RuntimeDomain != nil {
-		if err := l.db.WithContext(ctx).
-			Model(&entity.Info{}).
-			Where("\"key\" = ?", "runtime.domain").
-			Update("value", *req.RuntimeDomain).Error; err != nil {
-			return nil, xError.NewError(ctx, xError.DatabaseError, "更新运行时域名失败", false, err)
+		if xErr := l.repo.info.UpdateValue(ctx, "runtime.domain", *req.RuntimeDomain); xErr != nil {
+			return nil, xError.NewError(ctx, xError.DatabaseError, "更新运行时域名失败", false, nil)
 		}
 	}
 
@@ -331,11 +332,8 @@ func (l *QaLogic) UpdateQaConfig(ctx context.Context, req *qa.UpdateQaConfigRequ
 		if *req.PollSlice < 1 || *req.PollSlice > 28 {
 			return nil, xError.NewError(ctx, xError.BusinessError, "poll_slice 必须在 1-28 秒之间（需小于客户端 tool 超时）", false, nil)
 		}
-		if err := l.db.WithContext(ctx).
-			Model(&entity.Info{}).
-			Where("\"key\" = ?", "qa.get_answer.poll_slice").
-			Update("value", strconv.Itoa(*req.PollSlice)).Error; err != nil {
-			return nil, xError.NewError(ctx, xError.DatabaseError, "更新poll_slice失败", false, err)
+		if xErr := l.repo.info.UpdateValue(ctx, "qa.get_answer.poll_slice", strconv.Itoa(*req.PollSlice)); xErr != nil {
+			return nil, xError.NewError(ctx, xError.DatabaseError, "更新poll_slice失败", false, nil)
 		}
 	}
 
@@ -344,11 +342,8 @@ func (l *QaLogic) UpdateQaConfig(ctx context.Context, req *qa.UpdateQaConfigRequ
 		if *req.MaxRetries < 1 {
 			return nil, xError.NewError(ctx, xError.BusinessError, "max_retries 必须至少为 1", false, nil)
 		}
-		if err := l.db.WithContext(ctx).
-			Model(&entity.Info{}).
-			Where("\"key\" = ?", "qa.get_answer.max_retries").
-			Update("value", strconv.Itoa(*req.MaxRetries)).Error; err != nil {
-			return nil, xError.NewError(ctx, xError.DatabaseError, "更新max_retries失败", false, err)
+		if xErr := l.repo.info.UpdateValue(ctx, "qa.get_answer.max_retries", strconv.Itoa(*req.MaxRetries)); xErr != nil {
+			return nil, xError.NewError(ctx, xError.DatabaseError, "更新max_retries失败", false, nil)
 		}
 	}
 
@@ -426,11 +421,11 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType, 
 	}
 
 	// 读取运行时域名配置，生成浏览器链接
-	var domainInfo entity.Info
-	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "runtime.domain").First(&domainInfo).Error; err != nil || domainInfo.Value == "" {
-		domainInfo.Value = "http://localhost:3000"
+	domain, xErr := l.repo.info.GetByKey(ctx, "runtime.domain")
+	if xErr != nil || domain == "" {
+		domain = "http://localhost:3000"
 	}
-	link := fmt.Sprintf("%s/interact?session=%s", strings.TrimRight(domainInfo.Value, "/"), hash)
+	link := fmt.Sprintf("%s/interact?session=%s", strings.TrimRight(domain, "/"), hash)
 
 	return id.String(), link, nil
 }
@@ -602,9 +597,8 @@ func (l *QaLogic) GetAnswer(ctx context.Context, sessionID string, timeout time.
 	}
 
 	// 成功消费回答，重置该会话的重试计数器
-	retryKey := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
-	if delErr := l.rdb.Del(ctx, retryKey).Err(); delErr != nil {
-		l.log.Warn(ctx, fmt.Sprintf("GetAnswer - 重置重试计数器失败（忽略）: %s", delErr.Error()))
+	if resetErr := l.repo.retryCache.Reset(ctx, sessionID); resetErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("GetAnswer - 重置重试计数器失败（忽略）: %s", resetErr.Error()))
 	}
 
 	// 格式化回答字符串（需要查询问题元数据）
@@ -614,18 +608,10 @@ func (l *QaLogic) GetAnswer(ctx context.Context, sessionID string, timeout time.
 // IncrementGetAnswerRetry 增加指定会话的 qa_get_answer 重试计数器
 // 返回当前计数（递增后的值）。首次调用时自动设置过期时间为 Session TTL。
 func (l *QaLogic) IncrementGetAnswerRetry(ctx context.Context, sessionID string, ttlSeconds int) (int, *xError.Error) {
-	retryKey := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
-	count, err := l.rdb.Incr(ctx, retryKey).Result()
+	ttl := time.Duration(ttlSeconds) * time.Second
+	count, err := l.repo.retryCache.Increment(ctx, sessionID, ttl)
 	if err != nil {
 		return 0, xError.NewError(ctx, xError.UnknownError, "增加重试计数器失败", false, err)
-	}
-	// 首次设置时配置过期时间
-	if count == 1 {
-		ttl := time.Duration(ttlSeconds) * time.Second
-		if ttl <= 0 {
-			ttl = 48 * time.Hour
-		}
-		_ = l.rdb.Expire(ctx, retryKey, ttl).Err()
 	}
 	return int(count), nil
 }
@@ -805,8 +791,9 @@ func (l *QaLogic) ArchiveSession(ctx context.Context, sessionID string) *xError.
 	}
 
 	l.queue.RemoveQueue(sessionID)
-	retryKey := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
-	_ = l.rdb.Del(ctx, retryKey).Err()
+	if resetErr := l.repo.retryCache.Reset(ctx, sessionID); resetErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("ArchiveSession - 重置重试计数器失败（忽略）: %s", resetErr.Error()))
+	}
 
 	if OnSessionArchived != nil {
 		OnSessionArchived(sessionID)
@@ -877,8 +864,9 @@ func (l *QaLogic) CancelQuestion(ctx context.Context, sessionID, questionID stri
 		l.queue.RemoveQueue(sessionID)
 
 		// 清除重试计数器
-		retryKey := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
-		_ = l.rdb.Del(ctx, retryKey).Err()
+		if resetErr := l.repo.retryCache.Reset(ctx, sessionID); resetErr != nil {
+			l.log.Warn(ctx, fmt.Sprintf("CancelQuestion - 重置重试计数器失败（忽略）: %s", resetErr.Error()))
+		}
 
 		// WebSocket 通知：问题全部取消
 		if OnQuestionCancelled != nil {
@@ -1350,7 +1338,8 @@ func formatCodeAnswer(m map[string]interface{}) string {
 // enhanceMediaAnswerWithOTP 为 image/file 类型的格式化回答追加 OTP 下载令牌链接
 //
 // 后处理注入策略：formatImageAnswer/formatFileAnswer 是纯函数，无法访问 Redis，
-// 故在 QaLogic 方法层（可访问 l.rdb）对格式化结果做后处理，为每个文件生成一次性令牌。
+// 后处理注入策略：formatImageAnswer/formatFileAnswer 是纯函数，无法访问缓存层，
+// 故在 QaLogic 方法层（通过注入的 downloadToken 服务）对格式化结果做后处理，为每个文件生成一次性令牌。
 //
 // 输出标记（P-11 核心交付物）：
 //   - [DOWNLOAD_URL]  每行一个 OTP 下载链接（<domain>/api/v1/qa/download/<token>）
@@ -1388,13 +1377,11 @@ func (l *QaLogic) enhanceMediaAnswerWithOTP(ctx context.Context, questionType, s
 
 	// 读取运行时域名配置（Info 表 key=runtime.domain）
 	domain := "http://localhost:8080"
-	var domainInfo entity.Info
-	if err := l.db.WithContext(ctx).Where("\"key\" = ?", "runtime.domain").First(&domainInfo).Error; err == nil && domainInfo.Value != "" {
-		domain = strings.TrimRight(domainInfo.Value, "/")
+	if domainVal, xErr := l.repo.info.GetByKey(ctx, "runtime.domain"); xErr == nil && domainVal != "" {
+		domain = strings.TrimRight(domainVal, "/")
 	}
 
-	// 为每个文件生成 OTP 令牌
-	tokenSvc := service.NewDownloadTokenService(l.rdb)
+	// 为每个文件生成 OTP 令牌（使用注入的 downloadToken 服务，避免 logic 直连 Redis）
 	var tokenUrls []string
 	for _, item := range items {
 		itemMap, ok := item.(map[string]interface{})
@@ -1411,7 +1398,7 @@ func (l *QaLogic) enhanceMediaAnswerWithOTP(ctx context.Context, questionType, s
 		}
 		mimeType, _ := itemMap["mimeType"].(string)
 
-		token, err := tokenSvc.GenerateToken(ctx, filePath, filename, mimeType)
+		token, err := l.repo.downloadToken.GenerateToken(ctx, filePath, filename, mimeType)
 		if err != nil {
 			l.log.Warn(ctx, fmt.Sprintf("enhanceMediaAnswerWithOTP - 生成下载令牌失败 [file=%s]: %v", filePath, err))
 			continue

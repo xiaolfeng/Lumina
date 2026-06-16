@@ -33,8 +33,6 @@ func NewProjectLogic(ctx context.Context) *ProjectLogic {
 
 	return &ProjectLogic{
 		logic: logic{
-			db:  db,
-			rdb: rdb,
 			log: xLog.WithName(xLog.NamedLOGC, "ProjectLogic"),
 		},
 		repo: projectRepo{

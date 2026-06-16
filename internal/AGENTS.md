@@ -39,13 +39,17 @@ internal/
 ├── repository/            # 数据访问层
 │   ├── token.go           # Token 持久化
 │   ├── apikey.go          # API Key 持久化（CRUD + 分页 + 校验）
-│   ├── project.go         # 项目持久化（CRUD + 分页 + Redis 缓存 + 别名查询）
-│   ├── qa_session.go      # Q&A Session 持久化（CRUD + 分页 + 状态/类型过滤）
+│   ├── project.go         # 项目持久化（CRUD + 分页 + 别名查询；缓存委托 cache.ProjectCache）
+│   ├── qa_session.go      # Q&A Session 持久化（CRUD + 分页 + 状态/类型过滤；缓存委托 cache.QaSessionCache）
 │   ├── qa_question.go     # Q&A Question 持久化（CRUD + 批量创建）
 │   ├── qa_supplement.go   # Q&A Supplement 持久化（创建 + 按 Session 查询）
+│   ├── info.go            # Info 键值配置持久化（GetByKey/UpdateValue/UpdateValuesInTx）
 │   ├── health.go          # 数据库就绪检查
-│   └── cache/             # Redis 缓存操作
-│       └── token.go       # Token 缓存（AT/RT 存储）
+│   └── cache/             # Redis 缓存操作（Cache-Aside 策略子层）
+│       ├── token.go       # Token 缓存（AT/RT 存储，实现 KeyCache 接口）
+│       ├── project.go     # 项目多维度缓存（ID/Name/Alias/MatchPath）
+│       ├── qa_session.go  # QA 会话缓存（ID→详情 + Hash→ID）
+│       └── qa_retry.go    # qa_get_answer 重试计数器（INCR/Reset）
 ├── entity/                # GORM 实体
 │   ├── info.go            # 站点配置实体（单用户模式）
 │   ├── apikey.go          # API Key 实体（密钥哈希/前缀/后缀/过期时间）
@@ -118,7 +122,10 @@ internal/
 - 禁止核心业务模块（RepoWiki、Memory、Q&A、Pin）之间直接调用。
 - 禁止直接使用 `os.Getenv`；应使用带默认值的 `xEnv.GetEnv*`。
 - 禁止新增实体后不追加到 `migrateTables`。
-- 禁止在 repository 外部直接操作 Redis；缓存逻辑封装在 repository 层内部。
+- 禁止在 repository 外部直接操作 Redis；缓存逻辑封装在 repository/cache 子层。
+- 禁止 logic 结构体持有 db/rdb 字段；所有数据访问必须经由 repository（+cache 子层）。
+- 禁止在 logic 层拼接 GORM/Redis 命令（含 entity.Info 配置读取）；统一走 InfoRepo。
+- 禁止在 repository 内定义私有 cacheKey() 方法；缓存键统一用 constant.RedisKey.Get()。
 - 禁止在 Q&A 模块使用 SSE 进行问题推送；统一使用 WebSocket。
 
 ## 调试路径

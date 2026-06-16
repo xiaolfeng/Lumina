@@ -33,12 +33,9 @@ type ApikeyLogic struct {
 // NewApikeyLogic 创建API密钥业务逻辑层实例
 func NewApikeyLogic(ctx context.Context) *ApikeyLogic {
 	db := xCtxUtil.MustGetDB(ctx)
-	rdb := xCtxUtil.MustGetRDB(ctx)
 
 	return &ApikeyLogic{
 		logic: logic{
-			db:  db,
-			rdb: rdb,
 			log: xLog.WithName(xLog.NamedLOGC, "ApikeyLogic"),
 		},
 		repo: apikeyRepo{

@@ -11,14 +11,13 @@ import (
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
 	apiAuth "github.com/xiaolfeng/Lumina/api/auth"
 	apiUser "github.com/xiaolfeng/Lumina/api/user"
-	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
-	"gorm.io/gorm"
 )
 
 // authRepo 认证模块依赖的仓储集合
 type authRepo struct {
 	token *repository.TokenRepo
+	info  *repository.InfoRepo
 }
 
 // AuthLogic 认证业务逻辑层，负责初始化、登录、令牌管理与校验
@@ -34,12 +33,11 @@ func NewAuthLogic(ctx context.Context) *AuthLogic {
 
 	return &AuthLogic{
 		logic: logic{
-			db:  db,
-			rdb: rdb,
 			log: xLog.WithName(xLog.NamedLOGC, "AuthLogic"),
 		},
 		repo: authRepo{
 			token: repository.NewTokenRepo(rdb),
+			info:  repository.NewInfoRepo(db),
 		},
 	}
 }
@@ -48,15 +46,16 @@ func NewAuthLogic(ctx context.Context) *AuthLogic {
 func (l *AuthLogic) GetInitialStatus(ctx context.Context) (bool, *xError.Error) {
 	l.log.Info(ctx, "GetInitialStatus - 检查系统初始化状态")
 
-	var info entity.Info
-	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "is_initial").First(&info).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+	value, xErr := l.repo.info.GetByKey(ctx, "is_initial")
+	if xErr != nil {
+		// NotFound 视为未初始化
+		if xErr.GetErrorCode() == xError.NotFound {
 			return true, nil
 		}
 		return false, xError.NewError(ctx, xError.DatabaseError, "查询初始化状态失败", false, nil)
 	}
 
-	return info.Value == "true", nil
+	return value == "true", nil
 }
 
 // Initialize 执行系统初始化，将 owner 凭据写入 Info 表并标记已初始化
@@ -72,39 +71,16 @@ func (l *AuthLogic) Initialize(ctx context.Context, req *apiAuth.InitializeReque
 		return xError.NewError(ctx, xError.RepeatOperation, "系统已初始化，不可重复操作", false, nil)
 	}
 
-	// 在事务中执行：写入 owner 凭据 + 更新初始化状态
-	if err := l.db.Transaction(func(tx *gorm.DB) error {
-		// 写入 owner 用户名
-		if err := tx.WithContext(ctx).Model(&entity.Info{}).
-			Where("key = ?", "owner_username").
-			Update("value", req.Username).Error; err != nil {
-			return err
-		}
-
-		// 写入 owner 邮箱
-		if err := tx.WithContext(ctx).Model(&entity.Info{}).
-			Where("key = ?", "owner_email").
-			Update("value", req.Email).Error; err != nil {
-			return err
-		}
-
-		// 写入 owner 密码（bcrypt 加密）
-		if err := tx.WithContext(ctx).Model(&entity.Info{}).
-			Where("key = ?", "owner_password").
-			Update("value", xUtil.Password().MustEncryptString(req.Password)).Error; err != nil {
-			return err
-		}
-
-		// 标记系统已完成初始化
-		if err := tx.WithContext(ctx).Model(&entity.Info{}).
-			Where("key = ?", "is_initial").
-			Update("value", "false").Error; err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		return xError.NewError(ctx, xError.DatabaseError, "系统初始化失败", false, err)
+	// 在事务中原子写入：owner 凭据 + 初始化状态
+	// bcrypt 加密属于业务逻辑，在 logic 层完成；事务边界下沉到 InfoRepo
+	kv := map[string]string{
+		"owner_username": req.Username,
+		"owner_email":    req.Email,
+		"owner_password": xUtil.Password().MustEncryptString(req.Password),
+		"is_initial":     "false",
+	}
+	if xErr := l.repo.info.UpdateValuesInTx(ctx, kv); xErr != nil {
+		return xError.NewError(ctx, xError.DatabaseError, "系统初始化失败", false, nil)
 	}
 
 	l.log.Info(ctx, "Initialize - 系统初始化成功")
@@ -116,36 +92,36 @@ func (l *AuthLogic) Login(ctx context.Context, req *apiAuth.LoginRequest) (*apiA
 	l.log.Info(ctx, "Login - 用户登录")
 
 	// 从 Info 表读取 owner 用户名
-	var usernameInfo entity.Info
-	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "owner_username").First(&usernameInfo).Error; err != nil {
-		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, err)
+	username, xErr := l.repo.info.GetByKey(ctx, "owner_username")
+	if xErr != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
 	}
 
 	// 从 Info 表读取 owner 邮箱
-	var emailInfo entity.Info
-	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "owner_email").First(&emailInfo).Error; err != nil {
-		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, err)
+	email, xErr := l.repo.info.GetByKey(ctx, "owner_email")
+	if xErr != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
 	}
 
 	// 根据是否包含 @ 判断登录方式，验证账号匹配
 	accountMatched := false
 	if strings.Contains(req.Account, "@") {
-		accountMatched = req.Account == emailInfo.Value
+		accountMatched = req.Account == email
 	} else {
-		accountMatched = req.Account == usernameInfo.Value
+		accountMatched = req.Account == username
 	}
 	if !accountMatched {
 		return nil, xError.NewError(ctx, xError.LoginFailed, "账号或密码错误", false, nil)
 	}
 
 	// 从 Info 表读取 owner 密码哈希
-	var passwordInfo entity.Info
-	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "owner_password").First(&passwordInfo).Error; err != nil {
-		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, err)
+	passwordHash, xErr := l.repo.info.GetByKey(ctx, "owner_password")
+	if xErr != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
 	}
 
 	// 验证密码
-	if !xUtil.Password().IsValid(req.Password, passwordInfo.Value) {
+	if !xUtil.Password().IsValid(req.Password, passwordHash) {
 		return nil, xError.NewError(ctx, xError.LoginFailed, "账号或密码错误", false, nil)
 	}
 
@@ -243,21 +219,21 @@ func (l *AuthLogic) GetCurrentUser(ctx context.Context) (*apiUser.UserInfoRespon
 	l.log.Info(ctx, "GetCurrentUser - 获取当前用户信息")
 
 	// 从 Info 表读取 owner 用户名
-	var usernameInfo entity.Info
-	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "owner_username").First(&usernameInfo).Error; err != nil {
-		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, err)
+	username, xErr := l.repo.info.GetByKey(ctx, "owner_username")
+	if xErr != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
 	}
 
 	// 从 Info 表读取 owner 邮箱
-	var emailInfo entity.Info
-	if err := l.db.WithContext(ctx).Model(&entity.Info{}).Where("key = ?", "owner_email").First(&emailInfo).Error; err != nil {
-		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, err)
+	email, xErr := l.repo.info.GetByKey(ctx, "owner_email")
+	if xErr != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
 	}
 
 	l.log.Info(ctx, "GetCurrentUser - 获取当前用户信息成功")
 
 	return &apiUser.UserInfoResponse{
-		Username: usernameInfo.Value,
-		Email:    emailInfo.Value,
+		Username: username,
+		Email:    email,
 	}, nil
 }

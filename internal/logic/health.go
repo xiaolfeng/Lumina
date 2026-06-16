@@ -28,8 +28,6 @@ func NewHealthLogic(ctx context.Context) *HealthLogic {
 
 	return &HealthLogic{
 		logic: logic{
-			db:  db,
-			rdb: rdb,
 			log: xLog.WithName(xLog.NamedLOGC, "HealthLogic"),
 		},
 		repo: healthRepo{
