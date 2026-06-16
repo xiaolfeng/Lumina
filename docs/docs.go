@@ -17,11 +17,7 @@ const docTemplate = `{
     "paths": {
         "/api/v1/apikey": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "按 page/size 分页查询 API 密钥列表，密钥以脱敏形式展示",
                 "consumes": [
                     "application/json"
                 ],
@@ -29,10 +25,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "apikey"
+                    "API密钥接口"
                 ],
-                "summary": "分页获取API密钥列表",
+                "summary": "[管理] 分页获取API密钥列表",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "integer",
                         "default": 1,
@@ -43,7 +46,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "每页数量",
+                        "description": "每页数量（最大200）",
                         "name": "size",
                         "in": "query"
                     }
@@ -52,7 +55,19 @@ const docTemplate = `{
                     "200": {
                         "description": "查询成功，密钥脱敏展示",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/xModels.PageResponse-array_apikey_ApikeyItem"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "401": {
@@ -70,11 +85,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "提交名称与可选描述/过期时间创建 API 密钥，返回完整密钥（仅此一次）",
                 "consumes": [
                     "application/json"
                 ],
@@ -82,10 +93,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "apikey"
+                    "API密钥接口"
                 ],
-                "summary": "创建API密钥",
+                "summary": "[管理] 创建API密钥",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "创建请求",
                         "name": "request",
@@ -100,11 +118,23 @@ const docTemplate = `{
                     "200": {
                         "description": "创建成功，返回完整密钥（仅此一次）",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/apikey.CreateResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -126,11 +156,7 @@ const docTemplate = `{
         },
         "/api/v1/apikey/{id}": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "根据密钥 ID 查询单个 API 密钥详情，密钥以脱敏形式展示",
                 "consumes": [
                     "application/json"
                 ],
@@ -138,10 +164,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "apikey"
+                    "API密钥接口"
                 ],
-                "summary": "获取API密钥详情",
+                "summary": "[管理] 获取API密钥详情",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "API密钥ID",
@@ -154,11 +187,23 @@ const docTemplate = `{
                     "200": {
                         "description": "查询成功，密钥脱敏展示",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/apikey.DetailResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -178,11 +223,7 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "更新指定 ID 的 API 密钥信息（名称、描述、过期时间、启用状态，字段可选）",
                 "consumes": [
                     "application/json"
                 ],
@@ -190,10 +231,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "apikey"
+                    "API密钥接口"
                 ],
-                "summary": "更新API密钥",
+                "summary": "[管理] 更新API密钥",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "API密钥ID",
@@ -219,7 +267,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -245,11 +293,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "根据密钥 ID 删除指定的 API 密钥，删除后不可恢复",
                 "consumes": [
                     "application/json"
                 ],
@@ -257,10 +301,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "apikey"
+                    "API密钥接口"
                 ],
-                "summary": "删除API密钥",
+                "summary": "[管理] 删除API密钥",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "API密钥ID",
@@ -277,7 +328,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -299,11 +350,7 @@ const docTemplate = `{
         },
         "/api/v1/apikey/{id}/reset": {
             "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "根据密钥 ID 重置密钥，生成新密钥并返回完整密钥（仅此一次）",
                 "consumes": [
                     "application/json"
                 ],
@@ -311,10 +358,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "apikey"
+                    "API密钥接口"
                 ],
-                "summary": "重置API密钥",
+                "summary": "[管理] 重置API密钥",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "API密钥ID",
@@ -327,11 +381,23 @@ const docTemplate = `{
                     "200": {
                         "description": "重置成功，返回新完整密钥（仅此一次）",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/apikey.ResetResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -359,6 +425,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/initialize": {
             "post": {
+                "description": "首次部署时提交用户名、邮箱、密码，初始化系统管理员账户；已初始化时拒绝",
                 "consumes": [
                     "application/json"
                 ],
@@ -366,9 +433,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "认证接口"
                 ],
-                "summary": "系统初始化",
+                "summary": "[超管] 系统初始化",
                 "parameters": [
                     {
                         "description": "初始化请求",
@@ -388,7 +455,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -404,6 +471,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/login": {
             "post": {
+                "description": "校验账号（用户名或邮箱）与密码，签发访问令牌与刷新令牌",
                 "consumes": [
                     "application/json"
                 ],
@@ -411,9 +479,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "认证接口"
                 ],
-                "summary": "用户登录",
+                "summary": "[管理] 用户登录",
                 "parameters": [
                     {
                         "description": "登录请求",
@@ -427,13 +495,25 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "登录成功，返回Token",
+                        "description": "登录成功，返回令牌",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/auth.TokenResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -449,11 +529,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/logout": {
             "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "根据刷新令牌撤销登录会话，需携带有效访问令牌",
                 "consumes": [
                     "application/json"
                 ],
@@ -461,12 +537,19 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "认证接口"
                 ],
-                "summary": "用户登出",
+                "summary": "[管理] 用户登出",
                 "parameters": [
                     {
-                        "description": "登出请求（传入refresh_token）",
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "登出请求（传入 refresh_token）",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -493,6 +576,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/refresh": {
             "post": {
+                "description": "使用刷新令牌换取新的访问令牌与刷新令牌",
                 "consumes": [
                     "application/json"
                 ],
@@ -500,9 +584,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "认证接口"
                 ],
-                "summary": "刷新令牌",
+                "summary": "[管理] 刷新令牌",
                 "parameters": [
                     {
                         "description": "刷新请求",
@@ -516,13 +600,25 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "刷新成功，返回新Token",
+                        "description": "刷新成功，返回新令牌",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/auth.TokenResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -538,6 +634,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/status": {
             "get": {
+                "description": "查询系统是否已完成初始化，前端据此决定展示初始化页或登录页",
                 "consumes": [
                     "application/json"
                 ],
@@ -545,12 +642,65 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "认证接口"
                 ],
                 "summary": "系统初始化状态",
                 "responses": {
                     "200": {
-                        "description": "返回系统初始化状态（true=未初始化）",
+                        "description": "查询成功，返回初始化状态",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/auth.StatusResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/health/ping": {
+            "get": {
+                "description": "探测服务存活状态，返回应用版本、数据库与 Redis 就绪情况",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "健康检查接口"
+                ],
+                "summary": "健康检查",
+                "responses": {
+                    "200": {
+                        "description": "服务正常",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/health.PingResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "依赖服务不可用",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -560,11 +710,7 @@ const docTemplate = `{
         },
         "/api/v1/project": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "按 page/size 分页查询项目列表，返回项目信息与总数",
                 "consumes": [
                     "application/json"
                 ],
@@ -572,10 +718,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "project"
+                    "项目接口"
                 ],
-                "summary": "获取项目列表",
+                "summary": "[管理] 获取项目列表",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "integer",
                         "description": "页码",
@@ -593,11 +746,23 @@ const docTemplate = `{
                     "200": {
                         "description": "获取成功",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/project.ProjectListResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -605,11 +770,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "提交项目名称、别名、匹配路径与描述创建项目，名称需唯一",
                 "consumes": [
                     "application/json"
                 ],
@@ -617,10 +778,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "project"
+                    "项目接口"
                 ],
-                "summary": "创建项目",
+                "summary": "[管理] 创建项目",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "创建项目请求",
                         "name": "request",
@@ -635,17 +803,29 @@ const docTemplate = `{
                     "200": {
                         "description": "创建成功",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/project.ProjectResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -661,11 +841,7 @@ const docTemplate = `{
         },
         "/api/v1/project/{id}": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "根据项目 ID 查询单个项目详情",
                 "consumes": [
                     "application/json"
                 ],
@@ -673,10 +849,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "project"
+                    "项目接口"
                 ],
-                "summary": "获取项目详情",
+                "summary": "[管理] 获取项目详情",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "项目ID",
@@ -689,17 +872,29 @@ const docTemplate = `{
                     "200": {
                         "description": "获取成功",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/project.ProjectResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -713,11 +908,7 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "更新指定 ID 的项目信息，名称需保持唯一",
                 "consumes": [
                     "application/json"
                 ],
@@ -725,10 +916,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "project"
+                    "项目接口"
                 ],
-                "summary": "更新项目",
+                "summary": "[管理] 更新项目",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "项目ID",
@@ -750,17 +948,29 @@ const docTemplate = `{
                     "200": {
                         "description": "更新成功",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/project.ProjectResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -780,11 +990,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "根据项目 ID 删除指定项目，删除后不可恢复",
                 "consumes": [
                     "application/json"
                 ],
@@ -792,10 +998,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "project"
+                    "项目接口"
                 ],
-                "summary": "删除项目",
+                "summary": "[管理] 删除项目",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "项目ID",
@@ -812,13 +1025,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -834,11 +1047,7 @@ const docTemplate = `{
         },
         "/api/v1/qa/config": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "查询当前 Q\u0026A 模块运行配置（会话TTL、运行时域名、轮询参数、重试次数）",
                 "consumes": [
                     "application/json"
                 ],
@@ -846,18 +1055,39 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "QA管理"
+                    "Q\u0026A接口"
                 ],
-                "summary": "获取Q\u0026A配置",
+                "summary": "[管理] 获取Q\u0026A配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "获取成功",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/qa.QaConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -865,11 +1095,7 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "更新 Q\u0026A 模块运行配置，所有字段可选（nil 表示不更新）",
                 "consumes": [
                     "application/json"
                 ],
@@ -877,10 +1103,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "QA管理"
+                    "Q\u0026A接口"
                 ],
-                "summary": "更新Q\u0026A配置",
+                "summary": "[管理] 更新Q\u0026A配置",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "配置信息",
                         "name": "request",
@@ -895,17 +1128,29 @@ const docTemplate = `{
                     "200": {
                         "description": "更新成功",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/qa.QaConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -915,11 +1160,7 @@ const docTemplate = `{
         },
         "/api/v1/qa/sessions": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "按 page/size 分页查询会话列表，支持按状态与类型过滤",
                 "consumes": [
                     "application/json"
                 ],
@@ -927,10 +1168,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "QA管理"
+                    "Q\u0026A接口"
                 ],
-                "summary": "分页获取QA会话列表",
+                "summary": "[管理] 分页获取QA会话列表",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "integer",
                         "description": "页码",
@@ -960,11 +1208,23 @@ const docTemplate = `{
                     "200": {
                         "description": "获取成功",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/qa.SessionListResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -972,11 +1232,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "关联项目 ID 创建 Q\u0026A 会话，支持指定标题、Agent 名称与会话类型，返回会话详情",
                 "consumes": [
                     "application/json"
                 ],
@@ -984,10 +1240,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "QA管理"
+                    "Q\u0026A接口"
                 ],
-                "summary": "创建QA会话",
+                "summary": "[管理] 创建QA会话",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "创建请求",
                         "name": "request",
@@ -1002,11 +1265,23 @@ const docTemplate = `{
                     "200": {
                         "description": "创建成功",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/qa.SessionDetailResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -1016,11 +1291,7 @@ const docTemplate = `{
         },
         "/api/v1/qa/sessions/{id}": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "根据会话 ID 查询会话详情，含完整问题列表（含回答与补充内容）",
                 "consumes": [
                     "application/json"
                 ],
@@ -1028,10 +1299,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "QA管理"
+                    "Q\u0026A接口"
                 ],
-                "summary": "获取QA会话详情",
+                "summary": "[管理] 获取QA会话详情",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "会话ID",
@@ -1044,17 +1322,29 @@ const docTemplate = `{
                     "200": {
                         "description": "获取成功",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/qa.SessionDetailResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -1068,11 +1358,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "根据会话 ID 删除指定会话及其关联问题，删除后不可恢复",
                 "consumes": [
                     "application/json"
                 ],
@@ -1080,10 +1366,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "QA管理"
+                    "Q\u0026A接口"
                 ],
-                "summary": "删除QA会话",
+                "summary": "[管理] 删除QA会话",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "会话ID",
@@ -1100,13 +1393,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -1122,11 +1415,7 @@ const docTemplate = `{
         },
         "/api/v1/qa/sessions/{id}/questions/{qid}": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "根据会话 ID 与问题 ID 查询问题详情，含回答内容与关联补充内容",
                 "consumes": [
                     "application/json"
                 ],
@@ -1134,10 +1423,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "QA管理"
+                    "Q\u0026A接口"
                 ],
-                "summary": "获取问题详情",
+                "summary": "[管理] 获取问题详情",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "会话ID",
@@ -1157,17 +1453,29 @@ const docTemplate = `{
                     "200": {
                         "description": "获取成功",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/qa.QuestionDetailResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "参数错误",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
                     },
                     "401": {
-                        "description": "未认证",
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -1183,11 +1491,7 @@ const docTemplate = `{
         },
         "/api/v1/user/current": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                "description": "根据访问令牌获取当前登录用户信息（用户名、邮箱）",
                 "consumes": [
                     "application/json"
                 ],
@@ -1195,14 +1499,35 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "user"
+                    "用户接口"
                 ],
-                "summary": "获取当前用户信息",
+                "summary": "[管理] 获取当前用户信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "获取成功，返回用户信息",
                         "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/user.UserInfoResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "401": {
@@ -1216,6 +1541,47 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "apikey.ApikeyItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "描述",
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "过期时间",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "API Key ID",
+                    "type": "string"
+                },
+                "is_active": {
+                    "description": "是否启用",
+                    "type": "boolean"
+                },
+                "key": {
+                    "description": "脱敏密钥",
+                    "type": "string"
+                },
+                "key_prefix": {
+                    "description": "密钥前缀",
+                    "type": "string"
+                },
+                "last_used_at": {
+                    "description": "最后使用时间",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "API Key名称",
+                    "type": "string"
+                }
+            }
+        },
         "apikey.CreateRequest": {
             "type": "object",
             "required": [
@@ -1235,6 +1601,121 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 64,
                     "minLength": 1
+                }
+            }
+        },
+        "apikey.CreateResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间（手动映射，BaseEntity.CreatedAt 的 json:\"-\"）",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "描述",
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "过期时间",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "API Key ID",
+                    "type": "string"
+                },
+                "is_active": {
+                    "description": "是否启用",
+                    "type": "boolean"
+                },
+                "key": {
+                    "description": "完整密钥（仅此一次）",
+                    "type": "string"
+                },
+                "key_prefix": {
+                    "description": "密钥前缀",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "API Key名称",
+                    "type": "string"
+                }
+            }
+        },
+        "apikey.DetailResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "描述",
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "过期时间",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "API Key ID",
+                    "type": "string"
+                },
+                "is_active": {
+                    "description": "是否启用",
+                    "type": "boolean"
+                },
+                "key": {
+                    "description": "脱敏密钥（前8+...+后8）",
+                    "type": "string"
+                },
+                "key_prefix": {
+                    "description": "密钥前缀",
+                    "type": "string"
+                },
+                "last_used_at": {
+                    "description": "最后使用时间",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "API Key名称",
+                    "type": "string"
+                }
+            }
+        },
+        "apikey.ResetResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "描述",
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "过期时间",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "API Key ID",
+                    "type": "string"
+                },
+                "is_active": {
+                    "description": "是否启用",
+                    "type": "boolean"
+                },
+                "key": {
+                    "description": "新完整密钥（仅此一次）",
+                    "type": "string"
+                },
+                "key_prefix": {
+                    "description": "密钥前缀",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "API Key名称",
+                    "type": "string"
                 }
             }
         },
@@ -1314,6 +1795,32 @@ const docTemplate = `{
                 }
             }
         },
+        "auth.StatusResponse": {
+            "type": "object",
+            "properties": {
+                "is_initial": {
+                    "description": "系统是否为初始状态（true=未初始化）",
+                    "type": "boolean"
+                }
+            }
+        },
+        "auth.TokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "description": "访问令牌",
+                    "type": "string"
+                },
+                "expires_in": {
+                    "description": "过期时间（秒）",
+                    "type": "integer"
+                },
+                "refresh_token": {
+                    "description": "刷新令牌",
+                    "type": "string"
+                }
+            }
+        },
         "common.BaseResponse": {
             "type": "object",
             "properties": {
@@ -1335,6 +1842,26 @@ const docTemplate = `{
                 },
                 "overhead": {
                     "type": "integer"
+                }
+            }
+        },
+        "health.PingResponse": {
+            "type": "object",
+            "properties": {
+                "app": {
+                    "type": "string"
+                },
+                "database_ready": {
+                    "type": "boolean"
+                },
+                "redis_ready": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },
@@ -1362,6 +1889,58 @@ const docTemplate = `{
                 },
                 "name": {
                     "description": "项目名称",
+                    "type": "string"
+                }
+            }
+        },
+        "project.ProjectListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "项目列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/project.ProjectResponse"
+                    }
+                },
+                "total": {
+                    "description": "总数量",
+                    "type": "integer"
+                }
+            }
+        },
+        "project.ProjectResponse": {
+            "type": "object",
+            "properties": {
+                "alias_name": {
+                    "description": "项目别名",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "项目描述",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "项目ID",
+                    "type": "string"
+                },
+                "match_path": {
+                    "description": "项目路径匹配列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "description": "项目名称",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新时间",
                     "type": "string"
                 }
             }
@@ -1417,6 +1996,308 @@ const docTemplate = `{
                 }
             }
         },
+        "qa.QaConfigResponse": {
+            "type": "object",
+            "properties": {
+                "max_retries": {
+                    "description": "qa_get_answer 最大重试次数",
+                    "type": "integer"
+                },
+                "poll_slice": {
+                    "description": "qa_get_answer 单次阻塞上限（秒）",
+                    "type": "integer"
+                },
+                "runtime_domain": {
+                    "description": "运行时域名",
+                    "type": "string"
+                },
+                "session_ttl": {
+                    "description": "Session TTL（秒）",
+                    "type": "integer"
+                }
+            }
+        },
+        "qa.QuestionDetailResponse": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "description": "回答数据"
+                },
+                "answered_at": {
+                    "description": "回答时间",
+                    "type": "string"
+                },
+                "batch": {
+                    "description": "分批信息"
+                },
+                "config": {
+                    "description": "题型特有配置"
+                },
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "描述",
+                    "type": "string"
+                },
+                "group_label": {
+                    "description": "分组标签",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "问题ID",
+                    "type": "string"
+                },
+                "options": {
+                    "description": "选项配置"
+                },
+                "session_id": {
+                    "description": "所属Session",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "状态",
+                    "type": "string"
+                },
+                "supplements": {
+                    "description": "关联补充内容",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/qa.SupplementResponse"
+                    }
+                },
+                "title": {
+                    "description": "标题",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "题型",
+                    "type": "string"
+                }
+            }
+        },
+        "qa.QuestionSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "description": "回答数据"
+                },
+                "answered_at": {
+                    "description": "回答时间",
+                    "type": "string"
+                },
+                "batch": {
+                    "description": "分批信息"
+                },
+                "config": {
+                    "description": "题型特有配置"
+                },
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "group_label": {
+                    "description": "分组标签",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "问题ID",
+                    "type": "string"
+                },
+                "media": {
+                    "description": "多媒体数据"
+                },
+                "options": {
+                    "description": "选项配置"
+                },
+                "status": {
+                    "description": "pending/answered/skipped",
+                    "type": "string"
+                },
+                "supplement": {
+                    "description": "是否携带补充内容",
+                    "type": "boolean"
+                },
+                "supplements": {
+                    "description": "关联补充内容",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/qa.SupplementResponse"
+                    }
+                },
+                "title": {
+                    "description": "标题",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "题型",
+                    "type": "string"
+                }
+            }
+        },
+        "qa.SessionDetailResponse": {
+            "type": "object",
+            "properties": {
+                "agent": {
+                    "description": "Agent名称",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "过期时间（永久为空）",
+                    "type": "string"
+                },
+                "hash": {
+                    "description": "会话哈希标识",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Session ID",
+                    "type": "string"
+                },
+                "online_devices": {
+                    "description": "在线设备数",
+                    "type": "integer"
+                },
+                "project_id": {
+                    "description": "关联项目ID",
+                    "type": "string"
+                },
+                "project_name": {
+                    "description": "关联项目名称",
+                    "type": "string"
+                },
+                "questions": {
+                    "description": "问题列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/qa.QuestionSummaryResponse"
+                    }
+                },
+                "status": {
+                    "description": "active/expired/deleted",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "会话标题",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "temporary/permanent",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                }
+            }
+        },
+        "qa.SessionListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "Session列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/qa.SessionResponse"
+                    }
+                },
+                "total": {
+                    "description": "总数量",
+                    "type": "integer"
+                }
+            }
+        },
+        "qa.SessionResponse": {
+            "type": "object",
+            "properties": {
+                "agent": {
+                    "description": "Agent名称",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "过期时间（永久为空）",
+                    "type": "string"
+                },
+                "hash": {
+                    "description": "会话哈希标识",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Session ID",
+                    "type": "string"
+                },
+                "online_devices": {
+                    "description": "在线设备数",
+                    "type": "integer"
+                },
+                "project_id": {
+                    "description": "关联项目ID",
+                    "type": "string"
+                },
+                "project_name": {
+                    "description": "关联项目名称",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "active/expired/deleted",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "会话标题",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "temporary/permanent",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                }
+            }
+        },
+        "qa.SupplementResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "内容",
+                    "type": "string"
+                },
+                "content_type": {
+                    "description": "markdown/html",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "补充内容ID",
+                    "type": "string"
+                },
+                "target_id": {
+                    "description": "关联ID",
+                    "type": "string"
+                },
+                "target_type": {
+                    "description": "question/option",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                }
+            }
+        },
         "qa.UpdateQaConfigRequest": {
             "type": "object",
             "properties": {
@@ -1434,6 +2315,42 @@ const docTemplate = `{
                 },
                 "session_ttl": {
                     "description": "Session TTL（秒），nil不更新",
+                    "type": "integer"
+                }
+            }
+        },
+        "user.UserInfoResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "description": "邮箱地址",
+                    "type": "string"
+                },
+                "username": {
+                    "description": "用户名",
+                    "type": "string"
+                }
+            }
+        },
+        "xModels.PageResponse-array_apikey_ApikeyItem": {
+            "type": "object",
+            "properties": {
+                "current_page": {
+                    "type": "integer"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/apikey.ApikeyItem"
+                    }
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "total_items": {
+                    "type": "integer"
+                },
+                "total_pages": {
                     "type": "integer"
                 }
             }
