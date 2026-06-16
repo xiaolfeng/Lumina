@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react'
+import { Ban, Check } from 'lucide-react'
 
 import { Kicker, PanelCard } from './primitives'
 import type { OptionItem, Question } from './types'
@@ -143,25 +143,42 @@ export function HistoryCard({
             </div>
 
             <div className="space-y-1.5">
-              {questions.map((q) => (
-                <div key={q.id} className="flex items-start gap-2">
-                  <Check
-                    className="mt-0.5 size-3.5 shrink-0 text-lagoon"
-                    aria-hidden
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className="line-clamp-2 text-xs leading-relaxed text-sea-ink-soft"
-                      title={q.content}
-                    >
-                      {plainTextSummary(q.content)}
-                    </p>
-                    <p className="mt-0.5 text-xs font-medium text-sea-ink">
-                      → {formatAnswer(q.answer, q.options)}
-                    </p>
+              {questions.map((q) => {
+                const isCancelled = q.status === 'cancelled'
+                return (
+                  <div
+                    key={q.id}
+                    className={`flex items-start gap-2 ${isCancelled ? 'opacity-60' : ''}`}
+                  >
+                    {isCancelled ? (
+                      <Ban
+                        className="mt-0.5 size-3.5 shrink-0 text-sea-ink-soft/60"
+                        aria-hidden
+                      />
+                    ) : (
+                      <Check
+                        className="mt-0.5 size-3.5 shrink-0 text-lagoon"
+                        aria-hidden
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="line-clamp-2 text-xs leading-relaxed text-sea-ink-soft"
+                        title={q.content}
+                      >
+                        {plainTextSummary(q.content)}
+                      </p>
+                      <p className="mt-0.5 text-xs font-medium text-sea-ink">
+                        {isCancelled ? (
+                          <span className="text-sea-ink-soft/70">已取消</span>
+                        ) : (
+                          `→ ${formatAnswer(q.answer, q.options)}`
+                        )}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         ))}

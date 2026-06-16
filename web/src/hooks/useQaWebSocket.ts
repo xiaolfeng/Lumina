@@ -14,11 +14,17 @@ export type WsMessageType =
   | 'request_supplement'
   | 'skip'
   | 'answer_unhandled'
+  | 'question_cancel'
 
 export interface AnswerUnhandledData {
   question_id: string
   answer: any
   message: string
+}
+
+export interface QuestionCancelData {
+  question_id: string // 空字符串表示全部取消（cancel_all=true）
+  cancel_all: boolean
 }
 
 export interface WsMessage {
@@ -45,6 +51,8 @@ interface UseQaWebSocketOptions {
   onSessionEnd?: () => void
   /** Callback for when the server rejects an answer (unhandled) */
   onAnswerUnhandled?: (data: AnswerUnhandledData) => void
+  /** Callback for when a question is cancelled (single or all) */
+  onQuestionCancel?: (data: QuestionCancelData) => void
   /** Callback for connection status changes */
   onStatusChange?: (status: ConnectionStatus) => void
   /** Callback for when the server rejects the connection (session invalid/expired) */
@@ -168,6 +176,9 @@ export function useQaWebSocket(
             break
           case 'answer_unhandled':
             optionsRef.current.onAnswerUnhandled?.(msg.data)
+            break
+          case 'question_cancel':
+            optionsRef.current.onQuestionCancel?.(msg.data)
             break
           case 'session_end':
             optionsRef.current.onSessionEnd?.()

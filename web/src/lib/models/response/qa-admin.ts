@@ -27,7 +27,7 @@ export interface QuestionSummary {
   batch: any
   group_label: string
   supplement: boolean
-  status: 'pending' | 'answered' | 'skipped'
+  status: 'pending' | 'answered' | 'skipped' | 'cancelled'
   answer: any
   media: any
   supplements: SupplementItem[]
@@ -71,7 +71,7 @@ export interface QuestionDetailResponse {
   config: any
   batch: any
   group_label: string
-  status: 'pending' | 'answered' | 'skipped'
+  status: 'pending' | 'answered' | 'skipped' | 'cancelled'
   answer: any
   supplements: SupplementItem[]
   created_at: string

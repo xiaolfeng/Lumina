@@ -222,6 +222,39 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
     [sessionHash],
   )
 
+  // ── Question Cancel Handler ──
+  // Agent 通过 MCP 取消问题时后端推送。cancel_all=true 时批量标记所有 pending 为 cancelled；
+  // 否则按 question_id 定位单个问题标记。已 answered/skipped 的问题不受影响（后端仅取消 pending）。
+
+  const handleQuestionCancel = useCallback(
+    (data: any) => {
+      const cancelAll = data?.cancel_all === true
+      const targetId = data?.question_id || ''
+      updateQuestions((prev) => {
+        if (cancelAll || !targetId) {
+          // 全部取消：仅 pending → cancelled
+          return prev.map((q) =>
+            q.status === 'pending' ? { ...q, status: 'cancelled' as const } : q,
+          )
+        }
+        // 单个取消：按 question_id 定位（仅 pending 生效）
+        return prev.map((q) =>
+          q.id === targetId && q.status === 'pending'
+            ? { ...q, status: 'cancelled' as const }
+            : q,
+        )
+      })
+      // 若当前激活问题被取消，清空详情面板
+      setActiveSupplement(null)
+      // 提示用户
+      toast.info(cancelAll ? '所有待回答问题已被取消' : '问题已被取消', {
+        description: 'AI Agent 已取消该问题',
+        duration: 4000,
+      })
+    },
+    [updateQuestions],
+  )
+
   // ── WebSocket Connection ──
   // 连接建立时后端自动推送 pending 问题（question_push）及其 supplement（supplement_push），
   // 前端通过 handleQuestionPush / handleSupplementPush 自动恢复，无需 REST 历史加载。
@@ -232,6 +265,7 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
     onSupplementPush: handleSupplementPush,
     onAnswerSync: handleAnswerSync,
     onAnswerUnhandled: handleAnswerUnhandled,
+    onQuestionCancel: handleQuestionCancel,
     onSessionEnd: () => {
       setActiveSupplement(null)
       onReject?.()

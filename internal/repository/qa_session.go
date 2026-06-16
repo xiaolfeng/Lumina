@@ -185,7 +185,7 @@ func (r *QaSessionRepo) GetByIDWithQuestions(ctx context.Context, id xSnowflake.
 	var questions []*entity.QaQuestion
 	if err := r.db.WithContext(ctx).
 		Where("session_id = ?", id.Int64()).
-		Order("created_at ASC").
+		Order("created_at DESC").
 		Find(&questions).Error; err != nil {
 		return nil, nil, xError.NewError(ctx, xError.DatabaseError, "查询QA问题列表失败", false, err)
 	}

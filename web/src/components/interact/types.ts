@@ -31,7 +31,7 @@ export interface Question {
 	groupLabel: string;
 	batch?: { group_id: string; sequence: number; total: number };
 	config?: Record<string, any>;
-	status: 'pending' | 'answered' | 'skipped';
+	status: 'pending' | 'answered' | 'skipped' | 'cancelled';
 	answered: boolean;
 	answer?: any;
 	supplements?: SupplementItem[];
