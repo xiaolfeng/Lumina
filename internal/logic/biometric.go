@@ -146,7 +146,10 @@ func (l *BiometricLogic) RegisterStart(ctx context.Context, req *apiBiometric.Re
 	}
 
 	// 序列化 PublicKeyCredentialCreationOptions（透传给前端）
-	optionsJSON, err := json.Marshal(creation)
+	// 必须取 .Response：creation 是 protocol.CredentialCreation，
+	// 其 JSON tag 为 "publicKey"，直接序列化整个对象会产生多余包装层，
+	// 导致浏览器 parseCreationOptionsFromJSON 找不到 challenge 字段。
+	optionsJSON, err := json.Marshal(creation.Response)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.ServerInternalError, "序列化注册选项失败", false, err)
 	}
@@ -263,7 +266,10 @@ func (l *BiometricLogic) LoginStart(ctx context.Context) (*apiBiometric.LoginSta
 	}
 
 	// 序列化 PublicKeyCredentialRequestOptions（透传给前端）
-	optionsJSON, err := json.Marshal(assertion)
+	// 必须取 .Response：assertion 是 protocol.CredentialAssertion，
+	// 其 JSON tag 为 "publicKey"，直接序列化整个对象会产生多余包装层，
+	// 导致浏览器 parseRequestOptionsFromJSON 找不到 challenge 字段。
+	optionsJSON, err := json.Marshal(assertion.Response)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.ServerInternalError, "序列化登录选项失败", false, err)
 	}
