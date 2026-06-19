@@ -2,14 +2,14 @@ import { useState, useRef, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { createFileRoute, Link, useRouter, useSearch } from '@tanstack/react-router'
 import { motion } from 'motion/react'
-import { Eye, EyeOff, Github, LogIn } from 'lucide-react'
+import { Eye, EyeOff, Fingerprint, LogIn } from 'lucide-react'
 
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Separator } from '#/components/ui/separator'
 
-import { useLogin, useAuth } from '#/hooks/useAuth'
+import { useLogin, useAuth, useBiometricAvailability, useBiometricLogin } from '#/hooks/useAuth'
 import { getSafeRedirect } from '#/lib/apis/client'
 import { rightItemVariants } from '../auth'
 
@@ -33,6 +33,8 @@ function LoginPage() {
   const router = useRouter()
   const search = useSearch({ from: '/auth/login' })
   const login = useLogin()
+  const biometricAvail = useBiometricAvailability()
+  const biometricLogin = useBiometricLogin()
   const { isAuthenticated } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -211,27 +213,34 @@ function LoginPage() {
         )}
       </motion.form>
 
-      {/* Divider */}
-      <motion.div
-        className="my-6 flex items-center gap-3"
-        variants={rightItemVariants}
-      >
-        <Separator className="flex-1" />
-        <span className="text-xs text-sea-ink-soft">或</span>
-        <Separator className="flex-1" />
-      </motion.div>
+      {/* 生物特征登录（仅当已注册凭证时显示） */}
+      {biometricAvail?.data?.data?.is_available === true && (
+        <>
+          {/* Divider */}
+          <motion.div
+            className="my-6 flex items-center gap-3"
+            variants={rightItemVariants}
+          >
+            <Separator className="flex-1" />
+            <span className="text-xs text-sea-ink-soft">或</span>
+            <Separator className="flex-1" />
+          </motion.div>
 
-      {/* GitHub */}
-      <motion.div variants={rightItemVariants}>
-        <Button
-          variant="outline"
-          className="w-full gap-2"
-          style={{ touchAction: 'manipulation' }}
-        >
-          <Github className="h-4 w-4" aria-hidden />
-          使用 GitHub 登录
-        </Button>
-      </motion.div>
+          {/* Biometric Login Button */}
+          <motion.div variants={rightItemVariants}>
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => biometricLogin.mutate()}
+              disabled={biometricLogin.isPending}
+              style={{ touchAction: 'manipulation' }}
+            >
+              <Fingerprint className="h-4 w-4" aria-hidden />
+              {biometricLogin.isPending ? '认证中…' : '使用生物特征登录'}
+            </Button>
+          </motion.div>
+        </>
+      )}
     </>
   )
 }

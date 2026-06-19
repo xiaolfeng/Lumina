@@ -412,6 +412,246 @@
                 }
             }
         },
+        "/api/v1/auth/biometric/availability": {
+            "get": {
+                "description": "查询是否已注册生物特征凭证，登录页据此决定是否显示生物特征登录按钮",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "生物特征接口"
+                ],
+                "summary": "生物特征登录可用性",
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/biometric.AvailabilityResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/biometric/login/finish": {
+            "post": {
+                "description": "提交浏览器验证的 PublicKeyCredential 完成登录，返回访问令牌",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "生物特征接口"
+                ],
+                "summary": "生物特征登录完成",
+                "parameters": [
+                    {
+                        "description": "登录完成请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/biometric.LoginFinishRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "登录成功，返回令牌",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/biometric.LoginFinishResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "生物特征验证失败",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/biometric/login/start": {
+            "post": {
+                "description": "发起 WebAuthn 登录流程，返回获取选项供浏览器调用 navigator.credentials.get",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "生物特征接口"
+                ],
+                "summary": "生物特征登录开始",
+                "responses": {
+                    "200": {
+                        "description": "返回获取选项",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/biometric.LoginStartResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/biometric/register/finish": {
+            "post": {
+                "description": "提交浏览器创建的 PublicKeyCredential 完成注册",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "生物特征接口"
+                ],
+                "summary": "[管理] 生物特征注册完成",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "注册完成请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/biometric.RegisterFinishRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "注册成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/biometric.RegisterFinishResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "凭证数据无效",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/biometric/register/start": {
+            "post": {
+                "description": "发起 WebAuthn 注册流程，返回创建选项供浏览器调用 navigator.credentials.create",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "生物特征接口"
+                ],
+                "summary": "[管理] 生物特征注册开始",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "注册开始请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/biometric.RegisterStartRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "返回创建选项",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/biometric.RegisterStartResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/initialize": {
             "post": {
                 "description": "首次部署时提交用户名、邮箱、密码，初始化系统管理员账户；已初始化时拒绝",
@@ -1478,6 +1718,89 @@
                 }
             }
         },
+        "/api/v1/user/biometric/credentials": {
+            "get": {
+                "description": "返回当前用户已注册的所有生物特征凭证",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户接口"
+                ],
+                "summary": "[管理] 获取生物特征凭证列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/user.BiometricCredentialListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/biometric/credentials/{id}": {
+            "delete": {
+                "description": "删除指定的生物特征凭证",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户接口"
+                ],
+                "summary": "[管理] 删除生物特征凭证",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "凭证 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "凭证不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/current": {
             "get": {
                 "description": "根据访问令牌获取当前登录用户信息（用户名、邮箱）",
@@ -1521,6 +1844,100 @@
                     },
                     "401": {
                         "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/password": {
+            "put": {
+                "description": "验证旧密码并设置新密码，修改成功后撤销所有现有令牌",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户接口"
+                ],
+                "summary": "[管理] 修改密码",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "修改密码请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.UpdatePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "修改成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "旧密码错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/profile": {
+            "put": {
+                "description": "修改用户名和邮箱",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户接口"
+                ],
+                "summary": "[管理] 更新个人资料",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "更新资料请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.UpdateProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -1806,6 +2223,124 @@
                 },
                 "refresh_token": {
                     "description": "刷新令牌",
+                    "type": "string"
+                }
+            }
+        },
+        "biometric.AvailabilityResponse": {
+            "type": "object",
+            "properties": {
+                "is_available": {
+                    "description": "是否可用（已注册凭证）",
+                    "type": "boolean"
+                }
+            }
+        },
+        "biometric.LoginFinishRequest": {
+            "type": "object",
+            "required": [
+                "credential",
+                "session_token"
+            ],
+            "properties": {
+                "credential": {
+                    "description": "CredentialAssertion JSON",
+                    "type": "object"
+                },
+                "session_token": {
+                    "description": "会话令牌",
+                    "type": "string"
+                }
+            }
+        },
+        "biometric.LoginFinishResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "description": "访问令牌",
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "过期时间戳",
+                    "type": "integer"
+                },
+                "refresh_token": {
+                    "description": "刷新令牌",
+                    "type": "string"
+                }
+            }
+        },
+        "biometric.LoginStartResponse": {
+            "type": "object",
+            "properties": {
+                "options": {
+                    "description": "WebAuthn PublicKeyCredentialRequestOptions",
+                    "type": "object"
+                },
+                "session_token": {
+                    "description": "会话令牌",
+                    "type": "string"
+                }
+            }
+        },
+        "biometric.RegisterFinishRequest": {
+            "type": "object",
+            "required": [
+                "credential",
+                "device_name",
+                "session_token"
+            ],
+            "properties": {
+                "credential": {
+                    "description": "CredentialAttestation JSON",
+                    "type": "object"
+                },
+                "device_name": {
+                    "description": "设备名称",
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "session_token": {
+                    "description": "会话令牌",
+                    "type": "string"
+                }
+            }
+        },
+        "biometric.RegisterFinishResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "消息",
+                    "type": "string"
+                },
+                "success": {
+                    "description": "是否成功",
+                    "type": "boolean"
+                }
+            }
+        },
+        "biometric.RegisterStartRequest": {
+            "type": "object",
+            "required": [
+                "device_name"
+            ],
+            "properties": {
+                "device_name": {
+                    "description": "设备名称",
+                    "type": "string",
+                    "maxLength": 128
+                }
+            }
+        },
+        "biometric.RegisterStartResponse": {
+            "type": "object",
+            "properties": {
+                "options": {
+                    "description": "WebAuthn PublicKeyCredentialCreationOptions（透传 JSON）",
+                    "type": "object"
+                },
+                "session_token": {
+                    "description": "会话令牌（关联 Redis challenge）",
                     "type": "string"
                 }
             }
@@ -2308,9 +2843,96 @@
                 }
             }
         },
+        "user.BiometricCredentialItem": {
+            "type": "object",
+            "properties": {
+                "aaguid": {
+                    "description": "认证器型号",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "创建时间戳",
+                    "type": "integer"
+                },
+                "device_name": {
+                    "description": "设备名称",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "凭证 ID",
+                    "type": "string"
+                },
+                "last_used_at": {
+                    "description": "最后使用时间戳（nil 表示未使用）",
+                    "type": "integer"
+                }
+            }
+        },
+        "user.BiometricCredentialListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "凭证列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/user.BiometricCredentialItem"
+                    }
+                },
+                "total": {
+                    "description": "总数",
+                    "type": "integer"
+                }
+            }
+        },
+        "user.UpdatePasswordRequest": {
+            "type": "object",
+            "required": [
+                "new_password",
+                "old_password"
+            ],
+            "properties": {
+                "new_password": {
+                    "description": "新密码",
+                    "type": "string",
+                    "minLength": 8
+                },
+                "old_password": {
+                    "description": "旧密码",
+                    "type": "string",
+                    "minLength": 6
+                }
+            }
+        },
+        "user.UpdateProfileRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "username"
+            ],
+            "properties": {
+                "email": {
+                    "description": "邮箱",
+                    "type": "string"
+                },
+                "username": {
+                    "description": "用户名",
+                    "type": "string",
+                    "maxLength": 32,
+                    "minLength": 3
+                }
+            }
+        },
         "user.UserInfoResponse": {
             "type": "object",
             "properties": {
+                "biometric_credential_count": {
+                    "description": "生物特征凭证数量",
+                    "type": "integer"
+                },
+                "biometric_enabled": {
+                    "description": "是否启用生物特征",
+                    "type": "boolean"
+                },
                 "email": {
                     "description": "邮箱地址",
                     "type": "string"

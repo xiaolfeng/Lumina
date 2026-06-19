@@ -21,6 +21,7 @@ var migrateTables = []interface{}{
 	&entity.QaSession{},
 	&entity.QaQuestion{},
 	&entity.QaSupplement{},
+	&entity.BiometricCredential{},
 }
 
 func (r *reg) databaseInit(ctx context.Context) (any, error) {

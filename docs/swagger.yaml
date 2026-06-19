@@ -202,6 +202,89 @@ definitions:
         description: 刷新令牌
         type: string
     type: object
+  biometric.AvailabilityResponse:
+    properties:
+      is_available:
+        description: 是否可用（已注册凭证）
+        type: boolean
+    type: object
+  biometric.LoginFinishRequest:
+    properties:
+      credential:
+        description: CredentialAssertion JSON
+        type: object
+      session_token:
+        description: 会话令牌
+        type: string
+    required:
+    - credential
+    - session_token
+    type: object
+  biometric.LoginFinishResponse:
+    properties:
+      access_token:
+        description: 访问令牌
+        type: string
+      expires_at:
+        description: 过期时间戳
+        type: integer
+      refresh_token:
+        description: 刷新令牌
+        type: string
+    type: object
+  biometric.LoginStartResponse:
+    properties:
+      options:
+        description: WebAuthn PublicKeyCredentialRequestOptions
+        type: object
+      session_token:
+        description: 会话令牌
+        type: string
+    type: object
+  biometric.RegisterFinishRequest:
+    properties:
+      credential:
+        description: CredentialAttestation JSON
+        type: object
+      device_name:
+        description: 设备名称
+        maxLength: 128
+        type: string
+      session_token:
+        description: 会话令牌
+        type: string
+    required:
+    - credential
+    - device_name
+    - session_token
+    type: object
+  biometric.RegisterFinishResponse:
+    properties:
+      message:
+        description: 消息
+        type: string
+      success:
+        description: 是否成功
+        type: boolean
+    type: object
+  biometric.RegisterStartRequest:
+    properties:
+      device_name:
+        description: 设备名称
+        maxLength: 128
+        type: string
+    required:
+    - device_name
+    type: object
+  biometric.RegisterStartResponse:
+    properties:
+      options:
+        description: WebAuthn PublicKeyCredentialCreationOptions（透传 JSON）
+        type: object
+      session_token:
+        description: 会话令牌（关联 Redis challenge）
+        type: string
+    type: object
   common.BaseResponse:
     properties:
       code:
@@ -557,8 +640,71 @@ definitions:
         description: Session TTL（秒），nil不更新
         type: integer
     type: object
+  user.BiometricCredentialItem:
+    properties:
+      aaguid:
+        description: 认证器型号
+        type: string
+      created_at:
+        description: 创建时间戳
+        type: integer
+      device_name:
+        description: 设备名称
+        type: string
+      id:
+        description: 凭证 ID
+        type: string
+      last_used_at:
+        description: 最后使用时间戳（nil 表示未使用）
+        type: integer
+    type: object
+  user.BiometricCredentialListResponse:
+    properties:
+      items:
+        description: 凭证列表
+        items:
+          $ref: '#/definitions/user.BiometricCredentialItem'
+        type: array
+      total:
+        description: 总数
+        type: integer
+    type: object
+  user.UpdatePasswordRequest:
+    properties:
+      new_password:
+        description: 新密码
+        minLength: 8
+        type: string
+      old_password:
+        description: 旧密码
+        minLength: 6
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
+  user.UpdateProfileRequest:
+    properties:
+      email:
+        description: 邮箱
+        type: string
+      username:
+        description: 用户名
+        maxLength: 32
+        minLength: 3
+        type: string
+    required:
+    - email
+    - username
+    type: object
   user.UserInfoResponse:
     properties:
+      biometric_credential_count:
+        description: 生物特征凭证数量
+        type: integer
+      biometric_enabled:
+        description: 是否启用生物特征
+        type: boolean
       email:
         description: 邮箱地址
         type: string
@@ -845,6 +991,149 @@ paths:
       summary: '[管理] 重置API密钥'
       tags:
       - API密钥接口
+  /api/v1/auth/biometric/availability:
+    get:
+      description: 查询是否已注册生物特征凭证，登录页据此决定是否显示生物特征登录按钮
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/biometric.AvailabilityResponse'
+              type: object
+      summary: 生物特征登录可用性
+      tags:
+      - 生物特征接口
+  /api/v1/auth/biometric/login/finish:
+    post:
+      consumes:
+      - application/json
+      description: 提交浏览器验证的 PublicKeyCredential 完成登录，返回访问令牌
+      parameters:
+      - description: 登录完成请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/biometric.LoginFinishRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 登录成功，返回令牌
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/biometric.LoginFinishResponse'
+              type: object
+        "401":
+          description: 生物特征验证失败
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: 生物特征登录完成
+      tags:
+      - 生物特征接口
+  /api/v1/auth/biometric/login/start:
+    post:
+      description: 发起 WebAuthn 登录流程，返回获取选项供浏览器调用 navigator.credentials.get
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回获取选项
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/biometric.LoginStartResponse'
+              type: object
+      summary: 生物特征登录开始
+      tags:
+      - 生物特征接口
+  /api/v1/auth/biometric/register/finish:
+    post:
+      consumes:
+      - application/json
+      description: 提交浏览器创建的 PublicKeyCredential 完成注册
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 注册完成请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/biometric.RegisterFinishRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 注册成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/biometric.RegisterFinishResponse'
+              type: object
+        "400":
+          description: 凭证数据无效
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 生物特征注册完成'
+      tags:
+      - 生物特征接口
+  /api/v1/auth/biometric/register/start:
+    post:
+      consumes:
+      - application/json
+      description: 发起 WebAuthn 注册流程，返回创建选项供浏览器调用 navigator.credentials.create
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 注册开始请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/biometric.RegisterStartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回创建选项
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/biometric.RegisterStartResponse'
+              type: object
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 生物特征注册开始'
+      tags:
+      - 生物特征接口
   /api/v1/auth/initialize:
     post:
       consumes:
@@ -1511,6 +1800,58 @@ paths:
       summary: '[管理] 获取问题详情'
       tags:
       - Q&A接口
+  /api/v1/user/biometric/credentials:
+    get:
+      description: 返回当前用户已注册的所有生物特征凭证
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.BiometricCredentialListResponse'
+              type: object
+      summary: '[管理] 获取生物特征凭证列表'
+      tags:
+      - 用户接口
+  /api/v1/user/biometric/credentials/{id}:
+    delete:
+      description: 删除指定的生物特征凭证
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 凭证 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 凭证不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 删除生物特征凭证'
+      tags:
+      - 用户接口
   /api/v1/user/current:
     get:
       consumes:
@@ -1539,6 +1880,68 @@ paths:
           schema:
             $ref: '#/definitions/common.BaseResponse'
       summary: '[管理] 获取当前用户信息'
+      tags:
+      - 用户接口
+  /api/v1/user/password:
+    put:
+      consumes:
+      - application/json
+      description: 验证旧密码并设置新密码，修改成功后撤销所有现有令牌
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 修改密码请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.UpdatePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 修改成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 旧密码错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 修改密码'
+      tags:
+      - 用户接口
+  /api/v1/user/profile:
+    put:
+      consumes:
+      - application/json
+      description: 修改用户名和邮箱
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 更新资料请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 更新个人资料'
       tags:
       - 用户接口
 swagger: "2.0"

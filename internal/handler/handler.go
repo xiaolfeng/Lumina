@@ -8,11 +8,12 @@ import (
 )
 
 type service struct {
-	healthLogic  *logic.HealthLogic
-	authLogic    *logic.AuthLogic
-	apikeyLogic  *logic.ApikeyLogic
-	projectLogic *logic.ProjectLogic
-	qaLogic      *logic.QaLogic
+	healthLogic    *logic.HealthLogic
+	authLogic      *logic.AuthLogic
+	apikeyLogic    *logic.ApikeyLogic
+	projectLogic   *logic.ProjectLogic
+	qaLogic        *logic.QaLogic
+	biometricLogic *logic.BiometricLogic
 }
 
 type handler struct {
@@ -30,15 +31,17 @@ type IHandler interface {
 }
 
 func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
+	authLogic := logic.NewAuthLogic(ctx)
 	return &T{
 		name: handlerName,
 		log:  xLog.WithName(xLog.NamedCONT, handlerName),
 		service: &service{
-			healthLogic:  logic.NewHealthLogic(ctx),
-			authLogic:    logic.NewAuthLogic(ctx),
-			apikeyLogic:  logic.NewApikeyLogic(ctx),
-			projectLogic: logic.NewProjectLogic(ctx),
-			qaLogic:      logic.NewQaLogic(ctx),
+			healthLogic:    logic.NewHealthLogic(ctx),
+			authLogic:      authLogic,
+			apikeyLogic:    logic.NewApikeyLogic(ctx),
+			projectLogic:   logic.NewProjectLogic(ctx),
+			qaLogic:        logic.NewQaLogic(ctx),
+			biometricLogic: logic.NewBiometricLogic(ctx, authLogic),
 		},
 	}
 }
@@ -54,4 +57,6 @@ type ProjectHandler handler
 type QaHandler handler
 
 type UserHandler handler
+
+type BiometricHandler handler
 

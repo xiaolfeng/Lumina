@@ -12,4 +12,8 @@ func (r *route) userProtectedRouter(route gin.IRouter) {
 	userGroup := route.Group("/user")
 	userGroup.Use(middleware.Auth(r.context))
 	userGroup.GET("/current", userHandler.Current)
+	userGroup.PUT("/profile", userHandler.UpdateProfile)
+	userGroup.PUT("/password", userHandler.UpdatePassword)
+	userGroup.GET("/biometric/credentials", userHandler.BiometricCredentials)
+	userGroup.DELETE("/biometric/credentials/:id", userHandler.DeleteBiometricCredential)
 }

@@ -125,25 +125,8 @@ func (l *AuthLogic) Login(ctx context.Context, req *apiAuth.LoginRequest) (*apiA
 		return nil, xError.NewError(ctx, xError.LoginFailed, "账号或密码错误", false, nil)
 	}
 
-	// 使用框架安全密钥生成 AccessToken 和 RefreshToken
-	at := xUtil.Security().GenerateKey()
-	rt := xUtil.Security().GenerateKey()
-
-	// 存储令牌到 Redis
-	if xErr := l.repo.token.SetAccessToken(ctx, at); xErr != nil {
-		return nil, xErr
-	}
-	if xErr := l.repo.token.SetRefreshToken(ctx, rt); xErr != nil {
-		return nil, xErr
-	}
-
 	l.log.Info(ctx, "Login - 用户登录成功")
-
-	return &apiAuth.TokenResponse{
-		AccessToken:  at,
-		RefreshToken: rt,
-		ExpiresIn:    int64((2 * time.Hour).Seconds()),
-	}, nil
+	return l.generateTokens(ctx)
 }
 
 // Refresh 使用刷新令牌换取新的访问令牌和刷新令牌
@@ -164,25 +147,8 @@ func (l *AuthLogic) Refresh(ctx context.Context, req *apiAuth.RefreshRequest) (*
 		return nil, xErr
 	}
 
-	// 使用框架安全密钥生成新的 AccessToken 和 RefreshToken
-	at := xUtil.Security().GenerateKey()
-	rt := xUtil.Security().GenerateKey()
-
-	// 存储新令牌到 Redis
-	if xErr := l.repo.token.SetAccessToken(ctx, at); xErr != nil {
-		return nil, xErr
-	}
-	if xErr := l.repo.token.SetRefreshToken(ctx, rt); xErr != nil {
-		return nil, xErr
-	}
-
 	l.log.Info(ctx, "Refresh - 令牌刷新成功")
-
-	return &apiAuth.TokenResponse{
-		AccessToken:  at,
-		RefreshToken: rt,
-		ExpiresIn:    int64((2 * time.Hour).Seconds()),
-	}, nil
+	return l.generateTokens(ctx)
 }
 
 // Logout 用户登出，清除刷新令牌（访问令牌等待自然过期）
@@ -232,8 +198,76 @@ func (l *AuthLogic) GetCurrentUser(ctx context.Context) (*apiUser.UserInfoRespon
 
 	l.log.Info(ctx, "GetCurrentUser - 获取当前用户信息成功")
 
+	// 读取生物特征状态（Info 表标记，由 BiometricLogic 维护）
+	biometricEnabled := false
+	if val, xErr := l.repo.info.GetByKey(ctx, "biometric_enabled"); xErr == nil {
+		biometricEnabled = val == "true"
+	}
+
 	return &apiUser.UserInfoResponse{
-		Username: username,
-		Email:    email,
+		Username:                 username,
+		Email:                    email,
+		BiometricEnabled:         biometricEnabled,
+		BiometricCredentialCount: 0, // TODO(Task 5): 由 BiometricLogic 注入真实数量
 	}, nil
+}
+
+// generateTokens 生成新的 AccessToken 和 RefreshToken 并存储到 Redis
+// Login、Refresh、BiometricLogin 共用此方法
+func (l *AuthLogic) generateTokens(ctx context.Context) (*apiAuth.TokenResponse, *xError.Error) {
+	at := xUtil.Security().GenerateKey()
+	rt := xUtil.Security().GenerateKey()
+
+	if xErr := l.repo.token.SetAccessToken(ctx, at); xErr != nil {
+		return nil, xErr
+	}
+	if xErr := l.repo.token.SetRefreshToken(ctx, rt); xErr != nil {
+		return nil, xErr
+	}
+
+	return &apiAuth.TokenResponse{
+		AccessToken:  at,
+		RefreshToken: rt,
+		ExpiresIn:    int64((2 * time.Hour).Seconds()),
+	}, nil
+}
+
+// UpdateProfile 更新个人资料（用户名 + 邮箱）
+func (l *AuthLogic) UpdateProfile(ctx context.Context, req *apiUser.UpdateProfileRequest) *xError.Error {
+	l.log.Info(ctx, "UpdateProfile - 更新个人资料")
+
+	kv := map[string]string{
+		"owner_username": req.Username,
+		"owner_email":    req.Email,
+	}
+	if xErr := l.repo.info.UpdateValuesInTx(ctx, kv); xErr != nil {
+		return xError.NewError(ctx, xError.DatabaseError, "更新个人资料失败", false, nil)
+	}
+
+	l.log.Info(ctx, "UpdateProfile - 个人资料更新成功")
+	return nil
+}
+
+// UpdatePassword 修改登录密码（验证旧密码 + 更新新密码 + 撤销所有现有 token）
+func (l *AuthLogic) UpdatePassword(ctx context.Context, req *apiUser.UpdatePasswordRequest) *xError.Error {
+	l.log.Info(ctx, "UpdatePassword - 修改密码")
+
+	oldHash, xErr := l.repo.info.GetByKey(ctx, "owner_password")
+	if xErr != nil {
+		return xError.NewError(ctx, xError.DatabaseError, "读取密码信息失败", false, nil)
+	}
+	if !xUtil.Password().IsValid(req.OldPassword, oldHash) {
+		return xError.NewError(ctx, xError.LoginFailed, "旧密码错误", false, nil)
+	}
+
+	newHash := xUtil.Password().MustEncryptString(req.NewPassword)
+	if xErr := l.repo.info.UpdateValue(ctx, "owner_password", newHash); xErr != nil {
+		return xError.NewError(ctx, xError.DatabaseError, "更新密码失败", false, nil)
+	}
+
+	// TODO(Task 3): 撤销所有现有 access token（强制重新登录）
+	// TokenRepo 当前仅支持单 token 操作，需在 Task 3 中新增 ClearAllAccessTokens 方法
+
+	l.log.Info(ctx, "UpdatePassword - 密码修改成功")
+	return nil
 }

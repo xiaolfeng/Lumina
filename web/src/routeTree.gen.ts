@@ -20,6 +20,7 @@ import { Route as InteractThankRouteImport } from './routes/interact/thank'
 import { Route as ConsoleSettingsRouteImport } from './routes/console/settings'
 import { Route as ConsoleQaRouteImport } from './routes/console/qa'
 import { Route as ConsoleProjectRouteImport } from './routes/console/project'
+import { Route as ConsoleProfileRouteImport } from './routes/console/profile'
 import { Route as ConsoleDashboardRouteImport } from './routes/console/dashboard'
 import { Route as ConsoleApikeyRouteImport } from './routes/console/apikey'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
@@ -82,6 +83,11 @@ const ConsoleProjectRoute = ConsoleProjectRouteImport.update({
   path: '/project',
   getParentRoute: () => ConsoleRoute,
 } as any)
+const ConsoleProfileRoute = ConsoleProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => ConsoleRoute,
+} as any)
 const ConsoleDashboardRoute = ConsoleDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
+  '/console/profile': typeof ConsoleProfileRoute
   '/console/project': typeof ConsoleProjectRoute
   '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
+  '/console/profile': typeof ConsoleProfileRoute
   '/console/project': typeof ConsoleProjectRoute
   '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/console/apikey': typeof ConsoleApikeyRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
+  '/console/profile': typeof ConsoleProfileRoute
   '/console/project': typeof ConsoleProjectRoute
   '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/console/apikey'
     | '/console/dashboard'
+    | '/console/profile'
     | '/console/project'
     | '/console/qa'
     | '/console/settings'
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/console/apikey'
     | '/console/dashboard'
+    | '/console/profile'
     | '/console/project'
     | '/console/qa'
     | '/console/settings'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/console/apikey'
     | '/console/dashboard'
+    | '/console/profile'
     | '/console/project'
     | '/console/qa'
     | '/console/settings'
@@ -320,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsoleProjectRouteImport
       parentRoute: typeof ConsoleRoute
     }
+    '/console/profile': {
+      id: '/console/profile'
+      path: '/profile'
+      fullPath: '/console/profile'
+      preLoaderRoute: typeof ConsoleProfileRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
     '/console/dashboard': {
       id: '/console/dashboard'
       path: '/dashboard'
@@ -414,6 +433,7 @@ const ConsoleQaRouteWithChildren = ConsoleQaRoute._addFileChildren(
 interface ConsoleRouteChildren {
   ConsoleApikeyRoute: typeof ConsoleApikeyRoute
   ConsoleDashboardRoute: typeof ConsoleDashboardRoute
+  ConsoleProfileRoute: typeof ConsoleProfileRoute
   ConsoleProjectRoute: typeof ConsoleProjectRoute
   ConsoleQaRoute: typeof ConsoleQaRouteWithChildren
   ConsoleSettingsRoute: typeof ConsoleSettingsRoute
@@ -423,6 +443,7 @@ interface ConsoleRouteChildren {
 const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleApikeyRoute: ConsoleApikeyRoute,
   ConsoleDashboardRoute: ConsoleDashboardRoute,
+  ConsoleProfileRoute: ConsoleProfileRoute,
   ConsoleProjectRoute: ConsoleProjectRoute,
   ConsoleQaRoute: ConsoleQaRouteWithChildren,
   ConsoleSettingsRoute: ConsoleSettingsRoute,

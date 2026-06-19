@@ -8,6 +8,7 @@ import {
 	MessageCircleQuestion,
 	Settings,
 	Sparkles,
+	User,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { Avatar, AvatarFallback } from "#/components/ui/avatar";
@@ -62,6 +63,7 @@ const navGroups: NavGroup[] = [
 		label: "系统",
 		items: [
 			{ title: "令牌管理", to: "/console/apikey", icon: KeyRound },
+			{ title: "个人信息", to: "/console/profile", icon: User },
 			{ title: "系统设置", to: "/console/settings", icon: Settings },
 		],
 	},
