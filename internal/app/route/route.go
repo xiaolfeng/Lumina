@@ -50,6 +50,7 @@ func NewRouteWithFrontend(frontendFS fs.FS) func(reg *xReg.Reg) {
 		r.authProtectedRouter(apiRouter)
 		r.apikeyRouter(apiRouter)
 		r.projectRouter(apiRouter)
+		r.pinRouter(apiRouter)
 		r.qaRouter(apiRouter)
 		r.qaDownloadRouter(apiRouter)
 		r.userProtectedRouter(apiRouter)

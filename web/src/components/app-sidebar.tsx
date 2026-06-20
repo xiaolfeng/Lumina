@@ -3,6 +3,7 @@ import {
 	ExternalLink,
 	FolderKanban,
 	KeyRound,
+	Pin,
 	LayoutDashboard,
 	MessageCircle,
 	MessageCircleQuestion,
@@ -56,6 +57,7 @@ const navGroups: NavGroup[] = [
 		label: "功能",
 		items: [
 			{ title: "项目管理", to: "/console/project", icon: FolderKanban },
+			{ title: "Pin 管理", to: "/console/pin", icon: Pin },
 			{ title: "问答管理", to: "/console/qa", icon: MessageCircleQuestion },
 		],
 	},

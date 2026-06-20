@@ -18,6 +18,7 @@ var migrateTables = []interface{}{
 	&entity.Info{},
 	&entity.Apikey{},
 	&entity.Project{},
+	&entity.Pin{},
 	&entity.QaSession{},
 	&entity.QaQuestion{},
 	&entity.QaSupplement{},

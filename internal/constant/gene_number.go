@@ -8,4 +8,5 @@ const (
 	GeneQaQuestion xSnowflake.Gene = 34 // QA问题基因
 	GeneQaSupplement       xSnowflake.Gene = 35 // QA补充基因
 	GeneBiometricCredential xSnowflake.Gene = 36 // 生物特征凭证
+	GenePin               xSnowflake.Gene = 37 // Pin基因
 )

@@ -19,8 +19,10 @@ func (r *reg) mcpInit(ctx context.Context) (any, error) {
 
 	qaLogic := logic.NewQaLogic(ctx)
 	projectLogic := logic.NewProjectLogic(ctx)
+	pinLogic := logic.NewPinLogic(ctx)
 	mcp.SetQaLogic(qaLogic)
 	mcp.SetProjectLogic(projectLogic)
+	mcp.SetPinLogic(pinLogic)
 
 	handler := mcp.InitMCPServer(ctx)
 

@@ -314,6 +314,88 @@ definitions:
       version:
         type: string
     type: object
+  pin.CreatePinRequest:
+    properties:
+      category:
+        description: 分类 (notice/dependency/api_change/other)
+        type: string
+      content:
+        description: 详细内容
+        type: string
+      from_project_id:
+        description: 来源项目ID (可选)
+        type: string
+      priority:
+        description: 优先级 (high/medium/low)
+        type: string
+      title:
+        description: 约束标题
+        type: string
+      to_project_id:
+        description: 目标项目ID
+        type: string
+    required:
+    - content
+    - priority
+    - title
+    - to_project_id
+    type: object
+  pin.PinListResponse:
+    properties:
+      items:
+        description: Pin列表
+        items:
+          $ref: '#/definitions/pin.PinResponse'
+        type: array
+      total:
+        description: 总数量
+        type: integer
+    type: object
+  pin.PinResponse:
+    properties:
+      category:
+        description: 分类
+        type: string
+      consumed_at:
+        description: 消费时间 (空字符串表示未消费)
+        type: string
+      content:
+        description: 内容
+        type: string
+      created_at:
+        description: 创建时间
+        type: string
+      from_project_id:
+        description: 来源项目ID
+        type: string
+      id:
+        description: Pin ID (雪花ID字符串)
+        type: string
+      priority:
+        description: 优先级
+        type: string
+      status:
+        description: 状态
+        type: string
+      title:
+        description: 标题
+        type: string
+      to_project_id:
+        description: 目标项目ID
+        type: string
+      updated_at:
+        description: 更新时间
+        type: string
+    type: object
+  pin.UpdatePinRequest:
+    properties:
+      category:
+        description: 分类 (可选更新)
+        type: string
+      priority:
+        description: 优先级 (可选更新)
+        type: string
+    type: object
   project.CreateProjectRequest:
     properties:
       alias_name:
@@ -1309,6 +1391,237 @@ paths:
       summary: 健康检查
       tags:
       - 健康检查接口
+  /api/v1/pin:
+    get:
+      consumes:
+      - application/json
+      description: 按目标项目、来源项目、状态、分类、优先级多条件动态过滤，page/size 分页查询
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 目标项目ID筛选
+        in: query
+        name: to_project_id
+        type: string
+      - description: 来源项目ID筛选
+        in: query
+        name: from_project_id
+        type: string
+      - description: 状态筛选 (pending/consumed)
+        in: query
+        name: status
+        type: string
+      - description: 分类筛选 (notice/dependency/api_change/other)
+        in: query
+        name: category
+        type: string
+      - description: 优先级筛选 (high/medium/low)
+        in: query
+        name: priority
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/pin.PinListResponse'
+              type: object
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 获取 Pin 列表'
+      tags:
+      - Pin接口
+    post:
+      consumes:
+      - application/json
+      description: 提交标题、内容、分类、优先级与目标项目创建跨项目依赖约束，推送到目标项目待消费队列
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 创建 Pin 请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/pin.CreatePinRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/pin.PinResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 目标项目不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 创建 Pin 约束'
+      tags:
+      - Pin接口
+  /api/v1/pin/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根据 Pin ID 删除指定约束，删除后不可恢复
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Pin ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: Pin 不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 删除 Pin 约束'
+      tags:
+      - Pin接口
+    get:
+      consumes:
+      - application/json
+      description: 根据 Pin ID 查询单个约束详情（只读，不改变状态）
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Pin ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/pin.PinResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: Pin 不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 获取 Pin 详情'
+      tags:
+      - Pin接口
+    put:
+      consumes:
+      - application/json
+      description: 更新指定 ID 的 Pin 优先级与分类（可选字段），不支持更新状态
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Pin ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 更新 Pin 请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/pin.UpdatePinRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/pin.PinResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: Pin 不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 更新 Pin 元数据'
+      tags:
+      - Pin接口
   /api/v1/project:
     get:
       consumes:

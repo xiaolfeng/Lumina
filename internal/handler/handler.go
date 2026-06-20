@@ -14,6 +14,7 @@ type service struct {
 	projectLogic   *logic.ProjectLogic
 	qaLogic        *logic.QaLogic
 	biometricLogic *logic.BiometricLogic
+	pinLogic       *logic.PinLogic
 }
 
 type handler struct {
@@ -42,6 +43,7 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 			projectLogic:   logic.NewProjectLogic(ctx),
 			qaLogic:        logic.NewQaLogic(ctx),
 			biometricLogic: logic.NewBiometricLogic(ctx, authLogic),
+			pinLogic:       logic.NewPinLogic(ctx),
 		},
 	}
 }
@@ -59,4 +61,6 @@ type QaHandler handler
 type UserHandler handler
 
 type BiometricHandler handler
+
+type PinHandler handler
 
