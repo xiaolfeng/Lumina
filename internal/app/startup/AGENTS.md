@@ -9,13 +9,14 @@ startup/
 ├── startup.go              # 启动节点列表工厂（注册顺序）
 ├── startup_database.go     # GORM + PostgreSQL 初始化 + AutoMigrate
 ├── startup_redis.go        # go-redis 初始化
-├── startup_mcp.go          # MCP Server 初始化（注册 QA/Project 工具）
+├── startup_mcp.go          # MCP Server 初始化（注册 QA/Project/Pin 工具）
 ├── startup_prepare.go      # 种子数据编排入口
 └── prepare/                # 幂等种子数据
     ├── prepare.go          # Prepare 编排器（聚合所有 prepare 方法）
     ├── prepare_info.go     # Info 表种子数据（站点配置）
     ├── prepare_project.go  # 项目缓存清理（字段类型变更时清除旧缓存）
-    └── prepare_qa.go       # Q&A 配置种子数据（Session TTL、运行时域名）
+    ├── prepare_qa.go       # Q&A 配置种子数据（Session TTL、运行时域名）
+    └── prepare_qa_hash.go  # Q&A 会话 Hash 缓存修复（历史数据格式迁移）
 ```
 
 ## 导航指南
@@ -34,8 +35,9 @@ startup/
 - **数据库表前缀**：通过 `DATABASE_PREFIX` 环境变量驱动（默认 `tpl_`），使用 `SingularTable: true`。
 - **种子数据幂等性**：`prepare` 中的方法必须可重复执行（推荐 `FirstOrCreate` + `Assign`）。
 - **种子数据隔离**：每个业务域一个 `prepare_<domain>.go`，由 `prepare.go` 统一编排。
-- **MCP 启动**：`startup_mcp.go` 创建 Logic 实例并注入 MCP 包，然后调用 `mcp.InitMCPServer` 生成 HTTP Handler，注册到 context 的 `MCPHandlerKey`。
+- **MCP 启动**：`startup_mcp.go` 创建 QA/Project/Pin Logic 实例并注入 MCP 包，然后调用 `mcp.InitMCPServer` 生成 HTTP Handler，注册到 context 的 `MCPHandlerKey`。
 - **项目缓存清理**：`prepare_project.go` 在启动时扫描并清除旧格式的项目缓存键，确保字段类型变更后缓存一致性。
+- **QA Hash 修复**：`prepare_qa_hash.go` 修复历史会话 Hash 缓存格式，仅在升级时需要。
 
 ## 反模式
 - 禁止在启动节点之外初始化 DB/Redis/MCP 客户端。
@@ -59,6 +61,6 @@ startup/
 `prepare` 和 `mcpInit` 依赖 context 中的 DB/Redis 实例（`xCtxUtil.MustGetDB/MustGetRDB`），因此 DB/Redis 节点必须先执行。
 
 ## 迁移顺序
-`migrateTables` 当前：`Info` → `Apikey` → `Project` → `QaSession` → `QaQuestion` → `QaSupplement`。
+`migrateTables` 当前：`Info` → `Apikey` → `Project` → `Pin` → `QaSession` → `QaQuestion` → `QaSupplement` → `BiometricCredential`。
 
 新增实体时根据 FK 依赖关系追加到正确位置。
