@@ -2,7 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 import { Settings } from 'lucide-react'
-import { staggerContainer, staggerItem, staggerItemLeft } from '#/lib/motion'
+import { staggerContainer, staggerItem } from '#/lib/motion'
+import { PageHeader } from '#/components/page-header'
 
 export const Route = createFileRoute('/console/settings')({
   component: SettingsPage,
@@ -16,11 +17,7 @@ function SettingsPage() {
       animate="visible"
       variants={staggerContainer}
     >
-      <motion.div variants={staggerItemLeft} className="relative pl-1.5">
-        <div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-lagoon to-palm" />
-        <h1 className="text-2xl font-bold tracking-tight text-sea-ink">系统设置</h1>
-        <p className="text-sea-ink-soft">管理 Lumina 系统配置</p>
-      </motion.div>
+      <PageHeader title="系统设置" description="管理 Lumina 系统配置" />
 
       <motion.div variants={staggerItem}>
         <Card className="border-chip-line">

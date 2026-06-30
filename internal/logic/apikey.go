@@ -13,7 +13,6 @@ import (
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xUtil "github.com/bamboo-services/bamboo-base-go/common/utility"
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
-	"github.com/gin-gonic/gin"
 	apiApikey "github.com/xiaolfeng/Lumina/api/apikey"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
@@ -45,7 +44,7 @@ func NewApikeyLogic(ctx context.Context) *ApikeyLogic {
 }
 
 // Create 创建API密钥，生成 lumi_ 前缀的随机密钥并存储 bcrypt 哈希
-func (l *ApikeyLogic) Create(ctx *gin.Context, req *apiApikey.CreateRequest) (*apiApikey.CreateResponse, *xError.Error) {
+func (l *ApikeyLogic) Create(ctx context.Context, req *apiApikey.CreateRequest) (*apiApikey.CreateResponse, *xError.Error) {
 	l.log.Info(ctx, "Create - 创建API密钥")
 
 	// 生成32字节随机数，使用 RawURLEncoding 编码（URL安全，无填充）
@@ -75,7 +74,7 @@ func (l *ApikeyLogic) Create(ctx *gin.Context, req *apiApikey.CreateRequest) (*a
 	}
 
 	// 持久化
-	if xErr := l.repo.apikey.Create(ctx.Request.Context(), ak); xErr != nil {
+	if xErr := l.repo.apikey.Create(ctx, ak); xErr != nil {
 		return nil, xErr
 	}
 
@@ -94,10 +93,10 @@ func (l *ApikeyLogic) Create(ctx *gin.Context, req *apiApikey.CreateRequest) (*a
 }
 
 // List 分页获取API密钥列表，密钥以脱敏形式展示
-func (l *ApikeyLogic) List(ctx *gin.Context, page, size int) (*xModels.PageResponse[[]apiApikey.ApikeyItem], *xError.Error) {
+func (l *ApikeyLogic) List(ctx context.Context, page, size int) (*xModels.PageResponse[[]apiApikey.ApikeyItem], *xError.Error) {
 	l.log.Info(ctx, "List - 分页获取API密钥列表")
 
-	items, total, xErr := l.repo.apikey.List(ctx.Request.Context(), page, size)
+	items, total, xErr := l.repo.apikey.List(ctx, page, size)
 	if xErr != nil {
 		return nil, xErr
 	}
@@ -123,7 +122,7 @@ func (l *ApikeyLogic) List(ctx *gin.Context, page, size int) (*xModels.PageRespo
 }
 
 // GetByID 根据ID获取API密钥详情，密钥以脱敏形式展示
-func (l *ApikeyLogic) GetByID(ctx *gin.Context, id string) (*apiApikey.DetailResponse, *xError.Error) {
+func (l *ApikeyLogic) GetByID(ctx context.Context, id string) (*apiApikey.DetailResponse, *xError.Error) {
 	l.log.Info(ctx, "GetByID - 根据ID获取API密钥详情")
 
 	parsedID, xErr := parseSnowflakeID(ctx, id)
@@ -131,7 +130,7 @@ func (l *ApikeyLogic) GetByID(ctx *gin.Context, id string) (*apiApikey.DetailRes
 		return nil, xErr
 	}
 
-	ak, xErr := l.repo.apikey.GetByID(ctx.Request.Context(), parsedID)
+	ak, xErr := l.repo.apikey.GetByID(ctx, parsedID)
 	if xErr != nil {
 		return nil, xErr
 	}
@@ -150,7 +149,7 @@ func (l *ApikeyLogic) GetByID(ctx *gin.Context, id string) (*apiApikey.DetailRes
 }
 
 // Update 更新API密钥信息（仅更新提供的字段）
-func (l *ApikeyLogic) Update(ctx *gin.Context, id string, req *apiApikey.UpdateRequest) *xError.Error {
+func (l *ApikeyLogic) Update(ctx context.Context, id string, req *apiApikey.UpdateRequest) *xError.Error {
 	l.log.Info(ctx, "Update - 更新API密钥")
 
 	parsedID, xErr := parseSnowflakeID(ctx, id)
@@ -159,7 +158,7 @@ func (l *ApikeyLogic) Update(ctx *gin.Context, id string, req *apiApikey.UpdateR
 	}
 
 	// 获取现有记录
-	ak, xErr := l.repo.apikey.GetByID(ctx.Request.Context(), parsedID)
+	ak, xErr := l.repo.apikey.GetByID(ctx, parsedID)
 	if xErr != nil {
 		return xErr
 	}
@@ -178,7 +177,7 @@ func (l *ApikeyLogic) Update(ctx *gin.Context, id string, req *apiApikey.UpdateR
 		ak.IsActive = *req.IsActive
 	}
 
-	if xErr := l.repo.apikey.Update(ctx.Request.Context(), ak); xErr != nil {
+	if xErr := l.repo.apikey.Update(ctx, ak); xErr != nil {
 		return xErr
 	}
 
@@ -187,7 +186,7 @@ func (l *ApikeyLogic) Update(ctx *gin.Context, id string, req *apiApikey.UpdateR
 }
 
 // Delete 删除API密钥
-func (l *ApikeyLogic) Delete(ctx *gin.Context, id string) *xError.Error {
+func (l *ApikeyLogic) Delete(ctx context.Context, id string) *xError.Error {
 	l.log.Info(ctx, "Delete - 删除API密钥")
 
 	parsedID, xErr := parseSnowflakeID(ctx, id)
@@ -195,7 +194,7 @@ func (l *ApikeyLogic) Delete(ctx *gin.Context, id string) *xError.Error {
 		return xErr
 	}
 
-	if xErr := l.repo.apikey.Delete(ctx.Request.Context(), parsedID); xErr != nil {
+	if xErr := l.repo.apikey.Delete(ctx, parsedID); xErr != nil {
 		return xErr
 	}
 
@@ -204,7 +203,7 @@ func (l *ApikeyLogic) Delete(ctx *gin.Context, id string) *xError.Error {
 }
 
 // Reset 重置API密钥，生成新密钥并更新哈希，返回新的完整密钥（仅此一次）
-func (l *ApikeyLogic) Reset(ctx *gin.Context, id string) (*apiApikey.ResetResponse, *xError.Error) {
+func (l *ApikeyLogic) Reset(ctx context.Context, id string) (*apiApikey.ResetResponse, *xError.Error) {
 	l.log.Info(ctx, "Reset - 重置API密钥")
 
 	parsedID, xErr := parseSnowflakeID(ctx, id)
@@ -213,7 +212,7 @@ func (l *ApikeyLogic) Reset(ctx *gin.Context, id string) (*apiApikey.ResetRespon
 	}
 
 	// 获取现有记录
-	ak, xErr := l.repo.apikey.GetByID(ctx.Request.Context(), parsedID)
+	ak, xErr := l.repo.apikey.GetByID(ctx, parsedID)
 	if xErr != nil {
 		return nil, xErr
 	}
@@ -231,7 +230,7 @@ func (l *ApikeyLogic) Reset(ctx *gin.Context, id string) (*apiApikey.ResetRespon
 	ak.KeyPrefix = key[:8]
 	ak.KeySuffix = key[len(key)-8:]
 
-	if xErr := l.repo.apikey.Update(ctx.Request.Context(), ak); xErr != nil {
+	if xErr := l.repo.apikey.Update(ctx, ak); xErr != nil {
 		return nil, xErr
 	}
 
@@ -277,7 +276,7 @@ func maskKey(prefix, suffix string) string {
 }
 
 // parseSnowflakeID 将字符串ID解析为 SnowflakeID
-func parseSnowflakeID(ctx *gin.Context, id string) (xSnowflake.SnowflakeID, *xError.Error) {
+func parseSnowflakeID(ctx context.Context, id string) (xSnowflake.SnowflakeID, *xError.Error) {
 	parsedID, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		return 0, xError.NewError(ctx, xError.BadRequest, "无效的API密钥ID", false, err)

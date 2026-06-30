@@ -33,11 +33,11 @@ func (r *reg) databaseInit(ctx context.Context) (any, error) {
 	pgDsnBuilder.WriteString("host=")
 	pgDsnBuilder.WriteString(xEnv.GetEnvString(xEnv.DatabaseHost, "localhost"))
 	pgDsnBuilder.WriteString(" user=")
-	pgDsnBuilder.WriteString(xEnv.GetEnvString(xEnv.DatabaseUser, "postgres"))
+	pgDsnBuilder.WriteString(xEnv.GetEnvString(xEnv.DatabaseUser, "bamboo_user"))
 	pgDsnBuilder.WriteString(" password=")
 	pgDsnBuilder.WriteString(xEnv.GetEnvString(xEnv.DatabasePass, ""))
 	pgDsnBuilder.WriteString(" dbname=")
-	pgDsnBuilder.WriteString(xEnv.GetEnvString(xEnv.DatabaseName, "postgres"))
+	pgDsnBuilder.WriteString(xEnv.GetEnvString(xEnv.DatabaseName, "lumina"))
 	pgDsnBuilder.WriteString(" port=")
 	pgDsnBuilder.WriteString(xEnv.GetEnvString(xEnv.DatabasePort, "5432"))
 	pgDsnBuilder.WriteString(" TimeZone=")
@@ -46,7 +46,7 @@ func (r *reg) databaseInit(ctx context.Context) (any, error) {
 
 	db, err := gorm.Open(postgres.Open(pgDsnBuilder.String()), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
-			TablePrefix:   xEnv.GetEnvString(xEnv.DatabasePrefix, "tpl_"),
+			TablePrefix:   xEnv.GetEnvString(xEnv.DatabasePrefix, "lum_"),
 			SingularTable: true,
 		},
 		Logger: xLog.NewSlogLogger(slog.Default().WithGroup(xLog.NamedREPO), xLog.GormLoggerConfig{

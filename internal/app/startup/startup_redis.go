@@ -15,8 +15,8 @@ func (r *reg) nosqlInit(ctx context.Context) (any, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     xEnv.GetEnvString(xEnv.NoSqlHost, "localhost") + ":" + xEnv.GetEnvString(xEnv.NoSqlPort, "6379"),
 		Password: xEnv.GetEnvString(xEnv.NoSqlPass, ""),
-		DB:       xEnv.GetEnvInt(xEnv.NoSqlDatabase, 0),
-		PoolSize: xEnv.GetEnvInt(xEnv.NoSqlPoolSize, 10),
+		DB:       xEnv.GetEnvInt(xEnv.NoSqlDatabase, 1),
+		PoolSize: xEnv.GetEnvInt(xEnv.NoSqlPoolSize, 100),
 	})
 
 	log.Info(ctx, "缓存连接成功")

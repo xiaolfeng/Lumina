@@ -10,6 +10,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
@@ -32,8 +33,8 @@ type BiometricCredentialCache struct {
 // 返回值:
 //   - *entity.BiometricCredential: 缓存命中的凭证实体
 //   - bool:                       是否命中
-//   - error:                      仅在意外错误时返回（Redis Nil 不视为错误）
-func (c *BiometricCredentialCache) GetByID(ctx context.Context, id int64) (*entity.BiometricCredential, bool, error) {
+//   - *xError.Error:               仅在意外错误时返回（Redis Nil 不视为错误）
+func (c *BiometricCredentialCache) GetByID(ctx context.Context, id int64) (*entity.BiometricCredential, bool, *xError.Error) {
 	key := bConst.CacheBiometricCredentialByID.Get(id).String()
 	val, err := c.RDB.Get(ctx, key).Result()
 	if err != nil || val == "" {
@@ -49,7 +50,7 @@ func (c *BiometricCredentialCache) GetByID(ctx context.Context, id int64) (*enti
 }
 
 // GetByCredentialID 根据 WebAuthn CredentialID（hex 字符串）读取凭证缓存
-func (c *BiometricCredentialCache) GetByCredentialID(ctx context.Context, credIDHex string) (*entity.BiometricCredential, bool, error) {
+func (c *BiometricCredentialCache) GetByCredentialID(ctx context.Context, credIDHex string) (*entity.BiometricCredential, bool, *xError.Error) {
 	key := bConst.CacheBiometricCredentialByCredID.Get(credIDHex).String()
 	val, err := c.RDB.Get(ctx, key).Result()
 	if err != nil || val == "" {
@@ -65,14 +66,14 @@ func (c *BiometricCredentialCache) GetByCredentialID(ctx context.Context, credID
 }
 
 // SetCredential 写入凭证缓存（同时写 ID 维度和 CredentialID 维度）
-func (c *BiometricCredentialCache) SetCredential(ctx context.Context, cred *entity.BiometricCredential) error {
+func (c *BiometricCredentialCache) SetCredential(ctx context.Context, cred *entity.BiometricCredential) *xError.Error {
 	if cred == nil {
 		return nil
 	}
 
 	jsonData, err := json.Marshal(cred)
 	if err != nil {
-		return fmt.Errorf("凭证缓存序列化失败: %w", err)
+		return xError.NewError(ctx, xError.SerializeError, "凭证缓存序列化失败", false, err)
 	}
 
 	// ID → 详情
@@ -107,8 +108,8 @@ func (c *BiometricCredentialCache) DeleteCredential(ctx context.Context, cred *e
 // 返回值:
 //   - bool: 可用性值（未命中时返回 false）
 //   - bool: 是否命中缓存
-//   - error: 仅在意外错误时返回
-func (c *BiometricCredentialCache) GetAvailability(ctx context.Context) (bool, bool, error) {
+//   - *xError.Error: 仅在意外错误时返回
+func (c *BiometricCredentialCache) GetAvailability(ctx context.Context) (bool, bool, *xError.Error) {
 	key := bConst.CacheBiometricAvailability.Get().String()
 	val, err := c.RDB.Get(ctx, key).Result()
 	if err == redis.Nil {
@@ -127,9 +128,12 @@ func (c *BiometricCredentialCache) GetAvailability(ctx context.Context) (bool, b
 }
 
 // SetAvailability 写入可用性缓存
-func (c *BiometricCredentialCache) SetAvailability(ctx context.Context, available bool) error {
+func (c *BiometricCredentialCache) SetAvailability(ctx context.Context, available bool) *xError.Error {
 	key := bConst.CacheBiometricAvailability.Get().String()
-	return c.RDB.Set(ctx, key, strconv.FormatBool(available), c.TTL).Err()
+	if err := c.RDB.Set(ctx, key, strconv.FormatBool(available), c.TTL).Err(); err != nil {
+		return xError.NewError(ctx, xError.CacheError, "写入可用性缓存失败", false, err)
+	}
+	return nil
 }
 
 // ClearAvailability 清除可用性缓存
@@ -144,26 +148,29 @@ func (c *BiometricCredentialCache) ClearAvailability(ctx context.Context) {
 const challengeTTL = 60 * time.Second
 
 // challengeKey 根据 challengeType 和 sessionID 生成对应的 Redis key
-func (c *BiometricCredentialCache) challengeKey(challengeType, sessionID string) (string, error) {
+func (c *BiometricCredentialCache) challengeKey(ctx context.Context, challengeType, sessionID string) (string, *xError.Error) {
 	switch challengeType {
 	case "reg":
 		return bConst.CacheBiometricChallengeRegister.Get(sessionID).String(), nil
 	case "login":
 		return bConst.CacheBiometricChallengeLogin.Get(sessionID).String(), nil
 	default:
-		return "", fmt.Errorf("unknown challenge type: %s", challengeType)
+		return "", xError.NewError(ctx, xError.BusinessError, xError.ErrMessage(fmt.Sprintf("unknown challenge type: %s", challengeType)), false)
 	}
 }
 
 // SetChallenge 写入 challenge（register/login 共用，通过 challengeType 区分）
 //
 // challengeType 为 "reg" 或 "login"；sessionID 为会话标识；data 为 WebAuthn session data 的 JSON 序列化。
-func (c *BiometricCredentialCache) SetChallenge(ctx context.Context, challengeType string, sessionID string, data []byte) error {
-	key, err := c.challengeKey(challengeType, sessionID)
-	if err != nil {
-		return err
+func (c *BiometricCredentialCache) SetChallenge(ctx context.Context, challengeType string, sessionID string, data []byte) *xError.Error {
+	key, xErr := c.challengeKey(ctx, challengeType, sessionID)
+	if xErr != nil {
+		return xErr
 	}
-	return c.RDB.Set(ctx, key, data, challengeTTL).Err()
+	if err := c.RDB.Set(ctx, key, data, challengeTTL).Err(); err != nil {
+		return xError.NewError(ctx, xError.CacheError, "写入 challenge 缓存失败", false, err)
+	}
+	return nil
 }
 
 // GetChallenge 读取 challenge
@@ -171,11 +178,11 @@ func (c *BiometricCredentialCache) SetChallenge(ctx context.Context, challengeTy
 // 返回值:
 //   - []byte: challenge 数据
 //   - bool:   是否命中
-//   - error:  仅在意外错误时返回
-func (c *BiometricCredentialCache) GetChallenge(ctx context.Context, challengeType string, sessionID string) ([]byte, bool, error) {
-	key, err := c.challengeKey(challengeType, sessionID)
-	if err != nil {
-		return nil, false, err
+//   - *xError.Error: 仅在意外错误时返回
+func (c *BiometricCredentialCache) GetChallenge(ctx context.Context, challengeType string, sessionID string) ([]byte, bool, *xError.Error) {
+	key, xErr := c.challengeKey(ctx, challengeType, sessionID)
+	if xErr != nil {
+		return nil, false, xErr
 	}
 
 	val, err := c.RDB.Get(ctx, key).Result()
@@ -191,8 +198,8 @@ func (c *BiometricCredentialCache) GetChallenge(ctx context.Context, challengeTy
 
 // DeleteChallenge 删除 challenge（验证后立即调用，防重放）
 func (c *BiometricCredentialCache) DeleteChallenge(ctx context.Context, challengeType string, sessionID string) {
-	key, err := c.challengeKey(challengeType, sessionID)
-	if err != nil {
+	key, xErr := c.challengeKey(ctx, challengeType, sessionID)
+	if xErr != nil {
 		return
 	}
 	c.RDB.Del(ctx, key)

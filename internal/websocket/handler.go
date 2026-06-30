@@ -100,7 +100,9 @@ func WSHandler(hub *Hub, sessionRepo *repository.QaSessionRepo) gin.HandlerFunc 
 //
 // 该函数创建一个 MessageHandler 回调，处理 answer_submit、request_supplement、skip 三种业务消息。
 // 调用方在创建 Hub 时传入此回调即可启用业务处理逻辑。
-func CreateMessageHandler(db *gorm.DB) MessageHandler {
+//
+// mediaSvc 为媒体回答处理服务（base64 落盘 + 回答清洗），由 service 层注入，解耦文件持久化细节。
+func CreateMessageHandler(db *gorm.DB, mediaSvc *service.MediaAnswerService) MessageHandler {
 	log := xLog.WithName(xLog.NamedLOGC, "WSMsgHandler")
 	questionRepo := repository.NewQaQuestionRepo(db)
 	queue := qa.GetAnswerQueue()
@@ -110,7 +112,7 @@ func CreateMessageHandler(db *gorm.DB) MessageHandler {
 
 		switch msg.Type {
 		case MsgAnswerSubmit:
-			handleAnswerSubmit(ctx, conn, msg, questionRepo, queue, log)
+			handleAnswerSubmit(ctx, conn, msg, questionRepo, queue, mediaSvc, log)
 		case MsgRequestSupplement:
 			handleRequestSupplement(ctx, conn, msg, questionRepo, queue, log)
 		case MsgSkip:
@@ -129,7 +131,7 @@ func CreateMessageHandler(db *gorm.DB) MessageHandler {
 // handleAnswerSubmit 处理回答提交消息
 //
 // 流程：解析数据 → 查询问题类型 → image/file 类型 base64 落盘 → 更新 DB → 入队 → 跨设备广播同步
-func handleAnswerSubmit(ctx context.Context, conn *Connection, msg *Message, questionRepo *repository.QaQuestionRepo, queue *qa.AnswerQueue, log *xLog.LogNamedLogger) {
+func handleAnswerSubmit(ctx context.Context, conn *Connection, msg *Message, questionRepo *repository.QaQuestionRepo, queue *qa.AnswerQueue, mediaSvc *service.MediaAnswerService, log *xLog.LogNamedLogger) {
 	data, ok := msg.Data.(map[string]interface{})
 	if !ok {
 		log.Warn(ctx, "answer_submit 消息 data 格式无效")
@@ -155,12 +157,11 @@ func handleAnswerSubmit(ctx context.Context, conn *Connection, msg *Message, que
 
 	// image/file 类型：base64 content 解码落盘，替换为 filePath
 	if question.Type == "image" || question.Type == "file" {
-		fileCacheSvc := service.NewFileCacheService()
-		answerData = processMediaAnswer(ctx, conn.sessionID, answerData, question.Type, fileCacheSvc, log)
+		answerData = mediaSvc.ProcessMediaAnswer(ctx, conn.sessionID, answerData, question.Type)
 	}
 
 	// 清洗回答数据（剥离已被转换的 base64 残留字段，保留 filePath/mimeType/filename）
-	answerData = sanitizeAnswer(answerData)
+	answerData = mediaSvc.SanitizeAnswer(answerData)
 
 	// 更新问题状态为已回答，写入回答数据
 	if xErr := questionRepo.UpdateAnswer(ctx, qID, "answered", answerData); xErr != nil {
@@ -201,63 +202,6 @@ func handleAnswerSubmit(ctx context.Context, conn *Connection, msg *Message, que
 		Timestamp: time.Now().UnixMilli(),
 	}
 	conn.hub.BroadcastToSession(conn.sessionID, syncMsg)
-}
-
-// processMediaAnswer 处理 image/file 类型回答，将 base64 content 解码写入文件系统并替换为 filePath。
-//
-// image 题型遍历 images 数组，file 题型遍历 files 数组。
-// 每个元素的 content 字段（base64）被解码落盘，然后替换为 filePath 字段。
-// 落盘失败的文件跳过并记录日志，不影响其他文件处理。
-// 返回更新后的 answerData；若 answerData 不是预期 map 结构则原样返回。
-func processMediaAnswer(ctx context.Context, sessionID string, answerData any, qType string, svc *service.FileCacheService, log *xLog.LogNamedLogger) any {
-	m, ok := answerData.(map[string]interface{})
-	if !ok {
-		return answerData
-	}
-
-	fieldKey := "images"
-	if qType == "file" {
-		fieldKey = "files"
-	}
-
-	items, ok := m[fieldKey].([]interface{})
-	if !ok {
-		return answerData
-	}
-
-	for i, item := range items {
-		itemMap, ok := item.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		content, hasContent := itemMap["content"].(string)
-		if !hasContent || content == "" {
-			continue
-		}
-
-		filename, _ := itemMap["filename"].(string)
-		if filename == "" {
-			filename, _ = itemMap["name"].(string)
-		}
-		mimeType, _ := itemMap["mimeType"].(string)
-
-		filePath, err := svc.SaveBase64File(ctx, sessionID, content, filename, mimeType)
-		if err != nil {
-			log.Warn(ctx, "文件保存失败",
-				slog.String("filename", filename),
-				slog.String("error", err.Error()),
-			)
-			continue
-		}
-
-		// 移除 base64 原始数据，写入磁盘路径
-		delete(itemMap, "content")
-		itemMap["filePath"] = filePath
-		items[i] = itemMap
-	}
-
-	m[fieldKey] = items
-	return m
 }
 
 // handleRequestSupplement 处理补充内容请求消息
@@ -402,32 +346,4 @@ func handleSkip(ctx context.Context, conn *Connection, msg *Message, questionRep
 		Timestamp: time.Now().UnixMilli(),
 	}
 	conn.hub.BroadcastToSession(conn.sessionID, syncMsg)
-}
-
-// sanitizeAnswer 清洗回答数据，剥离 image/file 中体积过大的 base64 content 字段。
-//
-// 图片/文件题的回答结构为 { images: [{ filename, mimeType, content }] }，
-// 其中 content 是 base64 编码的完整文件数据。持久化到 DB 只需保留 filename + mimeType，
-// content 会通过独立的文件存储或 Media 字段处理，不应留在 answer JSON 中。
-func sanitizeAnswer(answer any) any {
-	m, ok := answer.(map[string]interface{})
-	if !ok {
-		return answer
-	}
-
-	for _, key := range []string{"images", "files"} {
-		if items, ok := m[key].([]interface{}); ok {
-			cleaned := make([]interface{}, 0, len(items))
-			for _, item := range items {
-				if itemMap, ok := item.(map[string]interface{}); ok {
-					delete(itemMap, "content")
-					delete(itemMap, "preview")
-					cleaned = append(cleaned, itemMap)
-				}
-			}
-			m[key] = cleaned
-		}
-	}
-
-	return m
 }

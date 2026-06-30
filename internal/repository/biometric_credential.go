@@ -72,8 +72,8 @@ func (r *BiometricCredentialRepo) Create(ctx context.Context, cred *entity.Biome
 	}
 
 	// 写入缓存
-	if err := r.cache.SetCredential(ctx, cred); err != nil {
-		r.log.Warn(ctx, err.Error())
+	if xErr := r.cache.SetCredential(ctx, cred); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
 	}
 	// 清除可用性缓存（凭证数量变化）
 	r.cache.ClearAvailability(ctx)
@@ -109,8 +109,8 @@ func (r *BiometricCredentialRepo) GetByID(ctx context.Context, id xSnowflake.Sno
 	}
 
 	// 回填缓存
-	if err := r.cache.SetCredential(ctx, &cred); err != nil {
-		r.log.Warn(ctx, err.Error())
+	if xErr := r.cache.SetCredential(ctx, &cred); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
 	}
 	return &cred, nil
 }
@@ -145,8 +145,8 @@ func (r *BiometricCredentialRepo) GetByCredentialID(ctx context.Context, credID 
 	}
 
 	// 回填缓存
-	if err := r.cache.SetCredential(ctx, &cred); err != nil {
-		r.log.Warn(ctx, err.Error())
+	if xErr := r.cache.SetCredential(ctx, &cred); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
 	}
 	return &cred, nil
 }
@@ -263,8 +263,8 @@ func (r *BiometricCredentialRepo) IsAvailable(ctx context.Context) (bool, *xErro
 	available := count > 0
 
 	// 回填缓存
-	if err := r.cache.SetAvailability(ctx, available); err != nil {
-		r.log.Warn(ctx, err.Error())
+	if xErr := r.cache.SetAvailability(ctx, available); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
 	}
 	return available, nil
 }
@@ -282,8 +282,8 @@ func (r *BiometricCredentialRepo) IsAvailable(ctx context.Context) (bool, *xErro
 // 返回值:
 //   - *xError.Error: 写入过程中的错误
 func (r *BiometricCredentialRepo) SetChallenge(ctx context.Context, challengeType string, sessionID string, data []byte) *xError.Error {
-	if err := r.cache.SetChallenge(ctx, challengeType, sessionID, data); err != nil {
-		return xError.NewError(ctx, xError.DatabaseError, "写入 challenge 失败", false, err)
+	if xErr := r.cache.SetChallenge(ctx, challengeType, sessionID, data); xErr != nil {
+		return xError.NewError(ctx, xError.DatabaseError, "写入 challenge 失败", false, xErr)
 	}
 	return nil
 }
@@ -300,9 +300,9 @@ func (r *BiometricCredentialRepo) SetChallenge(ctx context.Context, challengeTyp
 //   - bool:            是否命中
 //   - *xError.Error:   查询过程中的错误
 func (r *BiometricCredentialRepo) GetChallenge(ctx context.Context, challengeType string, sessionID string) ([]byte, bool, *xError.Error) {
-	data, ok, err := r.cache.GetChallenge(ctx, challengeType, sessionID)
-	if err != nil {
-		return nil, false, xError.NewError(ctx, xError.DatabaseError, "读取 challenge 失败", false, err)
+	data, ok, xErr := r.cache.GetChallenge(ctx, challengeType, sessionID)
+	if xErr != nil {
+		return nil, false, xError.NewError(ctx, xError.DatabaseError, "读取 challenge 失败", false, xErr)
 	}
 	return data, ok, nil
 }

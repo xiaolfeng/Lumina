@@ -3,17 +3,18 @@ import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Plus } from 'lucide-react'
 import { Button } from '#/components/ui/button'
-import { Skeleton } from '#/components/ui/skeleton'
 import { DataTable } from '#/components/data-table'
 import { DataTablePagination } from '#/components/data-table-pagination'
-import { useApikeyList } from '#/hooks/useApikey'
+import { useApikeyList, useDeleteApikey } from '#/hooks/useApikey'
 import { getColumns } from '#/components/apikey/columns'
 import { CreateDialog } from '#/components/apikey/create-dialog'
 import { EditDialog } from '#/components/apikey/edit-dialog'
-import { DeleteDialog } from '#/components/apikey/delete-dialog'
+import { ConfirmDeleteDialog } from '#/components/confirm-delete-dialog'
 import { ResetDialog } from '#/components/apikey/reset-dialog'
+import { SkeletonTable } from '#/components/skeleton-table'
 import type { ApikeyItem } from '#/lib/models/response/apikey'
-import { staggerContainer, staggerItem, staggerItemLeft } from '#/lib/motion'
+import { staggerContainer, staggerItem } from '#/lib/motion'
+import { PageHeader } from '#/components/page-header'
 
 export const Route = createFileRoute('/console/apikey')({
   component: ApikeyPage,
@@ -29,6 +30,7 @@ function ApikeyPage() {
   const [selectedItem, setSelectedItem] = useState<ApikeyItem | null>(null)
 
   const { data, isLoading } = useApikeyList({ page, size: pageSize })
+  const deleteMutation = useDeleteApikey()
 
   const items = data?.data?.items ?? []
   const totalPages = data?.data?.total_pages ?? 1
@@ -56,33 +58,24 @@ function ApikeyPage() {
       animate="visible"
       variants={staggerContainer}
     >
-      {/* 标题行 */}
-      <motion.div
-        className="relative flex items-center justify-between pl-1.5"
-        variants={staggerItemLeft}
-      >
-        <div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-lagoon to-palm" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-sea-ink">令牌管理</h1>
-          <p className="text-sea-ink-soft">管理你的 API 访问令牌</p>
-        </div>
-        <Button
-          onClick={() => setCreateOpen(true)}
-          className="bg-lagoon text-foam hover:bg-lagoon-deep"
-        >
-          <Plus className="mr-2 size-4" />
-          创建令牌
-        </Button>
-      </motion.div>
+      <PageHeader
+        title="令牌管理"
+        description="管理你的 API 访问令牌"
+        action={
+          <Button
+            onClick={() => setCreateOpen(true)}
+            className="bg-lagoon text-foam hover:bg-lagoon-deep"
+          >
+            <Plus className="mr-2 size-4" />
+            创建令牌
+          </Button>
+        }
+      />
 
       {/* 表格区域 */}
       <motion.div variants={staggerItem}>
         {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
+          <SkeletonTable />
         ) : (
           <>
             <DataTable columns={columns} data={items} />
@@ -107,10 +100,18 @@ function ApikeyPage() {
         onOpenChange={setEditOpen}
         item={selectedItem}
       />
-      <DeleteDialog
+      <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        item={selectedItem}
+        title="确定要删除此令牌吗？"
+        description="此操作不可撤销。删除后，使用该令牌的所有 API 请求将立即失效。"
+        onConfirm={() => {
+          if (!selectedItem) return
+          deleteMutation.mutate(selectedItem.id, {
+            onSuccess: () => setDeleteOpen(false),
+          })
+        }}
+        isPending={deleteMutation.isPending}
       />
       <ResetDialog
         open={resetOpen}

@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 
+	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xUtil "github.com/bamboo-services/bamboo-base-go/common/utility"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
@@ -45,8 +45,8 @@ func NewDownloadTokenService(rdb *redis.Client) *DownloadTokenService {
 //
 // 返回值:
 //   - string: 生成的下载令牌
-//   - error: 序列化失败或 Redis 写入失败时返回错误
-func (s *DownloadTokenService) GenerateToken(ctx context.Context, filePath, filename, mimeType string) (string, error) {
+//   - *xError.Error: 序列化失败或 Redis 写入失败时返回错误
+func (s *DownloadTokenService) GenerateToken(ctx context.Context, filePath, filename, mimeType string) (string, *xError.Error) {
 	token := xUtil.Security().GenerateKey()
 
 	data, err := json.Marshal(DownloadFileInfo{
@@ -55,12 +55,12 @@ func (s *DownloadTokenService) GenerateToken(ctx context.Context, filePath, file
 		MimeType: mimeType,
 	})
 	if err != nil {
-		return "", fmt.Errorf("序列化下载文件信息失败: %w", err)
+		return "", xError.NewError(ctx, xError.SerializeError, "序列化下载文件信息失败", false, err)
 	}
 
 	key := bConst.CacheQaDownloadToken.Get(token).String()
 	if err := s.rdb.Set(ctx, key, data, 10*time.Minute).Err(); err != nil {
-		return "", fmt.Errorf("写入下载令牌到 Redis 失败: %w", err)
+		return "", xError.NewError(ctx, xError.CacheError, "写入下载令牌到 Redis 失败", false, err)
 	}
 
 	return token, nil
@@ -90,26 +90,26 @@ return value
 //
 // 返回值:
 //   - *DownloadFileInfo: 令牌关联的文件信息
-//   - error: 令牌无效、已过期、已使用或数据格式异常时返回错误
-func (s *DownloadTokenService) ConsumeToken(ctx context.Context, token string) (*DownloadFileInfo, error) {
+//   - *xError.Error: 令牌无效、已过期、已使用或数据格式异常时返回错误
+func (s *DownloadTokenService) ConsumeToken(ctx context.Context, token string) (*DownloadFileInfo, *xError.Error) {
 	key := bConst.CacheQaDownloadToken.Get(token).String()
 
 	result, err := luaConsumeToken.Run(ctx, s.rdb, []string{key}).Result()
 	if err != nil {
-		return nil, fmt.Errorf("下载令牌无效或已过期")
+		return nil, xError.NewError(ctx, xError.NotExist, "下载令牌无效或已过期", false)
 	}
 	if result == nil {
-		return nil, fmt.Errorf("下载令牌无效或已过期")
+		return nil, xError.NewError(ctx, xError.NotExist, "下载令牌无效或已过期", false)
 	}
 
 	dataStr, ok := result.(string)
 	if !ok {
-		return nil, fmt.Errorf("下载令牌数据格式异常")
+		return nil, xError.NewError(ctx, xError.DeserializeErr, "下载令牌数据格式异常", false)
 	}
 
 	var info DownloadFileInfo
 	if err := json.Unmarshal([]byte(dataStr), &info); err != nil {
-		return nil, fmt.Errorf("解析下载文件信息失败: %w", err)
+		return nil, xError.NewError(ctx, xError.DeserializeErr, "解析下载文件信息失败", false, err)
 	}
 
 	return &info, nil

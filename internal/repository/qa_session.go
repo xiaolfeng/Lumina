@@ -70,8 +70,8 @@ func (r *QaSessionRepo) Create(ctx context.Context, session *entity.QaSession) *
 		return xError.NewError(ctx, xError.DatabaseError, "创建QA会话失败", false, err)
 	}
 
-	if err := r.cache.SetSession(ctx, session); err != nil {
-		r.log.Warn(ctx, err.Error())
+	if xErr := r.cache.SetSession(ctx, session); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
 	}
 	return nil
 }
@@ -112,8 +112,8 @@ func (r *QaSessionRepo) GetByID(ctx context.Context, id xSnowflake.SnowflakeID) 
 	r.expireCheck(ctx, &session)
 
 	// 回填缓存
-	if err := r.cache.SetSession(ctx, &session); err != nil {
-		r.log.Warn(ctx, err.Error())
+	if xErr := r.cache.SetSession(ctx, &session); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
 	}
 	return &session, nil
 }
@@ -152,8 +152,8 @@ func (r *QaSessionRepo) GetByHash(ctx context.Context, hash string) (*entity.QaS
 	r.expireCheck(ctx, &session)
 
 	// 4. 回填缓存（ID→详情 + Hash→ID）
-	if err := r.cache.SetSession(ctx, &session); err != nil {
-		r.log.Warn(ctx, err.Error())
+	if xErr := r.cache.SetSession(ctx, &session); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
 	}
 
 	return &session, nil
@@ -317,8 +317,8 @@ func (r *QaSessionRepo) expireCheck(ctx context.Context, session *entity.QaSessi
 		}
 
 		// 更新缓存中的过期状态
-		if err := r.cache.SetSession(ctx, session); err != nil {
-			r.log.Warn(ctx, err.Error())
+		if xErr := r.cache.SetSession(ctx, session); xErr != nil {
+			r.log.Warn(ctx, xErr.Error())
 		}
 	}
 }

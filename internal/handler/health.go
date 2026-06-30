@@ -26,7 +26,7 @@ var _ = apiHealth.PingResponse{}
 func (h *HealthHandler) Ping(ctx *gin.Context) {
 	h.log.Info(ctx, "Ping - 健康检查")
 
-	status, xErr := h.service.healthLogic.Ping(ctx)
+	status, xErr := h.service.healthLogic.Ping(ctx.Request.Context())
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return

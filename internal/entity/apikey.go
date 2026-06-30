@@ -7,6 +7,7 @@ import (
 
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
 // Apikey API密钥表，存储API访问凭证
@@ -24,5 +25,5 @@ type Apikey struct {
 
 // GetGene 返回Apikey实体的雪花算法基因编号
 func (a *Apikey) GetGene() xSnowflake.Gene {
-	return xSnowflake.GeneToken
+	return bConst.GeneApikey
 }

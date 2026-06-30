@@ -3,16 +3,17 @@ import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Plus } from 'lucide-react'
 import { Button } from '#/components/ui/button'
-import { Skeleton } from '#/components/ui/skeleton'
 import { DataTable } from '#/components/data-table'
 import { DataTablePagination } from '#/components/data-table-pagination'
-import { useProjectList } from '#/hooks/useProject'
+import { useProjectList, useDeleteProject } from '#/hooks/useProject'
 import { getColumns } from '#/components/project/columns'
 import { CreateDialog } from '#/components/project/create-dialog'
 import { EditDialog } from '#/components/project/edit-dialog'
-import { DeleteDialog } from '#/components/project/delete-dialog'
+import { ConfirmDeleteDialog } from '#/components/confirm-delete-dialog'
 import type { ProjectItem } from '#/lib/models/response/project'
-import { staggerContainer, staggerItem, staggerItemLeft } from '#/lib/motion'
+import { staggerContainer, staggerItem } from '#/lib/motion'
+import { PageHeader } from '#/components/page-header'
+import { SkeletonTable } from '#/components/skeleton-table'
 
 export const Route = createFileRoute('/console/project')({
   component: ProjectPage,
@@ -27,6 +28,7 @@ function ProjectPage() {
   const [selectedItem, setSelectedItem] = useState<ProjectItem | null>(null)
 
   const { data, isLoading } = useProjectList({ page, size: pageSize })
+  const deleteMutation = useDeleteProject()
 
   const items = data?.data?.items ?? []
   const totalItems = data?.data?.total ?? 0
@@ -50,35 +52,24 @@ function ProjectPage() {
       animate="visible"
       variants={staggerContainer}
     >
-      {/* 标题行 */}
-      <motion.div
-        className="relative flex items-center justify-between pl-1.5"
-        variants={staggerItemLeft}
-      >
-        <div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-lagoon to-palm" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-sea-ink">项目管理</h1>
-          <p className="text-sea-ink-soft">
-            管理你的项目，用于组织 Pin 和 Q&A
-          </p>
-        </div>
-        <Button
-          onClick={() => setCreateOpen(true)}
-          className="bg-lagoon text-foam hover:bg-lagoon-deep"
-        >
-          <Plus className="mr-2 size-4" />
-          创建项目
-        </Button>
-      </motion.div>
+      <PageHeader
+        title="项目管理"
+        description="管理你的项目，用于组织 Pin 和 Q&A"
+        action={
+          <Button
+            onClick={() => setCreateOpen(true)}
+            className="bg-lagoon text-foam hover:bg-lagoon-deep"
+          >
+            <Plus className="mr-2 size-4" />
+            创建项目
+          </Button>
+        }
+      />
 
       {/* 表格区域 */}
       <motion.div variants={staggerItem}>
         {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
+          <SkeletonTable />
         ) : (
           <>
             <DataTable columns={columns} data={items} />
@@ -103,10 +94,17 @@ function ProjectPage() {
         onOpenChange={setEditOpen}
         item={selectedItem}
       />
-      <DeleteDialog
+      <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        item={selectedItem}
+        description={`确定要删除项目「${selectedItem?.name ?? ''}」吗？此操作不可撤销。`}
+        onConfirm={() => {
+          if (!selectedItem) return
+          deleteMutation.mutate(selectedItem.id, {
+            onSuccess: () => setDeleteOpen(false),
+          })
+        }}
+        isPending={deleteMutation.isPending}
       />
     </motion.div>
   )

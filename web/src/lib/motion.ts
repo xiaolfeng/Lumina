@@ -56,3 +56,42 @@ export const sidebarItem: Variants = {
     transition: { duration: 0.35, ease },
   },
 }
+
+/* ─── Landing 页面动画变体 ─────────────────────────────── */
+
+/** 向上淡入 — 标题、描述、按钮等通用入场 */
+export const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0 },
+}
+
+/** 纯淡入 — 装饰线等无位移元素 */
+export const fadeIn: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+}
+
+/** 缩放淡入 — 代码块、卡片等强调元素 */
+export const scaleIn: Variants = {
+  hidden: { opacity: 0, scale: 0.92 },
+  visible: { opacity: 1, scale: 1 },
+}
+
+/** Hero 区域交错容器 — staggerChildren 0.12, delayChildren 0.08 */
+export const heroStagger: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.12, delayChildren: 0.08 },
+  },
+}
+
+/** Section 区域交错容器 — staggerChildren 0.1 */
+export const sectionStagger: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.1 },
+  },
+}
+
+/** whileInView 视口配置 — 一次性触发，提前 80px 进入 */
+export const viewportOnce = { once: true, margin: '-80px' } as const

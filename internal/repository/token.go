@@ -19,12 +19,12 @@ import (
 // 采用单用户模式：AT 仅存储认证状态标记，RT 存储认证状态标记。
 //
 // 字段说明:
-//   - atCache: AccessToken 缓存管理器（实现 xCache.KeyCache 接口）
-//   - rtCache: RefreshToken 缓存管理器（实现 xCache.KeyCache 接口）
-//   - log: 带命名空间的结构化日志记录器
+//   - atCache: AccessToken 缓存管理器
+//   - rtCache: RefreshToken 缓存管理器
+//   - log:     带命名空间的结构化日志记录器
 type TokenRepo struct {
-	atCache xCache.KeyCache[string, cache.TokenInfo]
-	rtCache xCache.KeyCache[string, cache.TokenInfo]
+	atCache *cache.AccessTokenCache
+	rtCache *cache.RefreshTokenCache
 	log     *xLog.LogNamedLogger
 }
 
@@ -61,9 +61,9 @@ func NewTokenRepo(rdb *redis.Client) *TokenRepo {
 func (r *TokenRepo) SetAccessToken(ctx context.Context, token string) *xError.Error {
 	r.log.Info(ctx, "SetAccessToken - 写入 AccessToken 缓存")
 
-	if err := r.atCache.Set(ctx, token, &cache.TokenInfo{Authenticated: true}); err != nil {
-		r.log.Warn(ctx, err.Error())
-		return xError.NewError(ctx, xError.CacheError, "写入 AccessToken 缓存失败", true, err)
+	if xErr := r.atCache.Set(ctx, token, &cache.TokenInfo{Authenticated: true}); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
+		return xErr
 	}
 	return nil
 }
@@ -80,9 +80,9 @@ func (r *TokenRepo) SetAccessToken(ctx context.Context, token string) *xError.Er
 func (r *TokenRepo) GetAccessToken(ctx context.Context, token string) (bool, *xError.Error) {
 	r.log.Info(ctx, "GetAccessToken - 从缓存获取 AccessToken 状态")
 
-	found, err := r.atCache.Exists(ctx, token)
-	if err != nil {
-		return false, xError.NewError(ctx, xError.CacheError, "获取 AccessToken 缓存失败", true, err)
+	found, xErr := r.atCache.Exists(ctx, token)
+	if xErr != nil {
+		return false, xErr
 	}
 	return found, nil
 }
@@ -98,9 +98,9 @@ func (r *TokenRepo) GetAccessToken(ctx context.Context, token string) (bool, *xE
 func (r *TokenRepo) DeleteAccessToken(ctx context.Context, token string) *xError.Error {
 	r.log.Info(ctx, "DeleteAccessToken - 删除 AccessToken 缓存")
 
-	if err := r.atCache.Delete(ctx, token); err != nil {
-		r.log.Warn(ctx, err.Error())
-		return xError.NewError(ctx, xError.CacheError, "删除 AccessToken 缓存失败", true, err)
+	if xErr := r.atCache.Delete(ctx, token); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
+		return xErr
 	}
 	return nil
 }
@@ -116,9 +116,9 @@ func (r *TokenRepo) DeleteAccessToken(ctx context.Context, token string) *xError
 func (r *TokenRepo) SetRefreshToken(ctx context.Context, token string) *xError.Error {
 	r.log.Info(ctx, "SetRefreshToken - 写入 RefreshToken 缓存")
 
-	if err := r.rtCache.Set(ctx, token, &cache.TokenInfo{Authenticated: true}); err != nil {
-		r.log.Warn(ctx, err.Error())
-		return xError.NewError(ctx, xError.CacheError, "写入 RefreshToken 缓存失败", true, err)
+	if xErr := r.rtCache.Set(ctx, token, &cache.TokenInfo{Authenticated: true}); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
+		return xErr
 	}
 	return nil
 }
@@ -135,9 +135,9 @@ func (r *TokenRepo) SetRefreshToken(ctx context.Context, token string) *xError.E
 func (r *TokenRepo) GetRefreshToken(ctx context.Context, token string) (bool, *xError.Error) {
 	r.log.Info(ctx, "GetRefreshToken - 从缓存获取 RefreshToken 状态")
 
-	found, err := r.rtCache.Exists(ctx, token)
-	if err != nil {
-		return false, xError.NewError(ctx, xError.CacheError, "获取 RefreshToken 缓存失败", true, err)
+	found, xErr := r.rtCache.Exists(ctx, token)
+	if xErr != nil {
+		return false, xErr
 	}
 	return found, nil
 }
@@ -153,9 +153,9 @@ func (r *TokenRepo) GetRefreshToken(ctx context.Context, token string) (bool, *x
 func (r *TokenRepo) DeleteRefreshToken(ctx context.Context, token string) *xError.Error {
 	r.log.Info(ctx, "DeleteRefreshToken - 删除 RefreshToken 缓存")
 
-	if err := r.rtCache.Delete(ctx, token); err != nil {
-		r.log.Warn(ctx, err.Error())
-		return xError.NewError(ctx, xError.CacheError, "删除 RefreshToken 缓存失败", true, err)
+	if xErr := r.rtCache.Delete(ctx, token); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
+		return xErr
 	}
 	return nil
 }

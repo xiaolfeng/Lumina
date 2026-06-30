@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
@@ -241,7 +242,7 @@ func (l *PinLogic) toResponse(pin *entity.Pin) *apiPin.PinResponse {
 
 	consumedAt := ""
 	if pin.ConsumedAt != nil {
-		consumedAt = pin.ConsumedAt.Format("2006-01-02T15:04:05Z07:00")
+		consumedAt = pin.ConsumedAt.Format(time.RFC3339)
 	}
 
 	return &apiPin.PinResponse{
@@ -254,7 +255,7 @@ func (l *PinLogic) toResponse(pin *entity.Pin) *apiPin.PinResponse {
 		FromProjectID: fromProjectID,
 		ToProjectID:   pin.ToProjectID.String(),
 		ConsumedAt:    consumedAt,
-		CreatedAt:     pin.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:     pin.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		CreatedAt:     pin.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     pin.UpdatedAt.Format(time.RFC3339),
 	}
 }

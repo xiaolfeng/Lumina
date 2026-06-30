@@ -39,7 +39,7 @@ func (h *ApikeyHandler) Create(ctx *gin.Context) {
 		return
 	}
 
-	resp, xErr := h.service.apikeyLogic.Create(ctx, &req)
+	resp, xErr := h.service.apikeyLogic.Create(ctx.Request.Context(), &req)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return
@@ -57,7 +57,7 @@ func (h *ApikeyHandler) Create(ctx *gin.Context) {
 // @Produce     json
 // @Param       Authorization  header    string   true  "Bearer Access Token"
 // @Param       page           query     int      false  "页码"  default(1)
-// @Param       size           query     int      false  "每页数量（最大200）"  default(10)
+// @Param       size           query     int      false  "每页数量（最大200）"  default(20)
 // @Success     200  {object}  apiCommon.BaseResponse{data=xModels.PageResponse[[]apiApikey.ApikeyItem]}  "查询成功，密钥脱敏展示"
 // @Failure     401  {object}  apiCommon.BaseResponse              "未授权"
 // @Failure     500  {object}  apiCommon.BaseResponse              "服务器内部错误"
@@ -65,19 +65,14 @@ func (h *ApikeyHandler) Create(ctx *gin.Context) {
 func (h *ApikeyHandler) List(ctx *gin.Context) {
 	h.log.Info(ctx, "List - 分页获取API密钥列表")
 
-	// 从查询参数解析分页，提供默认值
-	pageStr := ctx.DefaultQuery("page", "1")
-	sizeStr := ctx.DefaultQuery("size", "10")
-	page, _ := strconv.Atoi(pageStr)
-	size, _ := strconv.Atoi(sizeStr)
-	if page < 1 {
-		page = 1
-	}
-	if size < 1 || size > 200 {
-		size = 10
-	}
+	// 从查询参数解析分页，Normalize 提供默认值与上限
+	page, _ := strconv.Atoi(ctx.Query("page"))
+	size, _ := strconv.Atoi(ctx.Query("size"))
+	pageReq := xModels.PageRequest{Page: int64(page), Size: int64(size)}.Normalize()
+	page = int(pageReq.Page)
+	size = int(pageReq.Size)
 
-	resp, xErr := h.service.apikeyLogic.List(ctx, page, size)
+	resp, xErr := h.service.apikeyLogic.List(ctx.Request.Context(), page, size)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return
@@ -104,7 +99,7 @@ func (h *ApikeyHandler) GetByID(ctx *gin.Context) {
 	h.log.Info(ctx, "GetByID - 获取API密钥详情")
 
 	id := ctx.Param("id")
-	resp, xErr := h.service.apikeyLogic.GetByID(ctx, id)
+	resp, xErr := h.service.apikeyLogic.GetByID(ctx.Request.Context(), id)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return
@@ -139,7 +134,7 @@ func (h *ApikeyHandler) Update(ctx *gin.Context) {
 		return
 	}
 
-	xErr := h.service.apikeyLogic.Update(ctx, id, &req)
+	xErr := h.service.apikeyLogic.Update(ctx.Request.Context(), id, &req)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return
@@ -166,7 +161,7 @@ func (h *ApikeyHandler) Delete(ctx *gin.Context) {
 	h.log.Info(ctx, "Delete - 删除API密钥")
 
 	id := ctx.Param("id")
-	xErr := h.service.apikeyLogic.Delete(ctx, id)
+	xErr := h.service.apikeyLogic.Delete(ctx.Request.Context(), id)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return
@@ -194,7 +189,7 @@ func (h *ApikeyHandler) Reset(ctx *gin.Context) {
 	h.log.Info(ctx, "Reset - 重置API密钥")
 
 	id := ctx.Param("id")
-	resp, xErr := h.service.apikeyLogic.Reset(ctx, id)
+	resp, xErr := h.service.apikeyLogic.Reset(ctx.Request.Context(), id)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return

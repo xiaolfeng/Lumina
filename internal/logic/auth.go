@@ -87,20 +87,29 @@ func (l *AuthLogic) Initialize(ctx context.Context, req *apiAuth.InitializeReque
 	return nil
 }
 
+// GetOwnerInfo 从 Info 表读取 owner 用户名与邮箱
+func (l *AuthLogic) GetOwnerInfo(ctx context.Context) (username, email string, xErr *xError.Error) {
+	username, xErr = l.repo.info.GetByKey(ctx, "owner_username")
+	if xErr != nil {
+		return "", "", xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
+	}
+
+	email, xErr = l.repo.info.GetByKey(ctx, "owner_email")
+	if xErr != nil {
+		return "", "", xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
+	}
+
+	return username, email, nil
+}
+
 // Login 用户登录，支持用户名或邮箱登录，返回访问令牌与刷新令牌
 func (l *AuthLogic) Login(ctx context.Context, req *apiAuth.LoginRequest) (*apiAuth.TokenResponse, *xError.Error) {
 	l.log.Info(ctx, "Login - 用户登录")
 
-	// 从 Info 表读取 owner 用户名
-	username, xErr := l.repo.info.GetByKey(ctx, "owner_username")
+	// 从 Info 表读取 owner 用户名与邮箱
+	username, email, xErr := l.GetOwnerInfo(ctx)
 	if xErr != nil {
-		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
-	}
-
-	// 从 Info 表读取 owner 邮箱
-	email, xErr := l.repo.info.GetByKey(ctx, "owner_email")
-	if xErr != nil {
-		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
+		return nil, xErr
 	}
 
 	// 根据是否包含 @ 判断登录方式，验证账号匹配
@@ -184,16 +193,10 @@ func (l *AuthLogic) ValidateAccessToken(ctx context.Context, accessToken string)
 func (l *AuthLogic) GetCurrentUser(ctx context.Context) (*apiUser.UserInfoResponse, *xError.Error) {
 	l.log.Info(ctx, "GetCurrentUser - 获取当前用户信息")
 
-	// 从 Info 表读取 owner 用户名
-	username, xErr := l.repo.info.GetByKey(ctx, "owner_username")
+	// 从 Info 表读取 owner 用户名与邮箱
+	username, email, xErr := l.GetOwnerInfo(ctx)
 	if xErr != nil {
-		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
-	}
-
-	// 从 Info 表读取 owner 邮箱
-	email, xErr := l.repo.info.GetByKey(ctx, "owner_email")
-	if xErr != nil {
-		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
+		return nil, xErr
 	}
 
 	l.log.Info(ctx, "GetCurrentUser - 获取当前用户信息成功")

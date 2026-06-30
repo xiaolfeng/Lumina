@@ -3,8 +3,8 @@ package cache
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
+	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
@@ -28,8 +28,8 @@ type QaSessionCache struct {
 // 返回值:
 //   - parsedID: 解析后的雪花 ID（缓存值无效时返回零值）
 //   - bool:     是否命中
-//   - error:    仅在解析雪花 ID 失败时返回
-func (c *QaSessionCache) GetIDByHash(ctx context.Context, hash string) (xSnowflake.SnowflakeID, bool, error) {
+//   - *xError.Error: 仅在解析雪花 ID 失败时返回
+func (c *QaSessionCache) GetIDByHash(ctx context.Context, hash string) (xSnowflake.SnowflakeID, bool, *xError.Error) {
 	key := bConst.CacheQaSessionIDByHash.Get(hash).String()
 	val, err := c.RDB.Get(ctx, key).Result()
 	if err != nil || val == "" {
@@ -49,8 +49,8 @@ func (c *QaSessionCache) GetIDByHash(ctx context.Context, hash string) (xSnowfla
 // 返回值:
 //   - *entity.QaSession: 缓存命中的会话实体
 //   - bool:               是否命中
-//   - error:              仅在意外错误时返回
-func (c *QaSessionCache) GetByID(ctx context.Context, id int64) (*entity.QaSession, bool, error) {
+//   - *xError.Error:       仅在意外错误时返回
+func (c *QaSessionCache) GetByID(ctx context.Context, id int64) (*entity.QaSession, bool, *xError.Error) {
 	key := bConst.CacheQaSessionByID.Get(id).String()
 	val, err := c.RDB.Get(ctx, key).Result()
 	if err != nil || val == "" {
@@ -68,14 +68,14 @@ func (c *QaSessionCache) GetByID(ctx context.Context, id int64) (*entity.QaSessi
 // SetSession 写入会话全维度缓存
 //
 // 写入两组键：ID→详情、Hash→ID（若有）。
-func (c *QaSessionCache) SetSession(ctx context.Context, session *entity.QaSession) error {
+func (c *QaSessionCache) SetSession(ctx context.Context, session *entity.QaSession) *xError.Error {
 	if session == nil {
 		return nil
 	}
 
 	jsonData, err := json.Marshal(session)
 	if err != nil {
-		return fmt.Errorf("会话缓存序列化失败: %w", err)
+		return xError.NewError(ctx, xError.SerializeError, "会话缓存序列化失败", false, err)
 	}
 
 	// ID → 详情

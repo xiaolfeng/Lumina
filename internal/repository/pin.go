@@ -8,6 +8,7 @@ import (
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
+	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	apiPin "github.com/xiaolfeng/Lumina/api/pin"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
@@ -94,7 +95,7 @@ func (r *PinRepo) GetByID(ctx context.Context, id xSnowflake.SnowflakeID) (*enti
 // List 分页获取 Pin 列表，支持多条件动态过滤
 //
 // 根据 PinListRequest 中的非空字段动态构建 WHERE 条件，按 created_at ASC 排序
-// （FIFO 顺序，便于消费场景下展示队列顺序）。Page/Size 默认值为 1/10。
+// （FIFO 顺序，便于消费场景下展示队列顺序）。分页参数通过 xModels.PageRequest.Normalize() 规范化。
 //
 // 参数:
 //   - ctx: 上下文对象
@@ -105,15 +106,10 @@ func (r *PinRepo) GetByID(ctx context.Context, id xSnowflake.SnowflakeID) (*enti
 //   - int64:         符合条件的总记录数
 //   - *xError.Error: 查询过程中的错误
 func (r *PinRepo) List(ctx context.Context, req *apiPin.PinListRequest) ([]*entity.Pin, int64, *xError.Error) {
-	// 规范化分页参数
-	page := req.Page
-	size := req.Size
-	if page <= 0 {
-		page = 1
-	}
-	if size <= 0 {
-		size = 10
-	}
+	// 分页参数规范化
+	pageReq := xModels.PageRequest{Page: int64(req.Page), Size: int64(req.Size)}.Normalize()
+	page := int(pageReq.Page)
+	size := int(pageReq.Size)
 	r.log.Info(ctx, fmt.Sprintf("List - 分页获取 Pin 列表 [page=%d, size=%d, toProject=%s, fromProject=%s, status=%s, category=%s, priority=%s]",
 		page, size, req.ToProjectID, req.FromProjectID, req.Status, req.Category, req.Priority))
 

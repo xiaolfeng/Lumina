@@ -429,13 +429,10 @@ func (l *BiometricLogic) DeleteCredential(ctx context.Context, idStr string) *xE
 // 该方法在注册与登录的 start 阶段都会被调用，用于组装 go-webauthn 需要的
 // [webauthn.User] 接口实现。读取失败返回 DatabaseError。
 func (l *BiometricLogic) getWebAuthnUser(ctx context.Context) (*LuminaWebAuthnUser, *xError.Error) {
-	username, xErr := l.info.GetByKey(ctx, "owner_username")
+	// 从 Info 表读取 owner 用户名与邮箱
+	username, email, xErr := l.auth.GetOwnerInfo(ctx)
 	if xErr != nil {
-		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
-	}
-	email, xErr := l.info.GetByKey(ctx, "owner_email")
-	if xErr != nil {
-		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
+		return nil, xErr
 	}
 
 	creds, xErr := l.repo.ListAll(ctx)

@@ -1,22 +1,19 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
 import { motion } from 'motion/react'
 import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 import { Button } from '#/components/ui/button'
 import { Skeleton } from '#/components/ui/skeleton'
-import { getApikeyList } from '#/lib/apis/apikey'
+import { useApikeyList } from '#/hooks/useApikey'
 import { KeyRound, ShieldCheck, Clock, Plus, Sparkles } from 'lucide-react'
-import { staggerContainer, staggerItem, staggerItemLeft } from '#/lib/motion'
+import { staggerContainer, staggerItem } from '#/lib/motion'
+import { PageHeader } from '#/components/page-header'
 
 export const Route = createFileRoute('/console/dashboard')({
   component: DashboardPage,
 })
 
 function DashboardPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['apikey', 'stats'],
-    queryFn: () => getApikeyList({ page: 1, size: 1 }),
-  })
+  const { data, isLoading } = useApikeyList({ page: 1, size: 1 })
 
   const totalCount = data?.data?.total_items ?? 0
   const items = data?.data?.items ?? []
@@ -30,16 +27,7 @@ function DashboardPage() {
       animate="visible"
       variants={staggerContainer}
     >
-      {/* 标题行 */}
-      <motion.div variants={staggerItemLeft} className="relative pl-1.5">
-        <div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-lagoon to-palm" />
-        <h1 className="text-2xl font-bold tracking-tight text-sea-ink">
-          看板
-        </h1>
-        <p className="text-sea-ink-soft">
-          Lumina Console 概览
-        </p>
-      </motion.div>
+      <PageHeader title="看板" description="Lumina Console 概览" />
 
       {/* 欢迎横幅 */}
       <motion.div variants={staggerItem}>

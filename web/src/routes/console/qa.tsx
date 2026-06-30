@@ -4,11 +4,12 @@ import { motion } from 'motion/react'
 import { DataTable } from '#/components/data-table'
 import { DataTablePagination } from '#/components/data-table-pagination'
 import { Tabs, TabsList, TabsTrigger } from '#/components/ui/tabs'
-import { Skeleton } from '#/components/ui/skeleton'
 import { useSessionList, useDeleteSession } from '#/hooks/useQaAdmin'
 import { getSessionColumns } from '#/components/qa/columns'
-import { DeleteSessionDialog } from '#/components/qa/delete-dialog'
-import { staggerContainer, staggerItem, staggerItemLeft } from '#/lib/motion'
+import { ConfirmDeleteDialog } from '#/components/confirm-delete-dialog'
+import { staggerContainer, staggerItem } from '#/lib/motion'
+import { PageHeader } from '#/components/page-header'
+import { SkeletonTable } from '#/components/skeleton-table'
 
 export const Route = createFileRoute('/console/qa')({
 	component: QaPage,
@@ -36,17 +37,7 @@ function QaPage() {
 			animate="visible"
 			variants={staggerContainer}
 		>
-			{/* 标题行 */}
-			<motion.div
-				className="relative flex items-center justify-between pl-1.5"
-				variants={staggerItemLeft}
-			>
-				<div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-lagoon to-palm" />
-				<div>
-					<h1 className="text-2xl font-bold tracking-tight text-sea-ink">问答管理</h1>
-					<p className="text-sea-ink-soft">管理 Q&A 会话和问答记录</p>
-				</div>
-			</motion.div>
+			<PageHeader title="问答管理" description="管理 Q&A 会话和问答记录" />
 
 			{/* 状态筛选 + 表格区域 */}
 			<motion.div variants={staggerItem}>
@@ -60,13 +51,9 @@ function QaPage() {
 				</Tabs>
 
 				<div className="mt-4">
-					{isLoading ? (
-						<div className="space-y-3">
-							<Skeleton className="h-8 w-full" />
-							<Skeleton className="h-8 w-full" />
-							<Skeleton className="h-8 w-full" />
-						</div>
-					) : (
+				{isLoading ? (
+					<SkeletonTable />
+				) : (
 						<>
 							<DataTable columns={columns} data={items} />
 							<DataTablePagination
@@ -85,10 +72,11 @@ function QaPage() {
 				</div>
 			</motion.div>
 
-			<DeleteSessionDialog
+			<ConfirmDeleteDialog
 				open={!!deleteTarget}
 				onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
-				session={items.find((s) => s.id === deleteTarget) ?? null}
+				title="删除会话"
+				description={`确定要删除会话「${items.find((s) => s.id === deleteTarget)?.title ?? ''}」吗？删除后所有问答数据将不可恢复。`}
 				onConfirm={() => {
 					if (deleteTarget) {
 						deleteMutation.mutate(deleteTarget, {

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
+import { writeTokenCookies, THIRTY_DAYS_IN_SECONDS } from '#/lib/auth/cookie-utils'
 import * as api from '#/lib/apis/auth'
 import { getCurrentUser } from '#/lib/apis/user'
 import type {
@@ -17,8 +18,6 @@ import type { BaseResponse } from '#/lib/models/response/common'
 
 export const getCookie = Cookies.get
 
-const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60
-
 // ── Mutations ──
 
 export function useInitialize() {
@@ -33,25 +32,7 @@ export function useLogin() {
     onSuccess: (response) => {
       const tokenData = response.data
       if (tokenData) {
-        Cookies.set('access_token', tokenData.access_token, {
-          expires: tokenData.expires_in / 86400,
-          path: '/',
-          sameSite: 'Lax',
-        })
-        Cookies.set('refresh_token', tokenData.refresh_token, {
-          expires: THIRTY_DAYS_IN_SECONDS / 86400,
-          path: '/',
-          sameSite: 'Lax',
-        })
-        Cookies.set(
-          'expires_at',
-          String(Date.now() + tokenData.expires_in * 1000),
-          {
-            expires: tokenData.expires_in / 86400,
-            path: '/',
-            sameSite: 'Lax',
-          },
-        )
+        writeTokenCookies(tokenData)
       }
     },
   })
@@ -74,25 +55,7 @@ export function useRefresh() {
     onSuccess: (response) => {
       const tokenData = response.data
       if (tokenData) {
-        Cookies.set('access_token', tokenData.access_token, {
-          expires: tokenData.expires_in / 86400,
-          path: '/',
-          sameSite: 'Lax',
-        })
-        Cookies.set('refresh_token', tokenData.refresh_token, {
-          expires: THIRTY_DAYS_IN_SECONDS / 86400,
-          path: '/',
-          sameSite: 'Lax',
-        })
-        Cookies.set(
-          'expires_at',
-          String(Date.now() + tokenData.expires_in * 1000),
-          {
-            expires: tokenData.expires_in / 86400,
-            path: '/',
-            sameSite: 'Lax',
-          },
-        )
+        writeTokenCookies(tokenData)
       }
     },
   })
@@ -192,28 +155,20 @@ export function useBiometricLogin() {
     onSuccess: (response) => {
       const tokenData = response.data
       if (tokenData) {
-        // 复用 useLogin 的 Cookie 写入逻辑
-        Cookies.set('access_token', tokenData.access_token, {
-          expires: THIRTY_DAYS_IN_SECONDS / 86400,
-          path: '/',
-          sameSite: 'Lax',
-        })
-        Cookies.set('refresh_token', tokenData.refresh_token, {
-          expires: THIRTY_DAYS_IN_SECONDS / 86400,
-          path: '/',
-          sameSite: 'Lax',
-        })
         // ⚠️ 后端 LoginFinishResponse 返回的是 expires_at（时间戳秒），没有 expires_in
         // 需要计算 expiresIn 用于 Cookie 过期
         const expiresIn = Math.max(
           0,
           Math.floor((tokenData.expires_at - Date.now() / 1000)),
         )
-        Cookies.set('expires_at', String(tokenData.expires_at * 1000), {
-          expires: expiresIn / 86400,
-          path: '/',
-          sameSite: 'Lax',
-        })
+        writeTokenCookies(
+          {
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token,
+            expires_in: expiresIn,
+          },
+          { accessTokenExpiresInDays: THIRTY_DAYS_IN_SECONDS / 86400 },
+        )
       }
     },
   })

@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"fmt"
+	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
@@ -100,12 +101,9 @@ func (l *ProjectLogic) List(ctx context.Context, page, size int) (*apiProject.Pr
 	l.log.Info(ctx, fmt.Sprintf("List - 获取项目列表 [page=%d, size=%d]", page, size))
 
 	// 分页参数规范化
-	if page <= 0 {
-		page = 1
-	}
-	if size <= 0 || size > 100 {
-		size = 20
-	}
+	pageReq := xModels.PageRequest{Page: int64(page), Size: int64(size)}.Normalize()
+	page = int(pageReq.Page)
+	size = int(pageReq.Size)
 
 	// 查询列表
 	projects, total, xErr := l.repo.project.List(ctx, page, size)
@@ -230,7 +228,7 @@ func (l *ProjectLogic) toResponse(project *entity.Project) *apiProject.ProjectRe
 		AliasName:   project.AliasName,
 		MatchPath:   project.MatchPath,
 		Description: project.Description,
-		CreatedAt:   project.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:   project.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		CreatedAt:   project.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   project.UpdatedAt.Format(time.RFC3339),
 	}
 }

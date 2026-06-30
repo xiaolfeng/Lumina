@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
@@ -33,17 +34,17 @@ type QaRetryCache struct {
 //
 // 返回值:
 //   - int64: 递增后的计数值
-//   - error: Redis 操作失败时返回错误
-func (c *QaRetryCache) Increment(ctx context.Context, sessionID string, ttl time.Duration) (int64, error) {
+//   - *xError.Error: Redis 操作失败时返回错误
+func (c *QaRetryCache) Increment(ctx context.Context, sessionID string, ttl time.Duration) (int64, *xError.Error) {
 	if sessionID == "" {
-		return 0, errRetrySessionEmpty
+		return 0, xError.NewError(ctx, xError.BusinessError, "重试计数器的会话ID为空", false, nil)
 	}
 
 	key := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
 
 	count, err := c.RDB.Incr(ctx, key).Result()
 	if err != nil {
-		return 0, err
+		return 0, xError.NewError(ctx, xError.UnknownError, "递增重试计数器失败", false, err)
 	}
 
 	// 首次递增时配置过期时间
@@ -66,20 +67,15 @@ func (c *QaRetryCache) Increment(ctx context.Context, sessionID string, ttl time
 //   - sessionID: 会话 ID
 //
 // 返回值:
-//   - error: Redis 操作失败时返回错误
-func (c *QaRetryCache) Reset(ctx context.Context, sessionID string) error {
+//   - *xError.Error: Redis 操作失败时返回错误
+func (c *QaRetryCache) Reset(ctx context.Context, sessionID string) *xError.Error {
 	if sessionID == "" {
-		return errRetrySessionEmpty
+		return xError.NewError(ctx, xError.BusinessError, "重试计数器的会话ID为空", false, nil)
 	}
 
 	key := bConst.CacheQaGetAnswerRetry.Get(sessionID).String()
-	return c.RDB.Del(ctx, key).Err()
+	if err := c.RDB.Del(ctx, key).Err(); err != nil {
+		return xError.NewError(ctx, xError.UnknownError, "重置重试计数器失败", false, err)
+	}
+	return nil
 }
-
-// errRetrySessionEmpty 会话 ID 为空时的哨兵错误
-var errRetrySessionEmpty = &retryCacheError{"重试计数器的会话ID为空"}
-
-// retryCacheError 重试缓存错误类型
-type retryCacheError struct{ msg string }
-
-func (e *retryCacheError) Error() string { return e.msg }

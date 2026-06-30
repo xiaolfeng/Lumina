@@ -4,12 +4,12 @@ package service
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	xUtil "github.com/bamboo-services/bamboo-base-go/common/utility"
 )
@@ -46,15 +46,15 @@ func getCacheBaseDir() string {
 //
 // 返回值:
 //   - filePath: 完整文件路径（<LUMINA_CACHE_DIR>/<session_id>/<file_uuid>）
-//   - err:      写入失败时的错误
+//   - *xError.Error: 写入失败时的错误
 func (s *FileCacheService) SaveBase64File(
 	ctx context.Context,
 	sessionID, base64Content, filename, mimeType string,
-) (string, error) {
+) (string, *xError.Error) {
 	// 解码 base64
 	data, err := base64.StdEncoding.DecodeString(base64Content)
 	if err != nil {
-		return "", fmt.Errorf("base64 解码失败: %w", err)
+		return "", xError.NewError(ctx, xError.DeserializeErr, "base64 解码失败", false, err)
 	}
 
 	// 生成文件 UUID（cs_ + 32 位 hex），去掉 cs_ 前缀作为磁盘文件名
@@ -68,12 +68,12 @@ func (s *FileCacheService) SaveBase64File(
 
 	// 创建会话级缓存目录（已存在则幂等）
 	if err := os.MkdirAll(dirPath, 0755); err != nil {
-		return "", fmt.Errorf("创建缓存目录失败: %w", err)
+		return "", xError.NewError(ctx, xError.FileWriteError, "创建缓存目录失败", false, err)
 	}
 
 	// 写入文件（0644: owner 读写, group/others 只读）
 	if err := os.WriteFile(filePath, data, 0644); err != nil {
-		return "", fmt.Errorf("写入缓存文件失败: %w", err)
+		return "", xError.NewError(ctx, xError.FileWriteError, "写入缓存文件失败", false, err)
 	}
 
 	return filePath, nil
@@ -82,10 +82,10 @@ func (s *FileCacheService) SaveBase64File(
 // ReadFile 读取缓存文件内容
 //
 // 调用方负责关闭返回的 io.ReadCloser
-func (s *FileCacheService) ReadFile(ctx context.Context, filePath string) (io.ReadCloser, error) {
+func (s *FileCacheService) ReadFile(ctx context.Context, filePath string) (io.ReadCloser, *xError.Error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("打开缓存文件失败: %w", err)
+		return nil, xError.NewError(ctx, xError.FileReadError, "打开缓存文件失败", false, err)
 	}
 	return file, nil
 }
@@ -94,12 +94,12 @@ func (s *FileCacheService) ReadFile(ctx context.Context, filePath string) (io.Re
 //
 // 删除 <LUMINA_CACHE_DIR>/<session_id> 目录及其下所有文件。
 // 目录不存在时静默返回 nil（幂等）。
-func (s *FileCacheService) CleanSession(ctx context.Context, sessionID string) error {
+func (s *FileCacheService) CleanSession(ctx context.Context, sessionID string) *xError.Error {
 	baseDir := getCacheBaseDir()
 	dirPath := filepath.Join(baseDir, sessionID)
 
 	if err := os.RemoveAll(dirPath); err != nil {
-		return fmt.Errorf("清理会话缓存失败: %w", err)
+		return xError.NewError(ctx, xError.FileDeleteError, "清理会话缓存失败", false, err)
 	}
 	return nil
 }

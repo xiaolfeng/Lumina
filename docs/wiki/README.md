@@ -20,10 +20,6 @@ docs/wiki/
 │   ├── README.md          ← 模块概述
 │   ├── design.md          ← 详细设计
 │   └── mcp-tools.md       ← MCP 工具与 REST API 定义
-├── qa/                    ← Q&A 模块文档
-│   ├── README.md          ← 模块概述
-│   ├── design.md          ← 详细设计
-│   └── mcp-tools.md       ← MCP 工具与 REST API 定义
 └── pin/                   ← Pin 模块文档
     ├── README.md          ← 模块概述
     ├── design.md          ← 详细设计
@@ -36,7 +32,6 @@ docs/wiki/
 |------|------|----------|
 | 🔍 **RepoWiki** | 代码库结构化知识沉淀，克隆项目并通过 LLM 分析生成 Wiki | [repowiki/README.md](repowiki/README.md) |
 | 🧠 **Memory** | AI 的长期决策记忆，跨会话保留重要约定与决策 | [memory/README.md](memory/README.md) |
-| 💬 **Q&A** | Agent 与用户的富交互式问答通道，支持选项、文本、高级面板 | [qa/README.md](qa/README.md) |
 | 📌 **Pin** | 跨项目依赖约束传递，点对点定向推送与 FIFO 队列消费 | [pin/README.md](pin/README.md) |
 
 ## 全局文档

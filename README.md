@@ -30,7 +30,7 @@ Lumina 采用**三模块独立领域 + 统一基础设施层**架构：
 
 - 每个模块拥有完整的 handler → logic → repository 分层，互不调用
 - 同时通过 **MCP Tool**（Agent 用）和 **REST API**（前端用）双通道暴露
-- Q&A 模块使用 **SSE** 实时推送问题到浏览器
+- Q&A 模块使用 **WebSocket** 实时推送问题到浏览器
 - Agent 通过 MCP 自行编排组合调用三个模块
 
 详见 [docs/wiki/architecture.md](docs/wiki/architecture.md)。

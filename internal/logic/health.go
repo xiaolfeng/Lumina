@@ -8,7 +8,6 @@ import (
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
-	"github.com/gin-gonic/gin"
 	apiHealth "github.com/xiaolfeng/Lumina/api/health"
 	"github.com/xiaolfeng/Lumina/internal/repository"
 )
@@ -36,15 +35,15 @@ func NewHealthLogic(ctx context.Context) *HealthLogic {
 	}
 }
 
-func (l *HealthLogic) Ping(ctx *gin.Context) (*apiHealth.PingResponse, *xError.Error) {
+func (l *HealthLogic) Ping(ctx context.Context) (*apiHealth.PingResponse, *xError.Error) {
 	l.log.Info(ctx, "Ping - 执行健康检查")
 
-	databaseReady, xErr := l.repo.health.DatabaseReady(ctx.Request.Context())
+	databaseReady, xErr := l.repo.health.DatabaseReady(ctx)
 	if xErr != nil {
 		return nil, xErr
 	}
 
-	redisReady, xErr := l.repo.health.RedisReady(ctx.Request.Context())
+	redisReady, xErr := l.repo.health.RedisReady(ctx)
 	if xErr != nil {
 		return nil, xErr
 	}

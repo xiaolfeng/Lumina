@@ -1,5 +1,6 @@
 import axios from 'axios'
 import Cookies from 'js-cookie'
+import { writeTokenCookies } from '../auth/cookie-utils'
 import type { BaseResponse } from '../models/response/common'
 
 export const apiClient = axios.create({
@@ -94,26 +95,7 @@ function refreshToken(): Promise<string> {
         throw new Error('Refresh response missing token data')
       }
 
-      const expiresDays = tokenData.expires_in / 86400
-      Cookies.set('access_token', tokenData.access_token, {
-        expires: expiresDays,
-        path: '/',
-        sameSite: 'Lax',
-      })
-      Cookies.set('refresh_token', tokenData.refresh_token, {
-        expires: 30,
-        path: '/',
-        sameSite: 'Lax',
-      })
-      Cookies.set(
-        'expires_at',
-        String(Date.now() + tokenData.expires_in * 1000),
-        {
-          expires: expiresDays,
-          path: '/',
-          sameSite: 'Lax',
-        },
-      )
+      writeTokenCookies(tokenData)
 
       return tokenData.access_token as string
     })

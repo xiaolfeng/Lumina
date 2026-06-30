@@ -3,9 +3,9 @@ package cache
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strconv"
 
+	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
@@ -30,8 +30,8 @@ type ProjectCache struct {
 // 返回值:
 //   - *entity.Project: 缓存命中的项目实体
 //   - bool:            是否命中（false 表示未命中或反序列化失败）
-//   - error:           仅在意外错误时返回（Redis Nil 不视为错误）
-func (c *ProjectCache) GetByID(ctx context.Context, id int64) (*entity.Project, bool, error) {
+//   - *xError.Error:    仅在意外错误时返回（Redis Nil 不视为错误）
+func (c *ProjectCache) GetByID(ctx context.Context, id int64) (*entity.Project, bool, *xError.Error) {
 	key := bConst.CacheProjectByID.Get(id).String()
 	val, err := c.RDB.Get(ctx, key).Result()
 	if err != nil || val == "" {
@@ -47,22 +47,22 @@ func (c *ProjectCache) GetByID(ctx context.Context, id int64) (*entity.Project, 
 }
 
 // GetIDByName 根据项目名称读取 ID 映射缓存
-func (c *ProjectCache) GetIDByName(ctx context.Context, name string) (string, bool, error) {
+func (c *ProjectCache) GetIDByName(ctx context.Context, name string) (string, bool, *xError.Error) {
 	return c.getIDByPattern(ctx, bConst.CacheProjectIDByName, name)
 }
 
 // GetIDByAlias 根据别名读取 ID 映射缓存
-func (c *ProjectCache) GetIDByAlias(ctx context.Context, alias string) (string, bool, error) {
+func (c *ProjectCache) GetIDByAlias(ctx context.Context, alias string) (string, bool, *xError.Error) {
 	return c.getIDByPattern(ctx, bConst.CacheProjectIDByAlias, alias)
 }
 
 // GetIDByMatchPath 根据路径读取 ID 映射缓存
-func (c *ProjectCache) GetIDByMatchPath(ctx context.Context, path string) (string, bool, error) {
+func (c *ProjectCache) GetIDByMatchPath(ctx context.Context, path string) (string, bool, *xError.Error) {
 	return c.getIDByPattern(ctx, bConst.CacheProjectIDByMatchPath, path)
 }
 
 // getIDByPattern 通用 ID 映射读取（Name/Alias/MatchPath 共用）
-func (c *ProjectCache) getIDByPattern(ctx context.Context, pattern bConst.RedisKey, arg interface{}) (string, bool, error) {
+func (c *ProjectCache) getIDByPattern(ctx context.Context, pattern bConst.RedisKey, arg interface{}) (string, bool, *xError.Error) {
 	key := pattern.Get(arg).String()
 	val, err := c.RDB.Get(ctx, key).Result()
 	if err != nil || val == "" {
@@ -75,14 +75,14 @@ func (c *ProjectCache) getIDByPattern(ctx context.Context, pattern bConst.RedisK
 //
 // 写入四组键：ID→详情、Name→ID、Alias→ID（若有）、每个 MatchPath→ID。
 // 序列化失败仅记录并跳过，不影响其他维度写入。
-func (c *ProjectCache) SetProject(ctx context.Context, project *entity.Project) error {
+func (c *ProjectCache) SetProject(ctx context.Context, project *entity.Project) *xError.Error {
 	if project == nil {
 		return nil
 	}
 
 	jsonData, err := json.Marshal(project)
 	if err != nil {
-		return fmt.Errorf("项目缓存序列化失败: %w", err)
+		return xError.NewError(ctx, xError.SerializeError, "项目缓存序列化失败", false, err)
 	}
 
 	idStr := strconv.FormatInt(project.ID.Int64(), 10)

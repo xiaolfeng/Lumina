@@ -9,6 +9,7 @@ import (
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/logic"
 	"github.com/xiaolfeng/Lumina/internal/repository"
+	"github.com/xiaolfeng/Lumina/internal/service"
 	"github.com/xiaolfeng/Lumina/internal/websocket"
 )
 
@@ -19,8 +20,9 @@ func (r *route) wsRouter(route gin.IRouter) {
 	// 创建 Session 仓库（用于 WebSocket 连接时 Hash→ID 解析）
 	sessionRepo := repository.NewQaSessionRepo(db, rdb)
 
-	// 创建业务消息处理器
-	msgHandler := websocket.CreateMessageHandler(db)
+	// 创建业务消息处理器（注入媒体回答处理服务）
+	mediaSvc := service.NewMediaAnswerService()
+	msgHandler := websocket.CreateMessageHandler(db, mediaSvc)
 
 	// 创建 Hub 并注入消息处理器、Session 仓库和数据库实例
 	hub := websocket.GetHub(msgHandler, sessionRepo, db)

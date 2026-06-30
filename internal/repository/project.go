@@ -69,8 +69,8 @@ func (r *ProjectRepo) Create(ctx context.Context, project *entity.Project) *xErr
 		return xError.NewError(ctx, xError.DatabaseError, "创建项目失败", false, err)
 	}
 
-	if err := r.cache.SetProject(ctx, project); err != nil {
-		r.log.Warn(ctx, err.Error())
+	if xErr := r.cache.SetProject(ctx, project); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
 	}
 	return nil
 }
@@ -105,8 +105,8 @@ func (r *ProjectRepo) GetByID(ctx context.Context, id xSnowflake.SnowflakeID) (*
 	}
 
 	// 回填缓存
-	if err := r.cache.SetProject(ctx, &project); err != nil {
-		r.log.Warn(ctx, err.Error())
+	if xErr := r.cache.SetProject(ctx, &project); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
 	}
 	return &project, nil
 }
@@ -183,8 +183,8 @@ func (r *ProjectRepo) Update(ctx context.Context, project *entity.Project) *xErr
 	}
 
 	// 刷新缓存
-	if err := r.cache.SetProject(ctx, project); err != nil {
-		r.log.Warn(ctx, err.Error())
+	if xErr := r.cache.SetProject(ctx, project); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
 	}
 	return nil
 }
