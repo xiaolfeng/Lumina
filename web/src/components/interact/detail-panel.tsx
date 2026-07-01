@@ -5,7 +5,7 @@ import { Button } from "#/components/ui/button";
 import { ScrollArea } from "#/components/ui/scroll-area";
 import { ease } from "#/lib/motion";
 
-import { Markdown, proseArticle } from "./primitives";
+import { Markdown, proseArticle, ShadowHtml } from "./primitives";
 import { MotionDemoPanel } from "./motion-demo-panel";
 import type { Question } from "./types";
 
@@ -26,10 +26,10 @@ interface DetailPanelProps {
 	onBack: () => void;
 }
 
-/** 渲染补充内容：markdown 用统一 Markdown 组件（含高亮/katex/mermaid），html 直接渲染 DOM */
+/** 渲染补充内容：markdown 用统一 Markdown 组件（含高亮/katex/mermaid），html 走 Shadow DOM 沙盒隔离 */
 function SupplementContent({ content, contentType }: { content: string; contentType: string }) {
 	if (contentType === "html") {
-		return <article className={proseArticle} dangerouslySetInnerHTML={{ __html: content }} />;
+		return <ShadowHtml content={content} className={proseArticle} />;
 	}
 	return (
 		<article className={proseArticle}>

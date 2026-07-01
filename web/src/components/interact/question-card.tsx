@@ -1,26 +1,63 @@
+import { lazy, Suspense } from 'react'
 import { CircleDot } from 'lucide-react'
 
 import type { Question } from './types'
 import { Kicker, Markdown, PanelCard, proseQuestion } from './primitives'
 
-import { QuestionBoolean } from './question-boolean'
-import { QuestionCode } from './question-code'
-import { QuestionDiff } from './question-diff'
-import { QuestionFile } from './question-file'
-import { QuestionImage } from './question-image'
 import type {
   QuestionComponentProps,
   SupplementRequestArgs,
 } from './question-select'
-import { QuestionMultiSelect } from './question-multi-select'
-import { QuestionOptions } from './question-options'
-import { QuestionPlan } from './question-plan'
-import { QuestionRate } from './question-rate'
-import { QuestionRank } from './question-rank'
-import { QuestionReview } from './question-review'
-import { QuestionSelect } from './question-select'
-import { QuestionSlider } from './question-slider'
-import { QuestionText } from './question-text'
+
+/* ── 题型组件按需加载 ──────────────────────────────────────
+ * 14 种题型组件通过 React.lazy 拆分为独立 chunk，
+ * 避免将 CodeMirror（15 个语言包）、react-diff-viewer 等
+ * 重型库全部打入 interact 主 chunk。
+ */
+const QuestionBoolean = lazy(() =>
+  import('./question-boolean').then((m) => ({ default: m.QuestionBoolean })),
+)
+const QuestionCode = lazy(() =>
+  import('./question-code').then((m) => ({ default: m.QuestionCode })),
+)
+const QuestionDiff = lazy(() =>
+  import('./question-diff').then((m) => ({ default: m.QuestionDiff })),
+)
+const QuestionFile = lazy(() =>
+  import('./question-file').then((m) => ({ default: m.QuestionFile })),
+)
+const QuestionImage = lazy(() =>
+  import('./question-image').then((m) => ({ default: m.QuestionImage })),
+)
+const QuestionMultiSelect = lazy(() =>
+  import('./question-multi-select').then((m) => ({
+    default: m.QuestionMultiSelect,
+  })),
+)
+const QuestionOptions = lazy(() =>
+  import('./question-options').then((m) => ({ default: m.QuestionOptions })),
+)
+const QuestionPlan = lazy(() =>
+  import('./question-plan').then((m) => ({ default: m.QuestionPlan })),
+)
+const QuestionRate = lazy(() =>
+  import('./question-rate').then((m) => ({ default: m.QuestionRate })),
+)
+const QuestionRank = lazy(() =>
+  import('./question-rank').then((m) => ({ default: m.QuestionRank })),
+)
+const QuestionReview = lazy(() =>
+  import('./question-review').then((m) => ({ default: m.QuestionReview })),
+)
+const QuestionSelect = lazy(() =>
+  import('./question-select').then((m) => ({ default: m.QuestionSelect })),
+)
+const QuestionSlider = lazy(() =>
+  import('./question-slider').then((m) => ({ default: m.QuestionSlider })),
+)
+const QuestionText = lazy(() =>
+  import('./question-text').then((m) => ({ default: m.QuestionText })),
+)
 
 interface QuestionCardProps {
   question: Question | undefined
@@ -77,7 +114,15 @@ export function QuestionCard({
         </div>
       }
     >
-      {renderByType(question.type, props)}
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center py-8">
+            <span className="text-xs text-sea-ink-soft">加载题型组件…</span>
+          </div>
+        }
+      >
+        {renderByType(question.type, props)}
+      </Suspense>
     </PanelCard>
   )
 }

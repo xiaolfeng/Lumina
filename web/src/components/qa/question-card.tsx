@@ -4,6 +4,7 @@ import { Badge } from '#/components/ui/badge'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { SupplementItem } from '#/lib/models/response/qa-admin'
 import { useQuestionDetail } from '#/hooks/useQaAdmin'
+import { Markdown, ShadowHtml } from '#/components/interact/primitives'
 
 interface QuestionCardProps {
   sessionId: string
@@ -55,7 +56,11 @@ export function QuestionCard({ sessionId, question }: QuestionCardProps) {
                   {data.data.supplements.map((s: SupplementItem) => (
                     <div key={s.id} className="text-sm bg-muted p-3 rounded-md mt-1">
                       <Badge variant="outline" className="mb-1">{s.content_type}</Badge>
-                      <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: s.content }} />
+                      {s.content_type === 'html' ? (
+                        <ShadowHtml content={s.content} />
+                      ) : (
+                        <Markdown>{s.content}</Markdown>
+                      )}
                     </div>
                   ))}
                 </div>

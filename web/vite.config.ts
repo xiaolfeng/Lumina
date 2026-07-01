@@ -43,6 +43,11 @@ const config = defineConfig({
               test: /node_modules[\/](lucide-react|@radix-ui|class-variance-authority|tailwind-merge|clsx|@tailwindcss|sonner)/,
               priority: 15,
             },
+            {
+              name: 'vendor-motion',
+              test: /node_modules[\/](motion|motion-dom|motion-utils|framer-motion)/,
+              priority: 12,
+            },
           ],
         },
       },

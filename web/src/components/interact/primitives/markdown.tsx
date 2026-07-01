@@ -1,9 +1,9 @@
 import type { ComponentPropsWithoutRef } from 'react'
 import { lazy, Suspense } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { MarkdownLite } from './MarkdownLite'
+import { MarkdownLite } from './markdown-lite'
 
-const MarkdownMermaid = lazy(() => import('./MarkdownMermaid'))
+const MarkdownMermaid = lazy(() => import('./markdown-mermaid'))
 
 /**
  * 统一 Markdown 渲染组件。

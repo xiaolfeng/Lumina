@@ -1,21 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { EditorView } from '@codemirror/view'
 import { githubLight } from '@uiw/codemirror-theme-github'
-import { javascript } from '@codemirror/lang-javascript'
-import { python } from '@codemirror/lang-python'
-import { json } from '@codemirror/lang-json'
-import { markdown } from '@codemirror/lang-markdown'
-import { css } from '@codemirror/lang-css'
-import { html } from '@codemirror/lang-html'
-import { sql } from '@codemirror/lang-sql'
-import { rust } from '@codemirror/lang-rust'
-import { java } from '@codemirror/lang-java'
-import { cpp } from '@codemirror/lang-cpp'
-import { php } from '@codemirror/lang-php'
-import { xml } from '@codemirror/lang-xml'
-import { yaml } from '@codemirror/lang-yaml'
-import { go } from '@codemirror/lang-go'
 import { Code2 } from 'lucide-react'
 
 import { Label } from '#/components/ui/label'
@@ -23,38 +9,45 @@ import { Label } from '#/components/ui/label'
 import { QuestionShell } from './question-shell'
 import type { QuestionComponentProps } from './question-shell'
 
-const EXTENSIONS: Record<string, () => any> = {
-  javascript: () => javascript(),
-  js: () => javascript(),
-  jsx: () => javascript({ jsx: true }),
-  typescript: () => javascript({ typescript: true }),
-  ts: () => javascript({ typescript: true }),
-  tsx: () => javascript({ jsx: true, typescript: true }),
-  python: () => python(),
-  py: () => python(),
-  json: () => json(),
-  markdown: () => markdown(),
-  md: () => markdown(),
-  css: () => css(),
-  scss: () => css(),
-  html: () => html(),
-  xml: () => xml(),
-  sql: () => sql(),
-  rust: () => rust(),
-  rs: () => rust(),
-  java: () => java(),
-  cpp: () => cpp(),
-  c: () => cpp(),
-  'c++': () => cpp(),
-  php: () => php(),
-  yaml: () => yaml(),
-  yml: () => yaml(),
-  go: () => go(),
-  golang: () => go(),
-  regex: () => javascript(),
-  shell: () => javascript(),
-  bash: () => javascript(),
-  sh: () => javascript(),
+/**
+ * 语言包懒加载映射。
+ *
+ * CodeMirror 的 15 个语言包合计 ~1MB，
+ * 全量静态导入会把 question-code chunk 撑到 1046KB。
+ * 改为按需动态 import：仅当用户实际使用某种语言时才下载对应包。
+ */
+const LANG_LOADERS: Record<string, (() => Promise<any>) | undefined> = {
+  javascript: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
+  js: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
+  jsx: () => import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: true })),
+  typescript: () => import('@codemirror/lang-javascript').then((m) => m.javascript({ typescript: true })),
+  ts: () => import('@codemirror/lang-javascript').then((m) => m.javascript({ typescript: true })),
+  tsx: () => import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: true, typescript: true })),
+  python: () => import('@codemirror/lang-python').then((m) => m.python()),
+  py: () => import('@codemirror/lang-python').then((m) => m.python()),
+  json: () => import('@codemirror/lang-json').then((m) => m.json()),
+  markdown: () => import('@codemirror/lang-markdown').then((m) => m.markdown()),
+  md: () => import('@codemirror/lang-markdown').then((m) => m.markdown()),
+  css: () => import('@codemirror/lang-css').then((m) => m.css()),
+  scss: () => import('@codemirror/lang-css').then((m) => m.css()),
+  html: () => import('@codemirror/lang-html').then((m) => m.html()),
+  xml: () => import('@codemirror/lang-xml').then((m) => m.xml()),
+  sql: () => import('@codemirror/lang-sql').then((m) => m.sql()),
+  rust: () => import('@codemirror/lang-rust').then((m) => m.rust()),
+  rs: () => import('@codemirror/lang-rust').then((m) => m.rust()),
+  java: () => import('@codemirror/lang-java').then((m) => m.java()),
+  cpp: () => import('@codemirror/lang-cpp').then((m) => m.cpp()),
+  c: () => import('@codemirror/lang-cpp').then((m) => m.cpp()),
+  'c++': () => import('@codemirror/lang-cpp').then((m) => m.cpp()),
+  php: () => import('@codemirror/lang-php').then((m) => m.php()),
+  yaml: () => import('@codemirror/lang-yaml').then((m) => m.yaml()),
+  yml: () => import('@codemirror/lang-yaml').then((m) => m.yaml()),
+  go: () => import('@codemirror/lang-go').then((m) => m.go()),
+  golang: () => import('@codemirror/lang-go').then((m) => m.go()),
+  regex: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
+  shell: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
+  bash: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
+  sh: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
 }
 
 export function QuestionCode({
@@ -69,12 +62,30 @@ export function QuestionCode({
     (question.config?.placeholder as string | undefined) || '输入代码...'
 
   const [code, setCode] = useState('')
+  const [langExtension, setLangExtension] = useState<any | null>(null)
+
+  const langKey = language.toLowerCase()
+
+  useEffect(() => {
+    let cancelled = false
+    const loader = LANG_LOADERS[langKey]
+    if (loader) {
+      loader().then((ext) => {
+        if (!cancelled) setLangExtension(ext)
+      })
+    } else {
+      setLangExtension(null)
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [langKey])
 
   const extensions = useMemo(() => {
-    const key = language.toLowerCase()
-    const factory = EXTENSIONS[key]
-    return factory ? [factory(), EditorView.lineWrapping] : [EditorView.lineWrapping]
-  }, [language])
+    const base = [EditorView.lineWrapping]
+    if (langExtension) base.unshift(langExtension)
+    return base
+  }, [langExtension])
 
   const handleSubmit = () => {
     if (!code.trim()) return
