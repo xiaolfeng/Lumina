@@ -10,4 +10,6 @@ const (
 	GeneBiometricCredential xSnowflake.Gene = 36 // 生物特征凭证
 	GenePin                 xSnowflake.Gene = 37 // Pin基因
 	GeneApikey              xSnowflake.Gene = 38 // API密钥基因
+	GeneRepoWikiConfig      xSnowflake.Gene = 39 // RepoWiki配置基因
+	GeneWikiVersion         xSnowflake.Gene = 40 // Wiki版本基因
 )

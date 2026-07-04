@@ -170,30 +170,195 @@ LLM 通过 Agent SDK 调用，分四个阶段逐步深入：
 6. 未变更部分保留原 Wiki 内容
 7. 更新 commit hash 记录
 
-## 数据库模型（逻辑模型）
+## 数据库模型（物理模型）
 
-### 项目表（参考值）
+### 设计决策
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | 雪花 ID | 主键 |
-| name | string | 项目名称 |
-| git_url | string | Git 仓库地址 |
-| local_path | string | 本地克隆路径 |
-| commit_hash | string | 当前分析的 commit |
-| status | enum | 分析状态（pending / analyzing / completed / failed） |
-| language | string | Wiki 语言（zh / en） |
-| created_at | timestamp | 创建时间 |
-| updated_at | timestamp | 更新时间 |
+| 决策点 | 选择 | 理由 |
+|--------|------|------|
+| 与 Project 表关系 | RepoWikiConfig 1:1 → Project（uniqueIndex） | 一个项目最多一份 Wiki 配置，避免冗余关联表 |
+| 版本管理策略 | WikiVersion 表 + Language 列 | zh/en 独立版本记录，同一 commit 可有多语言版本 |
+| 任务管理 | WikiVersion 记录 status + current_stage + error_msg | 不新建任务表，版本即任务 |
+| 页面索引 | 纯文件系统 metadata.json | 避免数据库存储文档内容，保持轻量 |
+| Git 配置存储 | RepoWikiConfig 表（1对1） | 含 last_accessed_at 用于 TTL 清理 |
+| 源码存储 | 持久化 + TTL 30 天清理 | 平衡磁盘占用与增量更新效率 |
+| 中间产物 | 文件系统缓存 | file_scan/dep_graph/pagerank JSON 文件 |
+| Agent Session | WikiVersion 记 agent_session_path | bamboo-agent FileStore 持久化（SDK 未发布，仅预留字段） |
 
-### Wiki 版本表（参考值）
+### 表关系图
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | 雪花 ID | 主键 |
-| project_id | 雪花 ID | 关联项目 |
-| commit_hash | string | 对应的 commit |
-| llm_model | string | 使用的 LLM 模型 |
-| file_count | int | 分析的文件数 |
-| duration_ms | int | 分析耗时（毫秒） |
-| created_at | timestamp | 生成时间 |
+```
+┌──────────────────┐     1:1      ┌──────────────────────┐     1:N      ┌──────────────────┐
+│    Project       │◄────────────│  RepoWikiConfig      │◄────────────│  WikiVersion     │
+│                  │             │  (Gene=39)           │             │  (Gene=40)       │
+│  id (PK)         │             │  id (PK)             │             │  id (PK)         │
+│  name            │             │  project_id (FK→1:1) │             │  config_id (FK)  │
+│  alias_name      │             │  git_url             │             │  commit_hash     │
+│  match_path      │             │  default_branch      │             │  branch          │
+│  description     │             │  local_path          │             │  language        │
+│                  │             │  default_language    │             │  status          │
+│                  │             │  last_accessed_at    │             │  current_stage   │
+│                  │             │                      │             │  ...             │
+└──────────────────┘             └──────────────────────┘             └──────────────────┘
+```
+
+### RepoWikiConfig 表（Gene=39）
+
+RepoWiki 配置表，与 Project 表 1:1 关联，存储 Git 仓库配置和 Wiki 生成偏好。
+
+| 字段 | 类型 | 约束 | 说明 |
+|------|------|------|------|
+| id | bigint | PK, 雪花ID | 主键 |
+| project_id | bigint | NOT NULL, UNIQUE INDEX | 关联项目ID（1:1） |
+| git_url | varchar(512) | NOT NULL, INDEX | Git仓库地址 |
+| default_branch | varchar(128) | NOT NULL, DEFAULT 'main' | 默认分支 |
+| local_path | varchar(512) | — | 本地克隆路径 |
+| default_language | varchar(16) | NOT NULL, DEFAULT 'zh' | 默认Wiki语言 |
+| last_accessed_at | timestamptz | INDEX | 最后访问时间（TTL清理用） |
+| created_at | timestamptz | — | 创建时间 |
+| updated_at | timestamptz | — | 更新时间 |
+
+#### Go Entity 参考
+
+```go
+type RepoWikiConfig struct {
+    xModels.BaseEntity                                                                                       // 基础实体
+    ProjectID       xSnowflake.SnowflakeID `gorm:"type:bigint;not null;uniqueIndex;comment:关联项目ID" json:"project_id"`       // 关联项目ID
+    GitURL          string                 `gorm:"type:varchar(512);not null;index;comment:Git仓库地址" json:"git_url"`           // Git仓库地址
+    DefaultBranch   string                 `gorm:"type:varchar(128);not null;default:main;comment:默认分支" json:"default_branch"` // 默认分支
+    LocalPath       string                 `gorm:"type:varchar(512);comment:本地克隆路径" json:"local_path"`                         // 本地克隆路径
+    DefaultLanguage string                 `gorm:"type:varchar(16);not null;default:zh;comment:默认Wiki语言" json:"default_language"` // 默认Wiki语言
+    LastAccessedAt  *time.Time             `gorm:"type:timestamptz;index;comment:最后访问时间" json:"last_accessed_at,omitempty"`     // 最后访问时间
+}
+```
+
+### WikiVersion 表（Gene=40）
+
+Wiki 版本表，每次分析生成一条版本记录，同时承载任务状态管理。
+
+| 字段 | 类型 | 约束 | 说明 |
+|------|------|------|------|
+| id | bigint | PK, 雪花ID | 主键 |
+| config_id | bigint | NOT NULL, INDEX | 关联配置ID |
+| commit_hash | varchar(64) | NOT NULL | Git commit hash |
+| branch | varchar(128) | NOT NULL, DEFAULT 'main' | 分析分支 |
+| language | varchar(16) | NOT NULL, DEFAULT 'zh' | Wiki语言 |
+| llm_model | varchar(128) | — | LLM模型名称 |
+| llm_provider | varchar(64) | — | LLM Provider |
+| status | varchar(16) | NOT NULL, DEFAULT 'pending', INDEX | 分析状态 |
+| current_stage | varchar(32) | — | 当前阶段 |
+| agent_session_path | varchar(512) | — | bamboo-agent Session路径 |
+| file_count | int | DEFAULT 0 | 分析文件数 |
+| token_count | bigint | DEFAULT 0 | LLM token消耗 |
+| duration_ms | int | DEFAULT 0 | 分析耗时毫秒 |
+| error_msg | text | — | 失败原因 |
+| started_at | timestamptz | — | 分析开始时间 |
+| completed_at | timestamptz | — | 分析完成时间 |
+| created_at | timestamptz | — | 创建时间 |
+| updated_at | timestamptz | — | 更新时间 |
+
+#### Go Entity 参考
+
+```go
+type WikiVersion struct {
+    xModels.BaseEntity                                                                                              // 基础实体
+    ConfigID         xSnowflake.SnowflakeID `gorm:"type:bigint;not null;index;comment:关联配置ID" json:"config_id"`                // 关联配置ID
+    CommitHash       string                 `gorm:"type:varchar(64);not null;comment:Git commit hash" json:"commit_hash"`           // Git commit hash
+    Branch           string                 `gorm:"type:varchar(128);not null;default:main;comment:分析分支" json:"branch"`           // 分析分支
+    Language         string                 `gorm:"type:varchar(16);not null;default:zh;comment:Wiki语言" json:"language"`           // Wiki语言
+    LLMModel         string                 `gorm:"type:varchar(128);comment:LLM模型名称" json:"llm_model"`                           // LLM模型名称
+    LLMProvider      string                 `gorm:"type:varchar(64);comment:LLM Provider" json:"llm_provider"`                      // LLM Provider
+    Status           string                 `gorm:"type:varchar(16);not null;default:pending;index;comment:分析状态" json:"status"`   // 分析状态
+    CurrentStage     string                 `gorm:"type:varchar(32);comment:当前阶段" json:"current_stage"`                           // 当前阶段
+    AgentSessionPath string                 `gorm:"type:varchar(512);comment:bamboo-agent Session路径" json:"agent_session_path"`    // bamboo-agent Session路径
+    FileCount        int                    `gorm:"type:int;default:0;comment:分析文件数" json:"file_count"`                           // 分析文件数
+    TokenCount       int64                  `gorm:"type:bigint;default:0;comment:LLM token消耗" json:"token_count"`                  // LLM token消耗
+    DurationMs       int                    `gorm:"type:int;default:0;comment:分析耗时毫秒" json:"duration_ms"`                         // 分析耗时毫秒
+    ErrorMsg         string                 `gorm:"type:text;comment:失败原因" json:"error_msg,omitempty"`                            // 失败原因
+    StartedAt        *time.Time             `gorm:"type:timestamptz;comment:分析开始时间" json:"started_at,omitempty"`                  // 分析开始时间
+    CompletedAt      *time.Time             `gorm:"type:timestamptz;comment:分析完成时间" json:"completed_at,omitempty"`                // 分析完成时间
+}
+```
+
+### 状态流转图
+
+```
+                    ┌─────────┐
+                    │ pending │ ← 初始状态
+                    └────┬────┘
+                         │ 开始克隆
+                         ▼
+                   ┌───────────┐
+          ┌────────│  cloning  │────────┐
+          │        └─────┬─────┘        │
+          │ 克隆失败      │ 克隆成功       │ 克隆失败
+          │              │              │
+          │        ┌─────▼─────┐        │
+          │        │ analyzing │        │
+          │        └─────┬─────┘        │
+          │              │              │
+          │   ┌──────────┼──────────┐  │
+          │   ▼          ▼          ▼  │
+          │ scan      pass1-4   assembling │
+          │   │          │          │  │
+          │   └──────────┼──────────┘  │
+          │              │              │
+          │        ┌─────▼─────┐        │
+          │        │ completed │        │
+          │        └───────────┘        │
+          │                             │
+          ▼                             ▼
+    ┌──────────┐               ┌──────────┐
+    │  failed  │◄──────────────│  failed  │
+    └──────────┘               └──────────┘
+```
+
+**Status 枚举值**：`pending` → `cloning` → `analyzing` → `completed` / `failed`
+
+**CurrentStage 枚举值**（status=analyzing 时）：
+- `scan` — 文件扫描阶段
+- `pass1` — Pass 1：项目概览
+- `pass2` — Pass 2：模块分析
+- `pass3` — Pass 3：架构设计
+- `pass4` — Pass 4：阅读指南
+- `assembling` — 文档组装阶段
+
+### 文件系统结构
+
+```
+.lumina/repowiki/
+├── repos/                          # Git 克隆持久化目录
+│   └── {config_id}/                # 按 RepoWikiConfig ID 隔离
+│       └── {branch}/               # 按分支隔离
+│           └── ...                 # 完整 Git 仓库（TTL 30天清理）
+├── intermediate/                   # 中间产物缓存
+│   └── {version_id}/               # 按 WikiVersion ID 隔离
+│       ├── file_scan.json          # 文件扫描结果
+│       ├── dep_graph.json          # 依赖图数据
+│       └── pagerank.json           # PageRank 排序结果
+├── sessions/                       # bamboo-agent Session 持久化
+│   └── {version_id}/               # 按 WikiVersion ID 隔离
+│       └── ...                     # Agent Session 文件（FileStore）
+└── wiki/                           # 最终 Wiki 文档输出
+    └── {project_id}/
+        ├── zh/
+        │   ├── 主页.md
+        │   ├── content/
+        │   │   ├── 项目概览.md
+        │   │   ├── 模块分析.md
+        │   │   ├── 架构设计.md
+        │   │   └── 阅读指南.md
+        │   └── meta/
+        │       └── repowiki-metadata.json
+        └── en/
+            └── ...
+```
+
+### 基因编号注册
+
+| 基因编号 | 常量名 | 实体 |
+|----------|--------|------|
+| 39 | `GeneRepoWikiConfig` | RepoWikiConfig |
+| 40 | `GeneWikiVersion` | WikiVersion |
+
+> 基因编号定义于 `internal/constant/gene_number.go`，用于雪花算法分布式 ID 生成。

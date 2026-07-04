@@ -23,6 +23,8 @@ var migrateTables = []interface{}{
 	&entity.QaQuestion{},
 	&entity.QaSupplement{},
 	&entity.BiometricCredential{},
+	&entity.RepoWikiConfig{},
+	&entity.WikiVersion{},
 }
 
 func (r *reg) databaseInit(ctx context.Context) (any, error) {
