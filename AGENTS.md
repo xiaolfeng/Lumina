@@ -1,7 +1,7 @@
 # 项目知识库
 
-**生成日期:** 2026-06-29
-**提交:** a10297a
+**生成日期:** 2026-07-04
+**提交:** 29a74f0
 **分支:** master
 
 ## 概述
@@ -55,12 +55,12 @@
 │   │   └── startup/            # 基础设施初始化与启动节点注册
 │   │       └── prepare/        # 幂等种子数据
 │   ├── handler/                # HTTP 处理器（薄控制器层）
-│   ├── logic/                  # 业务编排层
+│   ├── logic/                  # 业务编排层（QA 逻辑按职责拆分为 qa_*.go 多文件）
 │   ├── repository/             # 数据库/Redis 访问层
 │   │   └── cache/              # Redis 缓存操作
-│   ├── service/                # 共享服务层（文件下载 Token、文件缓存）
+│   ├── service/                # 共享服务层（文件下载 Token、文件缓存、媒体回答处理）
 │   ├── entity/                 # GORM 实体（需实现 GetGene() 绑定）
-│   ├── mcp/                    # MCP Server 工具注册
+│   ├── mcp/                    # MCP Server 工具注册（QA 工具拆分为 tools/handlers/type_details）
 │   ├── websocket/              # WebSocket 连接管理 + 消息分发
 │   ├── qa/                     # Q&A 回答队列（会话级 FIFO）
 │   └── constant/               # 共享业务常量（基因编号等）
@@ -70,9 +70,9 @@
 │   ├── components.json         # shadcn/ui（new-york、zinc、lucide）
 │   └── src/                    # 前端源码
 │       ├── routes/             # 基于文件的路由（公开页 + 认证页 + 控制台 + Interact 交互）
-│       ├── components/         # 组件（含 ui/ 和业务子目录 apikey/、project/、pin/、profile/、qa/、interact/）
+│       ├── components/         # 组件（含 ui/、landing/、通用组件和业务子目录 apikey/、project/、pin/、profile/、qa/、interact/）
 │       ├── hooks/              # React Hooks（认证、API Key、项目、Pin、用户、生物认证、Q&A 管理、Q&A 会话、WebSocket）
-│       ├── lib/                # 工具函数 + API 客户端 + 类型定义 + WebAuthn 辅助
+│       ├── lib/                # 工具函数 + API 客户端 + 类型定义 + WebAuthn 辅助 + Cookie 工具
 │       ├── styles.css          # 全局样式 + Tailwind 主题
 │       └── router.tsx          # TanStack Router 入口
 └── .agent/skills/              # 项目专属技能（swagger-writer、entity-build、project-style、mcp-qa-test）
@@ -121,12 +121,15 @@
 | `ApikeyLogic` | 结构体 | `internal/logic/apikey.go` | API Key 业务编排（创建/列表/更新/删除/重置/密钥生成/哈希/脱敏/校验） |
 | `ProjectLogic` | 结构体 | `internal/logic/project.go` | 项目业务编排（CRUD + 名称唯一校验 + 别名解析） |
 | `PinLogic` | 结构体 | `internal/logic/pin.go` | Pin 约束编排（Push/Consume/Peek/List + 项目解析） |
-| `QaLogic` | 结构体 | `internal/logic/qa.go` | Q&A 业务编排（Session/Question/Supplement + 队列消费 + 15 题型格式化） |
+| `QaLogic` | 结构体 | `internal/logic/qa_logic.go` | Q&A 业务编排（Session/Question/Supplement + 队列消费） |
 | `ProjectRepo` | 结构体 | `internal/repository/project.go` | 项目持久化（CRUD + Redis Cache-Aside 缓存） |
 | `InitMCPServer` | 函数 | `internal/mcp/server.go` | 创建 MCP Server + 注册 QA/Project/Pin 工具 + 返回 StreamableHTTPHandler |
 | `Hub` | 结构体 | `internal/websocket/hub.go` | WebSocket 连接管理器（sessionID → deviceID 二级索引 + 心跳检测） |
 | `QueueManager` | 结构体 | `internal/qa/queue.go` | Q&A 回答队列管理器（会话级 FIFO 队列 + 阻塞消费） |
 | `DownloadToken` | 结构体 | `internal/service/download_token.go` | 文件下载 Token 生成与校验（短时效签名） |
+| `MediaAnswerService` | 结构体 | `internal/service/media_answer.go` | 媒体回答处理（图片/文件附件格式化） |
+| `RepoWikiConfig` | 结构体 | `internal/entity/repowiki_config.go` | RepoWiki 配置实体（Gene=39，仓库地址/LLM 参数） |
+| `WikiVersion` | 结构体 | `internal/entity/wiki_version.go` | Wiki 版本实体（Gene=40，版本号/状态/文件路径） |
 | `HealthLogic.Ping` | 方法 | `internal/logic/health.go` | 服务健康检查编排 |
 | `HealthRepo.DatabaseReady` | 方法 | `internal/repository/health.go` | 数据库就绪检查 |
 | `getRouter` | 函数 | `web/src/router.tsx` | 前端路由入口 |
@@ -228,7 +231,7 @@
 
 - **日志命名**：遵循模块标签（`NamedMAIN`、`NamedINIT`、`NamedCONT`、`NamedLOGC`、`NamedREPO`、`NamedMIDE`）。
 - **启动种子阶段**：显式通过 `xCtx.Exec` 节点执行，并隔离在 `prepare/` 目录中。
-- **实体 ID 基因策略**：实体级别需绑定基因类型（`GeneProject = 32` ~ `GenePin = 37`），定义在 `constant/gene_number.go`。
+- **实体 ID 基因策略**：实体级别需绑定基因类型（`GeneProject = 32` ~ `GeneWikiVersion = 40`），定义在 `constant/gene_number.go`。
 - **项目技能**：`.agent/skills/` 包含项目专属技能：`swagger-writer`、`entity-build`、`project-style`、`mcp-qa-test`。
 - **双通道暴露**：每个模块同时提供 REST API 和 MCP Tool。
 - **MCP 编排**：Lumina 不做跨模块编排，由 Agent 端自行决定调用顺序和组合。
@@ -240,11 +243,17 @@
 - **WebSocket Hub**：按 sessionID → deviceID 二级索引管理连接，心跳检测间隔 5s / 超时 15s，支持会话恢复。
 - **Q&A 回答队列**：会话级 FIFO 队列，支持 `WaitAndConsume` 阻塞等待新回答（MCP 工具消费）。
 - **Q&A 推送回调**：`logic.OnQuestionPushed` / `logic.OnSupplementPushed` / `logic.OnQuestionCancelled` / `logic.OnSessionArchived` 函数变量在 `route_ws.go` 中设置，解耦 Logic 层和 WebSocket 层。
+- **Q&A 逻辑拆分**：原 `qa.go`（1778 行）按职责拆分为 `qa_logic.go`（核心编排）、`qa_format.go`（题型格式化）、`qa_helper.go`（辅助函数）、`qa_mcp.go`（MCP 工具）、`qa_mcp_helpers.go`（MCP 辅助）、`qa_download.go`（文件下载）。
+- **MCP 工具拆分**：`mcp/qa_tools.go` 拆分为 `qa_tools.go`（注册）、`qa_handlers.go`（handler 实现）、`qa_type_details.go`（题型 schema 细节）。
 - **Q&A 题型格式化**：Logic 层内置 15+ 题型格式化函数（select/multi-select/text/boolean/code/image/file/slider/rank/rate/plan/options/diff/review）。
 - **Pin FIFO 消费**：基于数据库实现 FIFO（`ConsumeOldestPending` 按 createdAt 升序 + `ConsumeByID` 精确消费），不依赖 Redis 队列。
 - **WebAuthn 集成**：后端 `logic/biometric.go` + `webauthn_user.go` 适配器，前端 `lib/webauthn/helpers.ts` 处理浏览器端编解码。
 - **Interact 前端页面**：独立布局（非 Console），支持 15+ 种题型组件 + 交互原语（primitives/），WebSocket 实时交互，断线重连。
+- **前端通用组件**：`confirm-delete-dialog.tsx`、`page-header.tsx`、`skeleton-table.tsx` 跨模块复用，替代各域重复的删除对话框和页面头部。
+- **前端首页拆分**：`routes/_public/index.tsx` 拆分为 `components/landing/` 下 hero/features/tech 区块组件。
+- **Shadow DOM 沙盒**：`interact/primitives/shadow-html.tsx` 使用 Shadow DOM 隔离不可信 HTML 渲染，禁止直接 `dangerouslySetInnerHTML`。
 - **文件下载 Token**：`service/download_token.go` 生成短时效签名 Token，用于 Q&A 文件附件下载鉴权。
+- **媒体回答处理**：`service/media_answer.go` 处理图片/文件附件的回答格式化，供 Q&A MCP 工具调用。
 
 ## 常用命令
 
@@ -312,7 +321,7 @@ pnpm dlx shadcn@latest add <component>  # 添加 UI 组件
 - Pin 模块已完整实现（后端 Push/Consume/Peek + MCP 工具 + 前端管理页），基于数据库 FIFO 消费。
 - MCP Server 已实现，注册了 QA（10 工具）、Project（3 工具）、Pin（5 工具）三套工具共 18 个，通过 API Key 认证。
 - WebSocket Hub 已实现，支持 sessionID → deviceID 二级索引，心跳检测，优雅关闭，断线重连和会话恢复。
-- RepoWiki 和 Memory 仍为纯设计阶段，无任何后端代码，仅有 `docs/wiki/` 设计文档。
+- RepoWiki 和 Memory 仍为纯设计阶段，无任何后端代码，仅有 `docs/wiki/` 设计文档。RepoWiki 模块的两个数据库实体（`RepoWikiConfig`、`WikiVersion`）已先行入库以支持后续开发。
 
 ## 引用
 

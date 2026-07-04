@@ -33,7 +33,8 @@ internal/
 │   ├── apikey.go             # API Key 处理器（CRUD + 重置 + 分页）
 │   ├── project.go            # 项目处理器（CRUD + 分页）
 │   ├── pin.go                # Pin 处理器（CRUD + 分页）
-│   ├── qa.go                 # Q&A 处理器（会话 CRUD、问题详情、配置管理、文件下载）
+│   ├── qa.go                 # Q&A 处理器（会话 CRUD、问题详情、配置管理）
+│   ├── qa_download.go        # Q&A 文件下载处理器（Token 校验 + 文件流输出）
 │   └── health.go             # 健康检查处理器
 ├── logic/                    # 业务编排层
 │   ├── logic.go              # logic 基础结构（db/rdb/log）
@@ -43,7 +44,12 @@ internal/
 │   ├── apikey.go             # API Key 逻辑（密钥生成/哈希/脱敏/CRUD/校验）
 │   ├── project.go            # 项目逻辑（CRUD、名称唯一校验、别名解析）
 │   ├── pin.go                # Pin 逻辑（Push/Consume/Peek/List/项目解析）
-│   ├── qa.go                 # Q&A 逻辑（Session/Question/Supplement/队列消费/格式化）
+│   ├── qa_logic.go           # Q&A 核心业务逻辑（Session/Question/Supplement 编排）
+│   ├── qa_format.go          # Q&A 题型格式化（15+ 题型的 Markdown 格式化）
+│   ├── qa_helper.go          # Q&A 辅助函数（选项处理、类型判断等）
+│   ├── qa_mcp.go             # Q&A MCP 工具实现（10+ 工具的 handler 逻辑）
+│   ├── qa_mcp_helpers.go     # Q&A MCP 辅助函数（工具参数解析、结果组装）
+│   ├── qa_download.go        # Q&A 文件下载逻辑（Token 校验 + 文件流）
 │   └── health.go             # 健康检查逻辑
 ├── repository/               # 数据访问层
 │   ├── info.go               # Info 键值配置持久化（GetByKey/UpdateValue/UpdateValuesInTx）
@@ -64,7 +70,8 @@ internal/
 │       └── qa_retry.go       # qa_get_answer 重试计数器（INCR/Reset）
 ├── service/                  # 共享服务层（跨模块复用的基础设施）
 │   ├── download_token.go     # 文件下载 Token 生成与校验（短时效签名）
-│   └── file_cache.go         # 文件缓存管理（上传文件本地暂存 + 清理）
+│   ├── file_cache.go         # 文件缓存管理（上传文件本地暂存 + 清理）
+│   └── media_answer.go       # 媒体回答处理（图片/文件附件的回答格式化）
 ├── entity/                   # GORM 实体
 │   ├── info.go               # 站点配置实体（单用户模式）
 │   ├── apikey.go             # API Key 实体（密钥哈希/前缀/后缀/过期时间）
@@ -73,10 +80,14 @@ internal/
 │   ├── biometric_credential.go # WebAuthn 凭证实体（CredentialID/公钥/签名计数）
 │   ├── qa_session.go         # Q&A Session 实体（状态/类型/TTL）
 │   ├── qa_question.go        # Q&A Question 实体（题型/标题/选项/回答）
-│   └── qa_supplement.go      # Q&A Supplement 实体（补充内容/附件）
+│   ├── qa_supplement.go      # Q&A Supplement 实体（补充内容/附件）
+│   ├── repowiki_config.go    # RepoWiki 配置实体（仓库地址/LLM 参数/分析策略）
+│   └── wiki_version.go       # Wiki 版本实体（版本号/状态/生成时间/文件路径）
 ├── mcp/                      # MCP Server 工具注册
 │   ├── server.go             # MCP Server 初始化 + StreamableHTTPHandler 创建 + Logic 注入入口
-│   ├── qa_tools.go           # Q&A MCP 工具（10+ 工具：Session/Question/Supplement/Answer 管理）
+│   ├── qa_tools.go           # Q&A MCP 工具注册（10+ 工具定义 + schema）
+│   ├── qa_handlers.go        # Q&A MCP 工具 handler 实现（工具执行逻辑）
+│   ├── qa_type_details.go    # Q&A MCP 题型详情定义（15+ 题型 schema 细节）
 │   ├── project_tools.go      # Project MCP 工具（CRUD + 别名解析 + match_path 数组）
 │   └── pin_tools.go          # Pin MCP 工具（Push/Consume/List/Update/Peek）
 ├── websocket/                # WebSocket 实时通信层
@@ -89,7 +100,7 @@ internal/
 └── constant/                 # 共享业务常量
     ├── cache.go              # Redis Key 前缀/过期时间（带环境前缀格式化）
     ├── context.go            # Context Key（如 CtxOwnerKey）
-    ├── gene_number.go        # 雪花算法基因编号（GeneProject=32 ~ GenePin=37）
+    ├── gene_number.go        # 雪花算法基因编号（GeneProject=32 ~ GeneWikiVersion=40）
     ├── biometric.go          # WebAuthn 相关常量（RP ID/Origin/超时）
     └── pin.go                # Pin 模块常量（分类/优先级枚举）
 ```
@@ -100,10 +111,10 @@ internal/
 | 新增路由组 | `app/route/route.go` + `route_*.go` | 在 `NewRoute` 中调用路由注册函数 |
 | 新增中间件 | `app/middleware/` | 返回 `gin.HandlerFunc`，在路由注册中绑定 |
 | 新增处理器 | `handler/handler.go` 定义类型，`handler/*.go` 实现 | 通过 `NewHandler[T]` 构造 |
-| 新增业务逻辑 | `logic/*.go` | Logic 通过 context 注入获取 db/rdb |
+| 新增业务逻辑 | `logic/*.go` | Logic 通过 context 注入获取 db/rdb；QA 逻辑按职责拆分到 `qa_*.go` |
 | 新增数据访问 | `repository/*.go` | 返回 `(data, *xError.Error)` |
 | 新增 Redis 缓存 | `repository/cache/*.go` | 实现 KeyCache 接口或独立缓存操作 |
-| 新增共享服务 | `service/*.go` | 跨模块复用的基础设施（如文件下载 Token） |
+| 新增共享服务 | `service/*.go` | 跨模块复用的基础设施（如下载 Token、媒体回答处理） |
 | 新增实体 | `entity/*.go` + `startup/startup_database.go` | 实现并追加到 `migrateTables` |
 | 新增基因编号 | `constant/gene_number.go` | 定义 `GeneXxx` 常量供实体 `GetGene()` 使用 |
 | 新增种子数据 | `startup/prepare/` | 创建 `prepare_<domain>.go` |
@@ -137,6 +148,9 @@ internal/
 - **Pin FIFO 消费**：Pin 模块的 FIFO 消费基于数据库实现（`ConsumeOldestPending` + `ConsumeByID`），不依赖 Redis 队列。
 - **WebAuthn 凭证**：CredentialID 全局唯一，使用 bcrypt 存储公钥；Challenge 通过 Redis 缓存短暂会话（`cache/biometric_credential.go`）。
 - **文件下载 Token**：`service/download_token.go` 生成短时效签名 Token，用于 Q&A 文件附件下载鉴权。
+- **QA 逻辑拆分**：`qa.go` 已按职责拆分为 `qa_logic.go`（核心编排）、`qa_format.go`（题型格式化）、`qa_helper.go`（辅助函数）、`qa_mcp.go`（MCP 工具）、`qa_mcp_helpers.go`（MCP 辅助）、`qa_download.go`（文件下载）；新增 QA 逻辑时按职责归入对应文件。
+- **MCP 工具拆分**：`mcp/qa_tools.go`（工具注册）、`qa_handlers.go`（handler 实现）、`qa_type_details.go`（题型 schema）三文件分工；新增 MCP 工具时在 `qa_tools.go` 注册、`qa_handlers.go` 实现。
+- **RepoWiki 实体**：`repowiki_config.go`（Gene=39）和 `wiki_version.go`（Gene=40）为 RepoWiki 模块数据库实体，模块尚在设计中，实体先行入库以支持后续开发。
 
 ## 反模式
 - 禁止从路由直接调用 repository 或绕过 logic 层。

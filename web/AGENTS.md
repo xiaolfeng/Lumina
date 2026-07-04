@@ -52,21 +52,25 @@ web/
     │   ├── app-sidebar.tsx     # 控制台侧边栏（导航菜单）
     │   ├── data-table.tsx      # 通用数据表格组件
     │   ├── data-table-pagination.tsx # 通用分页组件
-    │   ├── apikey/             # API Key 业务组件（columns/create/edit/delete/reset-dialog）
-    │   ├── project/            # 项目业务组件（columns/create/edit/delete-dialog）
+    │   ├── confirm-delete-dialog.tsx # 通用删除确认对话框（跨模块复用）
+    │   ├── page-header.tsx     # 通用页面头部组件
+    │   ├── skeleton-table.tsx  # 通用表格骨架屏组件
+    │   ├── landing/            # 首页落地页组件
+    │   │   ├── hero-section.tsx     # 首页 Hero 区域
+    │   │   ├── features-section.tsx # 首页功能特性区域
+    │   │   └── tech-section.tsx     # 首页技术栈区域
+    │   ├── apikey/             # API Key 业务组件（columns/create/edit/reset-dialog）
+    │   ├── project/            # 项目业务组件（columns/create/edit）
     │   ├── pin/                # Pin 约束业务组件
     │   │   ├── columns.tsx     # 表格列定义
     │   │   ├── create-dialog.tsx # 创建对话框
-    │   │   ├── edit-dialog.tsx   # 编辑对话框
-    │   │   ├── delete-dialog.tsx # 删除确认对话框
-    │   │   └── pin-list.tsx    # Pin 列表页面组装
+    │   │   └── edit-dialog.tsx   # 编辑对话框
     │   ├── profile/            # 个人资料业务组件
     │   │   ├── profile-tab.tsx     # 资料编辑标签页
     │   │   ├── password-tab.tsx    # 密码修改标签页
     │   │   └── biometric-tab.tsx   # WebAuthn 凭证管理标签页
     │   ├── qa/                 # Q&A 管理业务组件
     │   │   ├── columns.tsx     # 会话列表列定义
-    │   │   ├── delete-dialog.tsx   # 删除确认对话框
     │   │   ├── question-card.tsx   # 问题卡片展示
     │   │   └── session-detail.tsx  # 会话详情组件
     │   ├── interact/           # Interact 交互组件
@@ -101,13 +105,14 @@ web/
     │   │   ├── motion-demo-panel.tsx      # 动画演示面板
     │   │   └── primitives/    # 交互原语组件
     │   │       ├── index.ts          # 原语导出入口
-    │   │       ├── Kicker.tsx        # 小标题标签
-    │   │       ├── Markdown.tsx      # 完整 Markdown 渲染器
-    │   │       ├── MarkdownLite.tsx  # 轻量 Markdown 渲染器
-    │   │       ├── MarkdownMermaid.tsx # Mermaid 图表渲染器
-    │   │       ├── PanelCard.tsx     # 面板卡片容器
-    │   │       ├── StateViews.tsx    # 状态视图（空/加载/错误）
-    │   │       └── prose.ts          # Prose 样式配置
+    │   │       ├── kicker.tsx        # 小标题标签
+    │   │       ├── markdown.tsx      # 完整 Markdown 渲染器
+    │   │       ├── markdown-lite.tsx # 轻量 Markdown 渲染器
+    │   │       ├── markdown-mermaid.tsx # Mermaid 图表渲染器
+    │   │       ├── panel-card.tsx   # 面板卡片容器
+    │   │       ├── shadow-html.tsx  # Shadow DOM HTML 沙盒渲染器（安全隔离）
+    │   │       ├── state-views.tsx  # 状态视图（空/加载/错误）
+    │   │       └── prose.ts         # Prose 样式配置
     │   └── ui/                 # shadcn/ui 组件（通过 CLI 添加，含 27 个组件）
     ├── hooks/                  # React Hooks
     │   ├── useAuth.ts          # 认证 Hook（登录/登出/刷新/初始化/自动续期/WebAuthn）
@@ -124,6 +129,8 @@ web/
     └── lib/
         ├── utils.ts            # cn() 工具（clsx + tailwind-merge）
         ├── motion.ts           # motion 动画变体和缓动函数
+        ├── auth/
+        │   └── cookie-utils.ts # Cookie 操作工具（AT/RT/expires_at 读写）
         ├── webauthn/
         │   └── helpers.ts      # WebAuthn 浏览器端辅助函数（base64 编解码 + 选项解析）
         ├── apis/               # API 客户端层
@@ -164,7 +171,8 @@ web/
 | 新增控制台子页面 | `src/routes/console/` | 在 `console.tsx` 布局下添加，自动继承 Sidebar + Breadcrumb |
 | 新增 Interact 子页面 | `src/routes/interact/` | 在 `interact.tsx` 布局下添加 |
 | 新增布局路由 | `src/routes/<name>.tsx` | 含 `Outlet` 的布局组件 |
-| 新增通用组件 | `src/components/` | Navbar/Footer/Sidebar 级别的全局组件 |
+| 新增通用组件 | `src/components/` | 全局级组件（Navbar/Footer/Sidebar/通用对话框/骨架屏等） |
+| 新增首页落地页区块 | `src/components/landing/` | 首页拆分为 hero/features/tech 等区块组件 |
 | 新增业务组件 | `src/components/<domain>/` | 按业务域组织（apikey/、project/、pin/、profile/、qa/、interact/） |
 | 新增题型组件 | `src/components/interact/question-*.tsx` | 遵循 `question-<type>.tsx` 命名，通过 `question-card.tsx` 分发 |
 | 新增交互原语 | `src/components/interact/primitives/` | 可复用的展示原语（Markdown/Kicker/PanelCard 等） |
@@ -185,7 +193,8 @@ web/
 - **路径别名**：`#/*` 映射到 `./src/*`；组件内使用 `#/components/xxx` 导入。
 - **路由模式**：TanStack Start file-router；文件名即路由路径，`_` 前缀为布局路由。
 - **认证守卫**：`__root.tsx` 通过 `beforeLoad` 检查初始化状态并自动重定向；`console.tsx` 通过 Cookie 检查 `access_token` 守卫。
-- **Token 管理**：使用 `js-cookie` 存储 AT/RT/expires_at，`useAuth` Hook 每 30 秒检查并在 AT 过期前 5 分钟自动续期。
+- **Token 管理**：使用 `js-cookie` 存储 AT/RT/expires_at，`lib/auth/cookie-utils.ts` 封装统一读写接口；`useAuth` Hook 每 30 秒检查并在 AT 过期前 5 分钟自动续期。
+- **通用组件复用**：`confirm-delete-dialog.tsx` 统一替代各模块的 `delete-dialog.tsx`；`page-header.tsx`、`skeleton-table.tsx` 为跨模块通用组件，禁止重复创建。
 - **API 客户端**：`apiClient`（axios）自动附加 Bearer Token，响应拦截器处理业务错误码和 401 跳转。
 - **数据获取**：使用 TanStack Query（useQuery/useMutation），缓存和请求状态由 QueryClient 管理。
 - **shadcn/ui 管理**：组件通过 `pnpm dlx shadcn@latest add <component>` 添加，禁止手动创建 `ui/` 下的文件。
@@ -198,9 +207,11 @@ web/
 - **Q&A 实时通信**：Interact 页面通过 WebSocket 与后端通信，`useQaWebSocket` 管理连接状态和消息分发，支持断线重连和会话恢复。
 - **Q&A 管理端**：Console Q&A 页面通过 REST API 管理会话，使用 `useQaAdmin` Hook。
 - **题型组件**：Interact 页面每种题型对应独立的 `question-<type>.tsx` 组件，通过 `question-card.tsx` 统一分发渲染，`question-shell.tsx` 提供统一外壳布局。
-- **交互原语**：`interact/primitives/` 包含可复用的展示原语组件，通过 `index.ts` 统一导出。
+- **交互原语**：`interact/primitives/` 包含可复用的展示原语组件，通过 `index.ts` 统一导出；文件名统一使用 **kebab-case**（如 `kicker.tsx`、`markdown-lite.tsx`），禁止使用 PascalCase 命名。
+- **HTML 沙盒**：`shadow-html.tsx` 使用 Shadow DOM 隔离不可信 HTML 渲染，禁止直接使用 `dangerouslySetInnerHTML`。
 - **WebAuthn 集成**：浏览器端通过 `lib/webauthn/helpers.ts` 处理 ArrayBuffer/Base64 编解码，`useBiometric` Hook 管理注册/登录/凭证 CRUD 流程。
 - **个人资料管理**：`console/profile.tsx` 页面包含三个标签页（资料/密码/生物认证），分别对应 `profile/` 下的三个组件。
+- **首页模块化**：`routes/_public/index.tsx` 已拆分为 `components/landing/` 下的区块组件（hero/features/tech），禁止在路由文件中内联大段 JSX。
 
 ## 反模式
 
@@ -209,10 +220,14 @@ web/
 - 禁止手动创建 `src/components/ui/` 下的 shadcn/ui 组件文件。
 - 禁止使用 npm 或 yarn 安装依赖。
 - 禁止在 `styles.css` 中引入第三方 CSS 库的完整样式。
-- 禁止直接操作 `localStorage` 存储认证凭据；统一使用 `js-cookie`。
+- 禁止直接操作 `localStorage` 存储认证凭据；统一使用 `js-cookie`（通过 `lib/auth/cookie-utils.ts`）。
 - 禁止在组件中直接调用 axios；必须通过 `lib/apis/` 层封装。
 - 禁止在组件中直接操作 WebAuthn API；必须通过 `lib/webauthn/helpers.ts` + `useBiometric` Hook。
 - 禁止在 Interact 页面使用轮询获取问题；统一通过 WebSocket 实时推送。
+- 禁止在 `interact/primitives/` 中使用 PascalCase 文件名；统一 kebab-case。
+- 禁止直接使用 `dangerouslySetInnerHTML` 渲染不可信 HTML；必须通过 `shadow-html.tsx` 沙盒组件。
+- 禁止在业务模块中重复创建删除确认对话框；统一使用 `confirm-delete-dialog.tsx`。
+- 禁止在路由文件（`routes/*.tsx`）中内联大段页面 JSX；拆分到 `components/` 下。
 
 ## 调试路径
 

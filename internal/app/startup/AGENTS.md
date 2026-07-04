@@ -61,6 +61,6 @@ startup/
 `prepare` 和 `mcpInit` 依赖 context 中的 DB/Redis 实例（`xCtxUtil.MustGetDB/MustGetRDB`），因此 DB/Redis 节点必须先执行。
 
 ## 迁移顺序
-`migrateTables` 当前：`Info` → `Apikey` → `Project` → `Pin` → `QaSession` → `QaQuestion` → `QaSupplement` → `BiometricCredential`。
+`migrateTables` 当前：`Info` → `Apikey` → `Project` → `Pin` → `QaSession` → `QaQuestion` → `QaSupplement` → `BiometricCredential` → `RepoWikiConfig` → `WikiVersion`。
 
 新增实体时根据 FK 依赖关系追加到正确位置。
