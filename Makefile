@@ -8,29 +8,31 @@ OUTPUT_BIN = lumina
 
 .DEFAULT_GOAL := help
 
-.PHONY: help swag run dev dev-backend dev-frontend tidy fmt test vet lint build generate
+.PHONY: help swag run dev dev-backend dev-frontend build-frontend build-wiki-frontend tidy fmt test vet lint build generate
 
 # 显示帮助信息
 help:
 	@echo "Lumina · 微明 - 可用命令"
 	@echo ""
 	@echo "开发命令:"
-	@echo "  make swag         - 生成 Swagger 文档"
-	@echo "  make run          - 运行后端程序"
-	@echo "  make dev          - 生成文档并运行后端 (跳过前端构建)"
-	@echo "  make dev-backend  - 一键构建并运行后端 (包含前端构建)"
-	@echo "  make dev-frontend - 运行前端开发服务器"
+	@echo "  make swag                - 生成 Swagger 文档"
+	@echo "  make run                 - 运行后端程序"
+	@echo "  make dev                 - 生成文档并运行后端 (跳过前端构建)"
+	@echo "  make dev-backend         - 一键构建并运行后端 (包含前端构建)"
+	@echo "  make dev-frontend        - 运行前端开发服务器"
 	@echo ""
 	@echo "构建命令:"
-	@echo "  make generate     - 一键构建：前端打包 → Swagger → Go 编译"
-	@echo "  make build        - 同 generate"
+	@echo "  make generate            - 一键构建：主前端 → Wiki Reader → Swagger → Go 编译"
+	@echo "  make build               - 同 generate"
+	@echo "  make build-frontend      - 仅构建主前端 (产出 web/dist)"
+	@echo "  make build-wiki-frontend - 仅构建 Wiki Reader 前端 (产出 web-wiki/dist)"
 	@echo ""
 	@echo "质量命令:"
-	@echo "  make tidy         - 整理 Go 模块"
-	@echo "  make fmt          - 格式化代码"
-	@echo "  make test         - 运行测试"
-	@echo "  make vet          - 运行 go vet 静态检查"
-	@echo "  make lint         - 运行 golangci-lint (未安装则跳过)"
+	@echo "  make tidy                - 整理 Go 模块"
+	@echo "  make fmt                 - 格式化 Go 代码"
+	@echo "  make test                - 运行 Go 测试"
+	@echo "  make vet                 - 运行 go vet 静态检查"
+	@echo "  make lint                - 运行 golangci-lint (未安装则跳过)"
 	@echo ""
 	@echo "示例:"
 	@echo "  make dev"
@@ -49,6 +51,14 @@ run:
 tidy:
 	go mod tidy
 
+# 格式化 Go 代码
+fmt:
+	go fmt ./...
+
+# 运行 Go 测试
+test:
+	go test ./...
+
 # 组合目标：先生成文档，再运行后端程序
 dev-backend: generate run
 
@@ -59,16 +69,20 @@ dev: swag run
 dev-frontend:
 	cd web && pnpm dev
 
-# 一键构建：前端打包 → Swagger 文档 → Go 编译
-generate: build-frontend swag
+# 一键构建：前端打包 → Wiki Reader 前端打包 → Swagger 文档 → Go 编译
+generate: build-frontend build-wiki-frontend swag
 	go build -o $(OUTPUT_BIN)
 
 # build 是 generate 的别名
 build: generate
 
-# 仅构建前端（产出 web/dist）
+# 仅构建主前端（产出 web/dist）
 build-frontend:
 	cd web && pnpm install && pnpm build
+
+# 仅构建 Wiki Reader 前端（产出 web-wiki/dist）
+build-wiki-frontend:
+	cd web-wiki && pnpm install && pnpm build
 
 # 静态检查
 vet:

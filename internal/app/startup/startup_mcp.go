@@ -3,8 +3,8 @@ package startup
 import (
 	"context"
 
-	xCtx "github.com/bamboo-services/bamboo-base-go/defined/context"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
+	xCtx "github.com/bamboo-services/bamboo-base-go/defined/context"
 	"github.com/xiaolfeng/Lumina/internal/logic"
 	"github.com/xiaolfeng/Lumina/internal/mcp"
 )
@@ -20,9 +20,14 @@ func (r *reg) mcpInit(ctx context.Context) (any, error) {
 	qaLogic := logic.NewQaLogic(ctx)
 	projectLogic := logic.NewProjectLogic(ctx)
 	pinLogic := logic.NewPinLogic(ctx)
+	repoWikiLogic := logic.GetRepoWikiLogicFromContext(ctx)
+	if repoWikiLogic == nil {
+		log.Warn(ctx, "context 中未找到 RepoWikiLogic，MCP 的 RepoWiki 工具将不可用")
+	}
 	mcp.SetQaLogic(qaLogic)
 	mcp.SetProjectLogic(projectLogic)
 	mcp.SetPinLogic(pinLogic)
+	mcp.SetRepoWikiLogic(repoWikiLogic)
 
 	handler := mcp.InitMCPServer(ctx)
 

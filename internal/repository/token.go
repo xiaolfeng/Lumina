@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
+	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	"github.com/redis/go-redis/v9"
 	"github.com/xiaolfeng/Lumina/internal/repository/cache"
 )

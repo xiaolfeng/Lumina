@@ -11,24 +11,26 @@ import (
 )
 
 type route struct {
-	engine     *gin.Engine
-	context    context.Context
-	frontendFS fs.FS
+	engine         *gin.Engine
+	context        context.Context
+	frontendFS     fs.FS
+	wikiFrontendFS fs.FS
 }
 
 // NewRoute 注册所有后端 API 路由（不含前端静态资源）。
 func NewRoute(reg *xReg.Reg) {
-	NewRouteWithFrontend(nil)(reg)
+	NewRouteWithFrontend(nil, nil)(reg)
 }
 
 // NewRouteWithFrontend 注册全部路由，包括前端 SPA 静态资源服务。
-// frontendFS 为 nil 时跳过前端路由注册。
-func NewRouteWithFrontend(frontendFS fs.FS) func(reg *xReg.Reg) {
+// frontendFS 或 wikiFrontendFS 为 nil 时跳过对应前端路由注册。
+func NewRouteWithFrontend(frontendFS fs.FS, wikiFrontendFS fs.FS) func(reg *xReg.Reg) {
 	return func(reg *xReg.Reg) {
 		r := &route{
-			engine:     reg.Serve,
-			context:    reg.Init.Ctx,
-			frontendFS: frontendFS,
+			engine:         reg.Serve,
+			context:        reg.Init.Ctx,
+			frontendFS:     frontendFS,
+			wikiFrontendFS: wikiFrontendFS,
 		}
 
 		r.engine.NoMethod(xRoute.NoMethod)
@@ -54,6 +56,8 @@ func NewRouteWithFrontend(frontendFS fs.FS) func(reg *xReg.Reg) {
 		r.qaRouter(apiRouter)
 		r.qaDownloadRouter(apiRouter)
 		r.userProtectedRouter(apiRouter)
+		r.repowikiRouter(apiRouter)
+		r.wikiReaderRouter(apiRouter)
 		r.wsRouter(apiRouter)
 
 		if r.frontendFS != nil {

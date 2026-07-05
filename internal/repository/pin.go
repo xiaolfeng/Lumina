@@ -8,8 +8,8 @@ import (
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
-	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
+	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	apiPin "github.com/xiaolfeng/Lumina/api/pin"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"

@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
-	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	xUtil "github.com/bamboo-services/bamboo-base-go/common/utility"
+	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 )
 
 // FileCacheService 文件缓存服务

@@ -15,6 +15,7 @@ type service struct {
 	qaLogic        *logic.QaLogic
 	biometricLogic *logic.BiometricLogic
 	pinLogic       *logic.PinLogic
+	repoWikiLogic  *logic.RepoWikiLogic
 }
 
 type handler struct {
@@ -33,6 +34,11 @@ type IHandler interface {
 
 func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 	authLogic := logic.NewAuthLogic(ctx)
+	repoWikiLogic := logic.GetRepoWikiLogicFromContext(ctx)
+	if repoWikiLogic == nil {
+		// 兼容启动顺序未注入的场景（如单测），兜底创建新实例
+		repoWikiLogic = logic.NewRepoWikiLogic(ctx)
+	}
 	return &T{
 		name: handlerName,
 		log:  xLog.WithName(xLog.NamedCONT, handlerName),
@@ -44,6 +50,7 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 			qaLogic:        logic.NewQaLogic(ctx),
 			biometricLogic: logic.NewBiometricLogic(ctx, authLogic),
 			pinLogic:       logic.NewPinLogic(ctx),
+			repoWikiLogic:  repoWikiLogic,
 		},
 	}
 }
@@ -64,3 +71,4 @@ type BiometricHandler handler
 
 type PinHandler handler
 
+type RepoWikiHandler handler

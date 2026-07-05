@@ -22,5 +22,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	xMain.Runner(reg, log, route.NewRouteWithFrontend(distFS), nil)
+	wikiDistFS, err := fs.Sub(wikiFrontendDist, "web-wiki/dist")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Wiki Reader 资源初始化失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	xMain.Runner(reg, log, route.NewRouteWithFrontend(distFS, wikiDistFS), nil)
 }

@@ -1,8 +1,8 @@
 package handler
 
 import (
-	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
+	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
 	"github.com/gin-gonic/gin"
 	apiCommon "github.com/xiaolfeng/Lumina/api/common"
 	apiPin "github.com/xiaolfeng/Lumina/api/pin"

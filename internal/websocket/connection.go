@@ -22,15 +22,15 @@ const (
 // Connection WebSocket 连接封装
 type Connection struct {
 	conn        *websocket.Conn // 底层 WebSocket 连接
-	hub         *Hub           // 所属 Hub 引用
-	sessionID   string         // QA 会话 ID（雪花 ID 字符串）
-	sessionHash string         // 会话 Hash 标识，用于跨设备通知和主动离开判断
-	deviceID    string         // 设备唯一标识
-	send        chan []byte    // 待发送消息缓冲通道
-	mu          sync.Mutex     // 写锁，防止并发写入
-	lastPing    time.Time      // 最后一次收到心跳响应的时间
-	isAlive     bool           // 连接存活标记
-	isVoluntary bool           // 是否为主动离开（true=用户主动关闭/发送 session_leave）
+	hub         *Hub            // 所属 Hub 引用
+	sessionID   string          // QA 会话 ID（雪花 ID 字符串）
+	sessionHash string          // 会话 Hash 标识，用于跨设备通知和主动离开判断
+	deviceID    string          // 设备唯一标识
+	send        chan []byte     // 待发送消息缓冲通道
+	mu          sync.Mutex      // 写锁，防止并发写入
+	lastPing    time.Time       // 最后一次收到心跳响应的时间
+	isAlive     bool            // 连接存活标记
+	isVoluntary bool            // 是否为主动离开（true=用户主动关闭/发送 session_leave）
 }
 
 // NewConnection 创建连接封装实例

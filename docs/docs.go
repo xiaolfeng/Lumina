@@ -2121,6 +2121,689 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/repowiki/configs": {
+            "get": {
+                "description": "按 page/size 分页查询 RepoWiki 配置列表，返回配置信息与总数",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 获取 RepoWiki 配置列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.ConfigListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "提交仓库地址、分支、语言等参数创建 RepoWiki 分析配置，可选 SSH Key 与 Wiki 访问密码",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 创建 RepoWiki 配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "创建配置请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/repowiki.CreateConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.ConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repowiki/configs/{id}": {
+            "get": {
+                "description": "根据配置 ID 查询单个 RepoWiki 配置详情",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 获取 RepoWiki 配置详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.ConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "更新指定 ID 的 RepoWiki 配置信息（支持部分更新，指针 nil = 不更新）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 更新 RepoWiki 配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新配置请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/repowiki.UpdateConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "根据配置 ID 删除指定 RepoWiki 配置，删除后不可恢复",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 删除 RepoWiki 配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repowiki/configs/{id}/analyze": {
+            "post": {
+                "description": "根据配置 ID 触发 RepoWiki 仓库分析（异步执行），返回版本 ID 用于轮询状态",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 触发仓库分析",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "分析请求（语言/分支可选）",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/repowiki.AnalyzeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "分析任务已触发",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.AnalyzeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "分析任务已达并发上限",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "LLM Provider 未就绪",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repowiki/configs/{id}/update": {
+            "put": {
+                "description": "根据配置 ID 触发 RepoWiki 增量更新（异步执行），自动对比 commit hash 决定全量或增量分析",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 触发增量更新",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新请求（语言/分支可选）",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/repowiki.AnalyzeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新任务已触发",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.AnalyzeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "分析任务已达并发上限",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "LLM Provider 未就绪",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repowiki/configs/{id}/versions": {
+            "get": {
+                "description": "按配置 ID 分页查询 Wiki 版本列表，返回版本状态与总数",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 获取版本列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.VersionListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repowiki/versions/{id}": {
+            "get": {
+                "description": "根据版本 ID 查询完整的版本信息（含 commit hash、分析耗时、token 消耗等）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 获取版本详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "版本ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.VersionStatusResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "版本不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repowiki/versions/{id}/status": {
+            "get": {
+                "description": "根据版本 ID 查询分析状态（pending/analyzing/completed/failed），用于轮询分析进度",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 获取版本分析状态",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "版本ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.VersionStatusResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "版本不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/biometric/credentials": {
             "get": {
                 "description": "返回当前用户已注册的所有生物特征凭证",
@@ -2341,6 +3024,243 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wiki/{id}/auth": {
+            "post": {
+                "description": "提交 Wiki 访问密码，验证通过后设置 HMAC 签名 Cookie（有效期 2 小时）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wiki阅读器接口"
+                ],
+                "summary": "[公开] Wiki 密码验证",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Wiki 配置 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Wiki 密码验证请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/repowiki.WikiAuthRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "验证成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "密码错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Wiki 配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wiki/{id}/auth-check": {
+            "get": {
+                "description": "检查 Wiki 是否需要密码保护以及当前 Cookie 是否有效",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wiki阅读器接口"
+                ],
+                "summary": "[公开] 检查 Wiki 认证状态",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Wiki 配置 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "认证状态",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.WikiAuthCheckResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "无效的 Wiki ID",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Wiki 配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wiki/{id}/manifest": {
+            "get": {
+                "description": "读取 Wiki 元数据清单（含侧边栏导航、首页路径、项目名称），受密码保护的 Wiki 需 Cookie 认证",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wiki阅读器接口"
+                ],
+                "summary": "[公开] 获取 Wiki 导航清单",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Wiki 配置 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.WikiManifestResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "无效的 Wiki ID",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Wiki 需要认证",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "清单文件不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/wiki/{id}/page/{path}": {
+            "get": {
+                "description": "根据 Wiki ID 和页面路径读取 Markdown 内容，受密码保护的 Wiki 需携带有效的 HMAC Cookie",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wiki阅读器接口"
+                ],
+                "summary": "[公开] 获取 Wiki 页面",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Wiki 配置 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面路径（如 content/项目概览.md）",
+                        "name": "path",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.WikiPageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "无效的 Wiki ID 或页面路径",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Wiki 需要认证（Cookie 缺失或无效）",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "页面文件不存在",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -3356,6 +4276,346 @@ const docTemplate = `{
                 "session_ttl": {
                     "description": "Session TTL（秒），nil不更新",
                     "type": "integer"
+                }
+            }
+        },
+        "repowiki.AnalyzeRequest": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "description": "分析分支（默认使用配置的 default_branch）",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "Wiki语言（默认使用配置的 default_language）",
+                    "type": "string"
+                }
+            }
+        },
+        "repowiki.AnalyzeResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "初始状态（pending）",
+                    "type": "string"
+                },
+                "version_id": {
+                    "description": "版本ID",
+                    "type": "integer"
+                }
+            }
+        },
+        "repowiki.ConfigListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "配置列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/repowiki.ConfigResponse"
+                    }
+                },
+                "total": {
+                    "description": "总数",
+                    "type": "integer"
+                }
+            }
+        },
+        "repowiki.ConfigResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "default_branch": {
+                    "description": "默认分支",
+                    "type": "string"
+                },
+                "default_language": {
+                    "description": "默认Wiki语言",
+                    "type": "string"
+                },
+                "has_password": {
+                    "description": "是否设置Wiki密码",
+                    "type": "boolean"
+                },
+                "has_ssh_key": {
+                    "description": "是否配置SSH密钥",
+                    "type": "boolean"
+                },
+                "id": {
+                    "description": "配置ID",
+                    "type": "integer"
+                },
+                "last_accessed_at": {
+                    "description": "最后访问时间",
+                    "type": "string"
+                },
+                "latest_version": {
+                    "description": "最近版本状态",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/repowiki.VersionStatusResponse"
+                        }
+                    ]
+                },
+                "name": {
+                    "description": "配置名称",
+                    "type": "string"
+                },
+                "project_id": {
+                    "description": "关联项目ID",
+                    "type": "integer"
+                },
+                "repo_url": {
+                    "description": "Git仓库地址",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "当前分析状态",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                }
+            }
+        },
+        "repowiki.CreateConfigRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "repo_url"
+            ],
+            "properties": {
+                "default_branch": {
+                    "description": "默认分支（默认 main）",
+                    "type": "string"
+                },
+                "default_language": {
+                    "description": "默认Wiki语言（默认 zh）",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "配置名称",
+                    "type": "string"
+                },
+                "project_id": {
+                    "description": "关联项目ID（可选）",
+                    "type": "integer"
+                },
+                "repo_url": {
+                    "description": "Git仓库地址",
+                    "type": "string"
+                },
+                "ssh_key": {
+                    "description": "SSH私钥（PEM格式，私有仓库用）",
+                    "type": "string"
+                },
+                "wiki_password": {
+                    "description": "Wiki访问密码（可选保护）",
+                    "type": "string"
+                }
+            }
+        },
+        "repowiki.UpdateConfigRequest": {
+            "type": "object",
+            "properties": {
+                "default_branch": {
+                    "description": "默认分支",
+                    "type": "string"
+                },
+                "default_language": {
+                    "description": "默认Wiki语言",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "配置名称",
+                    "type": "string"
+                },
+                "repo_url": {
+                    "description": "Git仓库地址",
+                    "type": "string"
+                },
+                "ssh_key": {
+                    "description": "SSH私钥（传空字符串清除）",
+                    "type": "string"
+                },
+                "wiki_password": {
+                    "description": "Wiki访问密码（传空字符串清除）",
+                    "type": "string"
+                }
+            }
+        },
+        "repowiki.VersionListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "版本列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/repowiki.VersionStatusResponse"
+                    }
+                },
+                "total": {
+                    "description": "总数",
+                    "type": "integer"
+                }
+            }
+        },
+        "repowiki.VersionStatusResponse": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "description": "分析分支",
+                    "type": "string"
+                },
+                "commit_hash": {
+                    "description": "Git commit hash",
+                    "type": "string"
+                },
+                "completed_at": {
+                    "description": "分析完成时间",
+                    "type": "string"
+                },
+                "config_id": {
+                    "description": "关联配置ID",
+                    "type": "integer"
+                },
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "current_stage": {
+                    "description": "当前阶段",
+                    "type": "string"
+                },
+                "duration_ms": {
+                    "description": "分析耗时毫秒",
+                    "type": "integer"
+                },
+                "error_msg": {
+                    "description": "失败原因",
+                    "type": "string"
+                },
+                "file_count": {
+                    "description": "分析文件数",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "版本ID",
+                    "type": "integer"
+                },
+                "language": {
+                    "description": "Wiki语言",
+                    "type": "string"
+                },
+                "progress_percent": {
+                    "description": "进度百分比（0-100）",
+                    "type": "integer"
+                },
+                "started_at": {
+                    "description": "分析开始时间",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "分析状态",
+                    "type": "string"
+                },
+                "token_count": {
+                    "description": "LLM token消耗",
+                    "type": "integer"
+                }
+            }
+        },
+        "repowiki.WikiAuthCheckResponse": {
+            "type": "object",
+            "properties": {
+                "authenticated": {
+                    "description": "是否已授权（Cookie 有效）",
+                    "type": "boolean"
+                },
+                "password_required": {
+                    "description": "是否需要密码保护",
+                    "type": "boolean"
+                }
+            }
+        },
+        "repowiki.WikiAuthRequest": {
+            "type": "object",
+            "required": [
+                "password"
+            ],
+            "properties": {
+                "password": {
+                    "description": "Wiki访问密码",
+                    "type": "string"
+                }
+            }
+        },
+        "repowiki.WikiManifestResponse": {
+            "type": "object",
+            "properties": {
+                "home": {
+                    "description": "首页路径",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "Wiki 语言",
+                    "type": "string"
+                },
+                "navigation": {
+                    "description": "侧边栏导航",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/repowiki.WikiNavItem"
+                    }
+                },
+                "project_name": {
+                    "description": "项目名称",
+                    "type": "string"
+                }
+            }
+        },
+        "repowiki.WikiNavItem": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "description": "子导航项",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/repowiki.WikiNavItem"
+                    }
+                },
+                "path": {
+                    "description": "页面路径",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "显示标题",
+                    "type": "string"
+                }
+            }
+        },
+        "repowiki.WikiPageResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "Markdown 内容",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "Wiki 语言",
+                    "type": "string"
+                },
+                "path": {
+                    "description": "页面路径",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "页面标题",
+                    "type": "string"
                 }
             }
         },

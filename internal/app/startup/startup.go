@@ -5,6 +5,8 @@ import (
 
 	xCtx "github.com/bamboo-services/bamboo-base-go/defined/context"
 	xRegNode "github.com/bamboo-services/bamboo-base-go/major/register/node"
+
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
 type reg struct {
@@ -20,6 +22,7 @@ func Init() (context.Context, []xRegNode.RegNodeList) {
 	regNode := []xRegNode.RegNodeList{
 		{Key: xCtx.DatabaseKey, Node: businessReg.databaseInit},
 		{Key: xCtx.RedisClientKey, Node: businessReg.nosqlInit},
+		{Key: bConst.RepoWikiLogicKey, Node: businessReg.repoWikiInit},
 		{Key: MCPHandlerKey, Node: businessReg.mcpInit},
 		{Key: xCtx.Exec, Node: businessReg.businessDataPrepare},
 	}

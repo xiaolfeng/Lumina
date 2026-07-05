@@ -3,9 +3,9 @@ package bConst
 // Pin 分类常量
 const (
 	PinCategoryNotice     = "notice"     // 注意事项
-	PinCategoryDependency = "dependency"  // 依赖约束
+	PinCategoryDependency = "dependency" // 依赖约束
 	PinCategoryAPIChange  = "api_change" // 接口变更
-	PinCategoryOther       = "other"      // 其他
+	PinCategoryOther      = "other"      // 其他
 )
 
 // Pin 状态常量

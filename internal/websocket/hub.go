@@ -31,16 +31,16 @@ const heartbeatTimeout = 15 * time.Second
 // 通过 register/unregister 通道实现并发安全的连接生命周期管理。
 // 新连接注册时自动推送该会话下所有待回答问题（用于前端重连恢复）。
 type Hub struct {
-	sessions      map[string]map[string]*Connection // sessionID → deviceID → Connection
-	register      chan *Connection                   // 注册通道
-	unregister    chan *Connection                   // 注销通道
-	mu            sync.RWMutex                       // sessions 读写锁
-	log           *xLog.LogNamedLogger               // 日志记录器
-	handler       MessageHandler                     // 消息处理回调
-	sessionRepo   *repository.QaSessionRepo          // QA 会话仓库
-	questionRepo  *repository.QaQuestionRepo         // QA 问题仓库（用于连接时推送 pending 问题）
+	sessions       map[string]map[string]*Connection // sessionID → deviceID → Connection
+	register       chan *Connection                  // 注册通道
+	unregister     chan *Connection                  // 注销通道
+	mu             sync.RWMutex                      // sessions 读写锁
+	log            *xLog.LogNamedLogger              // 日志记录器
+	handler        MessageHandler                    // 消息处理回调
+	sessionRepo    *repository.QaSessionRepo         // QA 会话仓库
+	questionRepo   *repository.QaQuestionRepo        // QA 问题仓库（用于连接时推送 pending 问题）
 	supplementRepo *repository.QaSupplementRepo      // QA 补充仓库（用于连接时推送已存在 supplement）
-	db            *gorm.DB                           // 数据库实例（用于异步更新 OnlineDevices）
+	db             *gorm.DB                          // 数据库实例（用于异步更新 OnlineDevices）
 }
 
 // 全局单例 Hub 实例

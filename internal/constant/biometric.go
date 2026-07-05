@@ -9,7 +9,7 @@ const (
 
 // WebAuthn 默认值
 const (
-	DefaultBiometricRPID   = "localhost"               // 默认 RP ID
-	DefaultBiometricRPName = "Lumina"                  // 默认 RP 名称
-	DefaultBiometricOrigin = "http://localhost:8080"   // 默认 Origin
+	DefaultBiometricRPID   = "localhost"             // 默认 RP ID
+	DefaultBiometricRPName = "Lumina"                // 默认 RP 名称
+	DefaultBiometricOrigin = "http://localhost:8080" // 默认 Origin
 )

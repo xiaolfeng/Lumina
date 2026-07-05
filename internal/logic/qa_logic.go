@@ -8,16 +8,16 @@ import (
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
-	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
+	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
+	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	"github.com/xiaolfeng/Lumina/api/qa"
 	"github.com/xiaolfeng/Lumina/internal/entity"
+	qaQueue "github.com/xiaolfeng/Lumina/internal/qa"
 	"github.com/xiaolfeng/Lumina/internal/repository"
 	"github.com/xiaolfeng/Lumina/internal/repository/cache"
 	"github.com/xiaolfeng/Lumina/internal/service"
-	qaQueue "github.com/xiaolfeng/Lumina/internal/qa"
 )
 
 // qaRepo QA模块依赖的仓储集合

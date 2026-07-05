@@ -13,10 +13,10 @@ import (
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
-	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
+	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xUtil "github.com/bamboo-services/bamboo-base-go/common/utility"
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
-	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
+	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 
 	apiBiometric "github.com/xiaolfeng/Lumina/api/biometric"
 	apiUser "github.com/xiaolfeng/Lumina/api/user"

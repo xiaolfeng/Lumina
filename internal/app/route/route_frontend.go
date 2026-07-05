@@ -8,24 +8,28 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const wikiReaderURLPrefix = "/wiki/"
+
 // frontendRouter 注册前端静态资源服务与 SPA fallback。
-// 将 web/dist 构建产物通过 go:embed 嵌入到 Go 二进制中，
+// 将 web/dist 与 web-wiki/dist 构建产物通过 go:embed 嵌入到 Go 二进制中，
 // 使得单个可执行文件即可提供完整的前后端服务。
 func (r *route) frontendRouter() {
 	fileServer := http.FileServer(http.FS(r.frontendFS))
+	wikiFileServer := http.FileServer(http.FS(r.wikiFrontendFS))
 
-	// SPA fallback：所有未匹配已注册路由的请求，
-	// 若为静态资源则直接返回文件，否则返回 index.html 让前端路由接管
 	r.engine.NoRoute(func(ctx *gin.Context) {
 		path := ctx.Request.URL.Path
 
-		// API 与 Swagger 路径交给框架默认 404 处理
 		if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/swagger") {
 			xRoute.NoRoute(ctx)
 			return
 		}
 
-		// 尝试打开请求路径对应的静态文件
+		if strings.HasPrefix(path, wikiReaderURLPrefix) {
+			r.serveWikiReaderSPA(ctx, wikiFileServer)
+			return
+		}
+
 		cleanPath := strings.TrimPrefix(path, "/")
 		if cleanPath != "" {
 			if f, openErr := r.frontendFS.Open(cleanPath); openErr == nil {
@@ -38,8 +42,28 @@ func (r *route) frontendRouter() {
 			}
 		}
 
-		// SPA fallback：重写为 index.html，让前端路由处理页面路径
 		ctx.Request.URL.Path = "/"
 		fileServer.ServeHTTP(ctx.Writer, ctx.Request)
 	})
+}
+
+// serveWikiReaderSPA 服务 Wiki Reader SPA。
+// 静态资源（CSS/JS/图片）直接返回；其余路径返回 index.html 作为 SPA fallback。
+func (r *route) serveWikiReaderSPA(ctx *gin.Context, wikiFileServer http.Handler) {
+	cleanPath := strings.TrimPrefix(ctx.Request.URL.Path, wikiReaderURLPrefix)
+	if cleanPath == "" {
+		cleanPath = "/"
+	}
+
+	if f, openErr := r.wikiFrontendFS.Open(cleanPath); openErr == nil {
+		if stat, statErr := f.Stat(); statErr == nil && !stat.IsDir() {
+			f.Close()
+			wikiFileServer.ServeHTTP(ctx.Writer, ctx.Request)
+			return
+		}
+		f.Close()
+	}
+
+	ctx.Request.URL.Path = "/"
+	wikiFileServer.ServeHTTP(ctx.Writer, ctx.Request)
 }

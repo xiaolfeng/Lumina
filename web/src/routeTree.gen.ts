@@ -28,6 +28,9 @@ import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-passw
 import { Route as AuthNewRouteImport } from './routes/auth/new'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as PublicStartRouteImport } from './routes/_public/start'
+import { Route as ConsoleRepowikiIndexRouteImport } from './routes/console/repowiki/index'
+import { Route as ConsoleRepowikiCreateRouteImport } from './routes/console/repowiki/create'
+import { Route as ConsoleRepowikiConfigIdRouteImport } from './routes/console/repowiki/$configId'
 import { Route as ConsoleQaSessionIdRouteImport } from './routes/console/qa/$sessionId'
 
 const InteractRoute = InteractRouteImport.update({
@@ -124,6 +127,21 @@ const PublicStartRoute = PublicStartRouteImport.update({
   path: '/start',
   getParentRoute: () => PublicRoute,
 } as any)
+const ConsoleRepowikiIndexRoute = ConsoleRepowikiIndexRouteImport.update({
+  id: '/repowiki/',
+  path: '/repowiki/',
+  getParentRoute: () => ConsoleRoute,
+} as any)
+const ConsoleRepowikiCreateRoute = ConsoleRepowikiCreateRouteImport.update({
+  id: '/repowiki/create',
+  path: '/repowiki/create',
+  getParentRoute: () => ConsoleRoute,
+} as any)
+const ConsoleRepowikiConfigIdRoute = ConsoleRepowikiConfigIdRouteImport.update({
+  id: '/repowiki/$configId',
+  path: '/repowiki/$configId',
+  getParentRoute: () => ConsoleRoute,
+} as any)
 const ConsoleQaSessionIdRoute = ConsoleQaSessionIdRouteImport.update({
   id: '/$sessionId',
   path: '/$sessionId',
@@ -150,6 +168,9 @@ export interface FileRoutesByFullPath {
   '/console/': typeof ConsoleIndexRoute
   '/interact/': typeof InteractIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/console/repowiki/$configId': typeof ConsoleRepowikiConfigIdRoute
+  '/console/repowiki/create': typeof ConsoleRepowikiCreateRoute
+  '/console/repowiki/': typeof ConsoleRepowikiIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
@@ -169,6 +190,9 @@ export interface FileRoutesByTo {
   '/console': typeof ConsoleIndexRoute
   '/interact': typeof InteractIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/console/repowiki/$configId': typeof ConsoleRepowikiConfigIdRoute
+  '/console/repowiki/create': typeof ConsoleRepowikiCreateRoute
+  '/console/repowiki': typeof ConsoleRepowikiIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -192,6 +216,9 @@ export interface FileRoutesById {
   '/console/': typeof ConsoleIndexRoute
   '/interact/': typeof InteractIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/console/repowiki/$configId': typeof ConsoleRepowikiConfigIdRoute
+  '/console/repowiki/create': typeof ConsoleRepowikiCreateRoute
+  '/console/repowiki/': typeof ConsoleRepowikiIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -215,6 +242,9 @@ export interface FileRouteTypes {
     | '/console/'
     | '/interact/'
     | '/console/qa/$sessionId'
+    | '/console/repowiki/$configId'
+    | '/console/repowiki/create'
+    | '/console/repowiki/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -234,6 +264,9 @@ export interface FileRouteTypes {
     | '/console'
     | '/interact'
     | '/console/qa/$sessionId'
+    | '/console/repowiki/$configId'
+    | '/console/repowiki/create'
+    | '/console/repowiki'
   id:
     | '__root__'
     | '/_public'
@@ -256,6 +289,9 @@ export interface FileRouteTypes {
     | '/console/'
     | '/interact/'
     | '/console/qa/$sessionId'
+    | '/console/repowiki/$configId'
+    | '/console/repowiki/create'
+    | '/console/repowiki/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -400,6 +436,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicStartRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/console/repowiki/': {
+      id: '/console/repowiki/'
+      path: '/repowiki'
+      fullPath: '/console/repowiki/'
+      preLoaderRoute: typeof ConsoleRepowikiIndexRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
+    '/console/repowiki/create': {
+      id: '/console/repowiki/create'
+      path: '/repowiki/create'
+      fullPath: '/console/repowiki/create'
+      preLoaderRoute: typeof ConsoleRepowikiCreateRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
+    '/console/repowiki/$configId': {
+      id: '/console/repowiki/$configId'
+      path: '/repowiki/$configId'
+      fullPath: '/console/repowiki/$configId'
+      preLoaderRoute: typeof ConsoleRepowikiConfigIdRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
     '/console/qa/$sessionId': {
       id: '/console/qa/$sessionId'
       path: '/$sessionId'
@@ -458,6 +515,9 @@ interface ConsoleRouteChildren {
   ConsoleQaRoute: typeof ConsoleQaRouteWithChildren
   ConsoleSettingsRoute: typeof ConsoleSettingsRoute
   ConsoleIndexRoute: typeof ConsoleIndexRoute
+  ConsoleRepowikiConfigIdRoute: typeof ConsoleRepowikiConfigIdRoute
+  ConsoleRepowikiCreateRoute: typeof ConsoleRepowikiCreateRoute
+  ConsoleRepowikiIndexRoute: typeof ConsoleRepowikiIndexRoute
 }
 
 const ConsoleRouteChildren: ConsoleRouteChildren = {
@@ -469,6 +529,9 @@ const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleQaRoute: ConsoleQaRouteWithChildren,
   ConsoleSettingsRoute: ConsoleSettingsRoute,
   ConsoleIndexRoute: ConsoleIndexRoute,
+  ConsoleRepowikiConfigIdRoute: ConsoleRepowikiConfigIdRoute,
+  ConsoleRepowikiCreateRoute: ConsoleRepowikiCreateRoute,
+  ConsoleRepowikiIndexRoute: ConsoleRepowikiIndexRoute,
 }
 
 const ConsoleRouteWithChildren =

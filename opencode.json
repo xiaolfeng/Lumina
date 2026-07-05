@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "Lumina": {
+      "type": "remote",
+      "url": "http://localhost:8800/api/v1/mcp",
+      "headers": {
+        "Authorization": "Bearer lumi_r_PCgb0ZZ0BIrkK6QflBJKoyCorwGSTL-eLK-EmiRxo"
+      }
+    }
+  }
+}

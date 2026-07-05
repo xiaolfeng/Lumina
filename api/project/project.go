@@ -2,17 +2,17 @@ package project
 
 // CreateProjectRequest 创建项目请求
 type CreateProjectRequest struct {
-	Name        string   `json:"name" binding:"required"`     // 项目名称
-	AliasName   string   `json:"alias_name"`                 // 项目别名
+	Name        string   `json:"name" binding:"required"`       // 项目名称
+	AliasName   string   `json:"alias_name"`                    // 项目别名
 	MatchPath   []string `json:"match_path" binding:"required"` // 项目路径匹配列表
-	Description string   `json:"description"`                // 项目描述
+	Description string   `json:"description"`                   // 项目描述
 }
 
 // UpdateProjectRequest 更新项目请求
 type UpdateProjectRequest struct {
 	Name        string   `json:"name" binding:"required"` // 项目名称
-	AliasName   string   `json:"alias_name"`             // 项目别名
-	MatchPath   []string `json:"match_path"`             // 项目路径匹配列表
+	AliasName   string   `json:"alias_name"`              // 项目别名
+	MatchPath   []string `json:"match_path"`              // 项目路径匹配列表
 	Description string   `json:"description"`             // 项目描述
 }
 

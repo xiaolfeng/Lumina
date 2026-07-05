@@ -1,0 +1,200 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── 微明色盘 · 文档站简化版 ───────────────────────── */
+
+:root {
+  /* ── 意象层 ── */
+  --sea-ink: #2a2420;
+  --sea-ink-soft: #5c534a;
+  --lagoon: #c9883a;
+  --lagoon-deep: #7a4e1a;
+  --palm: #b87050;
+  --sand: #ede5d8;
+  --foam: #f8f4ee;
+
+  /* ── 材质层 ── */
+  --surface: rgba(255, 251, 245, 0.72);
+  --surface-strong: rgba(255, 251, 245, 0.92);
+  --line: rgba(42, 36, 32, 0.11);
+  --inset-glint: rgba(255, 251, 245, 0.78);
+  --kicker: #a06820;
+  --bg-base: #f5efe6;
+  --header-bg: rgba(255, 251, 245, 0.82);
+
+  /* ── shadcn 兼容 ── */
+  --background: oklch(0.97 0.01 85);
+  --foreground: oklch(0.22 0.02 50);
+  --card: oklch(0.97 0.01 85);
+  --card-foreground: oklch(0.22 0.02 50);
+  --popover: oklch(0.97 0.01 85);
+  --popover-foreground: oklch(0.22 0.02 50);
+  --primary: #c17a2e;
+  --primary-foreground: #fffbf5;
+  --secondary: #e8ddd0;
+  --secondary-foreground: #2a2420;
+  --muted: #e8ddd0;
+  --muted-foreground: oklch(0.55 0.02 60);
+  --accent: #f0e6d6;
+  --accent-foreground: #2a2420;
+  --destructive: oklch(0.55 0.18 25);
+  --destructive-foreground: oklch(0.97 0.01 85);
+  --border: oklch(0.88 0.01 80);
+  --input: oklch(0.88 0.01 80);
+  --ring: #c17a2e;
+  --chart-1: oklch(0.6 0.15 45);
+  --chart-2: oklch(0.55 0.1 60);
+  --chart-3: oklch(0.45 0.08 50);
+  --chart-4: oklch(0.75 0.12 80);
+  --chart-5: oklch(0.7 0.1 70);
+  --radius: 0.625rem;
+}
+
+.dark {
+  /* ── 意象层 · 夜烛 ── */
+  --sea-ink: #e8ddd0;
+  --sea-ink-soft: #a89a8a;
+  --lagoon: #e8a855;
+  --lagoon-deep: #f5c574;
+  --palm: #e08a5e;
+  --sand: #1a1512;
+  --foam: #13100e;
+
+  /* ── 材质层 · 夜 ── */
+  --surface: rgba(30, 25, 20, 0.78);
+  --surface-strong: rgba(25, 20, 16, 0.92);
+  --line: rgba(232, 213, 190, 0.14);
+  --inset-glint: rgba(255, 235, 210, 0.1);
+  --kicker: #f5d69a;
+  --bg-base: #0f0c0a;
+  --header-bg: rgba(15, 12, 10, 0.85);
+
+  /* ── shadcn 兼容 · 夜 ── */
+  --background: oklch(0.14 0.02 50);
+  --foreground: oklch(0.95 0.01 85);
+  --card: oklch(0.14 0.02 50);
+  --card-foreground: oklch(0.95 0.01 85);
+  --popover: oklch(0.14 0.02 50);
+  --popover-foreground: oklch(0.95 0.01 85);
+  --primary: #e8a855;
+  --primary-foreground: #1a1512;
+  --secondary: #2a2420;
+  --secondary-foreground: #e8ddd0;
+  --muted: #2a2420;
+  --muted-foreground: oklch(0.7 0.02 70);
+  --accent: #3a322c;
+  --accent-foreground: #e8ddd0;
+  --destructive: oklch(0.4 0.14 25);
+  --destructive-foreground: oklch(0.95 0.01 85);
+  --border: oklch(0.24 0.02 50);
+  --input: oklch(0.24 0.02 50);
+  --ring: #e8a855;
+  --chart-1: oklch(0.55 0.18 45);
+  --chart-2: oklch(0.65 0.14 60);
+  --chart-3: oklch(0.75 0.12 70);
+  --chart-4: oklch(0.6 0.2 80);
+  --chart-5: oklch(0.6 0.18 25);
+}
+
+@theme inline {
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+
+  /* ── 微明色盘 · @theme 映射 ── */
+  --color-sea-ink: var(--sea-ink);
+  --color-sea-ink-soft: var(--sea-ink-soft);
+  --color-lagoon: var(--lagoon);
+  --color-lagoon-deep: var(--lagoon-deep);
+  --color-palm: var(--palm);
+  --color-sand: var(--sand);
+  --color-foam: var(--foam);
+
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-line: var(--line);
+  --color-bg-base: var(--bg-base);
+  --color-header-bg: var(--header-bg);
+  --color-kicker: var(--kicker);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/*
+ * ════════════════════════════════════════════════════
+ *  基础约束层
+ * ══════════════════════════════════════════════════════
+ */
+
+.display-title {
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  background-color: var(--bg-base);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+}

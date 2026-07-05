@@ -2,12 +2,12 @@ package pin
 
 // CreatePinRequest 创建Pin请求
 type CreatePinRequest struct {
-	Title         string `json:"title" binding:"required"`           // 约束标题
-	Content       string `json:"content" binding:"required"`         // 详细内容
-	Category      string `json:"category"`                           // 分类 (notice/dependency/api_change/other)
-	Priority      string `json:"priority" binding:"required"`        // 优先级 (high/medium/low)
-	FromProjectID string `json:"from_project_id"`                    // 来源项目ID (可选)
-	ToProjectID   string `json:"to_project_id" binding:"required"`   // 目标项目ID
+	Title         string `json:"title" binding:"required"`         // 约束标题
+	Content       string `json:"content" binding:"required"`       // 详细内容
+	Category      string `json:"category"`                         // 分类 (notice/dependency/api_change/other)
+	Priority      string `json:"priority" binding:"required"`      // 优先级 (high/medium/low)
+	FromProjectID string `json:"from_project_id"`                  // 来源项目ID (可选)
+	ToProjectID   string `json:"to_project_id" binding:"required"` // 目标项目ID
 }
 
 // UpdatePinRequest 更新Pin请求

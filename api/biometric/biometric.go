@@ -14,14 +14,14 @@ type RegisterStartRequest struct {
 
 // RegisterStartResponse 注册开始响应（传递给浏览器 navigator.credentials.create）
 type RegisterStartResponse struct {
-	SessionToken string          `json:"session_token"`           // 会话令牌（关联 Redis challenge）
+	SessionToken string          `json:"session_token"`                // 会话令牌（关联 Redis challenge）
 	Options      json.RawMessage `json:"options" swaggertype:"object"` // WebAuthn PublicKeyCredentialCreationOptions（透传 JSON）
 }
 
 // RegisterFinishRequest 注册完成请求（navigator.credentials.create 返回值）
 type RegisterFinishRequest struct {
-	SessionToken string          `json:"session_token" binding:"required"`           // 会话令牌
-	DeviceName   string          `json:"device_name" binding:"required,max=128"`     // 设备名称
+	SessionToken string          `json:"session_token" binding:"required"`                   // 会话令牌
+	DeviceName   string          `json:"device_name" binding:"required,max=128"`             // 设备名称
 	Credential   json.RawMessage `json:"credential" binding:"required" swaggertype:"object"` // CredentialAttestation JSON
 }
 
@@ -33,13 +33,13 @@ type RegisterFinishResponse struct {
 
 // LoginStartResponse 登录开始响应（传递给浏览器 navigator.credentials.get）
 type LoginStartResponse struct {
-	SessionToken string          `json:"session_token"`           // 会话令牌
+	SessionToken string          `json:"session_token"`                // 会话令牌
 	Options      json.RawMessage `json:"options" swaggertype:"object"` // WebAuthn PublicKeyCredentialRequestOptions
 }
 
 // LoginFinishRequest 登录完成请求
 type LoginFinishRequest struct {
-	SessionToken string          `json:"session_token" binding:"required"`      // 会话令牌
+	SessionToken string          `json:"session_token" binding:"required"`                   // 会话令牌
 	Credential   json.RawMessage `json:"credential" binding:"required" swaggertype:"object"` // CredentialAssertion JSON
 }
 

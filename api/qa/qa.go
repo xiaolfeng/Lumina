@@ -20,16 +20,16 @@ type UpdateQaConfigRequest struct {
 // CreateSessionRequest 创建QA会话请求
 type CreateSessionRequest struct {
 	ProjectID string `json:"project_id" binding:"required"` // 关联项目ID
-	Title     string `json:"title"`                          // 会话标题
-	Agent     string `json:"agent"`                          // Agent名称
-	Type      string `json:"type"`                           // temporary/permanent
+	Title     string `json:"title"`                         // 会话标题
+	Agent     string `json:"agent"`                         // Agent名称
+	Type      string `json:"type"`                          // temporary/permanent
 }
 
 // SessionResponse Session响应
 type SessionResponse struct {
-	ID            string `json:"id"`     // Session ID
-	Hash          string `json:"hash"`   // 会话哈希标识
-	Title         string `json:"title"`  // 会话标题
+	ID            string `json:"id"`             // Session ID
+	Hash          string `json:"hash"`           // 会话哈希标识
+	Title         string `json:"title"`          // 会话标题
 	Agent         string `json:"agent"`          // Agent名称
 	Type          string `json:"type"`           // temporary/permanent
 	Status        string `json:"status"`         // active/expired/deleted
@@ -37,15 +37,15 @@ type SessionResponse struct {
 	ExpiresAt     string `json:"expires_at"`     // 过期时间（永久为空）
 	CreatedAt     string `json:"created_at"`     // 创建时间
 	UpdatedAt     string `json:"updated_at"`     // 更新时间
-	ProjectID     string `json:"project_id"`      // 关联项目ID
-	ProjectName   string `json:"project_name"`    // 关联项目名称
+	ProjectID     string `json:"project_id"`     // 关联项目ID
+	ProjectName   string `json:"project_name"`   // 关联项目名称
 }
 
 // SessionDetailResponse Session详情响应（含问题列表）
 type SessionDetailResponse struct {
-	ID            string                    `json:"id"`     // Session ID
-	Hash          string                    `json:"hash"`   // 会话哈希标识
-	Title         string                    `json:"title"`  // 会话标题
+	ID            string                    `json:"id"`             // Session ID
+	Hash          string                    `json:"hash"`           // 会话哈希标识
+	Title         string                    `json:"title"`          // 会话标题
 	Agent         string                    `json:"agent"`          // Agent名称
 	Type          string                    `json:"type"`           // temporary/permanent
 	Status        string                    `json:"status"`         // active/expired/deleted
@@ -53,9 +53,9 @@ type SessionDetailResponse struct {
 	ExpiresAt     string                    `json:"expires_at"`     // 过期时间（永久为空）
 	CreatedAt     string                    `json:"created_at"`     // 创建时间
 	UpdatedAt     string                    `json:"updated_at"`     // 更新时间
-	Questions     []QuestionSummaryResponse `json:"questions"`     // 问题列表
-	ProjectID     string                    `json:"project_id"`      // 关联项目ID
-	ProjectName   string                    `json:"project_name"`    // 关联项目名称
+	Questions     []QuestionSummaryResponse `json:"questions"`      // 问题列表
+	ProjectID     string                    `json:"project_id"`     // 关联项目ID
+	ProjectName   string                    `json:"project_name"`   // 关联项目名称
 }
 
 // QuestionSummaryResponse 问题摘要（列表用）
@@ -63,38 +63,38 @@ type SessionDetailResponse struct {
 // 用于会话详情接口返回完整历史问答（含回答内容、选项、补充等），
 // 支持前端 Interact 页面刷新后恢复历史问答。
 type QuestionSummaryResponse struct {
-	ID          string               `json:"id"`           // 问题ID
-	Type        string               `json:"type"`         // 题型
-	Title       string               `json:"title"`        // 标题
-	Options     any                  `json:"options"`      // 选项配置
-	Config      any                  `json:"config"`       // 题型特有配置
-	Batch       any                  `json:"batch"`        // 分批信息
-	GroupLabel  string               `json:"group_label"`  // 分组标签
-	Supplement  bool                 `json:"supplement"`   // 是否携带补充内容
-	Status      string               `json:"status"`       // pending/answered/skipped
-	Answer      any                  `json:"answer"`       // 回答数据
-	Media       any                  `json:"media"`        // 多媒体数据
-	Supplements []SupplementResponse `json:"supplements"`  // 关联补充内容
-	CreatedAt  string                `json:"created_at"`   // 创建时间
-	AnsweredAt string                `json:"answered_at"`  // 回答时间
+	ID          string               `json:"id"`          // 问题ID
+	Type        string               `json:"type"`        // 题型
+	Title       string               `json:"title"`       // 标题
+	Options     any                  `json:"options"`     // 选项配置
+	Config      any                  `json:"config"`      // 题型特有配置
+	Batch       any                  `json:"batch"`       // 分批信息
+	GroupLabel  string               `json:"group_label"` // 分组标签
+	Supplement  bool                 `json:"supplement"`  // 是否携带补充内容
+	Status      string               `json:"status"`      // pending/answered/skipped
+	Answer      any                  `json:"answer"`      // 回答数据
+	Media       any                  `json:"media"`       // 多媒体数据
+	Supplements []SupplementResponse `json:"supplements"` // 关联补充内容
+	CreatedAt   string               `json:"created_at"`  // 创建时间
+	AnsweredAt  string               `json:"answered_at"` // 回答时间
 }
 
 // QuestionDetailResponse 问题详情（含回答+补充）
 type QuestionDetailResponse struct {
-	ID          string               `json:"id"`           // 问题ID
-	SessionID   string               `json:"session_id"`   // 所属Session
-	Type        string               `json:"type"`         // 题型
-	Title       string               `json:"title"`        // 标题
-	Description string               `json:"description"`  // 描述
-	Options     any                  `json:"options"`      // 选项配置
-	Config      any                  `json:"config"`       // 题型特有配置
-	Batch       any                  `json:"batch"`        // 分批信息
-	GroupLabel  string               `json:"group_label"`  // 分组标签
-	Status      string               `json:"status"`       // 状态
-	Answer      any                  `json:"answer"`       // 回答数据
-	Supplements []SupplementResponse `json:"supplements"`  // 关联补充内容
-	CreatedAt   string               `json:"created_at"`   // 创建时间
-	AnsweredAt  string               `json:"answered_at"`  // 回答时间
+	ID          string               `json:"id"`          // 问题ID
+	SessionID   string               `json:"session_id"`  // 所属Session
+	Type        string               `json:"type"`        // 题型
+	Title       string               `json:"title"`       // 标题
+	Description string               `json:"description"` // 描述
+	Options     any                  `json:"options"`     // 选项配置
+	Config      any                  `json:"config"`      // 题型特有配置
+	Batch       any                  `json:"batch"`       // 分批信息
+	GroupLabel  string               `json:"group_label"` // 分组标签
+	Status      string               `json:"status"`      // 状态
+	Answer      any                  `json:"answer"`      // 回答数据
+	Supplements []SupplementResponse `json:"supplements"` // 关联补充内容
+	CreatedAt   string               `json:"created_at"`  // 创建时间
+	AnsweredAt  string               `json:"answered_at"` // 回答时间
 }
 
 // SupplementResponse 补充内容响应
