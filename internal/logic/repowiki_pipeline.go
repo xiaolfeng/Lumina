@@ -41,19 +41,28 @@ import (
 //   - 不负责并发控制（由 RepoWikiLogic.semaphore 管理）
 //   - 不负责 LLM Provider 初始化（由 RepoWikiLogic 构造时完成）
 type AnalysisPipeline struct {
-	logic *RepoWikiLogic // 引用 Logic 以访问 service / repository / runner / assembler
-	log   *xLog.LogNamedLogger
+	logic           *RepoWikiLogic    // 引用 Logic 以访问 service / repository / assembler
+	log             *xLog.LogNamedLogger
+	runner          *AgentPassRunner  // Agent 分析 Pass 运行器（由 AnalyzeRepo 热构建后注入）
+	llmProviderName string            // LLM Provider 协议名称（写入版本记录）
+	llmModelName    string            // LLM 模型名称（写入版本记录）
 }
 
 // NewAnalysisPipeline 创建 AnalysisPipeline 实例
 //
 // 参数说明:
-//   - l:   RepoWikiLogic 引用（Pipeline 通过它访问全部依赖）
-//   - log: 日志记录器（建议复用 RepoWikiLogic 的 log 实例）
-func NewAnalysisPipeline(l *RepoWikiLogic, log *xLog.LogNamedLogger) *AnalysisPipeline {
+//   - l:            RepoWikiLogic 引用（Pipeline 通过它访问全部依赖）
+//   - log:          日志记录器（建议复用 RepoWikiLogic 的 log 实例）
+//   - runner:       AgentPassRunner 实例（由 AnalyzeRepo 热构建后传入）
+//   - providerName: LLM Provider 协议名称（写入 WikiVersion.LLMProvider）
+//   - modelName:    LLM 模型名称（写入 WikiVersion.LLMModel）
+func NewAnalysisPipeline(l *RepoWikiLogic, log *xLog.LogNamedLogger, runner *AgentPassRunner, providerName, modelName string) *AnalysisPipeline {
 	return &AnalysisPipeline{
-		logic: l,
-		log:   log,
+		logic:           l,
+		log:             log,
+		runner:          runner,
+		llmProviderName: providerName,
+		llmModelName:    modelName,
 	}
 }
 
@@ -95,8 +104,8 @@ func (p *AnalysisPipeline) Execute(
 		slog.String("gitURL", config.GitURL),
 		slog.String("branch", version.Branch))
 
-	version.LLMProvider = p.logic.llmProvider
-	version.LLMModel = p.logic.llmModel
+	version.LLMProvider = p.llmProviderName
+	version.LLMModel = p.llmModelName
 
 	// 辅助函数：更新版本和配置状态（使用独立 context 防止管道取消影响 DB 写入）
 	updateStatus := func(status, stage, errMsg string) {
@@ -265,7 +274,7 @@ func (p *AnalysisPipeline) Execute(
 		slog.Int64("versionID", versionID),
 		slog.String("repoPath", repoPath))
 
-	passResults, xErr := p.logic.runner.RunAllPasses(
+	passResults, xErr := p.runner.RunAllPasses(
 		ctx,
 		versionID,
 		repoPath,

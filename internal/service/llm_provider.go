@@ -2,7 +2,6 @@
 package service
 
 import (
-	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	"github.com/bamboo-services/bamboo-messages/bamboo"
 	"github.com/bamboo-services/bamboo-messages/provider"
 	"github.com/bamboo-services/bamboo-messages/provider/anthropic"
@@ -16,27 +15,21 @@ const (
 	llmProviderAnthropic = "anthropic"
 )
 
-// NewLLMProvider 根据环境变量创建 LLM Provider 客户端。
+// NewLLMProviderFromEntity 根据数据库实体参数创建 LLM Provider 客户端
 //
-// 读取的环境变量：
-//   - LLM_PROVIDER: 协议类型，支持 "openai"（默认）和 "anthropic"
-//   - LLM_API_KEY: API 密钥（必填）
-//   - LLM_BASE_URL: 自定义端点（可选）
-//   - LLM_MODEL: 模型名称（默认 gpt-4o，在 Agent 配置中使用）
-//   - LLM_MAX_TOKENS: 最大 token 数（默认 4096，在 Agent 配置中使用）
-//   - LLM_TEMPERATURE: 生成温度（默认 0.3，在 Agent 配置中使用）
+// 参数说明:
+//   - protocol:         协议类型（openai / anthropic）
+//   - baseURL:          自定义 API 端点（空字符串表示使用默认端点）
+//   - decryptedAPIKey:  已解密的 API Key
 //
-// 返回的 bamboo.BambooClient 是对底层协议适配器的统一封装，
-// 可直接交给 bamboo-agent 的 Agent 作为对话客户端。
-func NewLLMProvider() (bamboo.BambooClient, error) {
-	providerType := xEnv.GetEnvString("LLM_PROVIDER", llmProviderOpenAI)
-	apiKey := xEnv.GetEnvString("LLM_API_KEY", "")
-	baseURL := xEnv.GetEnvString("LLM_BASE_URL", "")
-
+// 返回值:
+//   - bamboo.BambooClient: 对底层协议适配器的统一封装
+//   - error:               目前不会返回错误（保留 error 返回值以保持调用方一致性）
+func NewLLMProviderFromEntity(protocol, baseURL, decryptedAPIKey string) (bamboo.BambooClient, error) {
 	var p provider.Provider
-	switch providerType {
+	switch protocol {
 	case llmProviderAnthropic:
-		opts := []anthropic.Option{anthropic.WithAPIKey(apiKey)}
+		opts := []anthropic.Option{anthropic.WithAPIKey(decryptedAPIKey)}
 		if baseURL != "" {
 			opts = append(opts, anthropic.WithBaseURL(baseURL))
 		}
@@ -44,7 +37,7 @@ func NewLLMProvider() (bamboo.BambooClient, error) {
 	case llmProviderOpenAI:
 		fallthrough
 	default:
-		opts := []completions.Option{completions.WithAPIKey(apiKey)}
+		opts := []completions.Option{completions.WithAPIKey(decryptedAPIKey)}
 		if baseURL != "" {
 			opts = append(opts, completions.WithBaseURL(baseURL))
 		}

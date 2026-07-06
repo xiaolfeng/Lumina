@@ -314,6 +314,232 @@ definitions:
       version:
         type: string
     type: object
+  llm.AgentModelAssignment:
+    properties:
+      model_id:
+        description: 关联模型ID(nil表示未分配)
+        type: string
+      role:
+        description: Agent角色
+        type: string
+    type: object
+  llm.CreateModelRequest:
+    properties:
+      description:
+        description: 描述说明
+        type: string
+      display_name:
+        description: 显示名称
+        type: string
+      max_tokens:
+        description: 最大Token数
+        type: integer
+      model_name:
+        description: 模型标识
+        type: string
+      provider_id:
+        description: 关联Provider ID
+        type: string
+      temperature:
+        description: 生成温度
+        type: number
+    required:
+    - display_name
+    - model_name
+    - provider_id
+    type: object
+  llm.CreateProviderRequest:
+    properties:
+      api_key:
+        description: API密钥(明文，后端加密存储)
+        type: string
+      base_url:
+        description: 自定义API端点
+        type: string
+      description:
+        description: 描述说明
+        type: string
+      name:
+        description: Provider名称
+        type: string
+      protocol:
+        description: 协议类型(openai/anthropic)
+        type: string
+    required:
+    - api_key
+    - name
+    - protocol
+    type: object
+  llm.ModelDetailResponse:
+    properties:
+      created_at:
+        description: 创建时间
+        type: string
+      description:
+        description: 描述说明
+        type: string
+      display_name:
+        description: 显示名称
+        type: string
+      id:
+        description: 模型 ID
+        type: string
+      is_active:
+        description: 是否启用
+        type: boolean
+      max_tokens:
+        description: 最大Token数
+        type: integer
+      model_name:
+        description: 模型标识
+        type: string
+      provider_id:
+        description: 关联Provider ID
+        type: string
+      temperature:
+        description: 生成温度
+        type: number
+      updated_at:
+        description: 更新时间
+        type: string
+    type: object
+  llm.ModelListItem:
+    properties:
+      created_at:
+        description: 创建时间
+        type: string
+      description:
+        description: 描述说明
+        type: string
+      display_name:
+        description: 显示名称
+        type: string
+      id:
+        description: 模型 ID
+        type: string
+      is_active:
+        description: 是否启用
+        type: boolean
+      max_tokens:
+        description: 最大Token数
+        type: integer
+      model_name:
+        description: 模型标识
+        type: string
+      provider_id:
+        description: 关联Provider ID
+        type: string
+      temperature:
+        description: 生成温度
+        type: number
+    type: object
+  llm.ProviderDetailResponse:
+    properties:
+      base_url:
+        description: 自定义API端点
+        type: string
+      created_at:
+        description: 创建时间
+        type: string
+      description:
+        description: 描述说明
+        type: string
+      has_key:
+        description: 是否已设置密钥
+        type: boolean
+      id:
+        description: Provider ID
+        type: string
+      is_active:
+        description: 是否启用
+        type: boolean
+      name:
+        description: Provider名称
+        type: string
+      protocol:
+        description: 协议类型
+        type: string
+      updated_at:
+        description: 更新时间
+        type: string
+    type: object
+  llm.ProviderListItem:
+    properties:
+      base_url:
+        description: 自定义API端点
+        type: string
+      created_at:
+        description: 创建时间
+        type: string
+      description:
+        description: 描述说明
+        type: string
+      has_key:
+        description: 是否已设置密钥
+        type: boolean
+      id:
+        description: Provider ID
+        type: string
+      is_active:
+        description: 是否启用
+        type: boolean
+      name:
+        description: Provider名称
+        type: string
+      protocol:
+        description: 协议类型
+        type: string
+    type: object
+  llm.UpdateAgentModelRequest:
+    properties:
+      model_id:
+        description: 模型ID
+        type: string
+    required:
+    - model_id
+    type: object
+  llm.UpdateModelRequest:
+    properties:
+      description:
+        description: 描述说明
+        type: string
+      display_name:
+        description: 显示名称
+        type: string
+      is_active:
+        description: 是否启用
+        type: boolean
+      max_tokens:
+        description: 最大Token数
+        type: integer
+      model_name:
+        description: 模型标识
+        type: string
+      temperature:
+        description: 生成温度
+        type: number
+    type: object
+  llm.UpdateProviderRequest:
+    properties:
+      api_key:
+        description: API密钥(空时不更新)
+        type: string
+      base_url:
+        description: 自定义API端点
+        type: string
+      description:
+        description: 描述说明
+        type: string
+      is_active:
+        description: 是否启用
+        type: boolean
+      name:
+        description: Provider名称
+        type: string
+      protocol:
+        description: 协议类型
+        type: string
+    type: object
   pin.CreatePinRequest:
     properties:
       category:
@@ -1051,6 +1277,36 @@ definitions:
       total_pages:
         type: integer
     type: object
+  xModels.PageResponse-array_llm_ModelListItem:
+    properties:
+      current_page:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/llm.ModelListItem'
+        type: array
+      size:
+        type: integer
+      total_items:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  xModels.PageResponse-array_llm_ProviderListItem:
+    properties:
+      current_page:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/llm.ProviderListItem'
+        type: array
+      size:
+        type: integer
+      total_items:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
 info:
   contact: {}
 paths:
@@ -1633,6 +1889,528 @@ paths:
       summary: 健康检查
       tags:
       - 健康检查接口
+  /api/v1/llm/agent/{role}/model:
+    get:
+      consumes:
+      - application/json
+      description: 根据 Agent 角色查询当前分配的模型 ID，未分配时 model_id 为 null
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Agent角色
+        in: path
+        name: role
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/llm.AgentModelAssignment'
+              type: object
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 未配置Agent模型
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 获取Agent模型分配'
+      tags:
+      - LLM配置接口
+    put:
+      consumes:
+      - application/json
+      description: 为指定 Agent 角色分配模型，需先验证模型存在
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Agent角色
+        in: path
+        name: role
+        required: true
+        type: string
+      - description: 更新Agent模型分配请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/llm.UpdateAgentModelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 模型不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 更新Agent模型分配'
+      tags:
+      - LLM配置接口
+  /api/v1/llm/model:
+    get:
+      consumes:
+      - application/json
+      description: 按 page/size 分页查询 LLM 模型列表，支持 provider_id 可选筛选
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量（最大200）
+        in: query
+        name: size
+        type: integer
+      - description: Provider ID（可选筛选）
+        in: query
+        name: provider_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/xModels.PageResponse-array_llm_ModelListItem'
+              type: object
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 分页获取LLM模型列表'
+      tags:
+      - LLM配置接口
+    post:
+      consumes:
+      - application/json
+      description: 提交关联Provider ID、模型标识、显示名称等创建 LLM 模型
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 创建模型请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/llm.CreateModelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/llm.ModelDetailResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 关联Provider不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 创建LLM模型'
+      tags:
+      - LLM配置接口
+  /api/v1/llm/model/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根据模型 ID 删除指定的 LLM 模型，删除后不可恢复
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 模型ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 模型不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 删除LLM模型'
+      tags:
+      - LLM配置接口
+    get:
+      consumes:
+      - application/json
+      description: 根据模型 ID 查询单个 LLM 模型详情
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 模型ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/llm.ModelDetailResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 模型不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 获取LLM模型详情'
+      tags:
+      - LLM配置接口
+    put:
+      consumes:
+      - application/json
+      description: 更新指定 ID 的 LLM 模型信息（模型标识、显示名称、参数等，字段可选）
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 模型ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 更新模型请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/llm.UpdateModelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 模型不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 更新LLM模型'
+      tags:
+      - LLM配置接口
+  /api/v1/llm/provider:
+    get:
+      consumes:
+      - application/json
+      description: 按 page/size 分页查询 LLM Provider 列表，密钥不返回明文
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量（最大200）
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/xModels.PageResponse-array_llm_ProviderListItem'
+              type: object
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 分页获取LLM Provider列表'
+      tags:
+      - LLM配置接口
+    post:
+      consumes:
+      - application/json
+      description: 提交名称、协议、API密钥等创建 LLM Provider，密钥加密存储不返回明文
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 创建Provider请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/llm.CreateProviderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/llm.ProviderDetailResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 创建LLM Provider'
+      tags:
+      - LLM配置接口
+  /api/v1/llm/provider/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根据 Provider ID 删除指定的 LLM Provider，存在关联模型时拒绝删除
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: Provider不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "409":
+          description: 存在关联模型，无法删除
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 删除LLM Provider'
+      tags:
+      - LLM配置接口
+    get:
+      consumes:
+      - application/json
+      description: 根据 Provider ID 查询单个 LLM Provider 详情，密钥不返回明文
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/llm.ProviderDetailResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: Provider不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 获取LLM Provider详情'
+      tags:
+      - LLM配置接口
+    put:
+      consumes:
+      - application/json
+      description: 更新指定 ID 的 LLM Provider 信息（名称、协议、端点、密钥、启用状态等，字段可选；密钥为空时不更新）
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 更新Provider请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/llm.UpdateProviderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: Provider不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 更新LLM Provider'
+      tags:
+      - LLM配置接口
   /api/v1/pin:
     get:
       consumes:

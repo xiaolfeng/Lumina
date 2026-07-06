@@ -7,6 +7,7 @@ import (
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // InfoRepo 键值配置数据访问层，统一承接 logic 层对 entity.Info 表的读写
@@ -109,6 +110,38 @@ func (r *InfoRepo) UpdateValuesInTx(ctx context.Context, kv map[string]string) *
 		return nil
 	}); err != nil {
 		return xError.NewError(ctx, xError.DatabaseError, "事务更新配置项失败", false, err)
+	}
+
+	return nil
+}
+
+// UpsertValue 插入或更新配置项（key 存在则更新 value，不存在则插入）
+//
+// 使用 GORM clause.OnConflict 实现 PostgreSQL 的 INSERT ... ON CONFLICT 语义，
+// 适用于 Agent 模型分配等「不存在则创建、存在则覆盖」场景。
+//
+// 参数:
+//   - ctx:   上下文对象
+//   - key:   配置键名（主键）
+//   - value: 配置值
+//
+// 返回值:
+//   - *xError.Error: 插入或更新过程中的错误
+func (r *InfoRepo) UpsertValue(ctx context.Context, key, value string) *xError.Error {
+	r.log.Info(ctx, "UpsertValue - 插入或更新配置 ["+key+"]")
+
+	info := entity.Info{
+		Key:   key,
+		Value: value,
+	}
+
+	if err := r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "key"}},
+			DoUpdates: clause.AssignmentColumns([]string{"value"}),
+		}).
+		Create(&info).Error; err != nil {
+		return xError.NewError(ctx, xError.DatabaseError, "插入或更新配置项失败", false, err)
 	}
 
 	return nil

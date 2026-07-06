@@ -77,20 +77,18 @@ type repowikiSvc struct {
 //   - 不直接操作数据库（经由 repository 层）
 type RepoWikiLogic struct {
 	logic
-	repo        repowikiRepo       // 仓储层依赖
-	svc         repowikiSvc        // 服务层依赖
-	runner      *AgentPassRunner   // Agent 分析 Pass 运行器（nil 表示 LLM Provider 未就绪）
-	assembler   *DocumentAssembler // 文档组装器（nil 表示未注入，Pipeline 跳过组装并记录日志）
-	semaphore   chan struct{}      // 并发控制信号量（容量 = REPOWIKI_MAX_CONCURRENT）
-	llmProvider string             // LLM Provider 类型
-	llmModel    string             // LLM 模型名称
+	repo        repowikiRepo            // 仓储层依赖
+	svc         repowikiSvc             // 服务层依赖
+	assembler   *DocumentAssembler      // 文档组装器（nil 表示未注入，Pipeline 跳过组装并记录日志）
+	semaphore   chan struct{}           // 并发控制信号量（容量 = REPOWIKI_MAX_CONCURRENT）
+	llmResolver *service.LlmResolver    // LLM 配置解析器（nil 表示未注入，AnalyzeRepo 返回错误）
 }
 
 // NewRepoWikiLogic 创建 RepoWikiLogic 实例
 //
 // 通过上下文获取 db/rdb，构造所有仓储和服务依赖。
-// LLM Provider 初始化失败时不阻塞 Logic 创建（runner 为 nil），
-// AnalyzeRepo 调用时会返回错误提示用户配置 LLM。
+// LlmResolver 初始为 nil（由 startup 阶段通过 SetLlmResolver 注入），
+// AnalyzeRepo 调用时会检查并返回错误提示用户配置 LLM。
 //
 // 并发控制：
 //   - 信号量容量由环境变量 REPOWIKI_MAX_CONCURRENT 控制（默认 1）
@@ -118,19 +116,7 @@ func NewRepoWikiLogic(ctx context.Context) *RepoWikiLogic {
 			storage:   service.NewWikiStorageService(),
 			authToken: service.NewWikiAuthTokenService(),
 		},
-		semaphore:   make(chan struct{}, maxConcurrent),
-		llmProvider: xEnv.GetEnvString("LLM_PROVIDER", "openai"),
-		llmModel:    xEnv.GetEnvString("LLM_MODEL", "gpt-4o"),
-	}
-
-	// 尝试初始化 LLM Provider 和 AgentPassRunner
-	// 失败不阻塞 Logic 创建——非分析类方法（CRUD/查询）仍可正常工作
-	if client, err := service.NewLLMProvider(); err != nil {
-		l.log.Warn(ctx, "LLM Provider 初始化失败，AnalyzeRepo 将不可用",
-			slog.String("err", err.Error()))
-	} else {
-		l.runner = NewAgentPassRunner(client, l.svc.storage, l.log, nil)
-		l.log.Info(ctx, "AgentPassRunner 已就绪")
+		semaphore: make(chan struct{}, maxConcurrent),
 	}
 
 	return l
@@ -152,6 +138,13 @@ func GetRepoWikiLogicFromContext(ctx context.Context) *RepoWikiLogic {
 // assembler 为 nil 时 Pipeline 跳过文档组装步骤并记录日志。
 func (l *RepoWikiLogic) SetDocumentAssembler(assembler *DocumentAssembler) {
 	l.assembler = assembler
+}
+
+// SetLlmResolver 注入 LLM 配置解析器（由 startup 阶段调用）
+//
+// resolver 为 nil 时 AnalyzeRepo 返回错误提示用户配置 Provider 和 Model。
+func (l *RepoWikiLogic) SetLlmResolver(resolver *service.LlmResolver) {
+	l.llmResolver = resolver
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -361,11 +354,33 @@ func (l *RepoWikiLogic) AnalyzeRepo(ctx context.Context, configID xSnowflake.Sno
 		return nil, xErr
 	}
 
-	// Step 2: 检查 AgentPassRunner 就绪状态
-	if l.runner == nil {
-		return nil, xError.NewError(ctx, xError.ServerInternalError,
-			"LLM Provider 未就绪，无法执行分析（请检查 LLM_API_KEY 配置）", false, nil)
+	// Step 2: 检查 LlmResolver 就绪状态
+	if l.llmResolver == nil {
+		return nil, xError.NewError(ctx, xError.BusinessError,
+			"LLM 配置未就绪，请先在前端配置 Provider 和 Model", false, nil)
 	}
+
+	// 解析 Agent 模型配置（Info 表 → Model → Provider → 解密 APIKey）
+	resolved, err := l.llmResolver.ResolveAgentModel(ctx, bConst.AgentRoleRepoWiki, bConst.LlmAgentModelKeyPrefix)
+	if err != nil {
+		return nil, xError.NewError(ctx, xError.BusinessError,
+			xError.ErrMessage("LLM 配置解析失败: "+err.Error()), false, nil)
+	}
+
+	// 构建 LLM 客户端
+	client, cErr := service.NewLLMProviderFromEntity(resolved.Protocol, resolved.BaseURL, resolved.DecryptedAPIKey)
+	if cErr != nil {
+		return nil, xError.NewError(ctx, xError.ServerInternalError,
+			xError.ErrMessage("LLM 客户端创建失败: "+cErr.Error()), false, nil)
+	}
+
+	// 构建模型配置 + 临时 AgentPassRunner
+	modelConfig := &ModelRunConfig{
+		ModelName:   resolved.ModelName,
+		MaxTokens:   resolved.MaxTokens,
+		Temperature: resolved.Temperature,
+	}
+	runner := NewAgentPassRunner(client, l.svc.storage, l.log, nil, modelConfig)
 
 	// Step 3: 非阻塞获取并发信号量
 	select {
@@ -410,7 +425,7 @@ func (l *RepoWikiLogic) AnalyzeRepo(ctx context.Context, configID xSnowflake.Sno
 	}
 
 	// Step 6: 启动后台 goroutine 执行分析管道
-	pipeline := NewAnalysisPipeline(l, l.log)
+	pipeline := NewAnalysisPipeline(l, l.log, runner, resolved.Protocol, resolved.ModelName)
 
 	go func() {
 		defer func() {

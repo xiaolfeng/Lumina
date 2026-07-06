@@ -44,6 +44,20 @@ type PassResult struct {
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// ModelRunConfig
+// ──────────────────────────────────────────────────────────────────────
+
+// ModelRunConfig Agent Pass 运行器的模型配置（从数据库热读取）
+//
+// 由 RepoWikiLogic.AnalyzeRepo 调用 LlmResolver.ResolveAgentModel 后构建，
+// 传入 AgentPassRunner 供 runSinglePass 构建 Agent 时使用。
+type ModelRunConfig struct {
+	ModelName   string  // 模型标识（如 gpt-4o）
+	MaxTokens   int64   // 最大 Token 数
+	Temperature float64 // 生成温度
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // AgentPassRunner
 // ──────────────────────────────────────────────────────────────────────
 
@@ -69,20 +83,22 @@ const rawOutputTruncateLimit = 2000
 //   - 不负责文档组装（由 Document Assembler 处理）
 //   - 不负责状态机管理（由 Pipeline Orchestrator 处理）
 type AgentPassRunner struct {
-	client     bamboo.BambooClient // LLM 客户端（真实 Provider 或 Stub）
-	storage    *service.WikiStorageService
-	log        *xLog.LogNamedLogger
-	tools      []tool.Tool // Agent 可用工具集（file_read + file_search），仅只读工具
-	maxRetries int         // JSON 解析失败重试次数
+	client      bamboo.BambooClient // LLM 客户端（真实 Provider 或 Stub）
+	storage     *service.WikiStorageService
+	log         *xLog.LogNamedLogger
+	tools       []tool.Tool       // Agent 可用工具集（file_read + file_search），仅只读工具
+	maxRetries  int               // JSON 解析失败重试次数
+	modelConfig *ModelRunConfig   // 模型配置（从数据库热读取）
 }
 
 // NewAgentPassRunner 创建 AgentPassRunner 实例
 //
 // 参数说明:
-//   - client: 已配置好的 LLM 客户端（由 service.NewLLMProvider 或 bamboo.NewClient(stub) 生成）
-//   - storage: Wiki 存储服务（用于持久化 Pass 结果）
-//   - log: 日志记录器（建议使用 xLog.WithName(xLog.NamedLOGC, "AgentPassRunner")）
-//   - tools: Agent 可用工具集（仅 file_read + file_search 等只读工具，禁止 shell 等可写工具）
+//   - client:      已配置好的 LLM 客户端（由 NewLLMProviderFromEntity 或 bamboo.NewClient(stub) 生成）
+//   - storage:     Wiki 存储服务（用于持久化 Pass 结果）
+//   - log:         日志记录器（建议使用 xLog.WithName(xLog.NamedLOGC, "AgentPassRunner")）
+//   - tools:       Agent 可用工具集（仅 file_read + file_search 等只读工具，禁止 shell 等可写工具）
+//   - modelConfig: 模型配置（从数据库热读取，含 modelName/maxTokens/temperature）
 //
 // maxRetries 默认为 defaultMaxRetries（3 次）。
 func NewAgentPassRunner(
@@ -90,13 +106,15 @@ func NewAgentPassRunner(
 	storage *service.WikiStorageService,
 	log *xLog.LogNamedLogger,
 	tools []tool.Tool,
+	modelConfig *ModelRunConfig,
 ) *AgentPassRunner {
 	return &AgentPassRunner{
-		client:     client,
-		storage:    storage,
-		log:        log,
-		tools:      tools,
-		maxRetries: defaultMaxRetries,
+		client:      client,
+		storage:     storage,
+		log:         log,
+		tools:       tools,
+		maxRetries:  defaultMaxRetries,
+		modelConfig: modelConfig,
 	}
 }
 
@@ -233,7 +251,15 @@ func (r *AgentPassRunner) runSinglePass(
 
 	// 构建 Agent（每个 Pass 使用独立的 session 目录）
 	sessionDir := filepath.Join(r.storage.GetSessionPath(versionID), info.Name)
-	ag, err := service.NewRepoWikiAgent(r.client, info.SystemPrompt, tools, sessionDir)
+	ag, err := service.NewRepoWikiAgentFromModel(
+		r.client,
+		r.modelConfig.ModelName,
+		r.modelConfig.MaxTokens,
+		r.modelConfig.Temperature,
+		info.SystemPrompt,
+		tools,
+		sessionDir,
+	)
 	if err != nil {
 		return &PassResult{
 			Name:       info.Name,

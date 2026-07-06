@@ -25,6 +25,8 @@ var migrateTables = []interface{}{
 	&entity.BiometricCredential{},
 	&entity.RepoWikiConfig{},
 	&entity.WikiVersion{},
+	&entity.LlmProvider{},
+	&entity.LlmModel{},
 }
 
 func (r *reg) databaseInit(ctx context.Context) (any, error) {

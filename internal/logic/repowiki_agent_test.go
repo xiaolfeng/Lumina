@@ -82,11 +82,12 @@ func (m *mockAgent) SetSystemPrompt(_ string) {}
 // newTestRunner 创建测试用 AgentPassRunner（不依赖真实 LLM 客户端）
 func newTestRunner(maxRetries int) *AgentPassRunner {
 	return &AgentPassRunner{
-		client:     nil,
-		storage:    nil,
-		log:        xLog.WithName(xLog.NamedLOGC, "TestAgentPass"),
-		tools:      nil,
-		maxRetries: maxRetries,
+		client:      nil,
+		storage:     nil,
+		log:         xLog.WithName(xLog.NamedLOGC, "TestAgentPass"),
+		tools:       nil,
+		maxRetries:  maxRetries,
+		modelConfig: &ModelRunConfig{ModelName: "gpt-4o", MaxTokens: 8192, Temperature: 0.3},
 	}
 }
 
@@ -431,6 +432,7 @@ func TestAgentPassStub(t *testing.T) {
 		storage,
 		xLog.WithName(xLog.NamedLOGC, "TestAgentPassStub"),
 		nil, // 无需工具（stub 不会调用工具）
+		&ModelRunConfig{ModelName: "gpt-4o", MaxTokens: 8192, Temperature: 0.3},
 	)
 
 	// 准备上下文数据

@@ -6,10 +6,13 @@ import (
 	"os"
 
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
+	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/logic"
+	"github.com/xiaolfeng/Lumina/internal/repository"
+	"github.com/xiaolfeng/Lumina/internal/service"
 )
 
 // repoWikiInit 初始化 RepoWiki 模块：创建存储目录、构造 RepoWikiLogic 并注入 context。
@@ -33,6 +36,16 @@ func (r *reg) repoWikiInit(ctx context.Context) (any, error) {
 
 	// 初始化 RepoWikiLogic 并注入 context，确保 handler 与 MCP 共享同一实例
 	repoWikiLogic := logic.NewRepoWikiLogic(ctx)
+
+	// 创建 LlmResolver 并注入（持有 Repository 引用，避免循环导入）
+	db := xCtxUtil.MustGetDB(ctx)
+	modelRepo := repository.NewLlmModelRepo(db)
+	providerRepo := repository.NewLlmProviderRepo(db)
+	infoRepo := repository.NewInfoRepo(db)
+	encryptSecret := xEnv.GetEnvString("LLM_ENCRYPT_SECRET", "")
+	resolver := service.NewLlmResolver(modelRepo, providerRepo, infoRepo, encryptSecret)
+	repoWikiLogic.SetLlmResolver(resolver)
+
 	r.ctx = context.WithValue(r.ctx, bConst.RepoWikiLogicKey, repoWikiLogic)
 
 	log.Info(ctx, "RepoWikiLogic 初始化完成")

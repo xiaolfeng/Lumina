@@ -118,16 +118,13 @@ http://localhost:8080/swagger/index.html
 | `NOSQL_PREFIX` | Key 前缀 | `lum:` |
 | `NOSQL_POOL_SIZE` | Redis 连接池大小 | `100` |
 
-### LLM 配置（RepoWiki）
+### LLM 配置（热配置）
 
 | 变量 | 说明 | 默认值 |
 |---|---|---|
-| `LLM_PROVIDER` | Provider 类型（openai / anthropic / custom） | `openai` |
-| `LLM_API_KEY` | API 密钥 | 无（必填） |
-| `LLM_MODEL` | 模型名称 | `gpt-4o` |
-| `LLM_BASE_URL` | 自定义端点 | 空 |
-| `LLM_MAX_TOKENS` | 最大 token 数 | `4096` |
-| `LLM_TEMPERATURE` | 生成温度 | `0.3` |
+| `LLM_ENCRYPT_SECRET` | API Key 加密密钥（AES-256-GCM），必填 | 无 |
+
+> **首次升级迁移指南：** LLM 配置已从环境变量迁移到数据库热配置。升级后请在前端「系统设置」页面手动创建 Provider 和 Model，并为 Agent 角色分配模型。旧 `.env` 中的 `LLM_*` 变量不再生效。
 
 ### Q&A 配置
 

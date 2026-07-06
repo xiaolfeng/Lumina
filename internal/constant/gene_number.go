@@ -12,4 +12,6 @@ const (
 	GeneApikey              xSnowflake.Gene = 38 // API密钥基因
 	GeneRepoWikiConfig      xSnowflake.Gene = 39 // RepoWiki配置基因
 	GeneWikiVersion         xSnowflake.Gene = 40 // Wiki版本基因
+	GeneLlmProvider         xSnowflake.Gene = 41 // LLM Provider 基因
+	GeneLlmModel            xSnowflake.Gene = 42 // LLM 模型基因
 )

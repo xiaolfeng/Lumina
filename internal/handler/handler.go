@@ -8,14 +8,16 @@ import (
 )
 
 type service struct {
-	healthLogic    *logic.HealthLogic
-	authLogic      *logic.AuthLogic
-	apikeyLogic    *logic.ApikeyLogic
-	projectLogic   *logic.ProjectLogic
-	qaLogic        *logic.QaLogic
-	biometricLogic *logic.BiometricLogic
-	pinLogic       *logic.PinLogic
-	repoWikiLogic  *logic.RepoWikiLogic
+	healthLogic      *logic.HealthLogic
+	authLogic        *logic.AuthLogic
+	apikeyLogic      *logic.ApikeyLogic
+	projectLogic     *logic.ProjectLogic
+	qaLogic          *logic.QaLogic
+	biometricLogic   *logic.BiometricLogic
+	pinLogic         *logic.PinLogic
+	repoWikiLogic    *logic.RepoWikiLogic
+	llmProviderLogic *logic.LlmProviderLogic
+	llmModelLogic    *logic.LlmModelLogic
 }
 
 type handler struct {
@@ -43,14 +45,16 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 		name: handlerName,
 		log:  xLog.WithName(xLog.NamedCONT, handlerName),
 		service: &service{
-			healthLogic:    logic.NewHealthLogic(ctx),
-			authLogic:      authLogic,
-			apikeyLogic:    logic.NewApikeyLogic(ctx),
-			projectLogic:   logic.NewProjectLogic(ctx),
-			qaLogic:        logic.NewQaLogic(ctx),
-			biometricLogic: logic.NewBiometricLogic(ctx, authLogic),
-			pinLogic:       logic.NewPinLogic(ctx),
-			repoWikiLogic:  repoWikiLogic,
+			healthLogic:      logic.NewHealthLogic(ctx),
+			authLogic:        authLogic,
+			apikeyLogic:      logic.NewApikeyLogic(ctx),
+			projectLogic:     logic.NewProjectLogic(ctx),
+			qaLogic:          logic.NewQaLogic(ctx),
+			biometricLogic:   logic.NewBiometricLogic(ctx, authLogic),
+			pinLogic:         logic.NewPinLogic(ctx),
+			repoWikiLogic:    repoWikiLogic,
+			llmProviderLogic: logic.NewLlmProviderLogic(ctx),
+			llmModelLogic:    logic.NewLlmModelLogic(ctx),
 		},
 	}
 }
@@ -72,3 +76,5 @@ type BiometricHandler handler
 type PinHandler handler
 
 type RepoWikiHandler handler
+
+type LlmHandler handler
