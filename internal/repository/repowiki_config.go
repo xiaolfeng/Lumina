@@ -107,6 +107,29 @@ func (r *RepoWikiConfigRepo) GetByID(ctx context.Context, id xSnowflake.Snowflak
 	return &config, nil
 }
 
+// GetByWebhookToken 通过 Webhook Token 查询配置
+//
+// 参数:
+//   - ctx:   上下文对象
+//   - token: Webhook 访问令牌
+//
+// 返回值:
+//   - *entity.RepoWikiConfig: 查询到的配置实体
+//   - *xError.Error:           查询过程中的错误
+func (r *RepoWikiConfigRepo) GetByWebhookToken(ctx context.Context, token string) (*entity.RepoWikiConfig, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("GetByWebhookToken - 通过 Webhook Token 查询配置 [token=%s]", token))
+
+	var config entity.RepoWikiConfig
+	if err := r.db.WithContext(ctx).Where("webhook_token = ?", token).First(&config).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, xError.NewError(ctx, xError.NotFound, "RepoWiki 配置不存在", false, nil)
+		}
+		return nil, xError.NewError(ctx, xError.DatabaseError, "通过 Webhook Token 查询 RepoWiki 配置失败", false, err)
+	}
+
+	return &config, nil
+}
+
 // GetByProjectID 根据项目 ID 获取 RepoWiki 配置
 //
 // 参数:

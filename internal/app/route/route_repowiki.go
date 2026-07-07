@@ -27,6 +27,12 @@ func (r *route) repowikiRouter(route gin.IRouter) {
 	g.GET("/configs/:id/versions", h.ListVersions)
 	g.GET("/versions/:id", h.GetVersionDetail)
 	g.GET("/versions/:id/status", h.GetVersionStatus)
+
+	// Webhook management routes (under Auth middleware)
+	g.GET("/configs/:id/webhook", h.GetWebhookConfig)
+	g.PUT("/configs/:id/webhook/branches", h.UpdateWebhookBranches)
+	g.POST("/configs/:id/webhook/regenerate", h.RegenerateWebhook)
+	g.GET("/configs/:id/webhook/events", h.ListWebhookEvents)
 }
 
 // wikiReaderRouter 注册 Wiki Reader 公开 API 路由（HMAC Cookie 鉴权）

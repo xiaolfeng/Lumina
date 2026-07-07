@@ -1,22 +1,10 @@
 # RepoWiki MCP 工具与 REST API
 
+> **注意**: Wiki 更新由 Git Webhook 自动触发，Agent 无法通过 MCP 触发更新。参见 [webhook-design.md](webhook-design.md)。
+>
 > **注意**：以下所有工具名称、参数、API 路径均为设计参考值，实际实现可能调整。
 
 ## MCP 工具定义
-
-### repoWiki_analyze
-
-克隆项目并生成 Wiki 文档。
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `git_url` | string | 是 | Git 仓库地址 |
-| `language` | string | 否 | Wiki 语言，默认 `zh` |
-| `branch` | string | 否 | 目标分支，默认仓库默认分支 |
-
-**返回值**：项目 ID、分析状态、预计耗时
-
----
 
 ### repoWiki_query
 
@@ -32,21 +20,9 @@
 
 ---
 
-### repoWiki_update
-
-增量更新指定项目的 Wiki。
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `project_id` | string | 是 | 项目 ID |
-
-**返回值**：更新状态、变更文件数、重新生成的页面列表
-
----
-
 ### repoWiki_list
 
-列出所有已分析的项目。
+列出所有已完成的 Wiki 版本。
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
@@ -54,18 +30,6 @@
 | `size` | int | 否 | 每页数量，默认 20 |
 
 **返回值**：项目列表（ID、名称、Git URL、状态、最后更新时间）
-
----
-
-### repoWiki_delete
-
-删除项目及其 Wiki 文档。
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `project_id` | string | 是 | 项目 ID |
-
-**返回值**：删除确认
 
 ---
 
@@ -181,3 +145,37 @@
   "message": "已删除"
 }
 ```
+
+---
+
+## Webhook 管理端点
+
+### GET `/api/v1/repowiki/configs/:id/webhook`
+
+获取 Webhook 配置信息（URL、监听分支、Provider 指南）。
+
+### PUT `/api/v1/repowiki/configs/:id/webhook/branches`
+
+更新 Webhook 监听分支列表。
+
+**请求体**：
+```json
+{
+  "branches": ["main", "develop"]
+}
+```
+
+### POST `/api/v1/repowiki/configs/:id/webhook/regenerate`
+
+重新生成 Webhook Token + Secret，旧 Token 立即失效。
+
+### GET `/api/v1/repowiki/configs/:id/webhook/events`
+
+获取 Webhook 事件日志（分页）。
+
+**查询参数**：`page`、`size`
+
+### POST `/api/v1/webhooks/repowiki/:token`
+
+Git Provider 推送事件接收端点，验证签名后触发增量分析。
+

@@ -426,3 +426,185 @@ func versionToStatusResponse(version *entity.WikiVersion) *apiRepowiki.VersionSt
 		CreatedAt:       version.CreatedAt,
 	}
 }
+
+// GetWebhookConfig 获取 Webhook 配置
+//
+// @Summary     [管理] 获取 Webhook 配置
+// @Description 根据配置 ID 查询 Webhook 地址、Token、Secret 状态和监控分支
+// @Tags        RepoWiki接口
+// @Produce     json
+// @Param       Authorization  header    string   true  "Bearer Access Token"
+// @Param       id             path      string   true  "配置ID"
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiRepowiki.WebhookConfigResponse}  "获取成功"
+// @Failure     400  {object}  apiCommon.BaseResponse  "请求参数错误"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Failure     404  {object}  apiCommon.BaseResponse  "配置不存在"
+// @Router      /api/v1/repowiki/configs/{id}/webhook [GET]
+func (h *RepoWikiHandler) GetWebhookConfig(ctx *gin.Context) {
+	h.log.Info(ctx, "GetWebhookConfig - 获取 Webhook 配置")
+
+	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
+	if err != nil {
+		_ = ctx.Error(err)
+		return
+	}
+
+	info, xErr := h.service.repoWikiLogic.GetWebhookConfig(ctx.Request.Context(), id, ctx.Request.Host)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.SuccessHasData(ctx, "获取成功", apiRepowiki.WebhookConfigResponse{
+		URL:       info.URL,
+		Token:     info.Token,
+		HasSecret: info.HasSecret,
+		Branches:  info.Branches,
+	})
+}
+
+// UpdateWebhookBranches 更新 Webhook 监控分支
+//
+// @Summary     [管理] 更新 Webhook 监控分支
+// @Description 更新指定配置监控的 Git 分支列表，仅列出的分支推送会触发 Wiki 分析
+// @Tags        RepoWiki接口
+// @Accept      json
+// @Produce     json
+// @Param       Authorization  header    string                                     true  "Bearer Access Token"
+// @Param       id             path      string                                     true  "配置ID"
+// @Param       request        body      apiRepowiki.UpdateWebhookBranchesRequest  true  "更新分支请求"
+// @Success     200  {object}  apiCommon.BaseResponse  "更新成功"
+// @Failure     400  {object}  apiCommon.BaseResponse  "请求参数错误"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Failure     404  {object}  apiCommon.BaseResponse  "配置不存在"
+// @Router      /api/v1/repowiki/configs/{id}/webhook/branches [PUT]
+func (h *RepoWikiHandler) UpdateWebhookBranches(ctx *gin.Context) {
+	h.log.Info(ctx, "UpdateWebhookBranches - 更新 Webhook 监控分支")
+
+	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
+	if err != nil {
+		_ = ctx.Error(err)
+		return
+	}
+
+	var req apiRepowiki.UpdateWebhookBranchesRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		_ = ctx.Error(err)
+		return
+	}
+
+	xErr := h.service.repoWikiLogic.UpdateWebhookBranches(ctx.Request.Context(), id, req.Branches)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.Success(ctx, "更新成功")
+}
+
+// RegenerateWebhook 重新生成 Webhook 凭据
+//
+// @Summary     [管理] 重新生成 Webhook 凭据
+// @Description 为指定配置重新生成 Webhook Token 和 Secret，旧 Token 立即失效，仅本次返回完整凭据
+// @Tags        RepoWiki接口
+// @Produce     json
+// @Param       Authorization  header    string   true  "Bearer Access Token"
+// @Param       id             path      string   true  "配置ID"
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiRepowiki.RegenerateWebhookResponse}  "重新生成成功"
+// @Failure     400  {object}  apiCommon.BaseResponse  "请求参数错误"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Failure     404  {object}  apiCommon.BaseResponse  "配置不存在"
+// @Router      /api/v1/repowiki/configs/{id}/webhook/regenerate [POST]
+func (h *RepoWikiHandler) RegenerateWebhook(ctx *gin.Context) {
+	h.log.Info(ctx, "RegenerateWebhook - 重新生成 Webhook 凭据")
+
+	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
+	if err != nil {
+		_ = ctx.Error(err)
+		return
+	}
+
+	token, secret, xErr := h.service.repoWikiLogic.RegenerateWebhook(ctx.Request.Context(), id)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	// URL 由 GetWebhookConfig 提供，重新生成后需前端再次获取完整配置
+	xResult.SuccessHasData(ctx, "重新生成成功", apiRepowiki.RegenerateWebhookResponse{
+		Token:  token,
+		Secret: secret,
+	})
+}
+
+// ListWebhookEvents 获取 Webhook 事件列表
+//
+// @Summary     [管理] 获取 Webhook 事件列表
+// @Description 根据配置 ID 分页查询 Webhook 接收事件及其处理结果
+// @Tags        RepoWiki接口
+// @Produce     json
+// @Param       Authorization  header    string   true  "Bearer Access Token"
+// @Param       id             path      string   true  "配置ID"
+// @Param       page           query     int      false  "页码"
+// @Param       size           query     int      false  "每页数量"
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiRepowiki.WebhookEventListResponse}  "获取成功"
+// @Failure     400  {object}  apiCommon.BaseResponse  "请求参数错误"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Router      /api/v1/repowiki/configs/{id}/webhook/events [GET]
+func (h *RepoWikiHandler) ListWebhookEvents(ctx *gin.Context) {
+	h.log.Info(ctx, "ListWebhookEvents - 获取 Webhook 事件列表")
+
+	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
+	if err != nil {
+		_ = ctx.Error(err)
+		return
+	}
+
+	pageStr := ctx.DefaultQuery("page", "1")
+	sizeStr := ctx.DefaultQuery("size", "20")
+	page, _ := strconv.Atoi(pageStr)
+	size, _ := strconv.Atoi(sizeStr)
+
+	events, total, xErr := h.service.repoWikiLogic.ListWebhookEvents(ctx.Request.Context(), id, page, size)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	items := make([]apiRepowiki.WebhookEventResponse, 0, len(events))
+	for _, e := range events {
+		items = append(items, webhookEventToResponse(e))
+	}
+
+	xResult.SuccessHasData(ctx, "获取成功", apiRepowiki.WebhookEventListResponse{
+		Total: total,
+		Items: items,
+	})
+}
+
+// webhookEventToResponse 将 WebhookEvent 实体转为响应 DTO
+func webhookEventToResponse(event *entity.WebhookEvent) apiRepowiki.WebhookEventResponse {
+	resp := apiRepowiki.WebhookEventResponse{
+		ID:           event.ID.Int64(),
+		Provider:     event.Provider,
+		EventType:    event.EventType,
+		Branch:       event.Branch,
+		CommitBefore: event.CommitBefore,
+		CommitAfter:  event.CommitAfter,
+		ChangedCount: event.ChangedCount,
+		Status:       event.Status,
+		Reason:       event.Reason,
+		ResponseCode: event.ResponseCode,
+		ReceivedAt:   event.ReceivedAt,
+		ProcessedAt:  event.ProcessedAt,
+	}
+
+	if event.ConfigID != nil {
+		resp.ConfigID = event.ConfigID.Int64()
+	}
+	if !event.VersionID.IsZero() {
+		resp.VersionID = event.VersionID.Int64()
+	}
+
+	return resp
+}

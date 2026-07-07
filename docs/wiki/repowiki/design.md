@@ -156,7 +156,7 @@ LLM 通过 Agent SDK 调用，分四个阶段逐步深入：
 
 ### 触发条件
 
-- Agent 主动调用 `repoWiki_update`
+- Git Provider Webhook 推送触发
 - 对比当前 HEAD commit hash 与上次分析的 commit hash
 - 如果无变更，跳过分析直接返回现有 Wiki
 
@@ -169,6 +169,12 @@ LLM 通过 Agent SDK 调用，分四个阶段逐步深入：
 5. 仅对变更影响范围内的模块重新执行 LLM 分析
 6. 未变更部分保留原 Wiki 内容
 7. 更新 commit hash 记录
+
+## Webhook 更新机制
+
+RepoWiki 的 Wiki 增量更新由 Git Provider Webhook 触发。当 Git 仓库发生 push 事件时，对应的 Provider 向 Lumina Webhook 端点推送事件，Lumina 验证签名、匹配分支后自动创建新版本并执行增量分析。
+
+详细设计参见 [webhook-design.md](webhook-design.md)。
 
 ## 数据库模型（物理模型）
 

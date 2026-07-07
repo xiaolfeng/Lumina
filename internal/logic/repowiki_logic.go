@@ -32,6 +32,7 @@ import (
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
 	"github.com/xiaolfeng/Lumina/internal/service"
+	"gorm.io/datatypes"
 )
 
 // ──────────────────────────────────────────────────────────────────────
@@ -46,8 +47,9 @@ import (
 // 刻意聚合在独立结构体中，保持 RepoWikiLogic 主结构体字段简洁。
 // config 和 version 分别对应 RepoWikiConfigRepo 和 WikiVersionRepo。
 type repowikiRepo struct {
-	config  *repository.RepoWikiConfigRepo // 配置 CRUD + Cache-Aside 缓存
-	version *repository.WikiVersionRepo    // 版本 CRUD + 状态缓存
+	config       *repository.RepoWikiConfigRepo // 配置 CRUD + Cache-Aside 缓存
+	version      *repository.WikiVersionRepo    // 版本 CRUD + 状态缓存
+	webhookEvent *repository.WebhookEventRepo   // Webhook 事件审计日志（仅追加）
 }
 
 // repowikiSvc RepoWiki 模块依赖的共享服务集合
@@ -106,8 +108,9 @@ func NewRepoWikiLogic(ctx context.Context) *RepoWikiLogic {
 			log: xLog.WithName(xLog.NamedLOGC, "RepoWikiLogic"),
 		},
 		repo: repowikiRepo{
-			config:  repository.NewRepoWikiConfigRepo(db, rdb),
-			version: repository.NewWikiVersionRepo(db, rdb),
+			config:       repository.NewRepoWikiConfigRepo(db, rdb),
+			version:      repository.NewWikiVersionRepo(db, rdb),
+			webhookEvent: repository.NewWebhookEventRepo(db, rdb),
 		},
 		svc: repowikiSvc{
 			git:       service.NewGitCloneService(),
@@ -200,6 +203,9 @@ func (l *RepoWikiLogic) CreateConfig(ctx context.Context, req *apiRepowiki.Creat
 		language = bConst.RepoWikiDefaultLanguage
 	}
 
+	// 自动生成 Webhook 凭据
+	webhookToken, webhookSecret := l.GenerateWebhookCredentials()
+
 	// 构建实体
 	configID := xSnowflake.GenerateID(bConst.GeneRepoWikiConfig)
 	config := &entity.RepoWikiConfig{
@@ -212,6 +218,9 @@ func (l *RepoWikiLogic) CreateConfig(ctx context.Context, req *apiRepowiki.Creat
 		SSHKeyEncrypted:  sshKeyEncrypted,
 		WikiPasswordHash: passwordHash,
 		Status:           bConst.RepoWikiStatusPending,
+		WebhookToken:     webhookToken,
+		WebhookSecret:    webhookSecret,
+		WebhookBranches:  datatypes.JSON([]byte("[]")),
 	}
 
 	// 持久化

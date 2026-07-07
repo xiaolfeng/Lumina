@@ -40,6 +40,9 @@ func NewRouteWithFrontend(frontendFS fs.FS, wikiFrontendFS fs.FS) func(reg *xReg
 		// 因此在此之前创建的 group 不会包含后续注册的全局中间件
 		r.mcpRouter(r.engine.Group("/api/v1"))
 
+		// Webhook receiver must also be registered before engine.Use() for raw body access
+		r.webhookRouter(r.engine)
+
 		r.engine.Use(xMiddle.ResponseMiddleware)
 		r.engine.Use(xMiddle.ReleaseAllCors)
 		r.engine.Use(xMiddle.AllowOption)

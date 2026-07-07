@@ -152,6 +152,39 @@ func (r *WikiVersionRepo) ListByConfigID(ctx context.Context, configID xSnowflak
 	return versions, total, nil
 }
 
+// ListCompleted 分页查询已完成的Wiki版本（按完成时间倒序）
+//
+// 参数:
+//   - ctx:  上下文对象
+//   - page: 页码（从 1 开始）
+//   - size: 每页数量
+//
+// 返回值:
+//   - []*entity.WikiVersion: 当前页的版本列表
+//   - int64:                  符合条件的总记录数
+//   - *xError.Error:          查询过程中的错误
+func (r *WikiVersionRepo) ListCompleted(ctx context.Context, page, size int) ([]*entity.WikiVersion, int64, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("ListCompleted - 分页查询已完成的 Wiki 版本 [page=%d, size=%d]", page, size))
+
+	var total int64
+	if err := r.db.WithContext(ctx).Model(&entity.WikiVersion{}).Where("status = ?", "completed").Count(&total).Error; err != nil {
+		return nil, 0, xError.NewError(ctx, xError.DatabaseError, "统计已完成 Wiki 版本数量失败", false, err)
+	}
+
+	var versions []*entity.WikiVersion
+	offset := (page - 1) * size
+	if err := r.db.WithContext(ctx).
+		Where("status = ?", "completed").
+		Offset(offset).
+		Limit(size).
+		Order("completed_at DESC").
+		Find(&versions).Error; err != nil {
+		return nil, 0, xError.NewError(ctx, xError.DatabaseError, "查询已完成 Wiki 版本列表失败", false, err)
+	}
+
+	return versions, total, nil
+}
+
 // UpdateStatus 更新版本分析状态，同步刷新版本状态缓存
 //
 // 专为 Pipeline 编排器在分析阶段推进时调用（如 pending → cloning → scanning → analyzing → completed）。

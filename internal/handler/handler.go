@@ -77,4 +77,6 @@ type PinHandler handler
 
 type RepoWikiHandler handler
 
+type WebhookHandler handler
+
 type LlmHandler handler

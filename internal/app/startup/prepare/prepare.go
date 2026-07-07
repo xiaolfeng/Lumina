@@ -28,4 +28,5 @@ func (p *Prepare) Prepare() {
 	p.prepareProject()
 	p.prepareQaHash()
 	p.prepareLlm()
+	p.prepareRepoWiki()
 }

@@ -27,6 +27,7 @@ var migrateTables = []interface{}{
 	&entity.WikiVersion{},
 	&entity.LlmProvider{},
 	&entity.LlmModel{},
+	&entity.WebhookEvent{},
 }
 
 func (r *reg) databaseInit(ctx context.Context) (any, error) {

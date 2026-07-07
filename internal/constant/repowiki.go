@@ -41,3 +41,27 @@ const (
 	CacheRepoWikiConfigByID    RedisKey = "repowiki:config:%d"         // CacheRepoWikiConfigByID 配置 ID→详情缓存（%d = configID）
 	CacheRepoWikiVersionStatus RedisKey = "repowiki:version:%d:status" // CacheRepoWikiVersionStatus 版本状态缓存（%d = versionID，TTL 30s 轮询优化）
 )
+
+// ── Webhook Provider 枚举 ──
+const (
+	WebhookProviderGitHub = "github" // GitHub
+	WebhookProviderGitee  = "gitee"  // Gitee
+	WebhookProviderGitLab = "gitlab" // GitLab
+	WebhookProviderGitea  = "gitea"  // Gitea
+)
+
+// ── Webhook 事件状态枚举 ──
+const (
+	WebhookEventStatusReceived = "received" // 已接收
+	WebhookEventStatusAccepted = "accepted" // 已接受
+	WebhookEventStatusIgnored  = "ignored"  // 已忽略
+	WebhookEventStatusFailed   = "failed"   // 已失败
+)
+
+// ── Webhook 请求头名称 ──
+const (
+	WebhookHeaderGitHub = "X-Hub-Signature-256" // GitHub Webhook签名头
+	WebhookHeaderGitee  = "X-Gitee-Token"       // Gitee Webhook Token头
+	WebhookHeaderGitLab = "X-Gitlab-Token"      // GitLab Webhook Token头
+	WebhookHeaderGitea  = "X-Gitea-Signature"   // Gitea Webhook签名头
+)

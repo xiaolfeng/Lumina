@@ -8,6 +8,7 @@ import (
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
+	"gorm.io/datatypes"
 )
 
 // RepoWikiConfig RepoWiki配置表，与Project表1:1关联，存储Git仓库配置和Wiki生成偏好
@@ -23,6 +24,9 @@ type RepoWikiConfig struct {
 	WikiPasswordHash   string                 `gorm:"type:varchar(128);comment:Wiki访问密码bcrypt哈希" json:"wiki_password_hash,omitempty"`      // Wiki访问密码bcrypt哈希
 	Status             string                 `gorm:"type:varchar(16);not null;default:pending;index;comment:当前分析状态（快速查询用）" json:"status"` // 当前分析状态（快速查询用）
 	LastAccessedAt     *time.Time             `gorm:"type:timestamptz;index;comment:最后访问时间" json:"last_accessed_at,omitempty"`             // 最后访问时间
+	WebhookToken       string                 `gorm:"type:varchar(128);uniqueIndex;comment:Webhook访问令牌" json:"webhook_token,omitempty"`      // Webhook访问令牌
+	WebhookSecret      string                 `gorm:"type:varchar(128);comment:Webhook签名密钥" json:"webhook_secret,omitempty"`                // Webhook签名密钥
+	WebhookBranches    datatypes.JSON         `gorm:"type:jsonb;comment:Webhook监听分支列表" json:"webhook_branches,omitempty"`                     // Webhook监听分支列表
 }
 
 // GetGene 返回RepoWikiConfig实体的雪花算法基因编号

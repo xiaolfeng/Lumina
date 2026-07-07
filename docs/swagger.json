@@ -3472,6 +3472,276 @@
                 }
             }
         },
+        "/api/v1/repowiki/configs/{id}/webhook": {
+            "get": {
+                "description": "根据配置 ID 查询 Webhook 地址、Token、Secret 状态和监控分支",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 获取 Webhook 配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.WebhookConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repowiki/configs/{id}/webhook/branches": {
+            "put": {
+                "description": "更新指定配置监控的 Git 分支列表，仅列出的分支推送会触发 Wiki 分析",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 更新 Webhook 监控分支",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新分支请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/repowiki.UpdateWebhookBranchesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repowiki/configs/{id}/webhook/events": {
+            "get": {
+                "description": "根据配置 ID 分页查询 Webhook 接收事件及其处理结果",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 获取 Webhook 事件列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.WebhookEventListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repowiki/configs/{id}/webhook/regenerate": {
+            "post": {
+                "description": "为指定配置重新生成 Webhook Token 和 Secret，旧 Token 立即失效，仅本次返回完整凭据",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 重新生成 Webhook 凭据",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "重新生成成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.RegenerateWebhookResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/repowiki/versions/{id}": {
             "get": {
                 "description": "根据版本 ID 查询完整的版本信息（含 commit hash、分析耗时、token 消耗等）",
@@ -3826,6 +4096,38 @@
                         "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/webhooks/repowiki/{token}": {
+            "post": {
+                "description": "接收 GitHub/Gitee/GitLab/Gitea 的 push 事件，验证签名后触发 Wiki 增量分析",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Webhook接口"
+                ],
+                "summary": "[Webhook] Git Provider Webhook 接收端点",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Webhook Token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "处理结果",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.WebhookResponse"
                         }
                     }
                 }
@@ -5530,6 +5832,23 @@
                 }
             }
         },
+        "repowiki.RegenerateWebhookResponse": {
+            "type": "object",
+            "properties": {
+                "secret": {
+                    "description": "完整 Secret（仅展示一次）",
+                    "type": "string"
+                },
+                "token": {
+                    "description": "完整 Token（仅展示一次）",
+                    "type": "string"
+                },
+                "url": {
+                    "description": "完整 Webhook URL",
+                    "type": "string"
+                }
+            }
+        },
         "repowiki.UpdateConfigRequest": {
             "type": "object",
             "properties": {
@@ -5556,6 +5875,20 @@
                 "wiki_password": {
                     "description": "Wiki访问密码（传空字符串清除）",
                     "type": "string"
+                }
+            }
+        },
+        "repowiki.UpdateWebhookBranchesRequest": {
+            "type": "object",
+            "required": [
+                "branches"
+            ],
+            "properties": {
+                "branches": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -5636,6 +5969,114 @@
                 },
                 "token_count": {
                     "description": "LLM token消耗",
+                    "type": "integer"
+                }
+            }
+        },
+        "repowiki.WebhookConfigResponse": {
+            "type": "object",
+            "properties": {
+                "branches": {
+                    "description": "监控分支列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "has_secret": {
+                    "description": "是否设置 Secret",
+                    "type": "boolean"
+                },
+                "provider_guide": {
+                    "description": "提供商 -\u003e 配置指南",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "token": {
+                    "description": "脱敏 Token（cs_****）",
+                    "type": "string"
+                },
+                "url": {
+                    "description": "完整 Webhook URL",
+                    "type": "string"
+                }
+            }
+        },
+        "repowiki.WebhookEventListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "事件列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/repowiki.WebhookEventResponse"
+                    }
+                },
+                "total": {
+                    "description": "总数",
+                    "type": "integer"
+                }
+            }
+        },
+        "repowiki.WebhookEventResponse": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "description": "触发分支",
+                    "type": "string"
+                },
+                "changed_count": {
+                    "description": "变更文件数",
+                    "type": "integer"
+                },
+                "commit_after": {
+                    "description": "变更后 commit",
+                    "type": "string"
+                },
+                "commit_before": {
+                    "description": "变更前 commit",
+                    "type": "string"
+                },
+                "config_id": {
+                    "description": "关联配置ID",
+                    "type": "integer"
+                },
+                "event_type": {
+                    "description": "事件类型",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "事件ID",
+                    "type": "integer"
+                },
+                "processed_at": {
+                    "description": "处理时间",
+                    "type": "string"
+                },
+                "provider": {
+                    "description": "Git 提供商",
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "忽略/失败原因",
+                    "type": "string"
+                },
+                "received_at": {
+                    "description": "接收时间",
+                    "type": "string"
+                },
+                "response_code": {
+                    "description": "响应 HTTP 状态码",
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "处理状态",
+                    "type": "string"
+                },
+                "version_id": {
+                    "description": "关联版本ID",
                     "type": "integer"
                 }
             }
@@ -5827,6 +6268,26 @@
                 "username": {
                     "description": "用户名",
                     "type": "string"
+                }
+            }
+        },
+        "webhook.WebhookResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "present when status=ignored or failed",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "accepted | ignored | failed",
+                    "type": "string"
+                },
+                "version_id": {
+                    "description": "present when status=accepted",
+                    "type": "integer"
                 }
             }
         },
