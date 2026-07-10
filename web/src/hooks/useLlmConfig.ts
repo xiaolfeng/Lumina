@@ -108,6 +108,14 @@ export function useAgentModel(role: string) {
   })
 }
 
+export function useAgentModels(module: string) {
+  return useQuery({
+    queryKey: ['llm', 'agent-models', module],
+    queryFn: () => llmApi.getAgentModels(module),
+    enabled: !!module,
+  })
+}
+
 export function useUpdateAgentModel() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -120,6 +128,7 @@ export function useUpdateAgentModel() {
     }) => llmApi.updateAgentModel(role, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['llm', 'agent'] })
+      queryClient.invalidateQueries({ queryKey: ['llm', 'agent-models'] })
     },
   })
 }

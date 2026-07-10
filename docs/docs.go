@@ -948,6 +948,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/llm/agent/models": {
+            "get": {
+                "description": "根据模块标识批量查询所有 Agent 角色的模型分配情况，返回每个角色的 model_id 和 model_name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "LLM配置接口"
+                ],
+                "summary": "[管理] 批量获取Agent模型分配",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "模块标识（如 repowiki）",
+                        "name": "module",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/llm.AgentModelAssignmentsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "module 参数为空或不支持",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/llm/agent/{role}/model": {
             "get": {
                 "description": "根据 Agent 角色查询当前分配的模型 ID，未分配时 model_id 为 null",
@@ -3885,6 +3948,139 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/settings/{category}": {
+            "get": {
+                "description": "根据分类名称获取该分类下所有设置项的键值、类型与描述，未入库项返回默认值",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系统设置接口"
+                ],
+                "summary": "[管理] 获取分类设置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "设置分类(如 general/qa/repo/security)",
+                        "name": "category",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/settings.CategorySettingsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "无效的设置分类",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "批量更新指定分类下的设置项键值，校验分类合法性、Key 归属与值类型后逐项写入",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系统设置接口"
+                ],
+                "summary": "[管理] 更新分类设置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "设置分类(如 general/qa/repo/security)",
+                        "name": "category",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新分类设置请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/settings.UpdateCategorySettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "设置更新成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或设置项不属于该分类",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/biometric/credentials": {
             "get": {
                 "description": "返回当前用户已注册的所有生物特征凭证",
@@ -4832,8 +5028,28 @@ const docTemplate = `{
                     "description": "关联模型ID(nil表示未分配)",
                     "type": "string"
                 },
+                "model_name": {
+                    "description": "模型显示名称(nil表示未分配)",
+                    "type": "string"
+                },
                 "role": {
                     "description": "Agent角色",
+                    "type": "string"
+                }
+            }
+        },
+        "llm.AgentModelAssignmentsResponse": {
+            "type": "object",
+            "properties": {
+                "assignments": {
+                    "description": "角色分配列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/llm.AgentModelAssignment"
+                    }
+                },
+                "module": {
+                    "description": "模块标识（如 repowiki）",
                     "type": "string"
                 }
             }
@@ -6179,6 +6395,65 @@ const docTemplate = `{
                 "title": {
                     "description": "页面标题",
                     "type": "string"
+                }
+            }
+        },
+        "settings.CategorySettingsResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "description": "分类名称(如general/repo/memory)",
+                    "type": "string"
+                },
+                "items": {
+                    "description": "该分类下的设置项列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/settings.SettingItemResponse"
+                    }
+                }
+            }
+        },
+        "settings.SettingItemResponse": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "description": "设置项描述说明",
+                    "type": "string"
+                },
+                "key": {
+                    "description": "设置项键名",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "值类型(text/number/boolean等)",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "设置项当前值",
+                    "type": "string"
+                }
+            }
+        },
+        "settings.UpdateCategorySettingsRequest": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "待更新的键值对列表",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "key": {
+                                "description": "设置项键名",
+                                "type": "string"
+                            },
+                            "value": {
+                                "description": "新的设置值",
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             }
         },

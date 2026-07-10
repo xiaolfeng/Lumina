@@ -4,7 +4,9 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
+	"strings"
 
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 
@@ -116,4 +118,48 @@ func (r *LlmResolver) ResolveAgentModel(ctx context.Context, role string, keyPre
 		MaxTokens:       model.MaxTokens,
 		Temperature:     model.Temperature,
 	}, nil
+}
+
+// ResolveAgentModels 批量解析多个 Agent 角色的 LLM 配置
+//
+// 遍历 roles 列表，对每个角色调用 ResolveAgentModel。
+// 当某角色未配置（error 包含"未配置"）时跳过该角色，这是正常状态。
+// 其他 error（如 DB 故障）也跳过但记录 slog.Warn 日志。
+// 返回的 map 仅包含成功解析的角色。
+//
+// 参数说明:
+//   - ctx:       上下文
+//   - roles:     Agent 角色标识列表（如 []string{"repowiki:coordinator", "repowiki:explore", "repowiki:write"}）
+//   - keyPrefix: Info 表键前缀（如 "llm_agent_model:"）
+//
+// 返回值:
+//   - map[string]*ResolvedLlmConfig: 成功解析的角色 → 配置映射
+//   - error: 仅在 ctx 取消等系统性故障时非 nil（单角色缺失不触发）
+func (r *LlmResolver) ResolveAgentModels(ctx context.Context, roles []string, keyPrefix string) (map[string]*ResolvedLlmConfig, error) {
+	result := make(map[string]*ResolvedLlmConfig)
+
+	for _, role := range roles {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		config, err := r.ResolveAgentModel(ctx, role, keyPrefix)
+		if err != nil {
+			// 检查是否是"未配置"错误（正常状态，静默跳过）
+			if strings.Contains(err.Error(), "未配置") {
+				continue
+			}
+			// 其他错误记录日志后跳过
+			slog.Warn("解析 Agent 模型配置失败",
+				slog.String("role", role),
+				slog.String("error", err.Error()),
+			)
+			continue
+		}
+		result[role] = config
+	}
+
+	return result, nil
 }

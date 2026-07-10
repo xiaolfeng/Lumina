@@ -11,6 +11,7 @@ import type {
   Provider,
   Model,
   AgentModelAssignment,
+  AgentModelAssignmentsResponse,
   ProviderListResponse,
   ModelListResponse,
 } from '../models/response/llm'
@@ -85,4 +86,10 @@ export function updateAgentModel(
   data: UpdateAgentModelRequest,
 ): Promise<BaseResponse> {
   return apiClient.put(`/api/v1/llm/agent/${role}/model`, data)
+}
+
+export function getAgentModels(
+  module: string,
+): Promise<BaseResponse<AgentModelAssignmentsResponse>> {
+  return apiClient.get('/api/v1/llm/agent/models', { params: { module } })
 }

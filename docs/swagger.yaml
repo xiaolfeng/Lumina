@@ -319,8 +319,22 @@ definitions:
       model_id:
         description: 关联模型ID(nil表示未分配)
         type: string
+      model_name:
+        description: 模型显示名称(nil表示未分配)
+        type: string
       role:
         description: Agent角色
+        type: string
+    type: object
+  llm.AgentModelAssignmentsResponse:
+    properties:
+      assignments:
+        description: 角色分配列表
+        items:
+          $ref: '#/definitions/llm.AgentModelAssignment'
+        type: array
+      module:
+        description: 模块标识（如 repowiki）
         type: string
     type: object
   llm.CreateModelRequest:
@@ -1289,6 +1303,47 @@ definitions:
         description: 页面标题
         type: string
     type: object
+  settings.CategorySettingsResponse:
+    properties:
+      category:
+        description: 分类名称(如general/repo/memory)
+        type: string
+      items:
+        description: 该分类下的设置项列表
+        items:
+          $ref: '#/definitions/settings.SettingItemResponse'
+        type: array
+    type: object
+  settings.SettingItemResponse:
+    properties:
+      description:
+        description: 设置项描述说明
+        type: string
+      key:
+        description: 设置项键名
+        type: string
+      type:
+        description: 值类型(text/number/boolean等)
+        type: string
+      value:
+        description: 设置项当前值
+        type: string
+    type: object
+  settings.UpdateCategorySettingsRequest:
+    properties:
+      items:
+        description: 待更新的键值对列表
+        items:
+          properties:
+            key:
+              description: 设置项键名
+              type: string
+            value:
+              description: 新的设置值
+              type: string
+          type: object
+        type: array
+    type: object
   user.BiometricCredentialItem:
     properties:
       aaguid:
@@ -2082,6 +2137,45 @@ paths:
           schema:
             $ref: '#/definitions/common.BaseResponse'
       summary: '[管理] 更新Agent模型分配'
+      tags:
+      - LLM配置接口
+  /api/v1/llm/agent/models:
+    get:
+      consumes:
+      - application/json
+      description: 根据模块标识批量查询所有 Agent 角色的模型分配情况，返回每个角色的 model_id 和 model_name
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 模块标识（如 repowiki）
+        in: query
+        name: module
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/llm.AgentModelAssignmentsResponse'
+              type: object
+        "400":
+          description: module 参数为空或不支持
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 批量获取Agent模型分配'
       tags:
       - LLM配置接口
   /api/v1/llm/model:
@@ -3867,6 +3961,92 @@ paths:
       summary: '[管理] 获取版本分析状态'
       tags:
       - RepoWiki接口
+  /api/v1/settings/{category}:
+    get:
+      consumes:
+      - application/json
+      description: 根据分类名称获取该分类下所有设置项的键值、类型与描述，未入库项返回默认值
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 设置分类(如 general/qa/repo/security)
+        in: path
+        name: category
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/settings.CategorySettingsResponse'
+              type: object
+        "400":
+          description: 无效的设置分类
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 获取分类设置'
+      tags:
+      - 系统设置接口
+    put:
+      consumes:
+      - application/json
+      description: 批量更新指定分类下的设置项键值，校验分类合法性、Key 归属与值类型后逐项写入
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 设置分类(如 general/qa/repo/security)
+        in: path
+        name: category
+        required: true
+        type: string
+      - description: 更新分类设置请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/settings.UpdateCategorySettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 设置更新成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 请求参数错误或设置项不属于该分类
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 更新分类设置'
+      tags:
+      - 系统设置接口
   /api/v1/user/biometric/credentials:
     get:
       description: 返回当前用户已注册的所有生物特征凭证

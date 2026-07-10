@@ -39,7 +39,7 @@ export function ModelCreateDialog({
   const { data: providersData } = useProviders()
   const createMutation = useCreateModel()
 
-  const providers = providersData?.data?.list || []
+  const providers = providersData?.data?.items ?? []
 
   const handleSubmit = () => {
     if (!providerId || !modelName.trim() || !displayName.trim()) return

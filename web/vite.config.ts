@@ -28,7 +28,9 @@ const config = defineConfig({
     viteReact(),
   ],
   build: {
-    chunkSizeWarningLimit: 700,
+    // mermaid 通过 rehype-mermaid 拖入完整 mermaid 库（~2.8MB），
+    // 已通过 React.lazy 按需加载，仅在内容含 ```mermaid 时才下载。
+    chunkSizeWarningLimit: 2900,
     rolldownOptions: {
       output: {
         codeSplitting: {
@@ -47,6 +49,11 @@ const config = defineConfig({
               name: 'vendor-motion',
               test: /node_modules[\/](motion|motion-dom|motion-utils|framer-motion)/,
               priority: 12,
+            },
+            {
+              name: 'vendor-mermaid',
+              test: /node_modules[\/](rehype-mermaid|mermaid|cytoscape|dagre|d3|elkjs|khroma|web-worker)/,
+              priority: 10,
             },
           ],
         },

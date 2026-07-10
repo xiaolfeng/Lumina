@@ -12,9 +12,10 @@ export interface Provider {
 }
 
 export interface ProviderListResponse {
-  list: Provider[]
-  total: number
-  page: number
+  items: Provider[]
+  total_items: number
+  current_page: number
+  total_pages: number
   size: number
 }
 
@@ -33,9 +34,10 @@ export interface Model {
 }
 
 export interface ModelListResponse {
-  list: Model[]
-  total: number
-  page: number
+  items: Model[]
+  total_items: number
+  current_page: number
+  total_pages: number
   size: number
 }
 
@@ -43,4 +45,17 @@ export interface ModelListResponse {
 export interface AgentModelAssignment {
   role: string
   model_id: string | null
+}
+
+// Agent 模型分配项（多角色批量查询）
+export interface AgentModelAssignmentItem {
+  role: string
+  model_id: string | null
+  model_name: string | null
+}
+
+// Agent 模型分配批量响应
+export interface AgentModelAssignmentsResponse {
+  module: string
+  assignments: AgentModelAssignmentItem[]
 }

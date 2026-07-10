@@ -14,7 +14,11 @@ import { ProviderEditDialog } from '#/components/llm/provider-edit-dialog'
 import { getModelColumns } from '#/components/llm/model-columns'
 import { ModelCreateDialog } from '#/components/llm/model-create-dialog'
 import { ModelEditDialog } from '#/components/llm/model-edit-dialog'
-import { AgentModelAssign } from '#/components/llm/agent-model-assign'
+import { AgentModelAssignGroup } from '#/components/llm/agent-model-assign'
+import { SiteSettingsForm } from '#/components/settings/site-settings-form'
+import { QaSettingsForm } from '#/components/settings/qa-settings-form'
+import { RepowikiSettingsForm } from '#/components/settings/repowiki-settings-form'
+import { SecuritySettingsForm } from '#/components/settings/security-settings-form'
 import {
   useProviders,
   useDeleteProvider,
@@ -47,8 +51,8 @@ function SettingsPage() {
   const deleteProviderMutation = useDeleteProvider()
   const deleteModelMutation = useDeleteModel()
 
-  const providerItems = providersData?.data?.list ?? []
-  const modelItems = modelsData?.data?.list ?? []
+  const providerItems = providersData?.data?.items ?? []
+  const modelItems = modelsData?.data?.items ?? []
 
   // Column definitions
   const providerColumns = getProviderColumns({
@@ -82,7 +86,7 @@ function SettingsPage() {
     >
       <PageHeader
         title="系统设置"
-        description="管理 LLM Provider、模型配置和 Agent 分配"
+        description="管理 LLM 配置、站点信息、模块运行参数和安全策略"
       />
 
       <Tabs defaultValue="provider" className="space-y-4">
@@ -90,6 +94,10 @@ function SettingsPage() {
           <TabsTrigger value="provider">Provider 管理</TabsTrigger>
           <TabsTrigger value="model">模型管理</TabsTrigger>
           <TabsTrigger value="agent">Agent 分配</TabsTrigger>
+          <TabsTrigger value="site">站点信息</TabsTrigger>
+          <TabsTrigger value="qa">Q&A 配置</TabsTrigger>
+          <TabsTrigger value="repowiki">RepoWiki</TabsTrigger>
+          <TabsTrigger value="security">安全策略</TabsTrigger>
         </TabsList>
 
         {/* Provider 管理 */}
@@ -135,7 +143,35 @@ function SettingsPage() {
         {/* Agent 分配 */}
         <TabsContent value="agent">
           <motion.div variants={staggerItem}>
-            <AgentModelAssign role="repowiki" />
+            <AgentModelAssignGroup module="repowiki" />
+          </motion.div>
+        </TabsContent>
+
+        {/* 站点信息 */}
+        <TabsContent value="site">
+          <motion.div variants={staggerItem}>
+            <SiteSettingsForm />
+          </motion.div>
+        </TabsContent>
+
+        {/* Q&A 配置 */}
+        <TabsContent value="qa">
+          <motion.div variants={staggerItem}>
+            <QaSettingsForm />
+          </motion.div>
+        </TabsContent>
+
+        {/* RepoWiki */}
+        <TabsContent value="repowiki">
+          <motion.div variants={staggerItem}>
+            <RepowikiSettingsForm />
+          </motion.div>
+        </TabsContent>
+
+        {/* 安全策略 */}
+        <TabsContent value="security">
+          <motion.div variants={staggerItem}>
+            <SecuritySettingsForm />
           </motion.div>
         </TabsContent>
       </Tabs>

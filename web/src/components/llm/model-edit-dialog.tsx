@@ -44,7 +44,7 @@ export function ModelEditDialog({
   const { data: providersData } = useProviders()
   const updateMutation = useUpdateModel()
 
-  const providers = providersData?.data?.list || []
+  const providers = providersData?.data?.items ?? []
 
   useEffect(() => {
     if (item) {

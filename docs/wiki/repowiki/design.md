@@ -67,37 +67,30 @@ Git URL 输入
 - 高分文件优先送入 LLM 分析
 - 确保在 token 限制内覆盖最重要的代码
 
-## 阶段三：LLM 分阶段分析
+## 阶段三：多 Agent 协作分析
 
-LLM 通过 Agent SDK 调用，分四个阶段逐步深入：
+RepoWiki 不再采用固定的 4 Pass 串行流程，而是使用 ReAct 范式的多 Agent 协作。主 Agent 以 Coordinator 角色监工，通过 `agent.NewAgentTool` 把 Explore 和 Write 两个子 Agent 注册为工具，自主决定何时探索、何时写作、何时结束。
 
-### Pass 1：项目概览
+### 角色定义
 
-- 项目定位与核心功能
-- 技术栈识别（语言、框架、工具）
-- 目录结构概述
-- 入口点分析
+| 角色 | 标识 | 职责 | 说明 |
+|------|------|------|------|
+| **Coordinator** | `repowiki:coordinator` | 编排决策 | 读取仓库扫描摘要，规划探索策略，调度 explore 和 write 工具，判断 Wiki 是否完成 |
+| **Explore** | `repowiki:explore` | 代码探索 | 读文件、分析依赖、产出结构化 JSON 摘要，供 Coordinator 和 Write 使用 |
+| **Write** | `repowiki:write` | 文档写作 | 基于 Explore 的摘要，撰写 Markdown 页面和 Mermaid 图表 |
 
-### Pass 2：模块分析
+### 编排流程
 
-- 模块清单与职责划分
-- 模块间依赖关系图（Mermaid）
-- 各模块关键文件与核心函数
-- 模块接口定义
+Coordinator 进入 ReAct 循环后，按如下方式工作：
 
-### Pass 3：架构设计
+1. 先用 `explore` 工具扫描仓库根目录和入口文件，获得项目概览 JSON
+2. 根据概览决定深入哪些模块，继续调用 `explore` 产出模块分析 JSON
+3. 当信息足够时，调用 `write` 工具逐个生成 Wiki 章节
+4. 所有章节完成后结束
 
-- 整体架构模式（分层、微服务、插件等）
-- 架构图（Mermaid graph）
-- 数据流图（Mermaid sequenceDiagram）
-- 设计决策与约束
+Wiki 仍包含四个章节（项目概览、模块分析、架构设计、阅读指南），但生成顺序和深度由 Coordinator 灵活控制，而不是硬编码的 Pass 顺序。
 
-### Pass 4：阅读指南
-
-- 基于 PageRank 的推荐阅读顺序
-- 新人上手路径
-- 关键代码段索引
-- 常见问题与解答
+详细设计（数据模型、后端架构、前端变更、风险缓解）参见 [multi-agent-design.md](multi-agent-design.md)。
 
 ## 阶段四：文档组装与输出
 
@@ -303,11 +296,13 @@ type WikiVersion struct {
           │        │ analyzing │        │
           │        └─────┬─────┘        │
           │              │              │
-          │   ┌──────────┼──────────┐  │
-          │   ▼          ▼          ▼  │
-          │ scan      pass1-4   assembling │
-          │   │          │          │  │
-          │   └──────────┼──────────┘  │
+          │        ┌─────▼─────┐        │
+          │        │    scan   │        │
+          │        └─────┬─────┘        │
+          │              │              │
+          │        ┌─────▼─────┐        │
+          │        │orchestrating│      │
+          │        └─────┬─────┘        │
           │              │              │
           │        ┌─────▼─────┐        │
           │        │ completed │        │
@@ -323,11 +318,7 @@ type WikiVersion struct {
 
 **CurrentStage 枚举值**（status=analyzing 时）：
 - `scan` — 文件扫描阶段
-- `pass1` — Pass 1：项目概览
-- `pass2` — Pass 2：模块分析
-- `pass3` — Pass 3：架构设计
-- `pass4` — Pass 4：阅读指南
-- `assembling` — 文档组装阶段
+- `orchestrating` — Coordinator 多 Agent ReAct 编排阶段（替代原 pass1-4 + assembling）
 
 ### 文件系统结构
 

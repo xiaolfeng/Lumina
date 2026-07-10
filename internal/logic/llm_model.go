@@ -282,6 +282,71 @@ func (l *LlmModelLogic) SetAgentModel(ctx context.Context, role, modelID string)
 	return l.repo.info.UpsertValue(ctx, key, modelID)
 }
 
+// GetAgentModelsConfig 批量查询模块下所有 Agent 角色的模型分配
+//
+// 遍历 roles，从 Info 表读取每个角色的 model_id，
+// 若非空则查询 Model 实体获取 DisplayName 填入 ModelName。
+// 未配置的角色 ModelID 和 ModelName 均为 nil。
+func (l *LlmModelLogic) GetAgentModelsConfig(ctx context.Context, module string, roles []string) (*apiLlm.AgentModelAssignmentsResponse, *xError.Error) {
+	l.log.Info(ctx, "GetAgentModelsConfig - 批量获取Agent模型分配 ["+module+"]")
+
+	if module != "repowiki" {
+		return nil, xError.NewError(ctx, xError.BadRequest, xError.ErrMessage("不支持的模块: "+module), false, nil)
+	}
+
+	assignments := make([]apiLlm.AgentModelAssignment, 0, len(roles))
+	for _, role := range roles {
+		key := bConst.LlmAgentModelKeyPrefix + role
+		modelIDStr, xErr := l.repo.info.GetByKey(ctx, key)
+
+		if xErr != nil || modelIDStr == "" {
+			assignments = append(assignments, apiLlm.AgentModelAssignment{
+				Role:      role,
+				ModelID:   nil,
+				ModelName: nil,
+			})
+			continue
+		}
+
+		modelIDInt, err := strconv.ParseInt(modelIDStr, 10, 64)
+		if err != nil {
+			l.log.Warn(ctx, "GetAgentModelsConfig - Agent模型配置值无效 ["+role+"]: "+modelIDStr)
+			idStr := modelIDStr
+			assignments = append(assignments, apiLlm.AgentModelAssignment{
+				Role:      role,
+				ModelID:   &idStr,
+				ModelName: nil,
+			})
+			continue
+		}
+
+		model, xErr := l.repo.model.GetByID(ctx, xSnowflake.SnowflakeID(modelIDInt))
+		if xErr != nil {
+			l.log.Warn(ctx, "GetAgentModelsConfig - 查询模型失败 ["+role+"] modelID="+modelIDStr)
+			idStr := modelIDStr
+			assignments = append(assignments, apiLlm.AgentModelAssignment{
+				Role:      role,
+				ModelID:   &idStr,
+				ModelName: nil,
+			})
+			continue
+		}
+
+		idStr := modelIDStr
+		displayName := model.DisplayName
+		assignments = append(assignments, apiLlm.AgentModelAssignment{
+			Role:      role,
+			ModelID:   &idStr,
+			ModelName: &displayName,
+		})
+	}
+
+	return &apiLlm.AgentModelAssignmentsResponse{
+		Module:      module,
+		Assignments: assignments,
+	}, nil
+}
+
 // toDetailResponse 将实体映射为详情响应
 func (l *LlmModelLogic) toDetailResponse(model *entity.LlmModel) *apiLlm.ModelDetailResponse {
 	return &apiLlm.ModelDetailResponse{

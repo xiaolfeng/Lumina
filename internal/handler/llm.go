@@ -3,11 +3,13 @@ package handler
 import (
 	"strconv"
 
+	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
 	"github.com/gin-gonic/gin"
 	apiCommon "github.com/xiaolfeng/Lumina/api/common"
 	apiLlm "github.com/xiaolfeng/Lumina/api/llm"
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
 // 确保 apiCommon 包被编译器识别（swag 注释依赖此导入）
@@ -332,6 +334,38 @@ func (h *LlmHandler) DeleteModel(ctx *gin.Context) {
 }
 
 // ──────────────────────────── Agent ────────────────────────────
+
+// GetAgentModels 批量获取 Agent 模型分配
+//
+// @Summary     [管理] 批量获取Agent模型分配
+// @Description 根据模块标识批量查询所有 Agent 角色的模型分配情况，返回每个角色的 model_id 和 model_name
+// @Tags        LLM配置接口
+// @Accept      json
+// @Produce     json
+// @Param       Authorization  header    string  true  "Bearer Access Token"
+// @Param       module         query     string  true  "模块标识（如 repowiki）"
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiLlm.AgentModelAssignmentsResponse}  "查询成功"
+// @Failure     400  {object}  apiCommon.BaseResponse  "module 参数为空或不支持"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Router      /api/v1/llm/agent/models [GET]
+func (h *LlmHandler) GetAgentModels(ctx *gin.Context) {
+	h.log.Info(ctx, "GetAgentModels - 批量获取Agent模型分配")
+
+	module := ctx.Query("module")
+	if module == "" {
+		_ = ctx.Error(xError.NewError(ctx, xError.BadRequest, xError.ErrMessage("module 参数不能为空"), false, nil))
+		return
+	}
+
+	roles := bConst.AgentRolesRepoWiki
+	resp, xErr := h.service.llmModelLogic.GetAgentModelsConfig(ctx.Request.Context(), module, roles)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.SuccessHasData(ctx, "查询成功", resp)
+}
 
 // GetAgentModel 获取 Agent 角色对应的模型分配
 //

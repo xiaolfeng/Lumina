@@ -32,6 +32,7 @@ func (r *route) llmRouter(route gin.IRouter) {
 
 	agentGroup := llmGroup.Group("/agent")
 	{
+		agentGroup.GET("/models", llmHandler.GetAgentModels)
 		agentGroup.GET("/:role/model", llmHandler.GetAgentModel)
 		agentGroup.PUT("/:role/model", llmHandler.UpdateAgentModel)
 	}

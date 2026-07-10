@@ -18,6 +18,7 @@ type service struct {
 	repoWikiLogic    *logic.RepoWikiLogic
 	llmProviderLogic *logic.LlmProviderLogic
 	llmModelLogic    *logic.LlmModelLogic
+	settingsLogic    *logic.SettingsLogic
 }
 
 type handler struct {
@@ -55,6 +56,7 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 			repoWikiLogic:    repoWikiLogic,
 			llmProviderLogic: logic.NewLlmProviderLogic(ctx),
 			llmModelLogic:    logic.NewLlmModelLogic(ctx),
+			settingsLogic:    logic.NewSettingsLogic(ctx),
 		},
 	}
 }
@@ -80,3 +82,5 @@ type RepoWikiHandler handler
 type WebhookHandler handler
 
 type LlmHandler handler
+
+type SettingsHandler handler
