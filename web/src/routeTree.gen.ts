@@ -29,6 +29,8 @@ import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-passw
 import { Route as AuthNewRouteImport } from './routes/auth/new'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as PublicStartRouteImport } from './routes/_public/start'
+import { Route as ConsoleQaIndexRouteImport } from './routes/console/qa/index'
+import { Route as ConsoleProjectIndexRouteImport } from './routes/console/project/index'
 import { Route as ConsoleQaSessionIdRouteImport } from './routes/console/qa/$sessionId'
 import { Route as ConsoleProjectProjectIdRepowikiIndexRouteImport } from './routes/console/project/$projectId/repowiki/index'
 import { Route as ConsoleProjectProjectIdRepowikiCreateRouteImport } from './routes/console/project/$projectId/repowiki/create'
@@ -132,6 +134,16 @@ const PublicStartRoute = PublicStartRouteImport.update({
   path: '/start',
   getParentRoute: () => PublicRoute,
 } as any)
+const ConsoleQaIndexRoute = ConsoleQaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ConsoleQaRoute,
+} as any)
+const ConsoleProjectIndexRoute = ConsoleProjectIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ConsoleProjectRoute,
+} as any)
 const ConsoleQaSessionIdRoute = ConsoleQaSessionIdRouteImport.update({
   id: '/$sessionId',
   path: '/$sessionId',
@@ -171,6 +183,8 @@ export interface FileRoutesByFullPath {
   '/console/': typeof ConsoleIndexRoute
   '/interact/': typeof InteractIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/console/project/': typeof ConsoleProjectIndexRoute
+  '/console/qa/': typeof ConsoleQaIndexRoute
   '/console/project/$projectId/repowiki/create': typeof ConsoleProjectProjectIdRepowikiCreateRoute
   '/console/project/$projectId/repowiki/': typeof ConsoleProjectProjectIdRepowikiIndexRoute
 }
@@ -184,8 +198,6 @@ export interface FileRoutesByTo {
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/pin': typeof ConsolePinRoute
   '/console/profile': typeof ConsoleProfileRoute
-  '/console/project': typeof ConsoleProjectRouteWithChildren
-  '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
   '/console/ssh': typeof ConsoleSshRoute
   '/interact/thank': typeof InteractThankRoute
@@ -193,6 +205,8 @@ export interface FileRoutesByTo {
   '/console': typeof ConsoleIndexRoute
   '/interact': typeof InteractIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/console/project': typeof ConsoleProjectIndexRoute
+  '/console/qa': typeof ConsoleQaIndexRoute
   '/console/project/$projectId/repowiki/create': typeof ConsoleProjectProjectIdRepowikiCreateRoute
   '/console/project/$projectId/repowiki': typeof ConsoleProjectProjectIdRepowikiIndexRoute
 }
@@ -219,6 +233,8 @@ export interface FileRoutesById {
   '/console/': typeof ConsoleIndexRoute
   '/interact/': typeof InteractIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/console/project/': typeof ConsoleProjectIndexRoute
+  '/console/qa/': typeof ConsoleQaIndexRoute
   '/console/project/$projectId/repowiki/create': typeof ConsoleProjectProjectIdRepowikiCreateRoute
   '/console/project/$projectId/repowiki/': typeof ConsoleProjectProjectIdRepowikiIndexRoute
 }
@@ -245,6 +261,8 @@ export interface FileRouteTypes {
     | '/console/'
     | '/interact/'
     | '/console/qa/$sessionId'
+    | '/console/project/'
+    | '/console/qa/'
     | '/console/project/$projectId/repowiki/create'
     | '/console/project/$projectId/repowiki/'
   fileRoutesByTo: FileRoutesByTo
@@ -258,8 +276,6 @@ export interface FileRouteTypes {
     | '/console/dashboard'
     | '/console/pin'
     | '/console/profile'
-    | '/console/project'
-    | '/console/qa'
     | '/console/settings'
     | '/console/ssh'
     | '/interact/thank'
@@ -267,6 +283,8 @@ export interface FileRouteTypes {
     | '/console'
     | '/interact'
     | '/console/qa/$sessionId'
+    | '/console/project'
+    | '/console/qa'
     | '/console/project/$projectId/repowiki/create'
     | '/console/project/$projectId/repowiki'
   id:
@@ -292,6 +310,8 @@ export interface FileRouteTypes {
     | '/console/'
     | '/interact/'
     | '/console/qa/$sessionId'
+    | '/console/project/'
+    | '/console/qa/'
     | '/console/project/$projectId/repowiki/create'
     | '/console/project/$projectId/repowiki/'
   fileRoutesById: FileRoutesById
@@ -445,6 +465,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicStartRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/console/qa/': {
+      id: '/console/qa/'
+      path: '/'
+      fullPath: '/console/qa/'
+      preLoaderRoute: typeof ConsoleQaIndexRouteImport
+      parentRoute: typeof ConsoleQaRoute
+    }
+    '/console/project/': {
+      id: '/console/project/'
+      path: '/'
+      fullPath: '/console/project/'
+      preLoaderRoute: typeof ConsoleProjectIndexRouteImport
+      parentRoute: typeof ConsoleProjectRoute
+    }
     '/console/qa/$sessionId': {
       id: '/console/qa/$sessionId'
       path: '/$sessionId'
@@ -497,11 +531,13 @@ const AuthRouteChildren: AuthRouteChildren = {
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface ConsoleProjectRouteChildren {
+  ConsoleProjectIndexRoute: typeof ConsoleProjectIndexRoute
   ConsoleProjectProjectIdRepowikiCreateRoute: typeof ConsoleProjectProjectIdRepowikiCreateRoute
   ConsoleProjectProjectIdRepowikiIndexRoute: typeof ConsoleProjectProjectIdRepowikiIndexRoute
 }
 
 const ConsoleProjectRouteChildren: ConsoleProjectRouteChildren = {
+  ConsoleProjectIndexRoute: ConsoleProjectIndexRoute,
   ConsoleProjectProjectIdRepowikiCreateRoute:
     ConsoleProjectProjectIdRepowikiCreateRoute,
   ConsoleProjectProjectIdRepowikiIndexRoute:
@@ -514,10 +550,12 @@ const ConsoleProjectRouteWithChildren = ConsoleProjectRoute._addFileChildren(
 
 interface ConsoleQaRouteChildren {
   ConsoleQaSessionIdRoute: typeof ConsoleQaSessionIdRoute
+  ConsoleQaIndexRoute: typeof ConsoleQaIndexRoute
 }
 
 const ConsoleQaRouteChildren: ConsoleQaRouteChildren = {
   ConsoleQaSessionIdRoute: ConsoleQaSessionIdRoute,
+  ConsoleQaIndexRoute: ConsoleQaIndexRoute,
 }
 
 const ConsoleQaRouteWithChildren = ConsoleQaRoute._addFileChildren(
