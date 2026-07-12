@@ -117,6 +117,40 @@ func (h *RepoWikiHandler) GetConfig(ctx *gin.Context) {
 	xResult.SuccessHasData(ctx, "获取成功", configToResponse(config, nil))
 }
 
+// GetConfigByProjectID 按项目 ID 查询 RepoWiki 配置
+//
+// @Summary     [管理] 按项目ID查询 RepoWiki 配置
+// @Description 根据关联项目 ID 查询对应的 RepoWiki 配置，未创建配置时返回空数据（前端据此判断"不存在→创建"）
+// @Tags        RepoWiki接口
+// @Produce     json
+// @Param       Authorization  header    string   true  "Bearer Access Token"
+// @Param       projectId      path      string   true  "项目ID"
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiRepowiki.ConfigResponse}  "获取成功（data 为 null 表示未创建配置）"
+// @Failure     400  {object}  apiCommon.BaseResponse  "请求参数错误"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Router      /api/v1/repowiki/by-project/{projectId} [GET]
+func (h *RepoWikiHandler) GetConfigByProjectID(ctx *gin.Context) {
+	h.log.Info(ctx, "GetConfigByProjectID - 按项目 ID 查询 RepoWiki 配置")
+
+	projectID, err := xSnowflake.ParseSnowflakeID(ctx.Param("projectId"))
+	if err != nil {
+		_ = ctx.Error(err)
+		return
+	}
+
+	config, found, xErr := h.service.repoWikiLogic.GetConfigByProjectID(ctx.Request.Context(), projectID)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+	if !found {
+		xResult.SuccessHasData(ctx, "未创建配置", nil)
+		return
+	}
+
+	xResult.SuccessHasData(ctx, "获取成功", configToResponse(config, nil))
+}
+
 // UpdateConfig 更新 RepoWiki 配置
 //
 // @Summary     [管理] 更新 RepoWiki 配置
@@ -392,7 +426,7 @@ func configToResponse(config *entity.RepoWikiConfig, latestVersion *entity.WikiV
 		DefaultBranch:   config.DefaultBranch,
 		DefaultLanguage: config.DefaultLanguage,
 		Status:          config.Status,
-		HasSSHKey:       config.SSHKeyEncrypted != "",
+		SSHKeyID:        sshKeyIDToString(config.SSHKeyID),
 		HasPassword:     config.WikiPasswordHash != "",
 		LastAccessedAt:  config.LastAccessedAt,
 		CreatedAt:       config.CreatedAt,
@@ -404,6 +438,15 @@ func configToResponse(config *entity.RepoWikiConfig, latestVersion *entity.WikiV
 	}
 
 	return resp
+}
+
+// sshKeyIDToString 将 *xSnowflake.SnowflakeID 转为 *string（API 返回字符串形式的雪花 ID）
+func sshKeyIDToString(id *xSnowflake.SnowflakeID) *string {
+	if id == nil {
+		return nil
+	}
+	s := strconv.FormatInt(id.Int64(), 10)
+	return &s
 }
 
 // versionToStatusResponse 将 WikiVersion 实体转为版本状态响应 DTO

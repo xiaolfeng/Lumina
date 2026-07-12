@@ -61,3 +61,9 @@ export function getRepoWikiVersionStatus(
 ): Promise<BaseResponse<{ status: string; message?: string }>> {
 	return apiClient.get(`/api/v1/repowiki/versions/${versionId}/status`)
 }
+
+export function getConfigByProjectId(
+	projectId: string,
+): Promise<BaseResponse<RepoWikiConfigItem | null>> {
+	return apiClient.get(`/api/v1/repowiki/by-project/${projectId}`)
+}

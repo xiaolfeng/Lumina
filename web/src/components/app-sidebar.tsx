@@ -1,7 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import {
-	BookOpen,
 	ExternalLink,
+	FileKey,
 	FolderKanban,
 	KeyRound,
 	Pin,
@@ -60,13 +60,13 @@ const navGroups: NavGroup[] = [
 				{ title: "项目管理", to: "/console/project", icon: FolderKanban },
 				{ title: "Pin 管理", to: "/console/pin", icon: Pin },
 				{ title: "问答管理", to: "/console/qa", icon: MessageCircleQuestion },
-				{ title: "Wiki 管理", to: "/console/repowiki", icon: BookOpen },
 			],
 		},
 	{
 		label: "系统",
 		items: [
 			{ title: "令牌管理", to: "/console/apikey", icon: KeyRound },
+			{ title: "SSH 密钥", to: "/console/ssh", icon: FileKey },
 			{ title: "个人信息", to: "/console/profile", icon: User },
 			{ title: "系统设置", to: "/console/settings", icon: Settings },
 		],

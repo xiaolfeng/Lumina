@@ -1,7 +1,7 @@
 // Package logic RepoWiki 业务编排层。
 //
 // RepoWikiLogic 作为 RepoWiki 模块的核心编排者，负责：
-//   - 配置管理（CRUD + SSH Key 加密 + 密码哈希）
+//   - 配置管理（CRUD + SSH Key 关联校验 + 密码哈希）
 //   - 版本管理（触发分析、状态查询、版本列表）
 //   - 分析管道调度（信号量并发控制 + 后台 goroutine 执行）
 //   - Wiki 内容查询（MCP 工具调用入口）
@@ -46,10 +46,12 @@ import (
 //
 // 刻意聚合在独立结构体中，保持 RepoWikiLogic 主结构体字段简洁。
 // config 和 version 分别对应 RepoWikiConfigRepo 和 WikiVersionRepo。
+// sshKey 用于在克隆仓库时查询关联 SSH 密钥的明文私钥。
 type repowikiRepo struct {
 	config       *repository.RepoWikiConfigRepo // 配置 CRUD + Cache-Aside 缓存
 	version      *repository.WikiVersionRepo    // 版本 CRUD + 状态缓存
 	webhookEvent *repository.WebhookEventRepo   // Webhook 事件审计日志（仅追加）
+	sshKey       *repository.SshKeyRepo         // SSH 密钥查询（克隆时读取明文私钥）
 }
 
 // repowikiSvc RepoWiki 模块依赖的共享服务集合
@@ -67,7 +69,7 @@ type repowikiSvc struct {
 // RepoWikiLogic RepoWiki 业务编排层
 //
 // 职责边界：
-//   - 配置 CRUD 编排（含 SSH Key AES-GCM 加密、密码 bcrypt 哈希）
+//   - 配置 CRUD 编排（含 SSH Key 关联校验、密码 bcrypt 哈希）
 //   - 版本记录生命周期管理（创建 → pending → 分析中 → completed/failed）
 //   - 分析任务并发控制（semaphore 信号量，容量由 REPOWIKI_MAX_CONCURRENT 控制）
 //   - 后台 goroutine 调度（AnalyzeRepo 不阻塞请求，管道在独立 goroutine 执行）
@@ -111,6 +113,7 @@ func NewRepoWikiLogic(ctx context.Context) *RepoWikiLogic {
 			config:       repository.NewRepoWikiConfigRepo(db, rdb),
 			version:      repository.NewWikiVersionRepo(db, rdb),
 			webhookEvent: repository.NewWebhookEventRepo(db, rdb),
+			sshKey:       repository.NewSshKeyRepo(db, rdb),
 		},
 		svc: repowikiSvc{
 			git:       service.NewGitCloneService(),
@@ -157,30 +160,40 @@ func (l *RepoWikiLogic) SetLlmResolver(resolver *service.LlmResolver) {
 // CreateConfig 创建 RepoWiki 配置
 //
 // 业务流程：
-//  1. SSH Key 非空时使用 AES-GCM 加密（EncryptSSHKey）
-//  2. Wiki 密码非空时使用 bcrypt 哈希（HashPassword）
-//  3. 构建实体并生成雪花 ID（GeneRepoWikiConfig）
-//  4. 持久化（repo.config.Create 同步写入缓存）
+//  1. 校验 ProjectID 非空（防御性校验，DTO 层应有 binding 但 logic 也兜底）
+//  2. SSHKeyID 非空时校验 SSH 密钥存在性
+//  3. Wiki 密码非空时使用 bcrypt 哈希（HashPassword）
+//  4. 构建实体并生成雪花 ID（GeneRepoWikiConfig）
+//  5. 持久化（repo.config.Create 同步写入缓存）
 //
 // 参数说明:
 //   - ctx: 上下文
-//   - req:  创建配置请求 DTO（RepoURL 必填，SSH Key / 密码可选）
+//   - req:  创建配置请求 DTO（RepoURL 必填，SSHKeyID / 密码可选）
 //
 // 返回值:
 //   - *entity.RepoWikiConfig: 创建后的配置实体（含生成的 ID）
-//   - *xError.Error:           SSH Key 加密失败 / 密码哈希失败 / 持久化失败
+//   - *xError.Error:           SSH 密钥不存在 / 密码哈希失败 / 持久化失败
 func (l *RepoWikiLogic) CreateConfig(ctx context.Context, req *apiRepowiki.CreateConfigRequest) (*entity.RepoWikiConfig, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("CreateConfig - 创建 RepoWiki 配置 [repoURL=%s]", req.RepoURL))
 
-	// SSH Key 加密（非空时）
-	var sshKeyEncrypted string
-	if req.SSHKey != "" {
-		secret := xEnv.GetEnvString("REPOWIKI_HMAC_SECRET", "")
-		encrypted, xErr := service.EncryptSSHKey(req.SSHKey, secret)
+	// 防御性校验：ProjectID 非空
+	if req.ProjectID == 0 {
+		return nil, xError.NewError(ctx, xError.ValidationError, "项目 ID 不能为空", false, nil)
+	}
+
+	// SSH 密钥关联校验（非空时验证存在性）
+	var sshKeyID *xSnowflake.SnowflakeID
+	if req.SSHKeyID != nil && *req.SSHKeyID != 0 {
+		id := xSnowflake.SnowflakeID(*req.SSHKeyID)
+		sshKey, found, xErr := l.repo.sshKey.GetByID(ctx, id)
 		if xErr != nil {
 			return nil, xErr
 		}
-		sshKeyEncrypted = encrypted
+		if !found {
+			return nil, xError.NewError(ctx, xError.ValidationError, "关联的 SSH 密钥不存在", false, nil)
+		}
+		sshKeyID = &id
+		_ = sshKey // 校验存在性即可，创建配置时不需要私钥明文
 	}
 
 	// Wiki 密码哈希（非空时）
@@ -215,7 +228,7 @@ func (l *RepoWikiLogic) CreateConfig(ctx context.Context, req *apiRepowiki.Creat
 		GitURL:           req.RepoURL,
 		DefaultBranch:    branch,
 		DefaultLanguage:  language,
-		SSHKeyEncrypted:  sshKeyEncrypted,
+		SSHKeyID:         sshKeyID,
 		WikiPasswordHash: passwordHash,
 		Status:           bConst.RepoWikiStatusPending,
 		WebhookToken:     webhookToken,
@@ -236,6 +249,32 @@ func (l *RepoWikiLogic) CreateConfig(ctx context.Context, req *apiRepowiki.Creat
 func (l *RepoWikiLogic) GetConfig(ctx context.Context, id xSnowflake.SnowflakeID) (*entity.RepoWikiConfig, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("GetConfig - 获取配置详情 [%d]", id.Int64()))
 	return l.repo.config.GetByID(ctx, id)
+}
+
+// GetConfigByProjectID 根据项目 ID 获取 RepoWiki 配置
+//
+// 用于 by-project 接口（T9），返回 (config, found, error) 三元组：
+// NotFound 时返回 (nil, false, nil)，其他错误返回 (nil, false, error)。
+//
+// 参数说明:
+//   - ctx:       上下文
+//   - projectID: 关联的项目雪花 ID
+//
+// 返回值:
+//   - *entity.RepoWikiConfig: 查询到的配置实体
+//   - bool:                     是否找到（false = 该项目未配置 RepoWiki）
+//   - *xError.Error:            非 NotFound 类型的查询错误
+func (l *RepoWikiLogic) GetConfigByProjectID(ctx context.Context, projectID xSnowflake.SnowflakeID) (*entity.RepoWikiConfig, bool, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("GetConfigByProjectID - 根据项目 ID 获取配置 [%d]", projectID.Int64()))
+
+	config, xErr := l.repo.config.GetByProjectID(ctx, projectID)
+	if xErr != nil {
+		if xErr.GetErrorCode() == xError.NotFound {
+			return nil, false, nil
+		}
+		return nil, false, xErr
+	}
+	return config, true, nil
 }
 
 // ListConfigs 分页获取配置列表
@@ -261,7 +300,7 @@ func (l *RepoWikiLogic) ListConfigs(ctx context.Context, page, size int) ([]*ent
 //
 // 业务规则：
 //   - RepoURL / DefaultBranch / DefaultLanguage：非 nil 时直接更新
-//   - SSHKey：非 nil 时加密后更新（空字符串表示清除 SSH Key）
+//   - SSHKeyID：非 nil 时校验存在性并更新（值为 0 表示清除 SSH Key 关联）
 //   - WikiPassword：非 nil 时哈希后更新（空字符串表示清除密码）
 //
 // 参数说明:
@@ -288,17 +327,20 @@ func (l *RepoWikiLogic) UpdateConfig(ctx context.Context, id xSnowflake.Snowflak
 		config.DefaultLanguage = *req.DefaultLanguage
 	}
 
-	// SSH Key 更新（空字符串 = 清除）
-	if req.SSHKey != nil {
-		if *req.SSHKey == "" {
-			config.SSHKeyEncrypted = ""
+	// SSH Key 关联更新（值为 0 = 清除关联）
+	if req.SSHKeyID != nil {
+		if *req.SSHKeyID == 0 {
+			config.SSHKeyID = nil
 		} else {
-			secret := xEnv.GetEnvString("REPOWIKI_HMAC_SECRET", "")
-			encrypted, xErr := service.EncryptSSHKey(*req.SSHKey, secret)
+			id := xSnowflake.SnowflakeID(*req.SSHKeyID)
+			_, found, xErr := l.repo.sshKey.GetByID(ctx, id)
 			if xErr != nil {
 				return xErr
 			}
-			config.SSHKeyEncrypted = encrypted
+			if !found {
+				return xError.NewError(ctx, xError.ValidationError, "关联的 SSH 密钥不存在", false, nil)
+			}
+			config.SSHKeyID = &id
 		}
 	}
 

@@ -8,11 +8,12 @@ import { ConfigForm } from '#/components/repowiki/config-form'
 import { staggerContainer, staggerItem } from '#/lib/motion'
 import { PageHeader } from '#/components/page-header'
 
-export const Route = createFileRoute('/console/repowiki/create')({
+export const Route = createFileRoute('/console/project/$projectId/repowiki/create')({
 	component: CreateConfigPage,
 })
 
 function CreateConfigPage() {
+	const { projectId } = Route.useParams()
 	const navigate = useNavigate()
 	const createMutation = useCreateRepoWikiConfig()
 
@@ -24,15 +25,17 @@ function CreateConfigPage() {
 			variants={staggerContainer}
 		>
 			<PageHeader
-				title="创建 RepoWiki 配置"
+				title="创建 Wiki 配置"
 				description="添加新的代码仓库，开始自动生成 Wiki 文档"
 				action={
 					<Button
 						variant="outline"
-						onClick={() => navigate({ to: '/console/repowiki' })}
+						onClick={() =>
+							navigate({ to: '/console/project/$projectId/repowiki', params: { projectId } })
+						}
 					>
 						<ArrowLeft className="mr-2 size-4" />
-						返回列表
+						返回 Wiki 管理
 					</Button>
 				}
 			/>
@@ -51,12 +54,21 @@ function CreateConfigPage() {
 							onSubmit={(data) =>
 								createMutation.mutate(data, {
 									onSuccess: () => {
-										navigate({ to: '/console/repowiki' })
+										navigate({
+											to: '/console/project/$projectId/repowiki',
+											params: { projectId },
+										})
 									},
 								})
 							}
 							isPending={createMutation.isPending}
-							onCancel={() => navigate({ to: '/console/repowiki' })}
+							onCancel={() =>
+								navigate({
+									to: '/console/project/$projectId/repowiki',
+									params: { projectId },
+								})
+							}
+							projectId={projectId}
 						/>
 					</CardContent>
 				</Card>

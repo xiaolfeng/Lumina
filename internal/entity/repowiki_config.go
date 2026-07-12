@@ -20,7 +20,7 @@ type RepoWikiConfig struct {
 	DefaultBranch      string                 `gorm:"type:varchar(128);not null;default:main;comment:默认分支" json:"default_branch"`          // 默认分支
 	LocalPath          string                 `gorm:"type:varchar(512);comment:本地克隆路径" json:"local_path"`                                  // 本地克隆路径
 	DefaultLanguage    string                 `gorm:"type:varchar(16);not null;default:zh;comment:默认Wiki语言" json:"default_language"`       // 默认Wiki语言
-	SSHKeyEncrypted    string                 `gorm:"type:text;comment:AES加密的SSH私钥" json:"ssh_key_encrypted,omitempty"`                    // AES加密的SSH私钥
+	SSHKeyID          *xSnowflake.SnowflakeID `gorm:"type:bigint;index;comment:关联SSH密钥ID" json:"ssh_key_id,omitempty"`                            // 关联SSH密钥ID
 	WikiPasswordHash   string                 `gorm:"type:varchar(128);comment:Wiki访问密码bcrypt哈希" json:"wiki_password_hash,omitempty"`      // Wiki访问密码bcrypt哈希
 	Status             string                 `gorm:"type:varchar(16);not null;default:pending;index;comment:当前分析状态（快速查询用）" json:"status"` // 当前分析状态（快速查询用）
 	LastAccessedAt     *time.Time             `gorm:"type:timestamptz;index;comment:最后访问时间" json:"last_accessed_at,omitempty"`             // 最后访问时间

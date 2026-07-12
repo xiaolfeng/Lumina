@@ -15,4 +15,5 @@ const (
 	GeneLlmProvider         xSnowflake.Gene = 41 // LLM Provider 基因
 	GeneLlmModel            xSnowflake.Gene = 42 // LLM 模型基因
 	GeneWebhookEvent        xSnowflake.Gene = 43 // Webhook事件基因
+	GeneSSHKey              xSnowflake.Gene = 44 // SSH密钥基因
 )

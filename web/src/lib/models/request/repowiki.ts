@@ -8,9 +8,9 @@ export interface CreateRepoWikiConfigRequest {
 	repo_url: string
 	default_branch?: string
 	default_language?: string
-	ssh_key?: string
+	ssh_key_id?: string
 	wiki_password?: string
-	project_id?: string
+	project_id: string
 }
 
 export interface UpdateRepoWikiConfigRequest {
@@ -18,7 +18,7 @@ export interface UpdateRepoWikiConfigRequest {
 	repo_url?: string
 	default_branch?: string
 	default_language?: string
-	ssh_key?: string
+	ssh_key_id?: string
 	wiki_password?: string
 }
 

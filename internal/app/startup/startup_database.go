@@ -23,6 +23,7 @@ var migrateTables = []interface{}{
 	&entity.QaQuestion{},
 	&entity.QaSupplement{},
 	&entity.BiometricCredential{},
+	&entity.SshKey{},
 	&entity.RepoWikiConfig{},
 	&entity.WikiVersion{},
 	&entity.LlmProvider{},

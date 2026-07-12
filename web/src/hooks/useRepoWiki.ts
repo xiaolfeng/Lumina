@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import {
 	getRepoWikiConfigList,
 	getRepoWikiConfig,
+	getConfigByProjectId,
 	createRepoWikiConfig,
 	deleteRepoWikiConfig as deleteRepoWikiConfigApi,
 	analyzeRepoWiki,
@@ -35,6 +36,16 @@ export function useRepoWikiConfig(id: string) {
 		queryKey: ['repowiki', 'detail', id],
 		queryFn: () => getRepoWikiConfig(id),
 		enabled: !!id,
+	})
+}
+
+// ── 按项目 ID 查询配置 ──
+
+export function useRepoWikiConfigByProjectId(projectId: string) {
+	return useQuery({
+		queryKey: ['repowiki', 'by-project', projectId],
+		queryFn: () => getConfigByProjectId(projectId),
+		enabled: !!projectId,
 	})
 }
 

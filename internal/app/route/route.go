@@ -62,6 +62,7 @@ func NewRouteWithFrontend(frontendFS fs.FS, wikiFrontendFS fs.FS) func(reg *xReg
 		r.qaDownloadRouter(apiRouter)
 		r.userProtectedRouter(apiRouter)
 		r.repowikiRouter(apiRouter)
+		r.sshRouter(apiRouter)
 		r.wikiReaderRouter(apiRouter)
 		r.wsRouter(apiRouter)
 

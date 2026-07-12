@@ -16,6 +16,7 @@ type service struct {
 	biometricLogic   *logic.BiometricLogic
 	pinLogic         *logic.PinLogic
 	repoWikiLogic    *logic.RepoWikiLogic
+	sshKeyLogic      *logic.SshKeyLogic
 	llmProviderLogic *logic.LlmProviderLogic
 	llmModelLogic    *logic.LlmModelLogic
 	settingsLogic    *logic.SettingsLogic
@@ -54,6 +55,7 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 			biometricLogic:   logic.NewBiometricLogic(ctx, authLogic),
 			pinLogic:         logic.NewPinLogic(ctx),
 			repoWikiLogic:    repoWikiLogic,
+			sshKeyLogic:      logic.NewSshKeyLogic(ctx),
 			llmProviderLogic: logic.NewLlmProviderLogic(ctx),
 			llmModelLogic:    logic.NewLlmModelLogic(ctx),
 			settingsLogic:    logic.NewSettingsLogic(ctx),
@@ -78,6 +80,8 @@ type BiometricHandler handler
 type PinHandler handler
 
 type RepoWikiHandler handler
+
+type SshKeyHandler handler
 
 type WebhookHandler handler
 

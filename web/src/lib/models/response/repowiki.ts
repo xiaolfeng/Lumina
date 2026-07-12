@@ -6,7 +6,7 @@ export interface RepoWikiConfigItem {
 	default_branch: string
 	default_language: string
 	status: string
-	has_ssh_key: boolean
+	ssh_key_id?: string
 	has_password: boolean
 	last_accessed_at?: string
 	latest_version?: RepoWikiVersionItem

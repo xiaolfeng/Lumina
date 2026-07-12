@@ -11,7 +11,6 @@ import (
 	xCryptoSSH "golang.org/x/crypto/ssh"
 
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
-	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 )
 
 // ── Git 克隆服务 ──
@@ -19,10 +18,9 @@ import (
 // GitCloneService 封装 go-git 操作，支持公开 HTTPS 克隆和私有 SSH Key 克隆。
 // 所有 Git 操作通过 go-git 纯 Go 实现完成，不依赖系统 git CLI。
 //
-// SSH 私钥安全策略：
-//   - 数据库存储 AES-GCM 加密后的私钥（EncryptSSHKey/DecryptSSHKey）
-//   - CloneRepo 接收加密后的 SSH Key，内部解密后用于认证
-//   - 明文私钥仅存在于内存中，方法返回后立即失去引用
+// SSH 私钥处理：
+//   - CloneRepo 接收明文 PEM 格式 SSH 私钥，直接用于认证
+//   - 私钥来源由调用方（pipeline）从 SshKey 实体读取
 //
 // known_hosts 处理（开发阶段宽松模式）：
 //   - 当前实现使用 InsecureIgnoreHostKey 跳过主机密钥验证
@@ -30,36 +28,32 @@ import (
 
 // GitCloneService Git 仓库操作服务
 type GitCloneService struct {
-	cryptoSecret string               // SSH 私钥加解密密钥（REPOWIKI_HMAC_SECRET）
-	log          *xLog.LogNamedLogger // 专用日志记录器
+	log *xLog.LogNamedLogger // 专用日志记录器
 }
 
 // NewGitCloneService 创建 GitCloneService 实例
-//
-// 从 REPOWIKI_HMAC_SECRET 环境变量读取 SSH 私钥加解密密钥。
 func NewGitCloneService() *GitCloneService {
 	return &GitCloneService{
-		cryptoSecret: xEnv.GetEnvString("REPOWIKI_HMAC_SECRET", ""),
-		log:          xLog.WithName(xLog.NamedCONT, "GitCloneSvc"),
+		log: xLog.WithName(xLog.NamedCONT, "GitCloneSvc"),
 	}
 }
 
 // CloneRepo 克隆仓库到指定路径
 //
 // 支持两种认证模式：
-//   - HTTPS 公开克隆：sshKey 为空字符串时使用匿名 HTTPS
-//   - SSH Key 私有克隆：sshKey 为 EncryptSSHKey 加密后的密文，内部解密后认证
+//   - HTTPS 公开克隆：privateKey 为空字符串时使用匿名 HTTPS
+//   - SSH Key 私有克隆：privateKey 为明文 PEM 格式私钥，直接用于认证
 //
 // 参数说明:
-//   - ctx:      上下文（控制克隆超时）
-//   - gitURL:   仓库地址（HTTPS 或 SSH 协议）
-//   - branch:   要克隆的分支名（空字符串则克隆默认分支）
-//   - sshKey:   加密后的 SSH 私钥（空字符串表示公开 HTTPS 克隆）
-//   - destPath: 克隆目标路径（必须不存在或为空目录）
+//   - ctx:        上下文（控制克隆超时）
+//   - gitURL:     仓库地址（HTTPS 或 SSH 协议）
+//   - branch:     要克隆的分支名（空字符串则克隆默认分支）
+//   - privateKey: 明文 PEM 格式 SSH 私钥（空字符串表示公开 HTTPS 克隆）
+//   - destPath:   克隆目标路径（必须不存在或为空目录）
 //
 // 返回值:
 //   - error: 克隆过程中的错误
-func (s *GitCloneService) CloneRepo(ctx context.Context, gitURL, branch, sshKey, destPath string) error {
+func (s *GitCloneService) CloneRepo(ctx context.Context, gitURL, branch, privateKey, destPath string) error {
 	opts := &git.CloneOptions{
 		URL:          gitURL,
 		Depth:        1, // RepoWiki v1 只需最新代码，浅克隆加速
@@ -73,8 +67,8 @@ func (s *GitCloneService) CloneRepo(ctx context.Context, gitURL, branch, sshKey,
 	}
 
 	// SSH 私有仓库认证
-	if sshKey != "" {
-		auth, err := s.buildSSHAuth(sshKey)
+	if privateKey != "" {
+		auth, err := s.buildSSHAuth(privateKey)
 		if err != nil {
 			return fmt.Errorf("SSH 认证准备失败: %w", err)
 		}
@@ -212,29 +206,20 @@ func (s *GitCloneService) PullLatest(repoPath, branch string) error {
 	return nil
 }
 
-// buildSSHAuth 从加密的 SSH 私钥构建 go-git SSH 认证方法
+// buildSSHAuth 从明文 PEM 私钥构建 go-git SSH 认证方法
 //
-// 解密私钥 → ssh.NewPublicKeys 构建 PublicKeys 认证器
+// 使用 ssh.NewPublicKeys 构建 PublicKeys 认证器
 // 使用 InsecureIgnoreHostKey 跳过 known_hosts 验证（开发阶段宽松模式）
 //
 // 参数说明:
-//   - encryptedKey: EncryptSSHKey 加密后的 SSH 私钥密文
+//   - privateKey: 明文 PEM 格式 SSH 私钥
 //
 // 返回值:
 //   - *gitssh.PublicKeys: go-git SSH 认证方法（实现 transport.AuthMethod 接口）
-//   - error: 解密失败或私钥解析失败
-func (s *GitCloneService) buildSSHAuth(encryptedKey string) (*gitssh.PublicKeys, error) {
-	if s.cryptoSecret == "" {
-		return nil, fmt.Errorf("SSH 认证失败：REPOWIKI_HMAC_SECRET 未配置")
-	}
-
-	plaintextKey, xErr := DecryptSSHKey(encryptedKey, s.cryptoSecret)
-	if xErr != nil {
-		return nil, fmt.Errorf("SSH 私钥解密失败: %w", xErr)
-	}
-
+//   - error: 私钥解析失败
+func (s *GitCloneService) buildSSHAuth(privateKey string) (*gitssh.PublicKeys, error) {
 	// go-git ssh.NewPublicKeys 接受 PEM 格式私钥字节数组
-	auth, err := gitssh.NewPublicKeys("git", []byte(plaintextKey), "")
+	auth, err := gitssh.NewPublicKeys("git", []byte(privateKey), "")
 	if err != nil {
 		return nil, fmt.Errorf("解析 SSH 私钥失败: %w", err)
 	}

@@ -13,6 +13,7 @@ package logic
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -86,7 +87,7 @@ func NewAnalysisPipeline(l *RepoWikiLogic, log *xLog.LogNamedLogger, runner *Age
 //
 // 参数说明:
 //   - ctx:    上下文（后台 goroutine 使用 context.Background()，支持取消）
-//   - config: RepoWiki 配置实体（含 GitURL / SSHKeyEncrypted / 分支等）
+//   - config: RepoWiki 配置实体（含 GitURL / SSHKeyID / 分支等）
 //   - version: Wiki 版本实体（status 初始为 pending，管道执行中持续更新）
 //
 // 返回值:
@@ -161,7 +162,30 @@ func (p *AnalysisPipeline) Execute(
 		slog.String("branch", cloneBranch),
 		slog.String("destPath", repoPath))
 
-	if err := p.logic.svc.git.CloneRepo(ctx, config.GitURL, cloneBranch, config.SSHKeyEncrypted, repoPath); err != nil {
+	// 查询关联的 SSH 密钥明文私钥（SSHKeyID 为空时使用 HTTPS 匿名克隆）
+	var privateKey string
+	if config.SSHKeyID != nil {
+		sshKey, found, xErr := p.logic.repo.sshKey.GetByID(ctx, *config.SSHKeyID)
+		if xErr != nil {
+			p.log.Error(ctx, "查询 SSH 密钥失败",
+				slog.Int64("versionID", versionID),
+				slog.Int64("sshKeyID", config.SSHKeyID.Int64()),
+				slog.String("err", xErr.Error()))
+			updateStatus(bConst.RepoWikiStatusFailed, "", xErr.Error())
+			return xErr
+		}
+		if !found {
+			p.log.Error(ctx, "关联的 SSH 密钥不存在",
+				slog.Int64("versionID", versionID),
+				slog.Int64("sshKeyID", config.SSHKeyID.Int64()))
+			errMsg := fmt.Sprintf("关联的 SSH 密钥不存在 [sshKeyID=%d]", config.SSHKeyID.Int64())
+			updateStatus(bConst.RepoWikiStatusFailed, "", errMsg)
+			return xError.NewError(ctx, xError.NotFound, xError.ErrMessage(errMsg), false, nil)
+		}
+		privateKey = sshKey.PrivateKey
+	}
+
+	if err := p.logic.svc.git.CloneRepo(ctx, config.GitURL, cloneBranch, privateKey, repoPath); err != nil {
 		p.log.Error(ctx, "仓库克隆失败",
 			slog.Int64("versionID", versionID),
 			slog.String("err", err.Error()))

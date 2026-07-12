@@ -6,10 +6,10 @@ import "time"
 type CreateConfigRequest struct {
 	RepoURL         string `json:"repo_url" binding:"required"` // Git仓库地址
 	Name            string `json:"name" binding:"required"`     // 配置名称
-	ProjectID       int64  `json:"project_id"`                  // 关联项目ID（可选）
+	ProjectID       int64  `json:"project_id" binding:"required"` // 关联项目ID（必选）
 	DefaultBranch   string `json:"default_branch"`              // 默认分支（默认 main）
 	DefaultLanguage string `json:"default_language"`            // 默认Wiki语言（默认 zh）
-	SSHKey          string `json:"ssh_key,omitempty"`           // SSH私钥（PEM格式，私有仓库用）
+	SSHKeyID        *int64 `json:"ssh_key_id,omitempty"`        // 关联SSH密钥ID（可选，私有仓库用）
 	WikiPassword    string `json:"wiki_password,omitempty"`     // Wiki访问密码（可选保护）
 }
 
@@ -19,7 +19,7 @@ type UpdateConfigRequest struct {
 	Name            *string `json:"name,omitempty"`             // 配置名称
 	DefaultBranch   *string `json:"default_branch,omitempty"`   // 默认分支
 	DefaultLanguage *string `json:"default_language,omitempty"` // 默认Wiki语言
-	SSHKey          *string `json:"ssh_key,omitempty"`          // SSH私钥（传空字符串清除）
+	SSHKeyID        *int64 `json:"ssh_key_id,omitempty"`        // 关联SSH密钥ID（传 0 或 nil 清除关联）
 	WikiPassword    *string `json:"wiki_password,omitempty"`    // Wiki访问密码（传空字符串清除）
 }
 
@@ -38,7 +38,7 @@ type ConfigResponse struct {
 	DefaultBranch   string                 `json:"default_branch"`             // 默认分支
 	DefaultLanguage string                 `json:"default_language"`           // 默认Wiki语言
 	Status          string                 `json:"status"`                     // 当前分析状态
-	HasSSHKey       bool                   `json:"has_ssh_key"`                // 是否配置SSH密钥
+	SSHKeyID        *string                `json:"ssh_key_id,omitempty"`       // 关联SSH密钥ID（字符串形式的雪花ID，nil 表示未关联）
 	HasPassword     bool                   `json:"has_password"`               // 是否设置Wiki密码
 	LastAccessedAt  *time.Time             `json:"last_accessed_at,omitempty"` // 最后访问时间
 	CreatedAt       time.Time              `json:"created_at"`                 // 创建时间

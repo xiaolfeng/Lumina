@@ -36,6 +36,9 @@ const (
 	// ── 生物特征 Challenge 缓存（TTL 60 秒）──
 	CacheBiometricChallengeRegister RedisKey = "biometric:challenge:reg:%s"   // CacheBiometricChallengeRegister 注册 Challenge 缓存（%s = sessionID）
 	CacheBiometricChallengeLogin    RedisKey = "biometric:challenge:login:%s" // CacheBiometricChallengeLogin 登录 Challenge 缓存（%s = sessionID）
+
+	// ── SSH 密钥缓存（Cache-Aside ID→详情，TTL 30 分钟）──
+	CacheSSHKeyByID RedisKey = "ssh:key:%d" // CacheSSHKeyByID SSH 密钥 ID→详情缓存（%d = snowflake ID）
 )
 
 // Get 格式化 Redis 键，自动拼接环境前缀

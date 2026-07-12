@@ -1,24 +1,35 @@
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '#/components/ui/select'
 import type { CreateRepoWikiConfigRequest } from '#/lib/models/request/repowiki'
+import { useSshKeyList } from '#/hooks/useSshKey'
 
 interface ConfigFormProps {
 	onSubmit: (data: CreateRepoWikiConfigRequest) => void
 	isPending?: boolean
 	onCancel?: () => void
+	projectId?: string
 }
 
-export function ConfigForm({ onSubmit, isPending, onCancel }: ConfigFormProps) {
+export function ConfigForm({ onSubmit, isPending, onCancel, projectId }: ConfigFormProps) {
 	const [name, setName] = useState('')
 	const [repoUrl, setRepoUrl] = useState('')
 	const [defaultBranch, setDefaultBranch] = useState('main')
 	const [defaultLanguage, setDefaultLanguage] = useState('zh')
-	const [sshKey, setSshKey] = useState('')
+	const [sshKeyId, setSshKeyId] = useState('__none__')
 	const [wikiPassword, setWikiPassword] = useState('')
-	const [projectId, setProjectId] = useState('')
+
+	const { data: sshData } = useSshKeyList()
+	const sshKeys = sshData?.data?.items ?? []
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
@@ -29,9 +40,9 @@ export function ConfigForm({ onSubmit, isPending, onCancel }: ConfigFormProps) {
 			repo_url: repoUrl.trim(),
 			default_branch: defaultBranch.trim() || undefined,
 			default_language: defaultLanguage.trim() || undefined,
-			ssh_key: sshKey.trim() || undefined,
+			ssh_key_id: sshKeyId && sshKeyId !== '__none__' ? sshKeyId : undefined,
 			wiki_password: wikiPassword.trim() || undefined,
-			project_id: projectId.trim() || undefined,
+			project_id: projectId ?? '',
 		})
 	}
 
@@ -85,17 +96,29 @@ export function ConfigForm({ onSubmit, isPending, onCancel }: ConfigFormProps) {
 				</div>
 			</div>
 
-			{/* SSH 私钥 */}
+			{/* SSH 密钥选择 */}
 			<div className="grid gap-2">
-				<Label htmlFor="rw-ssh">SSH 私钥</Label>
-				<Textarea
-					id="rw-ssh"
-					value={sshKey}
-					onChange={(e) => setSshKey(e.target.value)}
-					placeholder="用于克隆私有仓库（可选）"
-					className="min-h-[80px] font-mono text-xs"
-					disabled={isPending}
-				/>
+				<Label>SSH 密钥</Label>
+				<Select value={sshKeyId} onValueChange={setSshKeyId} disabled={isPending}>
+					<SelectTrigger className="w-full">
+						<SelectValue placeholder="不使用 SSH 密钥" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="__none__">不使用 SSH 密钥</SelectItem>
+						{sshKeys.map((key) => (
+							<SelectItem key={key.id} value={key.id}>
+								{key.name}
+								{key.description ? ` (${key.description})` : ''}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+				<p className="text-xs text-muted-foreground">
+					用于克隆私有仓库（可选）·{' '}
+					<Link to="/console/ssh" className="underline hover:text-foreground">
+						管理 SSH 密钥
+					</Link>
+				</p>
 			</div>
 
 			{/* Wiki 密码 */}
@@ -107,18 +130,6 @@ export function ConfigForm({ onSubmit, isPending, onCancel }: ConfigFormProps) {
 					value={wikiPassword}
 					onChange={(e) => setWikiPassword(e.target.value)}
 					placeholder="访问 Wiki 的密码（可选）"
-					disabled={isPending}
-				/>
-			</div>
-
-			{/* 项目 ID */}
-			<div className="grid gap-2">
-				<Label htmlFor="rw-project">项目 ID</Label>
-				<Input
-					id="rw-project"
-					value={projectId}
-					onChange={(e) => setProjectId(e.target.value)}
-					placeholder="关联的项目 ID（可选）"
 					disabled={isPending}
 				/>
 			</div>

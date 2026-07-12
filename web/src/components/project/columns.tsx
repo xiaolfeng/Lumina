@@ -1,5 +1,5 @@
 import type { ColumnDef } from '@tanstack/react-table'
-import { MoreHorizontal } from 'lucide-react'
+import { BookOpen, MoreHorizontal } from 'lucide-react'
 import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import {
@@ -8,11 +8,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '#/components/ui/tooltip'
 import type { ProjectItem } from '#/lib/models/response/project'
 
 interface ColumnActions {
   onEdit: (item: ProjectItem) => void
   onDelete: (item: ProjectItem) => void
+  onOpenWiki: (item: ProjectItem) => void
 }
 
 export function getColumns(actions: ColumnActions): ColumnDef<ProjectItem>[] {
@@ -80,12 +86,25 @@ export function getColumns(actions: ColumnActions): ColumnDef<ProjectItem>[] {
       cell: ({ row }) => {
         const item = row.original
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => actions.onOpenWiki(item)}
+                >
+                  <BookOpen className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Wiki 管理</TooltipContent>
+            </Tooltip>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => actions.onEdit(item)}>
                 编辑
@@ -98,6 +117,7 @@ export function getColumns(actions: ColumnActions): ColumnDef<ProjectItem>[] {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         )
       },
     },

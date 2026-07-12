@@ -208,6 +208,28 @@ func (r *RepoWikiConfigRepo) Update(ctx context.Context, config *entity.RepoWiki
 	return nil
 }
 
+// CountBySSHKeyID 统计引用指定 SSH 密钥的 RepoWiki 配置数量
+//
+// 用于 SSH 密钥删除前的引用检查：引用数 > 0 时禁止删除，需先解绑。
+// 查询条件为 ssh_key_id = sshKeyID（SSHKeyID 为可空外键，仅匹配非空且相等的记录）。
+//
+// 参数:
+//   - ctx:      上下文对象
+//   - sshKeyID: SSH 密钥雪花 ID
+//
+// 返回值:
+//   - int64:         引用该密钥的配置数量
+//   - *xError.Error: 统计过程中的错误
+func (r *RepoWikiConfigRepo) CountBySSHKeyID(ctx context.Context, sshKeyID xSnowflake.SnowflakeID) (int64, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("CountBySSHKeyID - 统计引用 SSH 密钥的配置数量 [sshKeyID=%d]", sshKeyID.Int64()))
+
+	var total int64
+	if err := r.db.WithContext(ctx).Model(&entity.RepoWikiConfig{}).Where("ssh_key_id = ?", sshKeyID).Count(&total).Error; err != nil {
+		return 0, xError.NewError(ctx, xError.DatabaseError, "统计引用 SSH 密钥的配置数量失败", false, err)
+	}
+	return total, nil
+}
+
 // Delete 删除 RepoWiki 配置，成功后清除关联缓存
 //
 // 参数:

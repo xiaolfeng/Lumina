@@ -4,109 +4,9 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 )
-
-// ── AES-GCM SSH Key 加解密测试 ──
-
-// TestSSHKeyEncryptDecrypt 验证 SSH 私钥加解密 round-trip
-//
-// 测试场景：
-//  1. 标准 PEM 私钥 → 加密 → 解密 → 还原一致
-//  2. 同一明文两次加密产生不同密文（nonce 随机性）
-//  3. 空密钥拒绝
-//  4. 错误密钥解密失败
-func TestSSHKeyEncryptDecrypt(t *testing.T) {
-	const testSecret = "test-hmac-secret-for-repowiki-2026"
-
-	// 模拟 PEM 格式 SSH 私钥（测试用，非真实密钥）
-	sampleSSHKey := `-----BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
-QyNTUxOQAAACR0ZXN0LWtleS1mb3ItbHVtaW5hLXJlcG93aWtpLWRlbW8AAAAJdGVzdC1r
-ZXktZm9yLWx1bWluYS1yZXBvd2lraS1kZW1vAAAAC3NzaC1lZDI1NTE5AAAAgAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
------END OPENSSH PRIVATE KEY-----`
-
-	t.Run("round-trip", func(t *testing.T) {
-		encrypted, xErr := EncryptSSHKey(sampleSSHKey, testSecret)
-		if xErr != nil {
-			t.Fatalf("EncryptSSHKey 失败: %v", xErr)
-		}
-
-		if encrypted == "" {
-			t.Fatal("加密结果为空")
-		}
-
-		if encrypted == sampleSSHKey {
-			t.Fatal("加密结果与明文相同，加密未生效")
-		}
-
-		decrypted, xErr := DecryptSSHKey(encrypted, testSecret)
-		if xErr != nil {
-			t.Fatalf("DecryptSSHKey 失败: %v", xErr)
-		}
-
-		if decrypted != sampleSSHKey {
-			t.Fatalf("解密结果与原文不一致\n期望: %q\n实际: %q", sampleSSHKey, decrypted)
-		}
-	})
-
-	t.Run("nonce-randomness", func(t *testing.T) {
-		enc1, _ := EncryptSSHKey(sampleSSHKey, testSecret)
-		enc2, _ := EncryptSSHKey(sampleSSHKey, testSecret)
-
-		if enc1 == enc2 {
-			t.Fatal("同一明文两次加密产生相同密文，nonce 随机性可能有问题")
-		}
-
-		// 两者都应能正确解密
-		dec1, _ := DecryptSSHKey(enc1, testSecret)
-		dec2, _ := DecryptSSHKey(enc2, testSecret)
-		if dec1 != sampleSSHKey || dec2 != sampleSSHKey {
-			t.Fatal("两次加密的密文解密后不一致")
-		}
-	})
-
-	t.Run("empty-secret-rejected", func(t *testing.T) {
-		_, xErr := EncryptSSHKey(sampleSSHKey, "")
-		if xErr == nil {
-			t.Fatal("空密钥应被拒绝")
-		}
-
-		_, xErr = DecryptSSHKey("dGVzdA==", "")
-		if xErr == nil {
-			t.Fatal("空密钥应被拒绝")
-		}
-	})
-
-	t.Run("wrong-secret-fails", func(t *testing.T) {
-		encrypted, _ := EncryptSSHKey(sampleSSHKey, testSecret)
-
-		_, xErr := DecryptSSHKey(encrypted, "wrong-secret")
-		if xErr == nil {
-			t.Fatal("错误密钥解密应失败（GCM Tag 认证）")
-		}
-	})
-
-	t.Run("empty-key", func(t *testing.T) {
-		encrypted, _ := EncryptSSHKey("", testSecret)
-		decrypted, _ := DecryptSSHKey(encrypted, testSecret)
-		if decrypted != "" {
-			t.Fatalf("空字符串 round-trip 失败: 期望空, 实际 %q", decrypted)
-		}
-	})
-
-	t.Run("unicode-key", func(t *testing.T) {
-		unicodeKey := "这是包含中文的密钥内容 🔑"
-		encrypted, _ := EncryptSSHKey(unicodeKey, testSecret)
-		decrypted, _ := DecryptSSHKey(encrypted, testSecret)
-		if decrypted != unicodeKey {
-			t.Fatalf("Unicode round-trip 失败: 期望 %q, 实际 %q", unicodeKey, decrypted)
-		}
-	})
-}
 
 // ── Git 公开仓库克隆测试 ──
 
@@ -193,26 +93,5 @@ func TestGitCloneServiceCreation(t *testing.T) {
 	}
 	if svc.log == nil {
 		t.Fatal("GitCloneService.log 未初始化")
-	}
-}
-
-// TestDecryptSSHKeyInvalidBase64 验证无效 base64 输入的错误处理
-func TestDecryptSSHKeyInvalidBase64(t *testing.T) {
-	_, xErr := DecryptSSHKey("!!!not-valid-base64!!!", "some-secret")
-	if xErr == nil {
-		t.Fatal("无效 base64 应返回错误")
-	}
-
-	if !strings.Contains(xErr.Error(), "base64") {
-		t.Fatalf("错误信息应包含 'base64', 实际: %v", xErr)
-	}
-}
-
-// TestDecryptSSHKeyTooShort 验证过短密文的错误处理
-func TestDecryptSSHKeyTooShort(t *testing.T) {
-	// base64("short") — 短于 12 字节 nonce
-	_, xErr := DecryptSSHKey("c2hvcnQ=", "some-secret")
-	if xErr == nil {
-		t.Fatal("过短密文应返回错误")
 	}
 }

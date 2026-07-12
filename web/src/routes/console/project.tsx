@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Plus } from 'lucide-react'
 import { Button } from '#/components/ui/button'
@@ -20,6 +20,7 @@ export const Route = createFileRoute('/console/project')({
 })
 
 function ProjectPage() {
+  const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [createOpen, setCreateOpen] = useState(false)
@@ -42,6 +43,9 @@ function ProjectPage() {
     onDelete: (item) => {
       setSelectedItem(item)
       setDeleteOpen(true)
+    },
+    onOpenWiki: (item) => {
+      navigate({ to: '/console/project/$projectId/repowiki', params: { projectId: item.id } })
     },
   })
 

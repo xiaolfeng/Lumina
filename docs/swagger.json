@@ -2984,6 +2984,66 @@
                 }
             }
         },
+        "/api/v1/repowiki/by-project/{projectId}": {
+            "get": {
+                "description": "根据关联项目 ID 查询对应的 RepoWiki 配置，未创建配置时返回空数据（前端据此判断\"不存在→创建\"）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 按项目ID查询 RepoWiki 配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目ID",
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功（data 为 null 表示未创建配置）",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.ConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/repowiki/configs": {
             "get": {
                 "description": "按 page/size 分页查询 RepoWiki 配置列表，返回配置信息与总数",
@@ -4063,6 +4123,382 @@
                     },
                     "500": {
                         "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ssh": {
+            "get": {
+                "description": "分页查询 SSH 密钥列表，返回密钥信息与总数（不含私钥）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SSH密钥接口"
+                ],
+                "summary": "[管理] 获取 SSH 密钥列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/ssh.SshKeyListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "创建 SSH 密钥（生成 Ed25519 密钥对或导入已有 PEM 私钥），响应中永不包含私钥",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SSH密钥接口"
+                ],
+                "summary": "[管理] 创建 SSH 密钥",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "创建 SSH 密钥请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ssh.CreateSshKeyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/ssh.CreateSshKeyResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ssh/{id}": {
+            "get": {
+                "description": "根据密钥 ID 查询 SSH 密钥详情（不含私钥）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SSH密钥接口"
+                ],
+                "summary": "[管理] 获取 SSH 密钥详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "密钥ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/ssh.SshKeyResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "密钥不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "更新指定 ID 的 SSH 密钥名称和描述（密钥材料不可变）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SSH密钥接口"
+                ],
+                "summary": "[管理] 更新 SSH 密钥",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "密钥ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新 SSH 密钥请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ssh.UpdateSshKeyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/ssh.SshKeyResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "密钥不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "根据密钥 ID 删除 SSH 密钥，被 RepoWiki 配置引用时禁止删除",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SSH密钥接口"
+                ],
+                "summary": "[管理] 删除 SSH 密钥",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "密钥ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "密钥不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "密钥被引用，禁止删除",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ssh/{id}/public-key": {
+            "get": {
+                "description": "下载指定密钥的 OpenSSH 格式公钥文件（.pub），以附件形式返回",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "SSH密钥接口"
+                ],
+                "summary": "[管理] 下载 SSH 公钥",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "密钥ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "公钥文件",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "密钥不存在",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -5969,10 +6405,6 @@
                     "description": "是否设置Wiki密码",
                     "type": "boolean"
                 },
-                "has_ssh_key": {
-                    "description": "是否配置SSH密钥",
-                    "type": "boolean"
-                },
                 "id": {
                     "description": "配置ID",
                     "type": "integer"
@@ -6001,6 +6433,10 @@
                     "description": "Git仓库地址",
                     "type": "string"
                 },
+                "ssh_key_id": {
+                    "description": "关联SSH密钥ID（字符串形式的雪花ID，nil 表示未关联）",
+                    "type": "string"
+                },
                 "status": {
                     "description": "当前分析状态",
                     "type": "string"
@@ -6015,6 +6451,7 @@
             "type": "object",
             "required": [
                 "name",
+                "project_id",
                 "repo_url"
             ],
             "properties": {
@@ -6031,16 +6468,16 @@
                     "type": "string"
                 },
                 "project_id": {
-                    "description": "关联项目ID（可选）",
+                    "description": "关联项目ID（必选）",
                     "type": "integer"
                 },
                 "repo_url": {
                     "description": "Git仓库地址",
                     "type": "string"
                 },
-                "ssh_key": {
-                    "description": "SSH私钥（PEM格式，私有仓库用）",
-                    "type": "string"
+                "ssh_key_id": {
+                    "description": "关联SSH密钥ID（可选，私有仓库用）",
+                    "type": "integer"
                 },
                 "wiki_password": {
                     "description": "Wiki访问密码（可选保护）",
@@ -6084,9 +6521,9 @@
                     "description": "Git仓库地址",
                     "type": "string"
                 },
-                "ssh_key": {
-                    "description": "SSH私钥（传空字符串清除）",
-                    "type": "string"
+                "ssh_key_id": {
+                    "description": "关联SSH密钥ID（传 0 或 nil 清除关联）",
+                    "type": "integer"
                 },
                 "wiki_password": {
                     "description": "Wiki访问密码（传空字符串清除）",
@@ -6443,6 +6880,146 @@
                             }
                         }
                     }
+                }
+            }
+        },
+        "ssh.CreateSshKeyRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "source"
+            ],
+            "properties": {
+                "description": {
+                    "description": "密钥描述",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "密钥名称",
+                    "type": "string"
+                },
+                "private_key": {
+                    "description": "PEM格式私钥（仅 imported 时必填）",
+                    "type": "string"
+                },
+                "source": {
+                    "description": "密钥来源(generated|imported)",
+                    "type": "string"
+                }
+            }
+        },
+        "ssh.CreateSshKeyResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "密钥描述",
+                    "type": "string"
+                },
+                "fingerprint": {
+                    "description": "SHA256指纹",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "密钥ID",
+                    "type": "string"
+                },
+                "key_type": {
+                    "description": "密钥类型(ed25519|rsa)",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "密钥名称",
+                    "type": "string"
+                },
+                "public_key": {
+                    "description": "OpenSSH格式公钥",
+                    "type": "string"
+                },
+                "public_key_download_url": {
+                    "description": "公钥下载地址",
+                    "type": "string"
+                },
+                "source": {
+                    "description": "密钥来源(generated|imported)",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                }
+            }
+        },
+        "ssh.SshKeyListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "密钥列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ssh.SshKeyResponse"
+                    }
+                },
+                "total": {
+                    "description": "总数",
+                    "type": "integer"
+                }
+            }
+        },
+        "ssh.SshKeyResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "密钥描述",
+                    "type": "string"
+                },
+                "fingerprint": {
+                    "description": "SHA256指纹",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "密钥ID",
+                    "type": "string"
+                },
+                "key_type": {
+                    "description": "密钥类型(ed25519|rsa)",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "密钥名称",
+                    "type": "string"
+                },
+                "public_key": {
+                    "description": "OpenSSH格式公钥",
+                    "type": "string"
+                },
+                "source": {
+                    "description": "密钥来源(generated|imported)",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                }
+            }
+        },
+        "ssh.UpdateSshKeyRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "description": "密钥描述",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "密钥名称",
+                    "type": "string"
                 }
             }
         },
