@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
@@ -293,4 +294,33 @@ func (r *WikiVersionRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID)
 	// 清除版本状态缓存
 	r.cache.DeleteVersionStatus(ctx, id.Int64())
 	return nil
+}
+
+// GetStaleTasks 查询所有非终态且超过超时阈值的版本记录
+//
+// 非终态状态：pending, cloning, scanning, analyzing, assembling
+// 终态状态：completed, failed, cancelled（不查询）
+//
+// 参数:
+//   - ctx:        上下文
+//   - timeoutSec: 超时阈值（秒），查询 updated_at < NOW() - timeoutSec 的记录
+//   - maxRetry:   最大重试次数，查询 retry_count <= maxRetry 的记录（含等于，使 RetryStaleTask 能标记超限任务为 failed）
+// 返回值:
+//   - []*entity.WikiVersion: 超时的非终态版本列表
+//   - *xError.Error: 查询错误
+func (r *WikiVersionRepo) GetStaleTasks(ctx context.Context, timeoutSec int, maxRetry int) ([]*entity.WikiVersion, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("GetStaleTasks - 查询超时非终态任务 [timeoutSec=%d, maxRetry=%d]", timeoutSec, maxRetry))
+
+	nonTerminalStatuses := []string{"pending", "cloning", "scanning", "analyzing", "assembling"}
+	threshold := time.Now().Add(-time.Duration(timeoutSec) * time.Second)
+
+	var versions []*entity.WikiVersion
+	if err := r.db.WithContext(ctx).
+		Where("status IN ? AND updated_at < ? AND retry_count <= ?", nonTerminalStatuses, threshold, maxRetry).
+		Find(&versions).Error; err != nil {
+		r.log.Warn(ctx, err.Error())
+		return nil, xError.NewError(ctx, xError.DatabaseError, "查询超时任务失败", false, err)
+	}
+
+	return versions, nil
 }
