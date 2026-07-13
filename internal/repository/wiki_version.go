@@ -305,6 +305,7 @@ func (r *WikiVersionRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID)
 //   - ctx:        上下文
 //   - timeoutSec: 超时阈值（秒），查询 updated_at < NOW() - timeoutSec 的记录
 //   - maxRetry:   最大重试次数，查询 retry_count <= maxRetry 的记录（含等于，使 RetryStaleTask 能标记超限任务为 failed）
+//
 // 返回值:
 //   - []*entity.WikiVersion: 超时的非终态版本列表
 //   - *xError.Error: 查询错误

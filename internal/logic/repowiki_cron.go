@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	xAsync "github.com/bamboo-services/bamboo-base-go/plugins/async"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
+	xAsync "github.com/bamboo-services/bamboo-base-go/plugins/async"
 
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"

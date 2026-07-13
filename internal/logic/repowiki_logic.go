@@ -82,11 +82,11 @@ type repowikiSvc struct {
 //   - 不直接操作数据库（经由 repository 层）
 type RepoWikiLogic struct {
 	logic
-	repo        repowikiRepo            // 仓储层依赖
-	svc         repowikiSvc             // 服务层依赖
-	assembler   *DocumentAssembler      // 文档组装器（nil 表示未注入，Pipeline 跳过组装并记录日志）
-	semaphore   chan struct{}           // 并发控制信号量（容量 = REPOWIKI_MAX_CONCURRENT）
-	llmResolver *service.LlmResolver    // LLM 配置解析器（nil 表示未注入，AnalyzeRepo 返回错误）
+	repo        repowikiRepo         // 仓储层依赖
+	svc         repowikiSvc          // 服务层依赖
+	assembler   *DocumentAssembler   // 文档组装器（nil 表示未注入，Pipeline 跳过组装并记录日志）
+	semaphore   chan struct{}        // 并发控制信号量（容量 = REPOWIKI_MAX_CONCURRENT）
+	llmResolver *service.LlmResolver // LLM 配置解析器（nil 表示未注入，AnalyzeRepo 返回错误）
 }
 
 // NewRepoWikiLogic 创建 RepoWikiLogic 实例

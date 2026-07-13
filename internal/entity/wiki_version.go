@@ -30,7 +30,7 @@ type WikiVersion struct {
 	DepSummaryPath     string                 `gorm:"type:varchar(512);comment:dep_summary.json路径" json:"dep_summary_path,omitempty"` // dep_summary.json路径
 	ManifestPath       string                 `gorm:"type:varchar(512);comment:manifest.json路径" json:"manifest_path,omitempty"`       // manifest.json路径
 	ErrorMsg           string                 `gorm:"type:text;comment:失败原因" json:"error_msg,omitempty"`                              // 失败原因
-	RetryCount         int                    `gorm:"type:int;not null;default:0;comment:重试次数" json:"retry_count"`                   // 重试次数
+	RetryCount         int                    `gorm:"type:int;not null;default:0;comment:重试次数" json:"retry_count"`                    // 重试次数
 	StartedAt          *time.Time             `gorm:"type:timestamptz;comment:分析开始时间" json:"started_at,omitempty"`                    // 分析开始时间
 	CompletedAt        *time.Time             `gorm:"type:timestamptz;comment:分析完成时间" json:"completed_at,omitempty"`                  // 分析完成时间
 }
