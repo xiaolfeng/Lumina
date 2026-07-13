@@ -507,10 +507,15 @@ func (l *RepoWikiLogic) resolveRunner(ctx context.Context) (runner *AgentPassRun
 	}
 
 	// 解析 Agent 模型配置（Info 表 → Model → Provider → 解密 APIKey）
-	resolved, err := l.llmResolver.ResolveAgentModel(ctx, bConst.AgentRoleRepoWiki, bConst.LlmAgentModelKeyPrefix)
+	// 优先使用 coordinator 角色配置（AgentPassRunner 为单角色设计，coordinator 是主控角色）
+	// 回退到旧的无角色 key（兼容 multi-agent 改造前的配置）
+	resolved, err := l.llmResolver.ResolveAgentModel(ctx, bConst.AgentRoleRepoWikiCoordinator, bConst.LlmAgentModelKeyPrefix)
 	if err != nil {
-		return nil, "", "", xError.NewError(ctx, xError.BusinessError,
-			xError.ErrMessage("LLM 配置解析失败: "+err.Error()), false, nil)
+		resolved, err = l.llmResolver.ResolveAgentModel(ctx, bConst.AgentRoleRepoWiki, bConst.LlmAgentModelKeyPrefix)
+		if err != nil {
+			return nil, "", "", xError.NewError(ctx, xError.BusinessError,
+				xError.ErrMessage("LLM 配置解析失败: "+err.Error()), false, nil)
+		}
 	}
 
 	// 构建 LLM 客户端
