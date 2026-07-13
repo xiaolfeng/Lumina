@@ -6,6 +6,8 @@ require (
 	github.com/bamboo-services/bamboo-base-go/common v1.0.0-202605310541
 	github.com/bamboo-services/bamboo-base-go/defined v1.0.0-202605310541
 	github.com/bamboo-services/bamboo-base-go/major v1.0.0-202605310541
+	github.com/bamboo-services/bamboo-base-go/plugins/async v1.0.0-202604270654
+	github.com/bamboo-services/bamboo-base-go/plugins/cron v1.0.0-202604270610
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-webauthn/webauthn v0.17.4
 	github.com/google/uuid v1.6.0
