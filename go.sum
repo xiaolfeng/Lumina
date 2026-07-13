@@ -21,6 +21,8 @@ github.com/bamboo-services/bamboo-base-go/defined v1.0.0-202605310541 h1:0nBOJOZ
 github.com/bamboo-services/bamboo-base-go/defined v1.0.0-202605310541/go.mod h1:ek8hbiQX7Zdd39NDtA521FHICv0A8Fkl3ZN/GIKtXYg=
 github.com/bamboo-services/bamboo-base-go/major v1.0.0-202605310541 h1:r3h85eOm8dPo9QqY5ubkA6tUggUfF+/j/iscLhJcSVU=
 github.com/bamboo-services/bamboo-base-go/major v1.0.0-202605310541/go.mod h1:h9aBSpMIm9muOCBNWE27EUYvIbtfsaFjQXDU/PhwWX8=
+github.com/bamboo-services/bamboo-base-go/plugins/async v1.0.0-202604270654 h1:vccKwLljp2skhITd5wLx6+Xm1q36rosGYBy6wxxuVUE=
+github.com/bamboo-services/bamboo-base-go/plugins/async v1.0.0-202604270654/go.mod h1:R30NiQncZQCk3UkhiXEri1n8V2o+muGUBSyXTprwvnQ=
 github.com/bamboo-services/bamboo-base-go/plugins/email v1.0.0-202605032001 h1:L/IRbQQu+NkkYZ0hofRGoSRUQ/bF9Q2KfBo9Kamb1eM=
 github.com/bamboo-services/bamboo-base-go/plugins/email v1.0.0-202605032001/go.mod h1:b3nDKsdB36VhWmrdMWzEl47dCKy4x6PdqRoQfHONFms=
 github.com/bamboo-services/bamboo-messages v0.8.10 h1:6l1vDgD2T3LI5Qc3eDiqeO3vZDsx3UnY+2bu4iTRHxY=

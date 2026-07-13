@@ -26,6 +26,7 @@ import (
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
+	xAsync "github.com/bamboo-services/bamboo-base-go/plugins/async"
 
 	apiRepowiki "github.com/xiaolfeng/Lumina/api/repowiki"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
@@ -405,33 +406,11 @@ func (l *RepoWikiLogic) AnalyzeRepo(ctx context.Context, configID xSnowflake.Sno
 		return nil, xErr
 	}
 
-	// Step 2: 检查 LlmResolver 就绪状态
-	if l.llmResolver == nil {
-		return nil, xError.NewError(ctx, xError.BusinessError,
-			"LLM 配置未就绪，请先在前端配置 Provider 和 Model", false, nil)
+	// Step 2: 解析 LLM 配置并构建 AgentPassRunner
+	runner, proto, model, xErr := l.resolveRunner(ctx)
+	if xErr != nil {
+		return nil, xErr
 	}
-
-	// 解析 Agent 模型配置（Info 表 → Model → Provider → 解密 APIKey）
-	resolved, err := l.llmResolver.ResolveAgentModel(ctx, bConst.AgentRoleRepoWiki, bConst.LlmAgentModelKeyPrefix)
-	if err != nil {
-		return nil, xError.NewError(ctx, xError.BusinessError,
-			xError.ErrMessage("LLM 配置解析失败: "+err.Error()), false, nil)
-	}
-
-	// 构建 LLM 客户端
-	client, cErr := service.NewLLMProviderFromEntity(resolved.Protocol, resolved.BaseURL, resolved.DecryptedAPIKey)
-	if cErr != nil {
-		return nil, xError.NewError(ctx, xError.ServerInternalError,
-			xError.ErrMessage("LLM 客户端创建失败: "+cErr.Error()), false, nil)
-	}
-
-	// 构建模型配置 + 临时 AgentPassRunner
-	modelConfig := &ModelRunConfig{
-		ModelName:   resolved.ModelName,
-		MaxTokens:   resolved.MaxTokens,
-		Temperature: resolved.Temperature,
-	}
-	runner := NewAgentPassRunner(client, l.svc.storage, l.log, nil, modelConfig)
 
 	// Step 3: 非阻塞获取并发信号量
 	select {
@@ -476,26 +455,62 @@ func (l *RepoWikiLogic) AnalyzeRepo(ctx context.Context, configID xSnowflake.Sno
 	}
 
 	// Step 6: 启动后台 goroutine 执行分析管道
-	pipeline := NewAnalysisPipeline(l, l.log, runner, resolved.Protocol, resolved.ModelName)
+	pipeline := NewAnalysisPipeline(l, l.log, runner, proto, model)
 
-	go func() {
-		defer func() {
-			<-l.semaphore
-		}()
+	xAsync.Async(ctx, func(asyncCtx context.Context) {
+		defer func() { <-l.semaphore }()
 
-		// 使用独立 context，不绑定请求生命周期
-		bgCtx := context.Background()
-		if pErr := pipeline.Execute(bgCtx, config, created); pErr != nil {
-			l.log.Error(bgCtx, "分析管道执行失败",
+		if pErr := pipeline.Execute(asyncCtx, config, created); pErr != nil {
+			l.log.Error(asyncCtx, "分析管道执行失败",
 				slog.Int64("versionID", created.ID.Int64()),
 				slog.String("err", pErr.Error()))
 		} else {
-			l.log.Info(bgCtx, "分析管道执行完成",
+			l.log.Info(asyncCtx, "分析管道执行完成",
 				slog.Int64("versionID", created.ID.Int64()))
 		}
-	}()
+	},
+		xAsync.WithName("RepoWiki-Analyze"),
+		xAsync.WithDebug(),
+		xAsync.WithLogger(l.log),
+	)
 
 	return created, nil
+}
+
+// resolveRunner 解析 Agent 模型配置并构建 AgentPassRunner
+//
+// 从 AnalyzeRepo 和 RetryStaleTask 共用，返回 runner + providerName + modelName。
+// 失败时返回 *xError.Error（LLM 未配置 / 解析失败 / 客户端创建失败）。
+func (l *RepoWikiLogic) resolveRunner(ctx context.Context) (runner *AgentPassRunner, providerName string, modelName string, xErr *xError.Error) {
+	// 检查 LlmResolver 就绪状态
+	if l.llmResolver == nil {
+		return nil, "", "", xError.NewError(ctx, xError.BusinessError,
+			"LLM 配置未就绪，请先在前端配置 Provider 和 Model", false, nil)
+	}
+
+	// 解析 Agent 模型配置（Info 表 → Model → Provider → 解密 APIKey）
+	resolved, err := l.llmResolver.ResolveAgentModel(ctx, bConst.AgentRoleRepoWiki, bConst.LlmAgentModelKeyPrefix)
+	if err != nil {
+		return nil, "", "", xError.NewError(ctx, xError.BusinessError,
+			xError.ErrMessage("LLM 配置解析失败: "+err.Error()), false, nil)
+	}
+
+	// 构建 LLM 客户端
+	client, cErr := service.NewLLMProviderFromEntity(resolved.Protocol, resolved.BaseURL, resolved.DecryptedAPIKey)
+	if cErr != nil {
+		return nil, "", "", xError.NewError(ctx, xError.ServerInternalError,
+			xError.ErrMessage("LLM 客户端创建失败: "+cErr.Error()), false, nil)
+	}
+
+	// 构建模型配置 + AgentPassRunner
+	modelConfig := &ModelRunConfig{
+		ModelName:   resolved.ModelName,
+		MaxTokens:   resolved.MaxTokens,
+		Temperature: resolved.Temperature,
+	}
+	r := NewAgentPassRunner(client, l.svc.storage, l.log, nil, modelConfig)
+
+	return r, resolved.Protocol, resolved.ModelName, nil
 }
 
 // GetVersionStatus 获取版本分析状态
