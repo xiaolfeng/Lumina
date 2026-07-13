@@ -1,26 +1,30 @@
 package repowiki
 
-import "time"
+import (
+	"time"
+
+	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
+)
 
 // CreateConfigRequest 创建 RepoWiki 配置请求
 type CreateConfigRequest struct {
-	RepoURL         string `json:"repo_url" label:"Git仓库地址" binding:"required"`  // Git仓库地址
-	Name            string `json:"name" label:"配置名称" binding:"required"`         // 配置名称
-	ProjectID       int64  `json:"project_id" label:"关联项目ID" binding:"required"` // 关联项目ID（必选）
-	DefaultBranch   string `json:"default_branch" label:"默认分支"`                  // 默认分支（默认 main）
-	DefaultLanguage string `json:"default_language" label:"默认Wiki语言"`            // 默认Wiki语言（默认 zh）
-	SSHKeyID        *int64 `json:"ssh_key_id,omitempty" label:"SSH密钥ID"`         // 关联SSH密钥ID（可选，私有仓库用）
-	WikiPassword    string `json:"wiki_password,omitempty" label:"Wiki访问密码"`     // Wiki访问密码（可选保护）
+	RepoURL         string                  `json:"repo_url" label:"Git仓库地址" binding:"required"`  // Git仓库地址
+	Name            string                  `json:"name" label:"配置名称" binding:"required"`         // 配置名称
+	ProjectID       xSnowflake.SnowflakeID  `json:"project_id" label:"关联项目ID" binding:"required"` // 关联项目ID（必选）
+	DefaultBranch   string                  `json:"default_branch" label:"默认分支"`                  // 默认分支（默认 main）
+	DefaultLanguage string                  `json:"default_language" label:"默认Wiki语言"`            // 默认Wiki语言（默认 zh）
+	SSHKeyID        *xSnowflake.SnowflakeID `json:"ssh_key_id,omitempty" label:"SSH密钥ID"`         // 关联SSH密钥ID（可选，私有仓库用）
+	WikiPassword    string                  `json:"wiki_password,omitempty" label:"Wiki访问密码"`     // Wiki访问密码（可选保护）
 }
 
 // UpdateConfigRequest 更新 RepoWiki 配置请求（全部 optional）
 type UpdateConfigRequest struct {
-	RepoURL         *string `json:"repo_url,omitempty"`         // Git仓库地址
-	Name            *string `json:"name,omitempty"`             // 配置名称
-	DefaultBranch   *string `json:"default_branch,omitempty"`   // 默认分支
-	DefaultLanguage *string `json:"default_language,omitempty"` // 默认Wiki语言
-	SSHKeyID        *int64  `json:"ssh_key_id,omitempty"`       // 关联SSH密钥ID（传 0 或 nil 清除关联）
-	WikiPassword    *string `json:"wiki_password,omitempty"`    // Wiki访问密码（传空字符串清除）
+	RepoURL         *string                 `json:"repo_url,omitempty"`         // Git仓库地址
+	Name            *string                 `json:"name,omitempty"`             // 配置名称
+	DefaultBranch   *string                 `json:"default_branch,omitempty"`   // 默认分支
+	DefaultLanguage *string                 `json:"default_language,omitempty"` // 默认Wiki语言
+	SSHKeyID        *xSnowflake.SnowflakeID `json:"ssh_key_id,omitempty"`       // 关联SSH密钥ID（传 0 或 nil 清除关联）
+	WikiPassword    *string                 `json:"wiki_password,omitempty"`    // Wiki访问密码（传空字符串清除）
 }
 
 // ConfigListResponse RepoWiki 配置列表响应（分页）
@@ -31,20 +35,20 @@ type ConfigListResponse struct {
 
 // ConfigResponse RepoWiki 配置响应
 type ConfigResponse struct {
-	ID                int64                  `json:"id"`                            // 配置ID
-	ProjectID         int64                  `json:"project_id"`                    // 关联项目ID
-	RepoURL           string                 `json:"repo_url"`                      // Git仓库地址
-	Name              string                 `json:"name"`                          // 配置名称
-	DefaultBranch     string                 `json:"default_branch"`                // 默认分支
-	DefaultLanguage   string                 `json:"default_language"`              // 默认Wiki语言
-	Status            string                 `json:"status"`                        // 当前分析状态
-	SSHKeyID          *string                `json:"ssh_key_id,omitempty"`          // 关联SSH密钥ID（字符串形式的雪花ID，nil 表示未关联）
-	HasPassword       bool                   `json:"has_password"`                  // 是否设置Wiki密码
-	SelectedVersionID *int64                 `json:"selected_version_id,omitempty"` // 当前选中的Wiki版本ID（nil 表示尚未生成或未选择）
-	LastAccessedAt    *time.Time             `json:"last_accessed_at,omitempty"`    // 最后访问时间
-	CreatedAt         time.Time              `json:"created_at"`                    // 创建时间
-	UpdatedAt         time.Time              `json:"updated_at"`                    // 更新时间
-	LatestVersion     *VersionStatusResponse `json:"latest_version,omitempty"`      // 最近版本状态
+	ID                xSnowflake.SnowflakeID  `json:"id"`                            // 配置ID
+	ProjectID         xSnowflake.SnowflakeID  `json:"project_id"`                    // 关联项目ID
+	RepoURL           string                  `json:"repo_url"`                      // Git仓库地址
+	Name              string                  `json:"name"`                          // 配置名称
+	DefaultBranch     string                  `json:"default_branch"`                // 默认分支
+	DefaultLanguage   string                  `json:"default_language"`              // 默认Wiki语言
+	Status            string                  `json:"status"`                        // 当前分析状态
+	SSHKeyID          *xSnowflake.SnowflakeID `json:"ssh_key_id,omitempty"`          // 关联SSH密钥ID（字符串形式的雪花ID，nil 表示未关联）
+	HasPassword       bool                    `json:"has_password"`                  // 是否设置Wiki密码
+	SelectedVersionID *xSnowflake.SnowflakeID `json:"selected_version_id,omitempty"` // 当前选中的Wiki版本ID（nil 表示尚未生成或未选择）
+	LastAccessedAt    *time.Time              `json:"last_accessed_at,omitempty"`    // 最后访问时间
+	CreatedAt         time.Time               `json:"created_at"`                    // 创建时间
+	UpdatedAt         time.Time               `json:"updated_at"`                    // 更新时间
+	LatestVersion     *VersionStatusResponse  `json:"latest_version,omitempty"`      // 最近版本状态
 }
 
 // WebhookConfigResponse webhook 配置信息
@@ -58,7 +62,7 @@ type WebhookConfigResponse struct {
 
 // UpdateSelectedVersionRequest 切换当前选中的 Wiki 版本
 type UpdateSelectedVersionRequest struct {
-	VersionID int64 `json:"version_id" label:"Wiki版本ID" binding:"required"` // Wiki版本ID（必须属于该配置且状态为 completed）
+	VersionID xSnowflake.SnowflakeID `json:"version_id" label:"Wiki版本ID" binding:"required"` // Wiki版本ID（必须属于该配置且状态为 completed）
 }
 
 // UpdateWebhookBranchesRequest 更新监控分支请求
@@ -81,18 +85,18 @@ type WebhookEventListResponse struct {
 
 // WebhookEventResponse 单个 webhook 事件响应
 type WebhookEventResponse struct {
-	ID           int64      `json:"id"`                      // 事件ID
-	ConfigID     int64      `json:"config_id,omitempty"`     // 关联配置ID
-	Provider     string     `json:"provider"`                // Git 提供商
-	EventType    string     `json:"event_type"`              // 事件类型
-	Branch       string     `json:"branch,omitempty"`        // 触发分支
-	CommitBefore string     `json:"commit_before,omitempty"` // 变更前 commit
-	CommitAfter  string     `json:"commit_after,omitempty"`  // 变更后 commit
-	ChangedCount int        `json:"changed_count"`           // 变更文件数
-	Status       string     `json:"status"`                  // 处理状态
-	Reason       string     `json:"reason,omitempty"`        // 忽略/失败原因
-	VersionID    int64      `json:"version_id,omitempty"`    // 关联版本ID
-	ResponseCode int        `json:"response_code"`           // 响应 HTTP 状态码
-	ReceivedAt   time.Time  `json:"received_at"`             // 接收时间
-	ProcessedAt  *time.Time `json:"processed_at,omitempty"`  // 处理时间
+	ID           xSnowflake.SnowflakeID `json:"id"`                      // 事件ID
+	ConfigID     xSnowflake.SnowflakeID `json:"config_id,omitempty"`     // 关联配置ID
+	Provider     string                 `json:"provider"`                // Git 提供商
+	EventType    string                 `json:"event_type"`              // 事件类型
+	Branch       string                 `json:"branch,omitempty"`        // 触发分支
+	CommitBefore string                 `json:"commit_before,omitempty"` // 变更前 commit
+	CommitAfter  string                 `json:"commit_after,omitempty"`  // 变更后 commit
+	ChangedCount int                    `json:"changed_count"`           // 变更文件数
+	Status       string                 `json:"status"`                  // 处理状态
+	Reason       string                 `json:"reason,omitempty"`        // 忽略/失败原因
+	VersionID    xSnowflake.SnowflakeID `json:"version_id,omitempty"`    // 关联版本ID
+	ResponseCode int                    `json:"response_code"`           // 响应 HTTP 状态码
+	ReceivedAt   time.Time              `json:"received_at"`             // 接收时间
+	ProcessedAt  *time.Time             `json:"processed_at,omitempty"`  // 处理时间
 }

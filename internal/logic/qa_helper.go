@@ -16,7 +16,7 @@ import (
 // toSessionResponse 将会话实体映射为响应 DTO
 func toSessionResponse(session *entity.QaSession) qa.SessionResponse {
 	return qa.SessionResponse{
-		ID:            session.ID.String(),
+		ID:            session.ID,
 		Hash:          session.Hash,
 		Title:         session.Title,
 		Agent:         session.Agent,
@@ -50,7 +50,7 @@ func toQuestionSummary(q *entity.QaQuestion, supplements []qa.SupplementResponse
 	}
 
 	return qa.QuestionSummaryResponse{
-		ID:          q.ID.String(),
+		ID:          q.ID,
 		Type:        q.Type,
 		Title:       q.Title,
 		Options:     jsonOrNull(q.Options),

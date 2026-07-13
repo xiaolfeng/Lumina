@@ -47,8 +47,8 @@ export function VersionSwitcher({ configId, selectedVersionId }: VersionSwitcher
 					value={selectedVersionId ?? ''}
 					onValueChange={(value) => {
 						updateMutation.mutate({
-							configId: Number(configId),
-							versionId: Number(value),
+							configId,
+							versionId: value,
 						})
 					}}
 					className="space-y-3"
@@ -103,7 +103,7 @@ export function VersionSwitcher({ configId, selectedVersionId }: VersionSwitcher
 									</div>
 								</div>
 								{updateMutation.isPending &&
-									updateMutation.variables?.versionId === Number(version.id) && (
+									updateMutation.variables?.versionId === version.id && (
 										<Loader2 className="size-4 animate-spin text-muted-foreground mt-0.5 shrink-0" />
 									)}
 							</div>

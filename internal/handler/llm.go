@@ -386,7 +386,7 @@ func (h *LlmHandler) GetAgentModel(ctx *gin.Context) {
 		return
 	}
 
-	modelID := config.Model.BaseEntity.ID.String()
+	modelID := config.Model.BaseEntity.ID
 	resp := &apiLlm.AgentModelAssignment{
 		Role:    role,
 		ModelID: &modelID,
@@ -419,7 +419,7 @@ func (h *LlmHandler) UpdateAgentModel(ctx *gin.Context) {
 		return
 	}
 
-	xErr := h.service.llmModelLogic.SetAgentModel(ctx.Request.Context(), role, req.ModelID)
+	xErr := h.service.llmModelLogic.SetAgentModel(ctx.Request.Context(), role, req.ModelID.String())
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return

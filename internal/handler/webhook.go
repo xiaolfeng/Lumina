@@ -61,7 +61,7 @@ func (h *WebhookHandler) HandleRepoWikiWebhook(ctx *gin.Context) {
 	if event != nil {
 		ctx.JSON(event.ResponseCode, apiWebhook.WebhookResponse{
 			Status:    event.Status,
-			VersionID: event.VersionID.Int64(),
+			VersionID: event.VersionID,
 			Message:   getWebhookMessage(event.Status),
 			Reason:    event.Reason,
 		})

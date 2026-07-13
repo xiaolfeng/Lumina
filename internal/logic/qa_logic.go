@@ -131,11 +131,11 @@ func (l *QaLogic) GetSessionDetail(ctx context.Context, id string) (*qa.SessionD
 		if s.TargetType != "question" {
 			continue
 		}
-		key := strconv.FormatInt(s.TargetID.Int64(), 10)
+		key := s.TargetID.String()
 		supplementMap[key] = append(supplementMap[key], qa.SupplementResponse{
-			ID:          s.ID.String(),
+			ID:          s.ID,
 			TargetType:  s.TargetType,
-			TargetID:    key,
+			TargetID:    s.TargetID,
 			ContentType: s.ContentType,
 			Content:     s.Content,
 			CreatedAt:   s.CreatedAt.Format(time.RFC3339),
@@ -150,7 +150,7 @@ func (l *QaLogic) GetSessionDetail(ctx context.Context, id string) (*qa.SessionD
 	}
 
 	return &qa.SessionDetailResponse{
-		ID:            session.ID.String(),
+		ID:            session.ID,
 		Hash:          session.Hash,
 		Title:         session.Title,
 		Agent:         session.Agent,
@@ -167,6 +167,12 @@ func (l *QaLogic) GetSessionDetail(ctx context.Context, id string) (*qa.SessionD
 // GetQuestionDetail 获取QA问题详情（含补充内容）
 func (l *QaLogic) GetQuestionDetail(ctx context.Context, sessionID, questionID string) (*qa.QuestionDetailResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("GetQuestionDetail - 获取问题详情 [session=%s, question=%s]", sessionID, questionID))
+
+	// 解析会话ID
+	parsedSID, err := xSnowflake.ParseSnowflakeID(sessionID)
+	if err != nil {
+		return nil, xError.NewError(ctx, xError.BusinessError, "无效的会话ID", false, nil)
+	}
 
 	// 解析问题ID
 	parsedQID, err := xSnowflake.ParseSnowflakeID(questionID)
@@ -186,9 +192,9 @@ func (l *QaLogic) GetQuestionDetail(ctx context.Context, sessionID, questionID s
 	if suppErr == nil && supplement != nil {
 		supplements = []qa.SupplementResponse{
 			{
-				ID:          supplement.ID.String(),
+				ID:          supplement.ID,
 				TargetType:  supplement.TargetType,
-				TargetID:    strconv.FormatInt(supplement.TargetID.Int64(), 10),
+				TargetID:    supplement.TargetID,
 				ContentType: supplement.ContentType,
 				Content:     supplement.Content,
 				CreatedAt:   supplement.CreatedAt.Format(time.RFC3339),
@@ -200,8 +206,8 @@ func (l *QaLogic) GetQuestionDetail(ctx context.Context, sessionID, questionID s
 	}
 
 	return &qa.QuestionDetailResponse{
-		ID:          question.ID.String(),
-		SessionID:   sessionID,
+		ID:          question.ID,
+		SessionID:   parsedSID,
 		Type:        question.Type,
 		Title:       question.Title,
 		Description: question.Description,

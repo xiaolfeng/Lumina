@@ -141,7 +141,7 @@ export function useRepoWikiVersions(configId: string, page = 1, size = 20) {
 export function useUpdateSelectedVersion() {
 	const queryClient = useQueryClient()
 	return useMutation({
-		mutationFn: ({ configId, versionId }: { configId: number; versionId: number }) =>
+		mutationFn: ({ configId, versionId }: { configId: string; versionId: string }) =>
 			updateSelectedVersion(configId, versionId),
 		onSuccess: () => {
 			toast.success('已切换选中版本')

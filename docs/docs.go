@@ -3445,6 +3445,72 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/repowiki/configs/{id}/selected-version": {
+            "put": {
+                "description": "将指定配置的当前 Wiki 阅读版本切换为目标版本（目标版本必须属于该配置且状态为 completed）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 切换选中 Wiki 版本",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "切换版本请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/repowiki.UpdateSelectedVersionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "切换成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置或版本不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/repowiki/configs/{id}/update": {
             "put": {
                 "description": "根据配置 ID 触发 RepoWiki 增量更新（异步执行），自动对比 commit hash 决定全量或增量分析",
@@ -6462,6 +6528,10 @@ const docTemplate = `{
                     "description": "Git仓库地址",
                     "type": "string"
                 },
+                "selected_version_id": {
+                    "description": "当前选中的Wiki版本ID（nil 表示尚未生成或未选择）",
+                    "type": "integer"
+                },
                 "ssh_key_id": {
                     "description": "关联SSH密钥ID（字符串形式的雪花ID，nil 表示未关联）",
                     "type": "string"
@@ -6557,6 +6627,18 @@ const docTemplate = `{
                 "wiki_password": {
                     "description": "Wiki访问密码（传空字符串清除）",
                     "type": "string"
+                }
+            }
+        },
+        "repowiki.UpdateSelectedVersionRequest": {
+            "type": "object",
+            "required": [
+                "version_id"
+            ],
+            "properties": {
+                "version_id": {
+                    "description": "Wiki版本ID（必须属于该配置且状态为 completed）",
+                    "type": "integer"
                 }
             }
         },

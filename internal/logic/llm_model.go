@@ -54,13 +54,8 @@ func NewLlmModelLogic(ctx context.Context) *LlmModelLogic {
 func (l *LlmModelLogic) Create(ctx context.Context, req *apiLlm.CreateModelRequest) (*apiLlm.ModelDetailResponse, *xError.Error) {
 	l.log.Info(ctx, "Create - 创建LLM Model")
 
-	providerID, xErr := parseSnowflakeID(ctx, req.ProviderID)
-	if xErr != nil {
-		return nil, xErr
-	}
-
 	// 校验 Provider 存在
-	if _, xErr := l.repo.provider.GetByID(ctx, providerID); xErr != nil {
+	if _, xErr := l.repo.provider.GetByID(ctx, req.ProviderID); xErr != nil {
 		return nil, xErr
 	}
 
@@ -78,7 +73,7 @@ func (l *LlmModelLogic) Create(ctx context.Context, req *apiLlm.CreateModelReque
 	}
 
 	model := &entity.LlmModel{
-		ProviderID:    providerID,
+		ProviderID:    req.ProviderID,
 		ModelName:     req.ModelName,
 		DisplayName:   req.DisplayName,
 		MaxTokens:     maxTokens,
@@ -319,10 +314,10 @@ func (l *LlmModelLogic) GetAgentModelsConfig(ctx context.Context, module string,
 		modelIDInt, err := strconv.ParseInt(modelIDStr, 10, 64)
 		if err != nil {
 			l.log.Warn(ctx, "GetAgentModelsConfig - Agent模型配置值无效 ["+role+"]: "+modelIDStr)
-			idStr := modelIDStr
+			idVal := xSnowflake.SnowflakeID(modelIDInt)
 			assignments = append(assignments, apiLlm.AgentModelAssignment{
 				Role:      role,
-				ModelID:   &idStr,
+				ModelID:   &idVal,
 				ModelName: nil,
 			})
 			continue
@@ -331,20 +326,20 @@ func (l *LlmModelLogic) GetAgentModelsConfig(ctx context.Context, module string,
 		model, xErr := l.repo.model.GetByID(ctx, xSnowflake.SnowflakeID(modelIDInt))
 		if xErr != nil {
 			l.log.Warn(ctx, "GetAgentModelsConfig - 查询模型失败 ["+role+"] modelID="+modelIDStr)
-			idStr := modelIDStr
+			idVal := xSnowflake.SnowflakeID(modelIDInt)
 			assignments = append(assignments, apiLlm.AgentModelAssignment{
 				Role:      role,
-				ModelID:   &idStr,
+				ModelID:   &idVal,
 				ModelName: nil,
 			})
 			continue
 		}
 
-		idStr := modelIDStr
+		idVal := xSnowflake.SnowflakeID(modelIDInt)
 		displayName := model.DisplayName
 		assignments = append(assignments, apiLlm.AgentModelAssignment{
 			Role:      role,
-			ModelID:   &idStr,
+			ModelID:   &idVal,
 			ModelName: &displayName,
 		})
 	}
@@ -358,8 +353,8 @@ func (l *LlmModelLogic) GetAgentModelsConfig(ctx context.Context, module string,
 // toDetailResponse 将实体映射为详情响应
 func (l *LlmModelLogic) toDetailResponse(model *entity.LlmModel) *apiLlm.ModelDetailResponse {
 	return &apiLlm.ModelDetailResponse{
-		ID:            model.BaseEntity.ID.String(),
-		ProviderID:    model.ProviderID.String(),
+		ID:            model.BaseEntity.ID,
+		ProviderID:    model.ProviderID,
 		ModelName:     model.ModelName,
 		DisplayName:   model.DisplayName,
 		MaxTokens:     model.MaxTokens,
@@ -375,8 +370,8 @@ func (l *LlmModelLogic) toDetailResponse(model *entity.LlmModel) *apiLlm.ModelDe
 // toListListItem 将实体映射为列表项
 func (l *LlmModelLogic) toListListItem(model *entity.LlmModel) apiLlm.ModelListItem {
 	return apiLlm.ModelListItem{
-		ID:            model.BaseEntity.ID.String(),
-		ProviderID:    model.ProviderID.String(),
+		ID:            model.BaseEntity.ID,
+		ProviderID:    model.ProviderID,
 		ModelName:     model.ModelName,
 		DisplayName:   model.DisplayName,
 		MaxTokens:     model.MaxTokens,

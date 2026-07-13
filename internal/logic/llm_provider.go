@@ -82,7 +82,7 @@ func (l *LlmProviderLogic) List(ctx context.Context, page, size int) (*xModels.P
 	listItems := make([]apiLlm.ProviderListItem, 0, len(items))
 	for _, item := range items {
 		listItems = append(listItems, apiLlm.ProviderListItem{
-			ID:          item.BaseEntity.ID.String(),
+			ID:          item.BaseEntity.ID,
 			Name:        item.Name,
 			Protocol:    item.Protocol,
 			BaseURL:     item.BaseURL,
@@ -208,7 +208,7 @@ func (l *LlmProviderLogic) GetDecryptedAPIKey(ctx context.Context, providerID xS
 // toDetailResponse 将实体映射为详情响应（不返回 APIKey 明文）
 func (l *LlmProviderLogic) toDetailResponse(provider *entity.LlmProvider) *apiLlm.ProviderDetailResponse {
 	return &apiLlm.ProviderDetailResponse{
-		ID:          provider.BaseEntity.ID.String(),
+		ID:          provider.BaseEntity.ID,
 		Name:        provider.Name,
 		Protocol:    provider.Protocol,
 		BaseURL:     provider.BaseURL,

@@ -1038,6 +1038,9 @@ definitions:
       repo_url:
         description: Git仓库地址
         type: string
+      selected_version_id:
+        description: 当前选中的Wiki版本ID（nil 表示尚未生成或未选择）
+        type: integer
       ssh_key_id:
         description: 关联SSH密钥ID（字符串形式的雪花ID，nil 表示未关联）
         type: string
@@ -1108,6 +1111,14 @@ definitions:
       wiki_password:
         description: Wiki访问密码（传空字符串清除）
         type: string
+    type: object
+  repowiki.UpdateSelectedVersionRequest:
+    properties:
+      version_id:
+        description: Wiki版本ID（必须属于该配置且状态为 completed）
+        type: integer
+    required:
+    - version_id
     type: object
   repowiki.UpdateWebhookBranchesRequest:
     properties:
@@ -3758,6 +3769,50 @@ paths:
           schema:
             $ref: '#/definitions/common.BaseResponse'
       summary: '[管理] 触发仓库分析'
+      tags:
+      - RepoWiki接口
+  /api/v1/repowiki/configs/{id}/selected-version:
+    put:
+      consumes:
+      - application/json
+      description: 将指定配置的当前 Wiki 阅读版本切换为目标版本（目标版本必须属于该配置且状态为 completed）
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 配置ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 切换版本请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/repowiki.UpdateSelectedVersionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 切换成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 配置或版本不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 切换选中 Wiki 版本'
       tags:
       - RepoWiki接口
   /api/v1/repowiki/configs/{id}/update:

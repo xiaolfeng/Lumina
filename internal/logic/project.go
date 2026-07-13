@@ -223,7 +223,7 @@ func (l *ProjectLogic) GetByMatchPath(ctx context.Context, path string) (*apiPro
 // toResponse 将实体映射为响应 DTO
 func (l *ProjectLogic) toResponse(project *entity.Project) *apiProject.ProjectResponse {
 	return &apiProject.ProjectResponse{
-		ID:          project.ID.String(),
+		ID:          project.ID,
 		Name:        project.Name,
 		AliasName:   project.AliasName,
 		MatchPath:   project.MatchPath,

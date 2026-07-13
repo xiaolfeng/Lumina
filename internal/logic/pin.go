@@ -91,15 +91,15 @@ func (l *PinLogic) Push(ctx context.Context, req *apiPin.CreatePinRequest) (*api
 	l.log.Info(ctx, fmt.Sprintf("Push - 创建 Pin 约束 [title=%s, toProject=%s]", req.Title, req.ToProjectID))
 
 	// 解析目标项目
-	toProject, xErr := l.ResolveProject(ctx, req.ToProjectID)
+	toProject, xErr := l.ResolveProject(ctx, req.ToProjectID.String())
 	if xErr != nil {
 		return nil, xErr
 	}
 
 	// 解析来源项目（可选）
 	var fromProjectID xSnowflake.SnowflakeID
-	if req.FromProjectID != "" {
-		fromProject, xErr := l.ResolveProject(ctx, req.FromProjectID)
+	if !req.FromProjectID.IsZero() {
+		fromProject, xErr := l.ResolveProject(ctx, req.FromProjectID.String())
 		if xErr != nil {
 			return nil, xErr
 		}
@@ -233,27 +233,22 @@ func (l *PinLogic) Peek(ctx context.Context, id xSnowflake.SnowflakeID) (*apiPin
 // toResponse 将 Pin 实体映射为响应 DTO
 //
 // 时间格式遵循 RFC3339（与项目模块 toResponse 保持一致）。
-// FromProjectID 为零值时返回空字符串，避免前端展示无意义的 "0"。
+// FromProjectID 为零值时返回 0（前端展示 "0" 或自行隐藏）。
 func (l *PinLogic) toResponse(pin *entity.Pin) *apiPin.PinResponse {
-	fromProjectID := ""
-	if pin.FromProjectID != 0 {
-		fromProjectID = pin.FromProjectID.String()
-	}
-
 	consumedAt := ""
 	if pin.ConsumedAt != nil {
 		consumedAt = pin.ConsumedAt.Format(time.RFC3339)
 	}
 
 	return &apiPin.PinResponse{
-		ID:            pin.ID.String(),
+		ID:            pin.ID,
 		Title:         pin.Title,
 		Content:       pin.Content,
 		Category:      pin.Category,
 		Status:        pin.Status,
 		Priority:      pin.Priority,
-		FromProjectID: fromProjectID,
-		ToProjectID:   pin.ToProjectID.String(),
+		FromProjectID: pin.FromProjectID,
+		ToProjectID:   pin.ToProjectID,
 		ConsumedAt:    consumedAt,
 		CreatedAt:     pin.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     pin.UpdatedAt.Format(time.RFC3339),

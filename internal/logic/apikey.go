@@ -81,7 +81,7 @@ func (l *ApikeyLogic) Create(ctx context.Context, req *apiApikey.CreateRequest) 
 	l.log.Info(ctx, "Create - API密钥创建成功")
 
 	return &apiApikey.CreateResponse{
-		ID:          ak.BaseEntity.ID.String(),
+		ID:          ak.BaseEntity.ID,
 		Name:        ak.Name,
 		Key:         key,
 		KeyPrefix:   ak.KeyPrefix,
@@ -105,7 +105,7 @@ func (l *ApikeyLogic) List(ctx context.Context, page, size int) (*xModels.PageRe
 	apiItems := make([]apiApikey.ApikeyItem, 0, len(items))
 	for _, item := range items {
 		apiItems = append(apiItems, apiApikey.ApikeyItem{
-			ID:          item.BaseEntity.ID.String(),
+			ID:          item.BaseEntity.ID,
 			Name:        item.Name,
 			Key:         maskKey(item.KeyPrefix, item.KeySuffix),
 			KeyPrefix:   item.KeyPrefix,
@@ -136,7 +136,7 @@ func (l *ApikeyLogic) GetByID(ctx context.Context, id string) (*apiApikey.Detail
 	}
 
 	return &apiApikey.DetailResponse{
-		ID:          ak.BaseEntity.ID.String(),
+		ID:          ak.BaseEntity.ID,
 		Name:        ak.Name,
 		Key:         maskKey(ak.KeyPrefix, ak.KeySuffix),
 		KeyPrefix:   ak.KeyPrefix,
@@ -237,7 +237,7 @@ func (l *ApikeyLogic) Reset(ctx context.Context, id string) (*apiApikey.ResetRes
 	l.log.Info(ctx, "Reset - API密钥重置成功")
 
 	return &apiApikey.ResetResponse{
-		ID:          ak.BaseEntity.ID.String(),
+		ID:          ak.BaseEntity.ID,
 		Name:        ak.Name,
 		Key:         key,
 		KeyPrefix:   ak.KeyPrefix,

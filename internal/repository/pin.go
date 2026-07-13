@@ -117,10 +117,10 @@ func (r *PinRepo) List(ctx context.Context, req *apiPin.PinListRequest) ([]*enti
 	query := r.db.WithContext(ctx).Model(&entity.Pin{})
 
 	// 动态追加过滤条件
-	if req.ToProjectID != "" {
+	if !req.ToProjectID.IsZero() {
 		query = query.Where("to_project_id = ?", req.ToProjectID)
 	}
-	if req.FromProjectID != "" {
+	if !req.FromProjectID.IsZero() {
 		query = query.Where("from_project_id = ?", req.FromProjectID)
 	}
 	if req.Status != "" {

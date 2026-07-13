@@ -30,7 +30,7 @@ func TestProjectLogic_Create(t *testing.T) {
 	if xErr != nil {
 		t.Fatalf("Create failed: %v", xErr)
 	}
-	if resp.ID == "" {
+	if resp.ID.IsZero() {
 		t.Error("expected non-empty ID")
 	}
 	if resp.Name != req.Name {
@@ -44,7 +44,7 @@ func TestProjectLogic_Create(t *testing.T) {
 	}
 
 	// Cleanup
-	_ = l.Delete(ctx, resp.ID)
+	_ = l.Delete(ctx, resp.ID.String())
 }
 
 // TestProjectLogic_Create_DuplicateName 测试重复项目名称拒绝
@@ -71,7 +71,7 @@ func TestProjectLogic_Create_DuplicateName(t *testing.T) {
 	}
 
 	// Cleanup
-	_ = l.Delete(ctx, resp.ID)
+	_ = l.Delete(ctx, resp.ID.String())
 }
 
 // TestProjectLogic_GetByID 测试根据 ID 获取项目详情
@@ -92,12 +92,12 @@ func TestProjectLogic_GetByID(t *testing.T) {
 	}
 
 	// 根据 ID 查询
-	got, xErr := l.GetByID(ctx, created.ID)
+	got, xErr := l.GetByID(ctx, created.ID.String())
 	if xErr != nil {
 		t.Fatalf("GetByID failed: %v", xErr)
 	}
 	if got.ID != created.ID {
-		t.Errorf("expected ID %q, got %q", created.ID, got.ID)
+		t.Errorf("expected ID %s, got %s", created.ID, got.ID)
 	}
 	if got.Name != createReq.Name {
 		t.Errorf("expected name %q, got %q", createReq.Name, got.Name)
@@ -107,7 +107,7 @@ func TestProjectLogic_GetByID(t *testing.T) {
 	}
 
 	// Cleanup
-	_ = l.Delete(ctx, created.ID)
+	_ = l.Delete(ctx, created.ID.String())
 }
 
 // TestProjectLogic_List 测试分页获取项目列表
@@ -129,7 +129,7 @@ func TestProjectLogic_List(t *testing.T) {
 		if xErr != nil {
 			t.Fatalf("Create %q failed: %v", name, xErr)
 		}
-		createdIDs = append(createdIDs, resp.ID)
+		createdIDs = append(createdIDs, resp.ID.String())
 	}
 
 	// 分页查询
@@ -174,7 +174,7 @@ func TestProjectLogic_Update(t *testing.T) {
 		MatchPath:   []string{"/test/updated"},
 		Description: "updated description",
 	}
-	updated, xErr := l.Update(ctx, created.ID, updateReq)
+	updated, xErr := l.Update(ctx, created.ID.String(), updateReq)
 	if xErr != nil {
 		t.Fatalf("Update failed: %v", xErr)
 	}
@@ -189,7 +189,7 @@ func TestProjectLogic_Update(t *testing.T) {
 	}
 
 	// Cleanup
-	_ = l.Delete(ctx, created.ID)
+	_ = l.Delete(ctx, created.ID.String())
 }
 
 // TestProjectLogic_Delete 测试删除项目
@@ -210,13 +210,13 @@ func TestProjectLogic_Delete(t *testing.T) {
 	}
 
 	// 删除
-	xErr = l.Delete(ctx, created.ID)
+	xErr = l.Delete(ctx, created.ID.String())
 	if xErr != nil {
 		t.Fatalf("Delete failed: %v", xErr)
 	}
 
 	// 再次查询应返回错误
-	_, xErr = l.GetByID(ctx, created.ID)
+	_, xErr = l.GetByID(ctx, created.ID.String())
 	if xErr == nil {
 		t.Error("expected error after delete, got nil")
 	}

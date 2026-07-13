@@ -225,7 +225,21 @@ func handlePinPush(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 		return textResult("缺少必填参数: to_project_name"), nil
 	}
 	category, _ := args["category"].(string)
-	fromProjectID, _ := args["from_project_id"].(string)
+	fromProjectIDStr, _ := args["from_project_id"].(string)
+
+	toProject, xErr := pinLogic.ResolveProject(context.Background(), toProjectName)
+	if xErr != nil {
+		return textResult(fmt.Sprintf("目标项目解析失败: %s", xErr.Error())), nil
+	}
+
+	var fromProjectID xSnowflake.SnowflakeID
+	if fromProjectIDStr != "" {
+		fromProj, xErr := pinLogic.ResolveProject(context.Background(), fromProjectIDStr)
+		if xErr != nil {
+			return textResult(fmt.Sprintf("来源项目解析失败: %s", xErr.Error())), nil
+		}
+		fromProjectID = fromProj.ID
+	}
 
 	apiReq := &apiPin.CreatePinRequest{
 		Title:         title,
@@ -233,7 +247,7 @@ func handlePinPush(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 		Category:      category,
 		Priority:      priority,
 		FromProjectID: fromProjectID,
-		ToProjectID:   toProjectName,
+		ToProjectID:   toProject.ID,
 	}
 	resp, xErr := pinLogic.Push(context.Background(), apiReq)
 	if xErr != nil {
@@ -318,10 +332,18 @@ func handlePinList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 	status, _ := args["status"].(string)
 	category, _ := args["category"].(string)
 	priority, _ := args["priority"].(string)
-	fromProjectID, _ := args["from_project_id"].(string)
+
+	var fromProjectID xSnowflake.SnowflakeID
+	if fromProjectIDStr, ok := args["from_project_id"].(string); ok && fromProjectIDStr != "" {
+		fromProj, xErr := pinLogic.ResolveProject(context.Background(), fromProjectIDStr)
+		if xErr != nil {
+			return textResult(fmt.Sprintf("来源项目解析失败: %s", xErr.Error())), nil
+		}
+		fromProjectID = fromProj.ID
+	}
 
 	listReq := &apiPin.PinListRequest{
-		ToProjectID:   project.ID.String(),
+		ToProjectID:   project.ID,
 		FromProjectID: fromProjectID,
 		Status:        status,
 		Category:      category,
@@ -433,8 +455,8 @@ func formatPinDetail(resp *apiPin.PinResponse) string {
 		consumedAt = resp.ConsumedAt
 	}
 	fromProjectID := "（无来源）"
-	if resp.FromProjectID != "" {
-		fromProjectID = resp.FromProjectID
+	if !resp.FromProjectID.IsZero() {
+		fromProjectID = resp.FromProjectID.String()
 	}
 	return fmt.Sprintf(`Pin 详情：
 

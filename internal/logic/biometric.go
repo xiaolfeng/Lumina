@@ -380,7 +380,7 @@ func (l *BiometricLogic) ListCredentials(ctx context.Context) (*apiUser.Biometri
 			lastUsedAt = &ts
 		}
 		items = append(items, apiUser.BiometricCredentialItem{
-			ID:         strconv.FormatInt(c.ID.Int64(), 10),
+			ID:         c.ID,
 			DeviceName: c.DeviceName,
 			AAGUID:     c.AAGUID,
 			LastUsedAt: lastUsedAt,

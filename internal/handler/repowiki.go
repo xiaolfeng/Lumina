@@ -293,7 +293,7 @@ func (h *RepoWikiHandler) Analyze(ctx *gin.Context) {
 	}
 
 	xResult.SuccessHasData(ctx, "分析任务已触发", apiRepowiki.AnalyzeResponse{
-		VersionID: version.ID.Int64(),
+		VersionID: version.ID,
 		Status:    version.Status,
 	})
 }
@@ -334,7 +334,7 @@ func (h *RepoWikiHandler) Update(ctx *gin.Context) {
 	}
 
 	xResult.SuccessHasData(ctx, "更新任务已触发", apiRepowiki.AnalyzeResponse{
-		VersionID: version.ID.Int64(),
+		VersionID: version.ID,
 		Status:    version.Status,
 	})
 }
@@ -455,16 +455,16 @@ func (h *RepoWikiHandler) ListVersions(ctx *gin.Context) {
 // latestVersion 为 nil 时 ConfigResponse.LatestVersion 留空（omitempty）。
 func configToResponse(config *entity.RepoWikiConfig, latestVersion *entity.WikiVersion) *apiRepowiki.ConfigResponse {
 	resp := &apiRepowiki.ConfigResponse{
-		ID:                config.ID.Int64(),
-		ProjectID:         config.ProjectID.Int64(),
+		ID:                config.ID,
+		ProjectID:         config.ProjectID,
 		Name:              config.Name,
 		RepoURL:           config.GitURL,
 		DefaultBranch:     config.DefaultBranch,
 		DefaultLanguage:   config.DefaultLanguage,
 		Status:            config.Status,
-		SSHKeyID:          sshKeyIDToString(config.SSHKeyID),
+		SSHKeyID:          config.SSHKeyID,
 		HasPassword:       config.WikiPasswordHash != "",
-		SelectedVersionID: snowflakePtrToInt64Ptr(config.SelectedVersionID),
+		SelectedVersionID: config.SelectedVersionID,
 		LastAccessedAt:    config.LastAccessedAt,
 		CreatedAt:         config.CreatedAt,
 		UpdatedAt:         config.UpdatedAt,
@@ -477,29 +477,11 @@ func configToResponse(config *entity.RepoWikiConfig, latestVersion *entity.WikiV
 	return resp
 }
 
-// sshKeyIDToString 将 *xSnowflake.SnowflakeID 转为 *string（API 返回字符串形式的雪花 ID）
-func sshKeyIDToString(id *xSnowflake.SnowflakeID) *string {
-	if id == nil {
-		return nil
-	}
-	s := strconv.FormatInt(id.Int64(), 10)
-	return &s
-}
-
-// snowflakePtrToInt64Ptr 将 *xSnowflake.SnowflakeID 转为 *int64（nil 直透传）
-func snowflakePtrToInt64Ptr(id *xSnowflake.SnowflakeID) *int64 {
-	if id == nil {
-		return nil
-	}
-	v := id.Int64()
-	return &v
-}
-
 // versionToStatusResponse 将 WikiVersion 实体转为版本状态响应 DTO
 func versionToStatusResponse(version *entity.WikiVersion) *apiRepowiki.VersionStatusResponse {
 	return &apiRepowiki.VersionStatusResponse{
-		ID:              version.ID.Int64(),
-		ConfigID:        version.ConfigID.Int64(),
+		ID:              version.ID,
+		ConfigID:        version.ConfigID,
 		CommitHash:      version.CommitHash,
 		Branch:          version.Branch,
 		Language:        version.Language,
@@ -673,7 +655,7 @@ func (h *RepoWikiHandler) ListWebhookEvents(ctx *gin.Context) {
 // webhookEventToResponse 将 WebhookEvent 实体转为响应 DTO
 func webhookEventToResponse(event *entity.WebhookEvent) apiRepowiki.WebhookEventResponse {
 	resp := apiRepowiki.WebhookEventResponse{
-		ID:           event.ID.Int64(),
+		ID:           event.ID,
 		Provider:     event.Provider,
 		EventType:    event.EventType,
 		Branch:       event.Branch,
@@ -688,10 +670,10 @@ func webhookEventToResponse(event *entity.WebhookEvent) apiRepowiki.WebhookEvent
 	}
 
 	if event.ConfigID != nil {
-		resp.ConfigID = event.ConfigID.Int64()
+		resp.ConfigID = *event.ConfigID
 	}
 	if !event.VersionID.IsZero() {
-		resp.VersionID = event.VersionID.Int64()
+		resp.VersionID = event.VersionID
 	}
 
 	return resp

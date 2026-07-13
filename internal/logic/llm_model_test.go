@@ -44,15 +44,15 @@ func TestLlmModelCreate(t *testing.T) {
 	if xErr != nil {
 		t.Fatalf("Create failed: %v", xErr)
 	}
-	if resp.ID == "" {
+	if resp.ID.IsZero() {
 		t.Error("expected non-empty ID")
 	}
 	if resp.ModelName != req.ModelName {
 		t.Errorf("expected model name %q, got %q", req.ModelName, resp.ModelName)
 	}
 
-	_ = l.Delete(ctx, resp.ID)
-	_ = providerLogic.Delete(ctx, provider.ID)
+	_ = l.Delete(ctx, resp.ID.String())
+	_ = providerLogic.Delete(ctx, provider.ID.String())
 }
 
 // TestLlmModelGetAgentModelConfig 测试空配置返回 NotFound 错误
@@ -92,7 +92,7 @@ func TestLlmModelSetAgentModel(t *testing.T) {
 	}
 
 	// 设置 Agent 模型
-	if xErr := l.SetAgentModel(ctx, bConst.AgentRoleRepoWikiCoordinator, model.ID); xErr != nil {
+	if xErr := l.SetAgentModel(ctx, bConst.AgentRoleRepoWikiCoordinator, model.ID.String()); xErr != nil {
 		t.Fatalf("SetAgentModel failed: %v", xErr)
 	}
 
@@ -104,13 +104,13 @@ func TestLlmModelSetAgentModel(t *testing.T) {
 	if config.Model == nil {
 		t.Fatal("expected non-nil Model")
 	}
-	if config.Model.ID.String() != model.ID {
-		t.Errorf("expected model ID %q, got %q", model.ID, config.Model.ID.String())
+	if config.Model.ID != model.ID {
+		t.Errorf("expected model ID %s, got %s", model.ID, config.Model.ID)
 	}
 	if config.Provider == nil {
 		t.Fatal("expected non-nil Provider")
 	}
 
-	_ = l.Delete(ctx, model.ID)
-	_ = providerLogic.Delete(ctx, provider.ID)
+	_ = l.Delete(ctx, model.ID.String())
+	_ = providerLogic.Delete(ctx, provider.ID.String())
 }

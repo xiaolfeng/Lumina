@@ -127,7 +127,7 @@ func (h *QaHandler) CreateSession(ctx *gin.Context) {
 		sessionType = "temporary"
 	}
 
-	id, _, xErr := h.service.qaLogic.CreateSession(ctx.Request.Context(), req.Title, agent, sessionType, req.ProjectID)
+	id, _, xErr := h.service.qaLogic.CreateSession(ctx.Request.Context(), req.Title, agent, sessionType, req.ProjectID.String())
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return

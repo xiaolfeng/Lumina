@@ -36,7 +36,7 @@ func TestLlmProviderCreate(t *testing.T) {
 	if xErr != nil {
 		t.Fatalf("Create failed: %v", xErr)
 	}
-	if resp.ID == "" {
+	if resp.ID.IsZero() {
 		t.Error("expected non-empty ID")
 	}
 	if resp.Name != req.Name {
@@ -47,7 +47,7 @@ func TestLlmProviderCreate(t *testing.T) {
 	}
 
 	// Cleanup
-	_ = l.Delete(ctx, resp.ID)
+	_ = l.Delete(ctx, resp.ID.String())
 }
 
 // TestLlmProviderGetByID 测试获取详情，验证不返回明文 APIKey
@@ -67,18 +67,18 @@ func TestLlmProviderGetByID(t *testing.T) {
 		t.Fatalf("Create failed: %v", xErr)
 	}
 
-	got, xErr := l.GetByID(ctx, created.ID)
+	got, xErr := l.GetByID(ctx, created.ID.String())
 	if xErr != nil {
 		t.Fatalf("GetByID failed: %v", xErr)
 	}
 	if got.ID != created.ID {
-		t.Errorf("expected ID %q, got %q", created.ID, got.ID)
+		t.Errorf("expected ID %s, got %s", created.ID, got.ID)
 	}
 	if !got.HasKey {
 		t.Error("expected HasKey=true")
 	}
 
-	_ = l.Delete(ctx, created.ID)
+	_ = l.Delete(ctx, created.ID.String())
 }
 
 // TestLlmProviderUpdate 测试 APIKey 为空时不更新加密字段
@@ -103,11 +103,11 @@ func TestLlmProviderUpdate(t *testing.T) {
 		Name:   ptrString("test-provider-updated"),
 		APIKey: &emptyKey,
 	}
-	if xErr := l.Update(ctx, created.ID, updateReq); xErr != nil {
+	if xErr := l.Update(ctx, created.ID.String(), updateReq); xErr != nil {
 		t.Fatalf("Update failed: %v", xErr)
 	}
 
-	got, xErr := l.GetByID(ctx, created.ID)
+	got, xErr := l.GetByID(ctx, created.ID.String())
 	if xErr != nil {
 		t.Fatalf("GetByID after update failed: %v", xErr)
 	}
@@ -118,7 +118,7 @@ func TestLlmProviderUpdate(t *testing.T) {
 		t.Errorf("expected name %q, got %q", "test-provider-updated", got.Name)
 	}
 
-	_ = l.Delete(ctx, created.ID)
+	_ = l.Delete(ctx, created.ID.String())
 }
 
 // TestLlmProviderDelete 测试有关联 Model 时拒绝删除
@@ -141,7 +141,7 @@ func TestLlmProviderDelete(t *testing.T) {
 	// Note: This test verifies the delete-blocks-when-models-exist logic.
 	// Without a model created, delete should succeed.
 	// Full integration test with model creation is covered in llm_model_test.go.
-	if xErr := l.Delete(ctx, created.ID); xErr != nil {
+	if xErr := l.Delete(ctx, created.ID.String()); xErr != nil {
 		t.Fatalf("Delete failed: %v", xErr)
 	}
 }
@@ -164,8 +164,7 @@ func TestLlmProviderGetDecryptedAPIKey(t *testing.T) {
 		t.Fatalf("Create failed: %v", xErr)
 	}
 
-	parsedID, _ := parseSnowflakeID(ctx, created.ID)
-	decrypted, xErr := l.GetDecryptedAPIKey(ctx, parsedID)
+	decrypted, xErr := l.GetDecryptedAPIKey(ctx, created.ID)
 	if xErr != nil {
 		t.Fatalf("GetDecryptedAPIKey failed: %v", xErr)
 	}
@@ -173,7 +172,7 @@ func TestLlmProviderGetDecryptedAPIKey(t *testing.T) {
 		t.Errorf("expected %q, got %q", originalKey, decrypted)
 	}
 
-	_ = l.Delete(ctx, created.ID)
+	_ = l.Delete(ctx, created.ID.String())
 }
 
 func ptrString(s string) *string {

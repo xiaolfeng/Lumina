@@ -255,7 +255,7 @@ func (h *SshKeyHandler) GetPublicKey(ctx *gin.Context) {
 // entity.SshKey.PrivateKey 虽有 json:"-" tag，但手动映射到 SshKeyResponse 是双重保险。
 func sshKeyToResponse(sshKey *entity.SshKey) apiSsh.SshKeyResponse {
 	return apiSsh.SshKeyResponse{
-		ID:          strconv.FormatInt(sshKey.ID.Int64(), 10),
+		ID:          sshKey.ID,
 		Name:        sshKey.Name,
 		Description: sshKey.Description,
 		KeyType:     sshKey.KeyType,
