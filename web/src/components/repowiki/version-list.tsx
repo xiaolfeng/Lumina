@@ -22,7 +22,8 @@ import { SkeletonTable } from '#/components/skeleton-table'
 import { StatusBadge } from '#/components/repowiki/status-badge'
 import { DataTablePagination } from '#/components/data-table-pagination'
 import { useRepoWikiVersions, useRepoWikiAnalyze, useRepoWikiUpdate, ACTIVE_STATUSES } from '#/hooks/useRepoWiki'
-import { Play, RefreshCw, ChevronDown, ChevronRight, Clock, Loader2 } from 'lucide-react'
+import { buildWikiReaderUrl } from '#/lib/utils'
+import { Play, RefreshCw, ChevronDown, ChevronRight, Clock, Loader2, ExternalLink } from 'lucide-react'
 
 // ── 阶段配置 ──
 
@@ -287,7 +288,16 @@ export function VersionList({ configId }: VersionListProps) {
 									<TableCell className="text-sm text-muted-foreground">
 										{new Date(version.created_at).toLocaleString()}
 									</TableCell>
-									<TableCell />
+								<TableCell className="text-right">
+									{version.status === 'completed' && (
+										<Button variant="ghost" size="sm" asChild>
+											<a href={buildWikiReaderUrl(configId)} target="_blank" rel="noopener noreferrer">
+												<ExternalLink className="size-3.5" />
+												查看 Wiki
+											</a>
+										</Button>
+									)}
+								</TableCell>
 								</TableRow>
 							)
 						})}

@@ -26,6 +26,7 @@ export interface Model {
   model_name: string
   display_name: string
   max_tokens: number
+  context_window: number
   temperature: number
   is_active: boolean
   description: string

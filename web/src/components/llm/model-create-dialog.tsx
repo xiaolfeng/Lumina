@@ -32,7 +32,8 @@ export function ModelCreateDialog({
   const [providerId, setProviderId] = useState('')
   const [modelName, setModelName] = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [maxTokens, setMaxTokens] = useState('4096')
+  const [maxTokens, setMaxTokens] = useState('32000')
+  const [contextWindow, setContextWindow] = useState('128000')
   const [temperature, setTemperature] = useState('0.3')
   const [description, setDescription] = useState('')
 
@@ -48,7 +49,8 @@ export function ModelCreateDialog({
         provider_id: providerId,
         model_name: modelName.trim(),
         display_name: displayName.trim(),
-        max_tokens: parseInt(maxTokens, 10) || 4096,
+        max_tokens: parseInt(maxTokens, 10) || 32000,
+        context_window: parseInt(contextWindow, 10) || 128000,
         temperature: parseFloat(temperature) || 0.3,
         description: description.trim() || '',
       },
@@ -68,7 +70,8 @@ export function ModelCreateDialog({
     setProviderId('')
     setModelName('')
     setDisplayName('')
-    setMaxTokens('4096')
+    setMaxTokens('32000')
+    setContextWindow('128000')
     setTemperature('0.3')
     setDescription('')
     onOpenChange(false)
@@ -118,13 +121,23 @@ export function ModelCreateDialog({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="model-max-tokens">Max Tokens</Label>
+            <Label htmlFor="model-max-tokens">最大输出 Tokens</Label>
             <Input
               id="model-max-tokens"
               type="number"
               value={maxTokens}
               onChange={(e) => setMaxTokens(e.target.value)}
-              placeholder="4096"
+              placeholder="32000"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="model-context-window">上下文窗口</Label>
+            <Input
+              id="model-context-window"
+              type="number"
+              value={contextWindow}
+              onChange={(e) => setContextWindow(e.target.value)}
+              placeholder="128000"
             />
           </div>
           <div className="grid gap-2">

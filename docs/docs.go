@@ -5498,6 +5498,10 @@ const docTemplate = `{
                 "provider_id"
             ],
             "properties": {
+                "context_window": {
+                    "description": "模型上下文窗口大小",
+                    "type": "integer"
+                },
                 "description": {
                     "description": "描述说明",
                     "type": "string"
@@ -5507,7 +5511,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "max_tokens": {
-                    "description": "最大Token数",
+                    "description": "单次响应最大输出Token数",
                     "type": "integer"
                 },
                 "model_name": {
@@ -5557,6 +5561,10 @@ const docTemplate = `{
         "llm.ModelDetailResponse": {
             "type": "object",
             "properties": {
+                "context_window": {
+                    "description": "模型上下文窗口大小",
+                    "type": "integer"
+                },
                 "created_at": {
                     "description": "创建时间",
                     "type": "string"
@@ -5578,7 +5586,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "max_tokens": {
-                    "description": "最大Token数",
+                    "description": "单次响应最大输出Token数",
                     "type": "integer"
                 },
                 "model_name": {
@@ -5602,6 +5610,10 @@ const docTemplate = `{
         "llm.ModelListItem": {
             "type": "object",
             "properties": {
+                "context_window": {
+                    "description": "模型上下文窗口大小",
+                    "type": "integer"
+                },
                 "created_at": {
                     "description": "创建时间",
                     "type": "string"
@@ -5623,7 +5635,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "max_tokens": {
-                    "description": "最大Token数",
+                    "description": "单次响应最大输出Token数",
                     "type": "integer"
                 },
                 "model_name": {
@@ -5733,6 +5745,10 @@ const docTemplate = `{
         "llm.UpdateModelRequest": {
             "type": "object",
             "properties": {
+                "context_window": {
+                    "description": "模型上下文窗口大小",
+                    "type": "integer"
+                },
                 "description": {
                     "description": "描述说明",
                     "type": "string"
@@ -5746,7 +5762,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "max_tokens": {
-                    "description": "最大Token数",
+                    "description": "单次响应最大输出Token数",
                     "type": "integer"
                 },
                 "model_name": {

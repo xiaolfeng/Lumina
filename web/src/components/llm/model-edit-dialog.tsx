@@ -36,7 +36,8 @@ export function ModelEditDialog({
   const [providerId, setProviderId] = useState('')
   const [modelName, setModelName] = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [maxTokens, setMaxTokens] = useState('4096')
+  const [maxTokens, setMaxTokens] = useState('32000')
+  const [contextWindow, setContextWindow] = useState('128000')
   const [temperature, setTemperature] = useState('0.3')
   const [description, setDescription] = useState('')
   const [isActive, setIsActive] = useState(true)
@@ -52,6 +53,7 @@ export function ModelEditDialog({
       setModelName(item.model_name)
       setDisplayName(item.display_name)
       setMaxTokens(String(item.max_tokens))
+      setContextWindow(String(item.context_window))
       setTemperature(String(item.temperature))
       setDescription(item.description || '')
       setIsActive(item.is_active)
@@ -66,7 +68,8 @@ export function ModelEditDialog({
         data: {
           model_name: modelName.trim(),
           display_name: displayName.trim(),
-          max_tokens: parseInt(maxTokens, 10) || 4096,
+          max_tokens: parseInt(maxTokens, 10) || 32000,
+          context_window: parseInt(contextWindow, 10) || 128000,
           temperature: parseFloat(temperature) || 0.3,
           is_active: isActive,
           description: description.trim(),
@@ -126,12 +129,21 @@ export function ModelEditDialog({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="edit-model-max-tokens">Max Tokens</Label>
+            <Label htmlFor="edit-model-max-tokens">最大输出 Tokens</Label>
             <Input
               id="edit-model-max-tokens"
               type="number"
               value={maxTokens}
               onChange={(e) => setMaxTokens(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="edit-model-context-window">上下文窗口</Label>
+            <Input
+              id="edit-model-context-window"
+              type="number"
+              value={contextWindow}
+              onChange={(e) => setContextWindow(e.target.value)}
             />
           </div>
           <div className="grid gap-2">

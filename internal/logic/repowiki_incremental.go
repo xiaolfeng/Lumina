@@ -686,7 +686,7 @@ func (e *IncrementalEngine) ExecuteIncremental(
 			passResults,
 			fileScan,
 			depSummary,
-			config.ProjectID.Int64(),
+			config.ID.Int64(),
 			newVersion.Language,
 		); aErr != nil {
 			e.log.Error(ctx, "文档组装失败",
@@ -697,10 +697,14 @@ func (e *IncrementalEngine) ExecuteIncremental(
 		}
 		e.log.Info(ctx, "文档组装完成",
 			slog.Int64("versionID", newVersionID),
-			slog.Int64("projectID", config.ProjectID.Int64()))
+			slog.Int64("configID", config.ID.Int64()))
 	} else {
-		e.log.Warn(ctx, "DocumentAssembler 未注入，跳过文档组装步骤（Wiki 文档将不可用）",
+		e.log.Error(ctx, "DocumentAssembler 未注入，无法生成 Wiki 文档",
 			slog.Int64("versionID", newVersionID))
+		err := xError.NewError(ctx, xError.ServerInternalError,
+			xError.ErrMessage("DocumentAssembler 未注入，Wiki 文档生成被跳过"), false, nil)
+		updateStatus(bConst.RepoWikiStatusFailed, "", err.Error())
+		return err
 	}
 
 	// 记录版本数据存储路径

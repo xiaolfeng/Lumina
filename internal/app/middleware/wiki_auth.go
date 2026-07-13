@@ -10,6 +10,7 @@
 package middleware
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -55,6 +56,13 @@ func WikiAuth(authTokenService *service.WikiAuthTokenService, configGetter WikiC
 		// 查询 Wiki 密码哈希（通过回调避免直接 DB 操作）
 		passwordHash, err := configGetter(ctx, wikiID)
 		if err != nil {
+			// 按 xError 错误类型分发：业务 NotFound → 404，其他 → 500
+			var xErr *xError.Error
+			if errors.As(err, &xErr) && xErr.GetErrorCode() == xError.NotFound {
+				log.Info(ctx, fmt.Sprintf("WikiAuth - Wiki 配置不存在 [%d]", wikiID))
+				xResult.AbortError(ctx, xError.NotFound, "Wiki 配置不存在", false)
+				return
+			}
 			log.Error(ctx, fmt.Sprintf("WikiAuth - 查询 Wiki 配置失败 [%d]: %v", wikiID, err))
 			xResult.AbortError(ctx, xError.ServerInternalError, "internal server error", false)
 			return

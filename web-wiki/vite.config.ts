@@ -10,7 +10,7 @@ const config = defineConfig({
     port: 3001,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8800',
         changeOrigin: true,
       },
     },

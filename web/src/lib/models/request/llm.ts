@@ -22,6 +22,7 @@ export interface CreateModelRequest {
   model_name: string
   display_name: string
   max_tokens: number
+  context_window: number
   temperature: number
   description: string
 }
@@ -30,6 +31,7 @@ export interface UpdateModelRequest {
   model_name?: string
   display_name?: string
   max_tokens?: number
+  context_window?: number
   temperature?: number
   is_active?: boolean
   description?: string

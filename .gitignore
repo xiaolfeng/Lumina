@@ -31,7 +31,7 @@ build/
 lumina
 
 ### Lumina ###
-.lumina/cache/
+.lumina/
 
 ### AI ###
 .omo/

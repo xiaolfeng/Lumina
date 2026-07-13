@@ -22,7 +22,8 @@ type ResolvedLlmConfig struct {
 	BaseURL         string  // 自定义 API 端点
 	DecryptedAPIKey string  // 解密后的 API Key
 	ModelName       string  // 模型标识（如 gpt-4o）
-	MaxTokens       int64   // 最大 Token 数
+	MaxTokens       int64   // 单次响应最大输出 Token 数
+	ContextWindow   int64   // 模型上下文窗口大小
 	Temperature     float64 // 生成温度
 }
 
@@ -116,6 +117,7 @@ func (r *LlmResolver) ResolveAgentModel(ctx context.Context, role string, keyPre
 		DecryptedAPIKey: decryptedKey,
 		ModelName:       model.ModelName,
 		MaxTokens:       model.MaxTokens,
+		ContextWindow:   model.ContextWindow,
 		Temperature:     model.Temperature,
 	}, nil
 }

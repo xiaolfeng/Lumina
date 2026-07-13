@@ -84,11 +84,12 @@ func (s *WikiStorageService) GetPassesPath(versionID int64) string {
 
 // GetWikiPath 返回最终 Wiki 文档路径
 //
-// → {basePath}/wiki/{projectID}/{language}/
+// → {basePath}/wiki/{configID}/{language}/
 //
-// language 取自 bConst.RepoWikiDefaultLanguage（默认 zh）
-func (s *WikiStorageService) GetWikiPath(projectID int64) string {
-	return filepath.Join(s.basePath, "wiki", fmt.Sprintf("%d", projectID), bConst.RepoWikiDefaultLanguage)
+// configID 为 RepoWiki 配置雪花 ID（非 Project ID、非 Version ID）。
+// language 取自 bConst.RepoWikiDefaultLanguage（默认 zh）。
+func (s *WikiStorageService) GetWikiPath(configID int64) string {
+	return filepath.Join(s.basePath, "wiki", fmt.Sprintf("%d", configID), bConst.RepoWikiDefaultLanguage)
 }
 
 // GetFileScanPath 返回文件扫描结果路径
@@ -108,8 +109,10 @@ func (s *WikiStorageService) GetDepSummaryPath(versionID int64) string {
 // GetManifestPath 返回 Wiki 元数据清单路径
 //
 // → {wikiPath}/meta/repowiki-metadata.json
-func (s *WikiStorageService) GetManifestPath(projectID int64) string {
-	return filepath.Join(s.GetWikiPath(projectID), "meta", "repowiki-metadata.json")
+//
+// configID 为 RepoWiki 配置雪花 ID。
+func (s *WikiStorageService) GetManifestPath(configID int64) string {
+	return filepath.Join(s.GetWikiPath(configID), "meta", "repowiki-metadata.json")
 }
 
 // GetSessionPath 返回 Agent FileStore 会话目录路径

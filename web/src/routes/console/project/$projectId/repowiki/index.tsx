@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { motion } from 'motion/react'
-import { ArrowLeft, BookOpen, Plus, RefreshCw, Search, Webhook } from 'lucide-react'
+import { ArrowLeft, BookOpen, Plus, ExternalLink } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#/components/ui/card'
 import { Badge } from '#/components/ui/badge'
 import { PageHeader } from '#/components/page-header'
 import { useRepoWikiConfigByProjectId } from '#/hooks/useRepoWiki'
+import { AnalyzeButton, UpdateButton, VersionList } from '#/components/repowiki/version-list'
 import { staggerContainer, staggerItem } from '#/lib/motion'
+import { buildWikiReaderUrl } from '#/lib/utils'
 
 export const Route = createFileRoute('/console/project/$projectId/repowiki/')({
 	component: RepoWikiDetailPage,
@@ -120,22 +122,20 @@ function RepoWikiDetailPage() {
 			</motion.div>
 
 			{/* 操作按钮区 */}
-			<motion.div variants={staggerItem} className="flex gap-3">
-				<Button variant="outline" disabled>
-					<RefreshCw className="mr-2 size-4" />
-					增量更新
-				</Button>
-				<Button variant="outline" disabled>
-					<Search className="mr-2 size-4" />
-					触发分析
-				</Button>
-				<Button variant="outline" disabled>
-					<Webhook className="mr-2 size-4" />
-					Webhook 配置
-				</Button>
+			<motion.div variants={staggerItem} className="flex flex-wrap gap-3">
+				<AnalyzeButton configId={config.id} />
+				<UpdateButton configId={config.id} />
+		{config.latest_version?.status === 'completed' && (
+			<Button variant="outline" asChild>
+				<a href={buildWikiReaderUrl(config.id)} target="_blank" rel="noopener noreferrer">
+					<ExternalLink className="mr-2 size-4" />
+					查看 Wiki
+				</a>
+			</Button>
+		)}
 			</motion.div>
 
-			{/* 版本列表占位 */}
+			{/* 版本列表 */}
 			<motion.div variants={staggerItem}>
 				<Card className="border-border bg-card">
 					<CardHeader>
@@ -143,9 +143,7 @@ function RepoWikiDetailPage() {
 						<CardDescription>Wiki 分析版本记录</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<div className="py-8 text-center text-sm text-muted-foreground">
-							版本列表功能开发中...
-						</div>
+						<VersionList configId={config.id} />
 					</CardContent>
 				</Card>
 			</motion.div>

@@ -339,6 +339,9 @@ definitions:
     type: object
   llm.CreateModelRequest:
     properties:
+      context_window:
+        description: 模型上下文窗口大小
+        type: integer
       description:
         description: 描述说明
         type: string
@@ -346,7 +349,7 @@ definitions:
         description: 显示名称
         type: string
       max_tokens:
-        description: 最大Token数
+        description: 单次响应最大输出Token数
         type: integer
       model_name:
         description: 模型标识
@@ -386,6 +389,9 @@ definitions:
     type: object
   llm.ModelDetailResponse:
     properties:
+      context_window:
+        description: 模型上下文窗口大小
+        type: integer
       created_at:
         description: 创建时间
         type: string
@@ -402,7 +408,7 @@ definitions:
         description: 是否启用
         type: boolean
       max_tokens:
-        description: 最大Token数
+        description: 单次响应最大输出Token数
         type: integer
       model_name:
         description: 模型标识
@@ -419,6 +425,9 @@ definitions:
     type: object
   llm.ModelListItem:
     properties:
+      context_window:
+        description: 模型上下文窗口大小
+        type: integer
       created_at:
         description: 创建时间
         type: string
@@ -435,7 +444,7 @@ definitions:
         description: 是否启用
         type: boolean
       max_tokens:
-        description: 最大Token数
+        description: 单次响应最大输出Token数
         type: integer
       model_name:
         description: 模型标识
@@ -514,6 +523,9 @@ definitions:
     type: object
   llm.UpdateModelRequest:
     properties:
+      context_window:
+        description: 模型上下文窗口大小
+        type: integer
       description:
         description: 描述说明
         type: string
@@ -524,7 +536,7 @@ definitions:
         description: 是否启用
         type: boolean
       max_tokens:
-        description: 最大Token数
+        description: 单次响应最大输出Token数
         type: integer
       model_name:
         description: 模型标识

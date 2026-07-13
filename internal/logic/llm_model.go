@@ -66,7 +66,11 @@ func (l *LlmModelLogic) Create(ctx context.Context, req *apiLlm.CreateModelReque
 
 	maxTokens := req.MaxTokens
 	if maxTokens == 0 {
-		maxTokens = 4096
+		maxTokens = 32000
+	}
+	contextWindow := req.ContextWindow
+	if contextWindow == 0 {
+		contextWindow = 128000
 	}
 	temperature := req.Temperature
 	if temperature == 0 {
@@ -74,13 +78,14 @@ func (l *LlmModelLogic) Create(ctx context.Context, req *apiLlm.CreateModelReque
 	}
 
 	model := &entity.LlmModel{
-		ProviderID:  providerID,
-		ModelName:   req.ModelName,
-		DisplayName: req.DisplayName,
-		MaxTokens:   maxTokens,
-		Temperature: temperature,
-		IsActive:    true,
-		Description: req.Description,
+		ProviderID:    providerID,
+		ModelName:     req.ModelName,
+		DisplayName:   req.DisplayName,
+		MaxTokens:     maxTokens,
+		ContextWindow: contextWindow,
+		Temperature:   temperature,
+		IsActive:      true,
+		Description:   req.Description,
 	}
 
 	if xErr := l.repo.model.Create(ctx, model); xErr != nil {
@@ -166,6 +171,9 @@ func (l *LlmModelLogic) Update(ctx context.Context, id string, req *apiLlm.Updat
 	}
 	if req.MaxTokens != nil {
 		model.MaxTokens = *req.MaxTokens
+	}
+	if req.ContextWindow != nil {
+		model.ContextWindow = *req.ContextWindow
 	}
 	if req.Temperature != nil {
 		model.Temperature = *req.Temperature
@@ -350,30 +358,32 @@ func (l *LlmModelLogic) GetAgentModelsConfig(ctx context.Context, module string,
 // toDetailResponse 将实体映射为详情响应
 func (l *LlmModelLogic) toDetailResponse(model *entity.LlmModel) *apiLlm.ModelDetailResponse {
 	return &apiLlm.ModelDetailResponse{
-		ID:          model.BaseEntity.ID.String(),
-		ProviderID:  model.ProviderID.String(),
-		ModelName:   model.ModelName,
-		DisplayName: model.DisplayName,
-		MaxTokens:   model.MaxTokens,
-		Temperature: model.Temperature,
-		IsActive:    model.IsActive,
-		Description: model.Description,
-		CreatedAt:   model.BaseEntity.CreatedAt.Format("2006-01-02T15:04:05-07:00"),
-		UpdatedAt:   model.BaseEntity.UpdatedAt.Format("2006-01-02T15:04:05-07:00"),
+		ID:            model.BaseEntity.ID.String(),
+		ProviderID:    model.ProviderID.String(),
+		ModelName:     model.ModelName,
+		DisplayName:   model.DisplayName,
+		MaxTokens:     model.MaxTokens,
+		ContextWindow: model.ContextWindow,
+		Temperature:   model.Temperature,
+		IsActive:      model.IsActive,
+		Description:   model.Description,
+		CreatedAt:     model.BaseEntity.CreatedAt.Format("2006-01-02T15:04:05-07:00"),
+		UpdatedAt:     model.BaseEntity.UpdatedAt.Format("2006-01-02T15:04:05-07:00"),
 	}
 }
 
 // toListListItem 将实体映射为列表项
 func (l *LlmModelLogic) toListListItem(model *entity.LlmModel) apiLlm.ModelListItem {
 	return apiLlm.ModelListItem{
-		ID:          model.BaseEntity.ID.String(),
-		ProviderID:  model.ProviderID.String(),
-		ModelName:   model.ModelName,
-		DisplayName: model.DisplayName,
-		MaxTokens:   model.MaxTokens,
-		Temperature: model.Temperature,
-		IsActive:    model.IsActive,
-		Description: model.Description,
-		CreatedAt:   model.BaseEntity.CreatedAt.Format("2006-01-02T15:04:05-07:00"),
+		ID:            model.BaseEntity.ID.String(),
+		ProviderID:    model.ProviderID.String(),
+		ModelName:     model.ModelName,
+		DisplayName:   model.DisplayName,
+		MaxTokens:     model.MaxTokens,
+		ContextWindow: model.ContextWindow,
+		Temperature:   model.Temperature,
+		IsActive:      model.IsActive,
+		Description:   model.Description,
+		CreatedAt:     model.BaseEntity.CreatedAt.Format("2006-01-02T15:04:05-07:00"),
 	}
 }

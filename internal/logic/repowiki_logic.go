@@ -527,9 +527,10 @@ func (l *RepoWikiLogic) resolveRunner(ctx context.Context) (runner *AgentPassRun
 
 	// 构建模型配置 + AgentPassRunner
 	modelConfig := &ModelRunConfig{
-		ModelName:   resolved.ModelName,
-		MaxTokens:   resolved.MaxTokens,
-		Temperature: resolved.Temperature,
+		ModelName:     resolved.ModelName,
+		MaxTokens:     resolved.MaxTokens,
+		ContextWindow: resolved.ContextWindow,
+		Temperature:   resolved.Temperature,
 	}
 	r := NewAgentPassRunner(client, l.svc.storage, l.log, nil, modelConfig)
 

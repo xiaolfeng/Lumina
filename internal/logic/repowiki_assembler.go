@@ -70,20 +70,20 @@ func NewDocumentAssembler(storage *service.WikiStorageService, log *xLog.LogName
 //   - passResults: 4 个 Pass 的结果（key 为 "pass1"/"pass2"/"pass3"/"pass4"）
 //   - fileScan: 文件扫描结果（用于主页统计信息，可为 nil）
 //   - depSummary: 依赖摘要（用于模块分析 Mermaid 图，可为 nil）
-//   - projectID: 项目 ID（确定 Wiki 输出路径）
+//   - configID: RepoWiki 配置雪花 ID（确定 Wiki 输出路径，非 Project ID）
 //   - language: Wiki 语言标识（写入 metadata，不影响路径——路径由 storage 决定）
 func (a *DocumentAssembler) Assemble(
 	ctx context.Context,
 	passResults map[string]*PassResult,
 	fileScan *service.FileScanResult,
 	depSummary *service.DependencySummary,
-	projectID int64,
+	configID int64,
 	language string,
 ) *xError.Error {
-	wikiPath := a.storage.GetWikiPath(projectID)
+	wikiPath := a.storage.GetWikiPath(configID)
 	a.log.Info(ctx, "开始组装 Wiki 文档",
 		slog.String("wikiPath", wikiPath),
-		slog.Int64("projectID", projectID),
+		slog.Int64("configID", configID),
 		slog.String("language", language))
 
 	// 确保核心子目录存在
@@ -128,7 +128,7 @@ func (a *DocumentAssembler) Assemble(
 
 	// ── 写入 metadata ──
 	manifest := buildMetadata(projectName, language)
-	manifestPath := a.storage.GetManifestPath(projectID)
+	manifestPath := a.storage.GetManifestPath(configID)
 	if xErr := a.storage.WriteJSON(manifestPath, manifest); xErr != nil {
 		return xError.NewError(ctx, xError.ServerInternalError,
 			xError.ErrMessage("写入 metadata 失败 "+manifestPath), true, xErr)

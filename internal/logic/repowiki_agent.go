@@ -52,9 +52,10 @@ type PassResult struct {
 // 由 RepoWikiLogic.AnalyzeRepo 调用 LlmResolver.ResolveAgentModel 后构建，
 // 传入 AgentPassRunner 供 runSinglePass 构建 Agent 时使用。
 type ModelRunConfig struct {
-	ModelName   string  // 模型标识（如 gpt-4o）
-	MaxTokens   int64   // 最大 Token 数
-	Temperature float64 // 生成温度
+	ModelName     string  // 模型标识（如 gpt-4o）
+	MaxTokens     int64   // 单次响应最大输出 Token 数
+	ContextWindow int64   // 模型上下文窗口大小
+	Temperature   float64 // 生成温度
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -86,9 +87,9 @@ type AgentPassRunner struct {
 	client      bamboo.BambooClient // LLM 客户端（真实 Provider 或 Stub）
 	storage     *service.WikiStorageService
 	log         *xLog.LogNamedLogger
-	tools       []tool.Tool       // Agent 可用工具集（file_read + file_search），仅只读工具
-	maxRetries  int               // JSON 解析失败重试次数
-	modelConfig *ModelRunConfig   // 模型配置（从数据库热读取）
+	tools       []tool.Tool     // Agent 可用工具集（file_read + file_search），仅只读工具
+	maxRetries  int             // JSON 解析失败重试次数
+	modelConfig *ModelRunConfig // 模型配置（从数据库热读取）
 }
 
 // NewAgentPassRunner 创建 AgentPassRunner 实例
@@ -255,6 +256,7 @@ func (r *AgentPassRunner) runSinglePass(
 		r.client,
 		r.modelConfig.ModelName,
 		r.modelConfig.MaxTokens,
+		r.modelConfig.ContextWindow,
 		r.modelConfig.Temperature,
 		info.SystemPrompt,
 		tools,

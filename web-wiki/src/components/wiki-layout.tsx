@@ -65,8 +65,7 @@ export function WikiLayout({
         {/* 内容滚动区 */}
         <div className="content-scroll flex-1 overflow-y-auto">
           <article className="mx-auto max-w-4xl px-6 py-8 lg:px-8">
-            {children}
-            {!children && <MarkdownRenderer content={content} />}
+            {children ?? <MarkdownRenderer content={content} />}
           </article>
         </div>
       </main>

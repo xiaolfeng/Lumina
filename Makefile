@@ -8,7 +8,7 @@ OUTPUT_BIN = lumina
 
 .DEFAULT_GOAL := help
 
-.PHONY: help swag run dev dev-backend dev-frontend build-frontend build-wiki-frontend tidy fmt test vet lint build generate
+.PHONY: help swag run dev dev-backend dev-frontend dev-wiki-frontend build-frontend build-wiki-frontend tidy fmt test vet lint build generate
 
 # 显示帮助信息
 help:
@@ -19,7 +19,8 @@ help:
 	@echo "  make run                 - 运行后端程序"
 	@echo "  make dev                 - 生成文档并运行后端 (跳过前端构建)"
 	@echo "  make dev-backend         - 一键构建并运行后端 (包含前端构建)"
-	@echo "  make dev-frontend        - 运行前端开发服务器"
+	@echo "  make dev-frontend        - 运行主前端开发服务器"
+	@echo "  make dev-wiki-frontend   - 运行 Wiki Reader 前端开发服务器"
 	@echo ""
 	@echo "构建命令:"
 	@echo "  make generate            - 一键构建：主前端 → Wiki Reader → Swagger → Go 编译"
@@ -68,6 +69,10 @@ dev: swag run
 # 前端开发服务器
 dev-frontend:
 	cd web && pnpm dev
+
+# Wiki Reader 前端开发服务器
+dev-wiki-frontend:
+	cd web-wiki && pnpm dev
 
 # 一键构建：前端打包 → Wiki Reader 前端打包 → Swagger 文档 → Go 编译
 generate: build-frontend build-wiki-frontend swag

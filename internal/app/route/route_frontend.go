@@ -58,6 +58,7 @@ func (r *route) serveWikiReaderSPA(ctx *gin.Context, wikiFileServer http.Handler
 	if f, openErr := r.wikiFrontendFS.Open(cleanPath); openErr == nil {
 		if stat, statErr := f.Stat(); statErr == nil && !stat.IsDir() {
 			f.Close()
+			ctx.Request.URL.Path = "/" + cleanPath
 			wikiFileServer.ServeHTTP(ctx.Writer, ctx.Request)
 			return
 		}

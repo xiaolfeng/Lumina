@@ -39,10 +39,24 @@ export function getModelColumns(
     },
     {
       accessorKey: 'max_tokens',
-      header: 'Max Tokens',
+      header: '最大输出',
       cell: ({ row }) => {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         const val = row.getValue('max_tokens') as number
+        return (
+          <span className="text-muted-foreground">
+            {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
+            {val?.toLocaleString() || '-'}
+          </span>
+        )
+      },
+    },
+    {
+      accessorKey: 'context_window',
+      header: '上下文窗口',
+      cell: ({ row }) => {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+        const val = row.getValue('context_window') as number
         return (
           <span className="text-muted-foreground">
             {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
