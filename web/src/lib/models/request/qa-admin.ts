@@ -17,4 +17,6 @@ export interface CreateSessionRequest {
 export interface UpdateQaConfigRequest {
   session_ttl?: number
   runtime_domain?: string
+  poll_slice?: number
+  max_retries?: number
 }

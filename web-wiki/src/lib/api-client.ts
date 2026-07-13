@@ -8,6 +8,7 @@
  */
 import axios from 'axios'
 import type { AxiosError, AxiosResponse } from 'axios'
+import JSONBig from 'json-bigint'
 
 // ── 类型定义 ──
 
@@ -48,6 +49,43 @@ export interface ManifestResponse {
 
 // ── Axios 实例 ──
 
+const JSONBigString = JSONBig({ storeAsString: true })
+
+function bigintTransformResponse(data: string): unknown {
+  if (typeof data !== 'string') return data
+  try {
+    return JSONBigString.parse(data)
+  } catch {
+    return data
+  }
+}
+
+function convertIdStringsToBigInt(data: unknown): unknown {
+  if (typeof data === 'string' && /^\d{15,19}$/.test(data)) {
+    try {
+      return BigInt(data)
+    } catch {
+      return data
+    }
+  }
+  if (Array.isArray(data)) return data.map(convertIdStringsToBigInt)
+  if (data && typeof data === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const key of Object.keys(data)) {
+      result[key] = convertIdStringsToBigInt((data as Record<string, unknown>)[key])
+    }
+    return result
+  }
+  return data
+}
+
+function bigintTransformRequest(data: unknown, headers?: Record<string, string>): string {
+  if (headers) {
+    headers['Content-Type'] = 'application/json'
+  }
+  return JSONBigString.stringify(convertIdStringsToBigInt(data))
+}
+
 export const wikiApi = axios.create({
   baseURL: '/api/v1',
   timeout: 10000,
@@ -55,6 +93,8 @@ export const wikiApi = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  transformResponse: [bigintTransformResponse],
+  transformRequest: [bigintTransformRequest],
 })
 
 // ── 响应拦截器：统一错误处理 ──

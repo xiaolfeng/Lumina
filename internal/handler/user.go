@@ -52,8 +52,7 @@ func (h *UserHandler) UpdateProfile(ctx *gin.Context) {
 	h.log.Info(ctx, "UpdateProfile - 更新个人资料")
 
 	var req apiUser.UpdateProfileRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -82,8 +81,7 @@ func (h *UserHandler) UpdatePassword(ctx *gin.Context) {
 	h.log.Info(ctx, "UpdatePassword - 修改密码")
 
 	var req apiUser.UpdatePasswordRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 

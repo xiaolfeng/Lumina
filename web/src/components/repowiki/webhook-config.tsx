@@ -23,7 +23,7 @@ import { Copy, Check, AlertTriangle, RefreshCw, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface WebhookConfigProps {
-  configId: number
+  configId: string
 }
 
 export function WebhookConfig({ configId }: WebhookConfigProps) {

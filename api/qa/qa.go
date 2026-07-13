@@ -19,10 +19,10 @@ type UpdateQaConfigRequest struct {
 
 // CreateSessionRequest 创建QA会话请求
 type CreateSessionRequest struct {
-	ProjectID string `json:"project_id" binding:"required"` // 关联项目ID
-	Title     string `json:"title"`                         // 会话标题
-	Agent     string `json:"agent"`                         // Agent名称
-	Type      string `json:"type"`                          // temporary/permanent
+	ProjectID string `json:"project_id" label:"关联项目ID" binding:"required"` // 关联项目ID
+	Title     string `json:"title" label:"会话标题" binding:"required"`        // 会话标题
+	Agent     string `json:"agent" label:"Agent名称" binding:"required"`      // Agent名称
+	Type      string `json:"type" label:"会话类型" binding:"required"`         // temporary/permanent
 }
 
 // SessionResponse Session响应

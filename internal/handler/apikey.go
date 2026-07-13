@@ -34,8 +34,7 @@ func (h *ApikeyHandler) Create(ctx *gin.Context) {
 	h.log.Info(ctx, "Create - 创建API密钥")
 
 	var req apiApikey.CreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -129,8 +128,7 @@ func (h *ApikeyHandler) Update(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 	var req apiApikey.UpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 

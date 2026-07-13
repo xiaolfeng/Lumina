@@ -39,8 +39,7 @@ func (h *LlmHandler) CreateProvider(ctx *gin.Context) {
 	h.log.Info(ctx, "CreateProvider - 创建LLM Provider")
 
 	var req apiLlm.CreateProviderRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -133,8 +132,7 @@ func (h *LlmHandler) UpdateProvider(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 	var req apiLlm.UpdateProviderRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -196,8 +194,7 @@ func (h *LlmHandler) CreateModel(ctx *gin.Context) {
 	h.log.Info(ctx, "CreateModel - 创建LLM模型")
 
 	var req apiLlm.CreateModelRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -292,8 +289,7 @@ func (h *LlmHandler) UpdateModel(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 	var req apiLlm.UpdateModelRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -419,8 +415,7 @@ func (h *LlmHandler) UpdateAgentModel(ctx *gin.Context) {
 
 	role := ctx.Param("role")
 	var req apiLlm.UpdateAgentModelRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 

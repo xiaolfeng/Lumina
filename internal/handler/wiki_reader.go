@@ -213,8 +213,7 @@ func (h *WikiReaderHandler) WikiAuth(ctx *gin.Context) {
 	}
 
 	var req apiRepowiki.WikiAuthRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 

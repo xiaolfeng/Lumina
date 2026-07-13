@@ -2,7 +2,7 @@ package repowiki
 
 // WikiAuthRequest Wiki 密码验证请求
 type WikiAuthRequest struct {
-	Password string `json:"password" binding:"required"` // Wiki访问密码
+	Password string `json:"password" label:"Wiki访问密码" binding:"required"` // Wiki访问密码
 }
 
 // WikiAuthCheckResponse Wiki 授权检查响应

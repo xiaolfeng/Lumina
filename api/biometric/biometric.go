@@ -9,7 +9,7 @@ type AvailabilityResponse struct {
 
 // RegisterStartRequest 注册开始请求
 type RegisterStartRequest struct {
-	DeviceName string `json:"device_name" binding:"required,max=128"` // 设备名称
+	DeviceName string `json:"device_name" label:"设备名称" binding:"required,max=128"` // 设备名称
 }
 
 // RegisterStartResponse 注册开始响应（传递给浏览器 navigator.credentials.create）
@@ -20,9 +20,9 @@ type RegisterStartResponse struct {
 
 // RegisterFinishRequest 注册完成请求（navigator.credentials.create 返回值）
 type RegisterFinishRequest struct {
-	SessionToken string          `json:"session_token" binding:"required"`                   // 会话令牌
-	DeviceName   string          `json:"device_name" binding:"required,max=128"`             // 设备名称
-	Credential   json.RawMessage `json:"credential" binding:"required" swaggertype:"object"` // CredentialAttestation JSON
+	SessionToken string          `json:"session_token" label:"会话令牌" binding:"required"`                   // 会话令牌
+	DeviceName   string          `json:"device_name" label:"设备名称" binding:"required,max=128"`             // 设备名称
+	Credential   json.RawMessage `json:"credential" label:"凭证数据" binding:"required" swaggertype:"object"` // CredentialAttestation JSON
 }
 
 // RegisterFinishResponse 注册完成响应
@@ -39,8 +39,8 @@ type LoginStartResponse struct {
 
 // LoginFinishRequest 登录完成请求
 type LoginFinishRequest struct {
-	SessionToken string          `json:"session_token" binding:"required"`                   // 会话令牌
-	Credential   json.RawMessage `json:"credential" binding:"required" swaggertype:"object"` // CredentialAssertion JSON
+	SessionToken string          `json:"session_token" label:"会话令牌" binding:"required"`                   // 会话令牌
+	Credential   json.RawMessage `json:"credential" label:"凭证数据" binding:"required" swaggertype:"object"` // CredentialAssertion JSON
 }
 
 // LoginFinishResponse 登录完成响应

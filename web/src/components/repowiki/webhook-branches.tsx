@@ -8,7 +8,7 @@ import { X, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface WebhookBranchesProps {
-  configId: number
+  configId: string
 }
 
 export function WebhookBranches({ configId }: WebhookBranchesProps) {

@@ -30,8 +30,7 @@ func (h *ProjectHandler) CreateProject(ctx *gin.Context) {
 	h.log.Info(ctx, "CreateProject - 创建项目")
 
 	var req apiProject.CreateProjectRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -124,8 +123,7 @@ func (h *ProjectHandler) UpdateProject(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	var req apiProject.UpdateProjectRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 

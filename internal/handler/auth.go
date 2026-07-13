@@ -26,8 +26,7 @@ func (h *AuthHandler) Initialize(ctx *gin.Context) {
 	h.log.Info(ctx, "Initialize - 系统初始化")
 
 	var req apiAuth.InitializeRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -56,8 +55,7 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 	h.log.Info(ctx, "Login - 用户登录")
 
 	var req apiAuth.LoginRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -86,8 +84,7 @@ func (h *AuthHandler) Refresh(ctx *gin.Context) {
 	h.log.Info(ctx, "Refresh - 刷新令牌")
 
 	var req apiAuth.RefreshRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -116,8 +113,7 @@ func (h *AuthHandler) Logout(ctx *gin.Context) {
 	h.log.Info(ctx, "Logout - 用户登出")
 
 	var req apiAuth.RefreshRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 

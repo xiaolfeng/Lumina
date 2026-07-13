@@ -4,13 +4,13 @@ import "time"
 
 // CreateConfigRequest 创建 RepoWiki 配置请求
 type CreateConfigRequest struct {
-	RepoURL         string `json:"repo_url" binding:"required"` // Git仓库地址
-	Name            string `json:"name" binding:"required"`     // 配置名称
-	ProjectID       int64  `json:"project_id" binding:"required"` // 关联项目ID（必选）
-	DefaultBranch   string `json:"default_branch"`              // 默认分支（默认 main）
-	DefaultLanguage string `json:"default_language"`            // 默认Wiki语言（默认 zh）
-	SSHKeyID        *int64 `json:"ssh_key_id,omitempty"`        // 关联SSH密钥ID（可选，私有仓库用）
-	WikiPassword    string `json:"wiki_password,omitempty"`     // Wiki访问密码（可选保护）
+	RepoURL         string `json:"repo_url" label:"Git仓库地址" binding:"required"` // Git仓库地址
+	Name            string `json:"name" label:"配置名称" binding:"required"`       // 配置名称
+	ProjectID       int64  `json:"project_id" label:"关联项目ID" binding:"required"` // 关联项目ID（必选）
+	DefaultBranch   string `json:"default_branch" label:"默认分支"`                // 默认分支（默认 main）
+	DefaultLanguage string `json:"default_language" label:"默认Wiki语言"`          // 默认Wiki语言（默认 zh）
+	SSHKeyID        *int64 `json:"ssh_key_id,omitempty" label:"SSH密钥ID"`        // 关联SSH密钥ID（可选，私有仓库用）
+	WikiPassword    string `json:"wiki_password,omitempty" label:"Wiki访问密码"`   // Wiki访问密码（可选保护）
 }
 
 // UpdateConfigRequest 更新 RepoWiki 配置请求（全部 optional）
@@ -57,7 +57,7 @@ type WebhookConfigResponse struct {
 
 // UpdateWebhookBranchesRequest 更新监控分支请求
 type UpdateWebhookBranchesRequest struct {
-	Branches []string `json:"branches" binding:"required"`
+	Branches []string `json:"branches" label:"监控分支列表" binding:"required"`
 }
 
 // RegenerateWebhookResponse 重新生成凭据一次性响应

@@ -10,14 +10,14 @@ type UserInfoResponse struct {
 
 // UpdateProfileRequest 更新个人资料请求
 type UpdateProfileRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=32"` // 用户名
-	Email    string `json:"email" binding:"required,email"`           // 邮箱
+	Username string `json:"username" label:"用户名" binding:"required,min=3,max=32"` // 用户名
+	Email    string `json:"email" label:"邮箱" binding:"required,email"`             // 邮箱
 }
 
 // UpdatePasswordRequest 修改密码请求
 type UpdatePasswordRequest struct {
-	OldPassword string `json:"old_password" binding:"required,min=6"` // 旧密码
-	NewPassword string `json:"new_password" binding:"required,min=8"` // 新密码
+	OldPassword string `json:"old_password" label:"旧密码" binding:"required,min=6"` // 旧密码
+	NewPassword string `json:"new_password" label:"新密码" binding:"required,min=8"` // 新密码
 }
 
 // BiometricCredentialItem 生物特征凭证项

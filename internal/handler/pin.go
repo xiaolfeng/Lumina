@@ -1,7 +1,6 @@
 package handler
 
 import (
-	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
 	"github.com/gin-gonic/gin"
 	apiCommon "github.com/xiaolfeng/Lumina/api/common"
@@ -29,8 +28,7 @@ func (h *PinHandler) CreatePin(ctx *gin.Context) {
 	h.log.Info(ctx, "CreatePin - 创建 Pin 约束")
 
 	var req apiPin.CreatePinRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -65,8 +63,7 @@ func (h *PinHandler) ListPins(ctx *gin.Context) {
 	h.log.Info(ctx, "ListPins - 获取 Pin 列表")
 
 	var req apiPin.PinListRequest
-	if err := ctx.ShouldBindQuery(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindQuery(ctx, &req) {
 		return
 	}
 
@@ -96,9 +93,9 @@ func (h *PinHandler) ListPins(ctx *gin.Context) {
 func (h *PinHandler) GetPin(ctx *gin.Context) {
 	h.log.Info(ctx, "GetPin - 获取 Pin 详情")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -129,15 +126,14 @@ func (h *PinHandler) GetPin(ctx *gin.Context) {
 func (h *PinHandler) UpdatePin(ctx *gin.Context) {
 	h.log.Info(ctx, "UpdatePin - 更新 Pin 元数据")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
 	var req apiPin.UpdatePinRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -167,13 +163,13 @@ func (h *PinHandler) UpdatePin(ctx *gin.Context) {
 func (h *PinHandler) DeletePin(ctx *gin.Context) {
 	h.log.Info(ctx, "DeletePin - 删除 Pin 约束")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
-	xErr := h.service.pinLogic.Delete(ctx.Request.Context(), id)
+	xErr = h.service.pinLogic.Delete(ctx.Request.Context(), id)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return

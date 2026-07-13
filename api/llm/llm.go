@@ -2,11 +2,11 @@ package llm
 
 // CreateProviderRequest 创建 LLM Provider 请求
 type CreateProviderRequest struct {
-	Name        string `json:"name" binding:"required"`     // Provider名称
-	Protocol    string `json:"protocol" binding:"required"` // 协议类型(openai/anthropic)
-	BaseURL     string `json:"base_url"`                    // 自定义API端点
-	APIKey      string `json:"api_key" binding:"required"`  // API密钥(明文，后端加密存储)
-	Description string `json:"description"`                 // 描述说明
+	Name        string `json:"name" label:"Provider名称" binding:"required"`     // Provider名称
+	Protocol    string `json:"protocol" label:"协议类型" binding:"required"`     // 协议类型(openai/anthropic)
+	BaseURL     string `json:"base_url" label:"API端点"`                        // 自定义API端点
+	APIKey      string `json:"api_key" label:"API密钥" binding:"required"`      // API密钥(明文，后端加密存储)
+	Description string `json:"description" label:"描述"`                        // 描述说明
 }
 
 // UpdateProviderRequest 更新 LLM Provider 请求
@@ -46,12 +46,12 @@ type ProviderListItem struct {
 
 // CreateModelRequest 创建 LLM 模型请求
 type CreateModelRequest struct {
-	ProviderID  string  `json:"provider_id" binding:"required"`  // 关联Provider ID
-	ModelName   string  `json:"model_name" binding:"required"`   // 模型标识
-	DisplayName string  `json:"display_name" binding:"required"` // 显示名称
-	MaxTokens   int64   `json:"max_tokens"`                      // 最大Token数
-	Temperature float64 `json:"temperature"`                     // 生成温度
-	Description string  `json:"description"`                     // 描述说明
+	ProviderID  string  `json:"provider_id" label:"关联Provider ID" binding:"required"`  // 关联Provider ID
+	ModelName   string  `json:"model_name" label:"模型标识" binding:"required"`          // 模型标识
+	DisplayName string  `json:"display_name" label:"显示名称" binding:"required"`        // 显示名称
+	MaxTokens   int64   `json:"max_tokens" label:"最大Token数"`                        // 最大Token数
+	Temperature float64 `json:"temperature" label:"生成温度"`                           // 生成温度
+	Description string  `json:"description" label:"描述"`                               // 描述说明
 }
 
 // UpdateModelRequest 更新 LLM 模型请求
@@ -106,5 +106,5 @@ type AgentModelAssignmentsResponse struct {
 
 // UpdateAgentModelRequest 更新 Agent 模型分配请求
 type UpdateAgentModelRequest struct {
-	ModelID string `json:"model_id" binding:"required"` // 模型ID
+	ModelID string `json:"model_id" label:"模型ID" binding:"required"` // 模型ID
 }

@@ -3,10 +3,14 @@ package route
 import (
 	"context"
 	"io/fs"
+	"reflect"
 
 	xMiddle "github.com/bamboo-services/bamboo-base-go/major/middleware"
 	xReg "github.com/bamboo-services/bamboo-base-go/major/register"
 	xRoute "github.com/bamboo-services/bamboo-base-go/major/route"
+	xVaild "github.com/bamboo-services/bamboo-base-go/common/validator"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 	"github.com/gin-gonic/gin"
 )
 
@@ -26,6 +30,18 @@ func NewRoute(reg *xReg.Reg) {
 // frontendFS 或 wikiFrontendFS 为 nil 时跳过对应前端路由注册。
 func NewRouteWithFrontend(frontendFS fs.FS, wikiFrontendFS fs.FS) func(reg *xReg.Reg) {
 	return func(reg *xReg.Reg) {
+		if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+			_ = xVaild.RegisterCustomValidators(v)
+			_ = xVaild.RegisterTranslator(v)
+			v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+				name := fld.Tag.Get("label")
+				if name == "" {
+					name = fld.Tag.Get("json")
+				}
+				return name
+			})
+		}
+
 		r := &route{
 			engine:         reg.Serve,
 			context:        reg.Init.Ctx,

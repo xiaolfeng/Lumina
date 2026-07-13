@@ -29,8 +29,7 @@ func (h *QaHandler) ListSessions(ctx *gin.Context) {
 	h.log.Info(ctx, "ListSessions - 获取QA会话列表")
 
 	var req apiQa.ListSessionRequest
-	if err := ctx.ShouldBindQuery(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindQuery(ctx, &req) {
 		return
 	}
 
@@ -115,8 +114,7 @@ func (h *QaHandler) CreateSession(ctx *gin.Context) {
 	h.log.Info(ctx, "CreateSession - 创建QA会话")
 
 	var req apiQa.CreateSessionRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -214,8 +212,7 @@ func (h *QaHandler) UpdateQaConfig(ctx *gin.Context) {
 	h.log.Info(ctx, "UpdateQaConfig - 更新Q&A配置")
 
 	var req apiQa.UpdateQaConfigRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 

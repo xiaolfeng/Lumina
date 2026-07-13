@@ -11,9 +11,9 @@ var _ = xModels.PageResponse[struct{}]{}
 
 // CreateRequest API Key创建请求
 type CreateRequest struct {
-	Name        string     `json:"name" binding:"required,min=1,max=64"` // API Key名称
-	Description string     `json:"description"`                          // 描述
-	ExpiresAt   *time.Time `json:"expires_at,omitempty"`                 // 过期时间（NULL=永不过期）
+	Name        string     `json:"name" label:"API Key名称" binding:"required,min=1,max=64"` // API Key名称
+	Description string     `json:"description" label:"描述"`                                 // 描述
+	ExpiresAt   *time.Time `json:"expires_at,omitempty" label:"过期时间"`                     // 过期时间（NULL=永不过期）
 }
 
 // CreateResponse API Key创建响应（包含完整Key，仅此一次）

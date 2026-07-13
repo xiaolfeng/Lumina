@@ -15,7 +15,7 @@ import { SkeletonTable } from '#/components/skeleton-table'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface WebhookEventsProps {
-  configId: number
+  configId: string
 }
 
 const STATUS_VARIANTS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {

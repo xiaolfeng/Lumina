@@ -7,7 +7,6 @@ import (
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
-	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
 	"github.com/gin-gonic/gin"
 	apiCommon "github.com/xiaolfeng/Lumina/api/common"
@@ -40,8 +39,7 @@ func (h *SshKeyHandler) CreateSshKey(ctx *gin.Context) {
 	h.log.Info(ctx, "CreateSshKey - 创建 SSH 密钥")
 
 	var req apiSsh.CreateSshKeyRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -127,9 +125,9 @@ func (h *SshKeyHandler) ListSshKeys(ctx *gin.Context) {
 func (h *SshKeyHandler) GetSshKey(ctx *gin.Context) {
 	h.log.Info(ctx, "GetSshKey - 获取 SSH 密钥详情")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -160,15 +158,14 @@ func (h *SshKeyHandler) GetSshKey(ctx *gin.Context) {
 func (h *SshKeyHandler) UpdateSshKey(ctx *gin.Context) {
 	h.log.Info(ctx, "UpdateSshKey - 更新 SSH 密钥")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
 	var req apiSsh.UpdateSshKeyRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -201,9 +198,9 @@ func (h *SshKeyHandler) UpdateSshKey(ctx *gin.Context) {
 func (h *SshKeyHandler) DeleteSshKey(ctx *gin.Context) {
 	h.log.Info(ctx, "DeleteSshKey - 删除 SSH 密钥")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -231,9 +228,9 @@ func (h *SshKeyHandler) DeleteSshKey(ctx *gin.Context) {
 func (h *SshKeyHandler) GetPublicKey(ctx *gin.Context) {
 	h.log.Info(ctx, "GetPublicKey - 下载 SSH 公钥")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 

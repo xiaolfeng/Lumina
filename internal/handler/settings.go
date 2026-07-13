@@ -64,8 +64,7 @@ func (h *SettingsHandler) UpdateSettings(ctx *gin.Context) {
 	category := ctx.Param("category")
 
 	var req apiSettings.UpdateCategorySettingsRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 

@@ -2,20 +2,20 @@ package auth
 
 // InitializeRequest 初始化请求
 type InitializeRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=32"` // 用户名
-	Email    string `json:"email" binding:"required,email"`           // 邮箱地址
-	Password string `json:"password" binding:"required,min=6,max=64"` // 登录密码
+	Username string `json:"username" label:"用户名" binding:"required,min=3,max=32"` // 用户名
+	Email    string `json:"email" label:"邮箱" binding:"required,email"`             // 邮箱地址
+	Password string `json:"password" label:"密码" binding:"required,min=6,max=64"`   // 登录密码
 }
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	Account  string `json:"account" binding:"required"`  // 账号（用户名或邮箱）
-	Password string `json:"password" binding:"required"` // 登录密码
+	Account  string `json:"account" label:"账号" binding:"required"`  // 账号（用户名或邮箱）
+	Password string `json:"password" label:"密码" binding:"required"` // 登录密码
 }
 
 // RefreshRequest Token 刷新请求
 type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"` // 刷新令牌
+	RefreshToken string `json:"refresh_token" label:"刷新令牌" binding:"required"` // 刷新令牌
 }
 
 // TokenResponse Token 响应

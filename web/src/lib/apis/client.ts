@@ -1,7 +1,45 @@
 import axios from 'axios'
 import Cookies from 'js-cookie'
+import JSONBig from 'json-bigint'
 import { writeTokenCookies } from '../auth/cookie-utils'
 import type { BaseResponse } from '../models/response/common'
+
+const JSONBigString = JSONBig({ storeAsString: true })
+
+function bigintTransformResponse(data: string): unknown {
+  if (typeof data !== 'string') return data
+  try {
+    return JSONBigString.parse(data)
+  } catch {
+    return data
+  }
+}
+
+function convertIdStringsToBigInt(data: unknown): unknown {
+  if (typeof data === 'string' && /^\d{15,19}$/.test(data)) {
+    try {
+      return BigInt(data)
+    } catch {
+      return data
+    }
+  }
+  if (Array.isArray(data)) return data.map(convertIdStringsToBigInt)
+  if (data && typeof data === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const key of Object.keys(data)) {
+      result[key] = convertIdStringsToBigInt((data as Record<string, unknown>)[key])
+    }
+    return result
+  }
+  return data
+}
+
+function bigintTransformRequest(data: unknown, headers?: Record<string, string>): string {
+  if (headers) {
+    headers['Content-Type'] = 'application/json'
+  }
+  return JSONBigString.stringify(convertIdStringsToBigInt(data))
+}
 
 export const apiClient = axios.create({
   baseURL: '',
@@ -9,6 +47,8 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  transformResponse: [bigintTransformResponse],
+  transformRequest: [bigintTransformRequest],
 })
 
 // 认证相关的错误码，需要清除凭据并跳转登录页
@@ -201,6 +241,11 @@ apiClient.interceptors.response.use(
     // HTTP 层面的 401 错误
     if (error.response?.status === 401) {
       return handle401Error(error.config)
+    }
+    const respData = error.response?.data
+    if (respData && typeof respData === 'object' && 'error_message' in respData) {
+      const msg = respData.error_message ?? respData.message
+      return Promise.reject(new Error(msg ?? `Request failed with status code ${error.response?.status}`))
     }
     return Promise.reject(error)
   },

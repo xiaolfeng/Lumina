@@ -653,7 +653,6 @@ definitions:
         description: 项目名称
         type: string
     required:
-    - match_path
     - name
     type: object
   project.ProjectListResponse:
@@ -727,7 +726,10 @@ definitions:
         description: temporary/permanent
         type: string
     required:
+    - agent
     - project_id
+    - title
+    - type
     type: object
   qa.QaConfigResponse:
     properties:

@@ -5904,7 +5904,6 @@ const docTemplate = `{
         "project.CreateProjectRequest": {
             "type": "object",
             "required": [
-                "match_path",
                 "name"
             ],
             "properties": {
@@ -6011,7 +6010,10 @@ const docTemplate = `{
         "qa.CreateSessionRequest": {
             "type": "object",
             "required": [
-                "project_id"
+                "agent",
+                "project_id",
+                "title",
+                "type"
             ],
             "properties": {
                 "agent": {

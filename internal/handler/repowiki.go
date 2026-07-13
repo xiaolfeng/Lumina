@@ -35,8 +35,7 @@ func (h *RepoWikiHandler) CreateConfig(ctx *gin.Context) {
 	h.log.Info(ctx, "CreateConfig - 创建 RepoWiki 配置")
 
 	var req apiRepowiki.CreateConfigRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -102,9 +101,9 @@ func (h *RepoWikiHandler) ListConfigs(ctx *gin.Context) {
 func (h *RepoWikiHandler) GetConfig(ctx *gin.Context) {
 	h.log.Info(ctx, "GetConfig - 获取 RepoWiki 配置详情")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -132,9 +131,9 @@ func (h *RepoWikiHandler) GetConfig(ctx *gin.Context) {
 func (h *RepoWikiHandler) GetConfigByProjectID(ctx *gin.Context) {
 	h.log.Info(ctx, "GetConfigByProjectID - 按项目 ID 查询 RepoWiki 配置")
 
-	projectID, err := xSnowflake.ParseSnowflakeID(ctx.Param("projectId"))
-	if err != nil {
-		_ = ctx.Error(err)
+	projectID, xErr := ParseSnowflakeID(ctx, ctx.Param("projectId"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -168,19 +167,18 @@ func (h *RepoWikiHandler) GetConfigByProjectID(ctx *gin.Context) {
 func (h *RepoWikiHandler) UpdateConfig(ctx *gin.Context) {
 	h.log.Info(ctx, "UpdateConfig - 更新 RepoWiki 配置")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
 	var req apiRepowiki.UpdateConfigRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
-	xErr := h.service.repoWikiLogic.UpdateConfig(ctx.Request.Context(), id, &req)
+	xErr = h.service.repoWikiLogic.UpdateConfig(ctx.Request.Context(), id, &req)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return
@@ -205,13 +203,13 @@ func (h *RepoWikiHandler) UpdateConfig(ctx *gin.Context) {
 func (h *RepoWikiHandler) DeleteConfig(ctx *gin.Context) {
 	h.log.Info(ctx, "DeleteConfig - 删除 RepoWiki 配置")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
-	xErr := h.service.repoWikiLogic.DeleteConfig(ctx.Request.Context(), id)
+	xErr = h.service.repoWikiLogic.DeleteConfig(ctx.Request.Context(), id)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return
@@ -240,9 +238,9 @@ func (h *RepoWikiHandler) DeleteConfig(ctx *gin.Context) {
 func (h *RepoWikiHandler) Analyze(ctx *gin.Context) {
 	h.log.Info(ctx, "Analyze - 触发仓库分析")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -282,9 +280,9 @@ func (h *RepoWikiHandler) Analyze(ctx *gin.Context) {
 func (h *RepoWikiHandler) Update(ctx *gin.Context) {
 	h.log.Info(ctx, "Update - 触发增量更新")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -319,9 +317,9 @@ func (h *RepoWikiHandler) Update(ctx *gin.Context) {
 func (h *RepoWikiHandler) GetVersionStatus(ctx *gin.Context) {
 	h.log.Info(ctx, "GetVersionStatus - 获取版本分析状态")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -350,9 +348,9 @@ func (h *RepoWikiHandler) GetVersionStatus(ctx *gin.Context) {
 func (h *RepoWikiHandler) GetVersionDetail(ctx *gin.Context) {
 	h.log.Info(ctx, "GetVersionDetail - 获取版本详情")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -382,9 +380,9 @@ func (h *RepoWikiHandler) GetVersionDetail(ctx *gin.Context) {
 func (h *RepoWikiHandler) ListVersions(ctx *gin.Context) {
 	h.log.Info(ctx, "ListVersions - 获取版本列表")
 
-	configID, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	configID, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -486,9 +484,9 @@ func versionToStatusResponse(version *entity.WikiVersion) *apiRepowiki.VersionSt
 func (h *RepoWikiHandler) GetWebhookConfig(ctx *gin.Context) {
 	h.log.Info(ctx, "GetWebhookConfig - 获取 Webhook 配置")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -524,19 +522,18 @@ func (h *RepoWikiHandler) GetWebhookConfig(ctx *gin.Context) {
 func (h *RepoWikiHandler) UpdateWebhookBranches(ctx *gin.Context) {
 	h.log.Info(ctx, "UpdateWebhookBranches - 更新 Webhook 监控分支")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
 	var req apiRepowiki.UpdateWebhookBranchesRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
-	xErr := h.service.repoWikiLogic.UpdateWebhookBranches(ctx.Request.Context(), id, req.Branches)
+	xErr = h.service.repoWikiLogic.UpdateWebhookBranches(ctx.Request.Context(), id, req.Branches)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return
@@ -561,9 +558,9 @@ func (h *RepoWikiHandler) UpdateWebhookBranches(ctx *gin.Context) {
 func (h *RepoWikiHandler) RegenerateWebhook(ctx *gin.Context) {
 	h.log.Info(ctx, "RegenerateWebhook - 重新生成 Webhook 凭据")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 
@@ -597,9 +594,9 @@ func (h *RepoWikiHandler) RegenerateWebhook(ctx *gin.Context) {
 func (h *RepoWikiHandler) ListWebhookEvents(ctx *gin.Context) {
 	h.log.Info(ctx, "ListWebhookEvents - 获取 Webhook 事件列表")
 
-	id, err := xSnowflake.ParseSnowflakeID(ctx.Param("id"))
-	if err != nil {
-		_ = ctx.Error(err)
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
 		return
 	}
 

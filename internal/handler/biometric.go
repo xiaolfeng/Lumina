@@ -47,8 +47,7 @@ func (h *BiometricHandler) RegisterStart(ctx *gin.Context) {
 	h.log.Info(ctx, "RegisterStart - 生物特征注册开始")
 
 	var req apiBiometric.RegisterStartRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -78,8 +77,7 @@ func (h *BiometricHandler) RegisterFinish(ctx *gin.Context) {
 	h.log.Info(ctx, "RegisterFinish - 生物特征注册完成")
 
 	var req apiBiometric.RegisterFinishRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
@@ -127,8 +125,7 @@ func (h *BiometricHandler) LoginFinish(ctx *gin.Context) {
 	h.log.Info(ctx, "LoginFinish - 生物特征登录完成")
 
 	var req apiBiometric.LoginFinishRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		_ = ctx.Error(err)
+	if !BindJSON(ctx, &req) {
 		return
 	}
 
