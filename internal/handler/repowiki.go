@@ -187,6 +187,44 @@ func (h *RepoWikiHandler) UpdateConfig(ctx *gin.Context) {
 	xResult.Success(ctx, "更新成功")
 }
 
+// UpdateSelectedVersion 切换当前选中的 Wiki 版本
+//
+// @Summary     [管理] 切换选中 Wiki 版本
+// @Description 将指定配置的当前 Wiki 阅读版本切换为目标版本（目标版本必须属于该配置且状态为 completed）
+// @Tags        RepoWiki接口
+// @Accept      json
+// @Produce     json
+// @Param       Authorization  header    string                                     true  "Bearer Access Token"
+// @Param       id             path      string                                     true  "配置ID"
+// @Param       request        body      apiRepowiki.UpdateSelectedVersionRequest  true  "切换版本请求"
+// @Success     200  {object}  apiCommon.BaseResponse  "切换成功"
+// @Failure     400  {object}  apiCommon.BaseResponse  "请求参数错误"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Failure     404  {object}  apiCommon.BaseResponse  "配置或版本不存在"
+// @Router      /api/v1/repowiki/configs/{id}/selected-version [PUT]
+func (h *RepoWikiHandler) UpdateSelectedVersion(ctx *gin.Context) {
+	h.log.Info(ctx, "UpdateSelectedVersion - 切换选中 Wiki 版本")
+
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	var req apiRepowiki.UpdateSelectedVersionRequest
+	if !BindJSON(ctx, &req) {
+		return
+	}
+
+	xErr = h.service.repoWikiLogic.UpdateSelectedVersion(ctx.Request.Context(), id, xSnowflake.SnowflakeID(req.VersionID))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.Success(ctx, "切换成功")
+}
+
 // DeleteConfig 删除 RepoWiki 配置
 //
 // @Summary     [管理] 删除 RepoWiki 配置
@@ -417,18 +455,19 @@ func (h *RepoWikiHandler) ListVersions(ctx *gin.Context) {
 // latestVersion 为 nil 时 ConfigResponse.LatestVersion 留空（omitempty）。
 func configToResponse(config *entity.RepoWikiConfig, latestVersion *entity.WikiVersion) *apiRepowiki.ConfigResponse {
 	resp := &apiRepowiki.ConfigResponse{
-		ID:              config.ID.Int64(),
-		ProjectID:       config.ProjectID.Int64(),
-		Name:            config.Name,
-		RepoURL:         config.GitURL,
-		DefaultBranch:   config.DefaultBranch,
-		DefaultLanguage: config.DefaultLanguage,
-		Status:          config.Status,
-		SSHKeyID:        sshKeyIDToString(config.SSHKeyID),
-		HasPassword:     config.WikiPasswordHash != "",
-		LastAccessedAt:  config.LastAccessedAt,
-		CreatedAt:       config.CreatedAt,
-		UpdatedAt:       config.UpdatedAt,
+		ID:                config.ID.Int64(),
+		ProjectID:         config.ProjectID.Int64(),
+		Name:              config.Name,
+		RepoURL:           config.GitURL,
+		DefaultBranch:     config.DefaultBranch,
+		DefaultLanguage:   config.DefaultLanguage,
+		Status:            config.Status,
+		SSHKeyID:          sshKeyIDToString(config.SSHKeyID),
+		HasPassword:       config.WikiPasswordHash != "",
+		SelectedVersionID: snowflakePtrToInt64Ptr(config.SelectedVersionID),
+		LastAccessedAt:    config.LastAccessedAt,
+		CreatedAt:         config.CreatedAt,
+		UpdatedAt:         config.UpdatedAt,
 	}
 
 	if latestVersion != nil {
@@ -445,6 +484,15 @@ func sshKeyIDToString(id *xSnowflake.SnowflakeID) *string {
 	}
 	s := strconv.FormatInt(id.Int64(), 10)
 	return &s
+}
+
+// snowflakePtrToInt64Ptr 将 *xSnowflake.SnowflakeID 转为 *int64（nil 直透传）
+func snowflakePtrToInt64Ptr(id *xSnowflake.SnowflakeID) *int64 {
+	if id == nil {
+		return nil
+	}
+	v := id.Int64()
+	return &v
 }
 
 // versionToStatusResponse 将 WikiVersion 实体转为版本状态响应 DTO

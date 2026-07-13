@@ -23,6 +23,7 @@ type RepoWikiConfig struct {
 	SSHKeyID          *xSnowflake.SnowflakeID `gorm:"type:bigint;index;comment:关联SSH密钥ID" json:"ssh_key_id,omitempty"`                            // 关联SSH密钥ID
 	WikiPasswordHash   string                 `gorm:"type:varchar(128);comment:Wiki访问密码bcrypt哈希" json:"wiki_password_hash,omitempty"`      // Wiki访问密码bcrypt哈希
 	Status             string                 `gorm:"type:varchar(16);not null;default:pending;index;comment:当前分析状态（快速查询用）" json:"status"` // 当前分析状态（快速查询用）
+	SelectedVersionID  *xSnowflake.SnowflakeID `gorm:"type:bigint;index;comment:当前选中的Wiki版本ID" json:"selected_version_id,omitempty"`       // 当前选中的Wiki版本ID
 	LastAccessedAt     *time.Time             `gorm:"type:timestamptz;index;comment:最后访问时间" json:"last_accessed_at,omitempty"`             // 最后访问时间
 	WebhookToken       string                 `gorm:"type:varchar(128);uniqueIndex;comment:Webhook访问令牌" json:"webhook_token,omitempty"`      // Webhook访问令牌
 	WebhookSecret      string                 `gorm:"type:varchar(128);comment:Webhook签名密钥" json:"webhook_secret,omitempty"`                // Webhook签名密钥

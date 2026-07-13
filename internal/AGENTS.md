@@ -23,7 +23,8 @@ internal/
 │   │   ├── route_mcp.go      # MCP Streamable HTTP 端点（API Key 认证）
 │   │   ├── route_health.go   # 健康检查路由
 │   │   ├── route_frontend.go # 前端 SPA 静态资源 + fallback
-│   │   └── route_swagger.go  # Swagger UI（仅 XLF_DEBUG=true）
+│   │   ├── route_swagger.go  # Swagger UI（仅 XLF_DEBUG=true）
+│   │   └── route_repowiki.go # RepoWiki 路由（配置/版本/Webhook）
 │   └── startup/              # 基础设施初始化与种子数据（详见子模块文档）
 ├── handler/                  # HTTP 处理器（薄控制器层）
 │   ├── handler.go            # NewHandler[T] 泛型构造器 + service 注入
@@ -35,6 +36,8 @@ internal/
 │   ├── pin.go                # Pin 处理器（CRUD + 分页）
 │   ├── qa.go                 # Q&A 处理器（会话 CRUD、问题详情、配置管理）
 │   ├── qa_download.go        # Q&A 文件下载处理器（Token 校验 + 文件流输出）
+│   ├── repowiki.go           # RepoWiki 配置/版本管理处理器
+│   ├── wiki_reader.go        # Wiki 内容读取处理器（公开/密码保护）
 │   └── health.go             # 健康检查处理器
 ├── logic/                    # 业务编排层
 │   ├── logic.go              # logic 基础结构（db/rdb/log）
@@ -50,6 +53,13 @@ internal/
 │   ├── qa_mcp.go             # Q&A MCP 工具实现（10+ 工具的 handler 逻辑）
 │   ├── qa_mcp_helpers.go     # Q&A MCP 辅助函数（工具参数解析、结果组装）
 │   ├── qa_download.go        # Q&A 文件下载逻辑（Token 校验 + 文件流）
+│   ├── repowiki_logic.go     # RepoWiki 核心逻辑（分析入口、配置/版本 CRUD）
+│   ├── repowiki_pipeline.go  # RepoWiki 分析管道（Git 准备 + 状态机驱动）
+│   ├── repowiki_orchestrator.go # 5 角色 SubAgent 编排引擎
+│   ├── repowiki_subagent_prompts.go # 5 角色 system/user prompt
+│   ├── repowiki_types.go     # RepoWiki 内部类型（WikiEntry/ValidationError/ExploreOutput）
+│   ├── repowiki_cron.go      # RepoWiki 定时清理任务
+│   ├── repowiki_webhook.go   # RepoWiki Webhook 处理逻辑
 │   └── health.go             # 健康检查逻辑
 ├── repository/               # 数据访问层
 │   ├── info.go               # Info 键值配置持久化（GetByKey/UpdateValue/UpdateValuesInTx）
@@ -61,6 +71,8 @@ internal/
 │   ├── qa_session.go         # Q&A Session 持久化（CRUD + 分页 + 状态/类型过滤）
 │   ├── qa_question.go        # Q&A Question 持久化（CRUD + 批量创建）
 │   ├── qa_supplement.go      # Q&A Supplement 持久化（创建 + 按 Session 查询）
+│   ├── repowiki_config.go    # RepoWikiConfig 持久化
+│   ├── wiki_version.go       # WikiVersion 持久化
 │   ├── health.go             # 数据库就绪检查
 │   └── cache/                # Redis 缓存操作（Cache-Aside 策略子层）
 │       ├── token.go          # Token 缓存（AT/RT 存储，实现 KeyCache 接口）
@@ -71,7 +83,9 @@ internal/
 ├── service/                  # 共享服务层（跨模块复用的基础设施）
 │   ├── download_token.go     # 文件下载 Token 生成与校验（短时效签名）
 │   ├── file_cache.go         # 文件缓存管理（上传文件本地暂存 + 清理）
-│   └── media_answer.go       # 媒体回答处理（图片/文件附件的回答格式化）
+│   ├── media_answer.go       # 媒体回答处理（图片/文件附件的回答格式化）
+│   ├── wiki_storage.go       # RepoWiki 文件系统存储与路径管理
+│   └── wiki_auth_token.go    # Wiki 访问密码 Token 生成与校验
 ├── entity/                   # GORM 实体
 │   ├── info.go               # 站点配置实体（单用户模式）
 │   ├── apikey.go             # API Key 实体（密钥哈希/前缀/后缀/过期时间）
@@ -81,15 +95,16 @@ internal/
 │   ├── qa_session.go         # Q&A Session 实体（状态/类型/TTL）
 │   ├── qa_question.go        # Q&A Question 实体（题型/标题/选项/回答）
 │   ├── qa_supplement.go      # Q&A Supplement 实体（补充内容/附件）
-│   ├── repowiki_config.go    # RepoWiki 配置实体（仓库地址/LLM 参数/分析策略）
-│   └── wiki_version.go       # Wiki 版本实体（版本号/状态/生成时间/文件路径）
+│   ├── repowiki_config.go    # RepoWiki 配置实体（仓库地址/LLM 参数/当前选中版本）
+│   └── wiki_version.go       # Wiki 版本实体（版本号/状态/文件路径）
 ├── mcp/                      # MCP Server 工具注册
 │   ├── server.go             # MCP Server 初始化 + StreamableHTTPHandler 创建 + Logic 注入入口
 │   ├── qa_tools.go           # Q&A MCP 工具注册（10+ 工具定义 + schema）
 │   ├── qa_handlers.go        # Q&A MCP 工具 handler 实现（工具执行逻辑）
 │   ├── qa_type_details.go    # Q&A MCP 题型详情定义（15+ 题型 schema 细节）
 │   ├── project_tools.go      # Project MCP 工具（CRUD + 别名解析 + match_path 数组）
-│   └── pin_tools.go          # Pin MCP 工具（Push/Consume/List/Update/Peek）
+│   ├── pin_tools.go          # Pin MCP 工具（Push/Consume/List/Update/Peek）
+│   └── repowiki_tools.go     # RepoWiki MCP 工具（只读：query/list）
 ├── websocket/                # WebSocket 实时通信层
 │   ├── hub.go                # 连接管理器（sessionID → deviceID 二级索引 + 心跳检测）
 │   ├── handler.go            # WebSocket 升级处理器 + 业务消息分发
@@ -123,6 +138,33 @@ internal/
 | 新增 MCP 工具 | `mcp/*.go` | 在 `server.go` 注册，在 `startup_mcp.go` 注入 Logic |
 | 新增 WebSocket 消息类型 | `websocket/message.go` | 定义 MessageType 常量和 Message 结构 |
 | 新增 Q&A 回答队列 | `qa/queue.go` | 会话级 FIFO 队列，由 `QaLogic` 调用 |
+| 新增 RepoWiki 分析入口 | `logic/repowiki_logic.go` | 配置/版本 CRUD 与分析启动 |
+| 新增 RepoWiki 子 Agent 编排 | `logic/repowiki_orchestrator.go` | 5 阶段预定义编排，不持有 db/rdb |
+| 新增 RepoWiki 分析管道 | `logic/repowiki_pipeline.go` | Git 准备 + 状态机驱动 |
+| 新增 RepoWiki 文件存储 | `service/wiki_storage.go` | 版本隔离路径管理与文件 I/O |
+| 新增 RepoWiki MCP 工具 | `mcp/repowiki_tools.go` | 只读工具：repoWiki_query / repoWiki_list |
+
+## 代码地图
+
+| 符号 | 类型 | 位置 | 作用 |
+|---|---|---|---|
+| `NewHandler[T]` | 泛型函数 | `handler/handler.go` | Handler 泛型构造模式，注入全部 Logic |
+| `SubAgentOrchestrator` | 结构体 | `logic/repowiki_orchestrator.go` | 5 角色 SubAgent 编排引擎（overview → explore → architect → writer → validator） |
+| `AnalysisPipeline` | 结构体 | `logic/repowiki_pipeline.go` | RepoWiki 分析管道（Git 准备 + 状态机驱动） |
+| `RepoWikiLogic` | 结构体 | `logic/repowiki_logic.go` | RepoWiki 业务编排（配置/版本/分析入口） |
+| `WikiStorageService` | 结构体 | `service/wiki_storage.go` | RepoWiki 文件系统存储与路径管理 |
+| `RepoWikiConfig` | 结构体 | `entity/repowiki_config.go` | RepoWiki 配置实体（仓库地址/当前选中版本） |
+| `WikiVersion` | 结构体 | `entity/wiki_version.go` | Wiki 版本实体（版本号/状态/文件路径） |
+| `RepoWikiConfigRepo` | 结构体 | `repository/repowiki_config.go` | RepoWikiConfig 持久化 |
+| `WikiVersionRepo` | 结构体 | `repository/wiki_version.go` | WikiVersion 持久化 |
+| `CoordinatorSystemPrompt` | 常量 | `logic/repowiki_subagent_prompts.go` | Coordinator 角色 system prompt |
+| `BuildOverviewUserPrompt` | 函数 | `logic/repowiki_subagent_prompts.go` | 构建 Coordinator 概要阶段 user prompt |
+| `WikiEntry` | 结构体 | `logic/repowiki_types.go` | Architect 输出的 Wiki 目录条目 |
+| `ValidationError` | 结构体 | `logic/repowiki_types.go` | Validator 输出的校验错误项 |
+| `ExploreOutput` | 结构体 | `logic/repowiki_types.go` | Explore Agent 的单个产出项 |
+| `ModelRunConfig` | 结构体 | `logic/repowiki_types.go` | Agent 运行时的模型配置 |
+| `RegisterRepoWikiTools` | 函数 | `mcp/repowiki_tools.go` | 注册 RepoWiki MCP 只读工具 |
+| `SetRepoWikiLogic` | 函数 | `mcp/repowiki_tools.go` | 注入 RepoWikiLogic 到 MCP 工具 |
 
 ## 约定
 - **严格分层**：route → middleware → handler → logic → repository；禁止跳层调用。`service/` 层为跨模块共享基础设施，可被 logic 层调用。
@@ -150,7 +192,9 @@ internal/
 - **文件下载 Token**：`service/download_token.go` 生成短时效签名 Token，用于 Q&A 文件附件下载鉴权。
 - **QA 逻辑拆分**：`qa.go` 已按职责拆分为 `qa_logic.go`（核心编排）、`qa_format.go`（题型格式化）、`qa_helper.go`（辅助函数）、`qa_mcp.go`（MCP 工具）、`qa_mcp_helpers.go`（MCP 辅助）、`qa_download.go`（文件下载）；新增 QA 逻辑时按职责归入对应文件。
 - **MCP 工具拆分**：`mcp/qa_tools.go`（工具注册）、`qa_handlers.go`（handler 实现）、`qa_type_details.go`（题型 schema）三文件分工；新增 MCP 工具时在 `qa_tools.go` 注册、`qa_handlers.go` 实现。
-- **RepoWiki 实体**：`repowiki_config.go`（Gene=39）和 `wiki_version.go`（Gene=40）为 RepoWiki 模块数据库实体，模块尚在设计中，实体先行入库以支持后续开发。
+- **RepoWiki 子 Agent 编排**：`SubAgentOrchestrator` 按预定义 5 阶段（Coordinator → Explore → Architect → Writer → Validator）生成 Wiki，`repowiki_subagent_prompts.go` 定义 5 角色 system/user prompt，`repowiki_types.go` 定义内部类型，`repowiki_pipeline.go` 负责 Git 准备与状态机驱动。
+- **RepoWiki 版本隔离**：每个 Wiki 版本存储在 `versions/{vid}/` 下，`RepoWikiConfig.SelectedVersionID` 指定当前对外服务版本；旧版 config 级目录已废弃，新版本完成后清理。
+- **RepoWiki MCP 只读**：MCP 端仅暴露 `repoWiki_query` / `repoWiki_list` 两个只读工具，Wiki 更新由 Git Webhook 自动触发。
 
 ## 反模式
 - 禁止从路由直接调用 repository 或绕过 logic 层。
@@ -167,8 +211,8 @@ internal/
 - 禁止在 repository 内定义私有 cacheKey() 方法；缓存键统一用 `constant.RedisKey.Get()`。
 - 禁止在 Q&A 模块使用 SSE 进行问题推送；统一使用 WebSocket。
 - 禁止 WebAuthn Challenge 存储在内存中；必须通过 Redis 缓存以支持多实例部署。
-
 ## 调试路径
+
 1. 请求未路由 → 检查 `app/route/route.go` 路由组和 `route_*.go` 注册。
 2. 路由正确但响应异常 → 检查 `handler/*.go` 绑定，然后 `logic/*.go` 编排。
 3. 认证失败 → 检查 `middleware/auth.go` → `logic/auth.go` → `repository/cache/token.go`。
@@ -182,6 +226,7 @@ internal/
 11. Q&A 问题推送不达 → 检查 `logic.OnQuestionPushed` 回调是否在 `route_ws.go` 中正确设置。
 12. 回答队列阻塞 → 检查 `qa/queue.go` 的 `WaitAndConsume` 和消费者 goroutine。
 13. 文件下载失败 → 检查 `service/download_token.go` Token 校验 + `service/file_cache.go` 文件是否存在。
+14. RepoWiki 分析失败 → 检查 `logic/repowiki_orchestrator.go` 5 阶段执行日志 + `logic/repowiki_pipeline.go` 状态机驱动；Git 问题先看 `service/repo_git.go` 克隆/拉取日志。
 
 ## 引用
 - [startup/](./app/startup/AGENTS.md) — 启动模块详细文档

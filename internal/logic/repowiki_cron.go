@@ -20,7 +20,7 @@ import (
 //  3. 遍历每个任务：
 //     a. retry_count >= maxRetry → 标记 failed（error_msg="重试次数超限"）
 //     b. retry_count < maxRetry → retry_count++ 持久化 → xAsync 触发重新分析
-//  4. 重新分析时复用 resolveRunner（T3 抽取的方法）构建 LLM runner
+//  4. 重新分析时复用 resolveOrchestrator 构建 SubAgentOrchestrator
 //
 // 幂等性：GetStaleTasks 的 updated_at 条件确保同一任务不会被重复扫描
 // （retry_count++ 会更新 updated_at，使其在下一个扫描周期前不再次命中）
@@ -74,7 +74,7 @@ func (l *RepoWikiLogic) RetryStaleTask(ctx context.Context) {
 
 // retryTaskAsync 通过 xAsync 异步重试单个超时任务
 //
-// retry_count 递增在信号量获取成功后执行，避免信号量满或 resolveRunner 失败时白白消耗重试次数。
+// retry_count 递增在信号量获取成功后执行，避免信号量满或 resolveOrchestrator 失败时白白消耗重试次数。
 // 对于信号量满的任务，仅刷新 updated_at（不递增 retry_count），下个 cron 周期会重新扫描。
 func (l *RepoWikiLogic) retryTaskAsync(ctx context.Context, config *entity.RepoWikiConfig, task *entity.WikiVersion) {
 	// 先非阻塞获取信号量（满则跳过，不消耗 retry_count）
@@ -98,9 +98,10 @@ func (l *RepoWikiLogic) retryTaskAsync(ctx context.Context, config *entity.RepoW
 		return
 	}
 
-	// 解析 LLM Runner（失败则释放信号量，不消耗 retry_count——因为递增已在上面完成，
+	// 解析 5 角色 LLM 配置并构建 SubAgentOrchestrator（失败则释放信号量，不消耗 retry_count——因为递增已在上面完成，
 	// 但 LLM 未配置属于环境问题，递增的 retry_count 会在下轮 cron 重新尝试）
-	runner, proto, model, xErr := l.resolveRunner(ctx)
+	repoPath := l.svc.storage.GetRepoPath(config.ID.Int64())
+	orchestrator, proto, model, xErr := l.resolveOrchestrator(ctx, task.ID.Int64(), repoPath)
 	if xErr != nil {
 		<-l.semaphore
 		l.log.Warn(ctx, "retryTaskAsync - LLM 解析失败",
@@ -109,7 +110,7 @@ func (l *RepoWikiLogic) retryTaskAsync(ctx context.Context, config *entity.RepoW
 		return
 	}
 
-	pipeline := NewAnalysisPipeline(l, l.log, runner, proto, model)
+	pipeline := NewAnalysisPipeline(l, l.log, orchestrator, proto, model)
 
 	xAsync.Async(ctx, func(asyncCtx context.Context) {
 		defer func() { <-l.semaphore }()

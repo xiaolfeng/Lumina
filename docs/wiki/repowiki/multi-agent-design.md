@@ -1,70 +1,113 @@
 # RepoWiki 多 Agent 协作设计
 
-> **状态**：已审批，待实现  
+> **状态**：已过时（superseded by 5-role SubAgent orchestration）  
 > **日期**：2026-07-09  
-> **替代**：`docs/wiki/repowiki/design.md` 中"阶段三：LLM 分阶段分析"的固定 4 Pass 流程
+> **替代**：本文档描述的旧版 3 角色 ReAct Coordinator 设计已废弃，RepoWiki 当前采用预定义 5 阶段 SubAgent 编排。详见 `docs/wiki/repowiki/design.md`。
+
+---
+
+# RepoWiki 5 角色 SubAgent 编排设计
+
+> **状态**：当前实现  
+> **日期**：2026-07-14  
+> **替代**：`docs/wiki/repowiki/design.md` 中旧版"4 Pass 串行流程"与"3 角色 ReAct Coordinator"设计
 
 ## 背景与问题
 
-### 当前设计缺陷
+### 旧设计缺陷
 
-RepoWiki 的 Agent 模型分配采用单角色设计：Info 表键 `llm_agent_model:repowiki` 绑定一个 model_id，设置页只渲染一个模型选择器。
+RepoWiki 经历了三代设计演进：
 
-然而 RepoWiki 的分析流程涉及多个不同职责的 Agent 协作——代码探索、文档撰写、流程编排——每个职责对模型能力的要求不同：
-
-- **代码探索**：需要快速读文件、低成本、高吞吐
-- **文档写作**：需要强写作能力、Markdown/Mermaid 生成
-- **编排决策**：需要强推理能力、大上下文窗口
-
-单角色设计无法支持为不同职责分配不同模型。
+1. **固定 4 Pass 串行流程**：概览 → 模块 → 架构 → 指南。阶段硬编码，无法根据仓库规模动态调整。
+2. **3 角色 ReAct Coordinator**：Coordinator 通过 Agent-as-Tool 调用 Explore/Write，自主决定探索策略。但 Coordinator 自主决策导致输出不稳定，Token 消耗不可控。
+3. **单角色模型配置**：Info 表键 `llm_agent_model:repowiki` 仅绑定一个 model_id，无法为不同职责分配合适模型。
 
 ### 目标
 
-将 RepoWiki 从固定 4 Pass 串行流程升级为 **ReAct 范式的多 Agent 协作**：主 Agent（Coordinator）作为编排者，通过 `agent.NewAgentTool` 将 Explore 和 Write 子 Agent 注册为工具，以 ReAct 循环自主调度整个分析流程。
+将 RepoWiki 升级为**预定义 5 阶段 SubAgent 编排**：
+
+- 阶段固定，每个阶段职责明确
+- 5 个角色各自使用独立模型配置
+- 并发阶段（Explore/Writer）使用信号量限流
+- 失败可局部重试（Architect JSON 解析重试、Writer 失败重驱动）
+- 存储按版本隔离，支持多版本共存和切换
 
 ## 技术基础
 
-bamboo-agent 框架（`github.com/bamboo-services/bamboo-agent v0.0.1`）原生支持三种编排模式：
+bamboo-agent 框架（`github.com/bamboo-services/bamboo-agent`）提供 Agent 运行能力，但编排不再依赖框架的 Agent-as-Tool 或 ReAct 循环，而是由 Lumina 内部的 `SubAgentOrchestrator` 直接控制阶段流转。
 
-| 能力 | API | 说明 |
-|------|-----|------|
-| Agent-as-Tool | `agent.NewAgentTool(name, desc, subAgent)` | 子 Agent 作为父 Agent 的工具调用，独立 session，上下文隔离 |
-| Handoff 转移 | `agent.Handoff` | Agent 间转移控制权，内置循环检测 |
-| DAG 编排 | `orchestrator.NewOrchestrator()` | 依赖图驱动的任务编排 |
-
-本设计采用 **Agent-as-Tool** 模式，因为它最符合"主 Agent 监工编排 + 子 Agent 专业执行"的 ReAct 范式。
-
-关键框架约束：
-- 最大嵌套深度 3 层（框架内置，防止无限递归）
-- 子 Agent 使用独立 Session，不共享父 Agent 上下文
-- AgentTool 默认只返回 `result.Content`（可配置返回完整 JSON）
+每个子 Agent 仍使用 bamboo-agent 的 `agent.Agent.Run()` 执行，但调用时机和参数由 Orchestrator 决定。
 
 ## 角色定义
 
 | 角色 | 标识 | 职责 | 工具集 | 模型特点 |
 |------|------|------|--------|----------|
-| **Coordinator** | `repowiki:coordinator` | 监工/编排：读取仓库扫描摘要，决定探索策略、何时开始写作、文档是否达标。通过 ReAct 循环调用 explore/write 工具 | `explore`(AgentTool), `write`(AgentTool) | 推理能力强、上下文窗口大（如 GPT-4o / Claude Sonnet） |
-| **Explore** | `repowiki:explore` | 代码探索专家：读文件、分析依赖、生成结构化 JSON 摘要。被 Coordinator 作为 `explore` 工具调用 | `file_read`, `file_search` | 快速、低成本（如 GPT-4o-mini / Claude Haiku） |
-| **Write** | `repowiki:write` | 文档写作专家：基于 Explore 产出的 JSON 摘要，撰写 Markdown 文档和 Mermaid 图表。被 Coordinator 作为 `write` 工具调用 | `save_wiki_page` | 写作能力强（如 Claude Sonnet / GPT-4o） |
+| **Coordinator** | `repowiki:coordinator` | 项目概要分析 | `file_read`, `file_search`, `list_dir` | 上下文窗口大，理解力强 |
+| **Explore** | `repowiki:explore` | 代码探索 | `file_read`, `file_search` | 快速、低成本，并发执行 |
+| **Architect** | `repowiki:architect` | 架构规划 | `file_read` | 结构化输出能力强 |
+| **Write** | `repowiki:write` | 文档写作 | `file_read`, `save_wiki_page` | 写作能力强，懂 Markdown |
+| **Validator** | `repowiki:validator` | 文档校验 | `file_read`, `file_search`, `save_wiki_page` | 严谨，能输出结构化 JSON |
 
-### 编排流程（Coordinator 视角的 ReAct 循环）
+## 编排流程
 
 ```
-Coordinator 启动（输入：仓库路径 + 文件扫描摘要）
-  → Thought: "我需要先了解项目结构"
-  → Action: explore("扫描仓库根目录和入口文件，输出项目概览 JSON")
-  → Observation: { 项目概览 JSON }
-  → Thought: "概览有了，接下来深入分析模块划分"
-  → Action: explore("基于概览分析模块间依赖关系，输出模块分析 JSON")
-  → Observation: { 模块分析 JSON }
-  → Thought: "信息足够了，开始写概览文档"
-  → Action: write("基于概览 JSON 编写「项目概览.md」")
-  → Observation: { 文档写入成功 }
-  → ... 继续直到所有章节完成 ...
-  → Thought: "所有章节已完成，结束"
+SubAgentOrchestrator.Execute
+  │
+  ├─▶ runOverview (Coordinator)
+  │     产出 overview.md
+  │
+  ├─▶ runExploreConcurrent (Explore × 4)
+  │     产出 versions/{vid}/explore/*.xml
+  │
+  ├─▶ runArchitect (Architect)
+  │     产出 architecture.json
+  │
+  ├─▶ runWritersConcurrent (Writer × 4)
+  │     产出 versions/{vid}/wiki/*.md
+  │
+  └─▶ runValidator (Validator)
+        校验 → 失败则重驱动 Writer（最多 2 次）
 ```
 
-输出仍然是四个章节（概览/模块/架构/指南），但生成顺序和深度由 Coordinator 灵活控制，而非硬编码的固定 Pass 顺序。
+### 阶段 1：Coordinator 概要分析
+
+- 构建 Coordinator Agent，作用域为仓库根目录
+- 使用 `file_read` / `file_search` / `list_dir` 阅读 README、清单文件、入口文件
+- 产出自由 Markdown 格式的项目概要
+- 写入 `versions/{vid}/overview.md`
+
+### 阶段 2：Explore 并发探索
+
+- 从 `overview.md` 正则提取顶层目录路径作为分析 scope
+- 若提取失败，回退到仓库根目录的顶层子目录列表
+- 最多 `exploreMaxScopes = 8` 个 scope，每路独立超时
+- 并发数由 `RepoWikiExploreMaxConcurrent` 控制（默认 4）
+- 失败比例超过 50% 则整体失败
+- 每个 scope 产出 XML 骨架，写入 `versions/{vid}/explore/{scope}.xml`
+
+### 阶段 3：Architect 架构规划
+
+- 读取 `overview.md` 和全部 Explore 产出
+- 输出 JSON 数组 `[]WikiEntry`，字段：`title` / `path` / `description` / `explore_refs` / `complexity`
+- JSON 解析失败时自动重试 2 次，每次追加格式提醒
+- 写入 `versions/{vid}/architecture.json`
+
+### 阶段 4：Writer 并发撰写
+
+- 按 `complexity` 分组：
+  - `high`：每组 1 个 WikiEntry
+  - `medium` / `low`：每组最多 2 个 WikiEntry
+- 分批并发，每批最多 `RepoWikiWriterMaxConcurrent` 个 Writer（默认 4）
+- 每批独立超时，等待一批完成后再启动下一批
+- 通过 `save_wiki_page` 工具写入 `versions/{vid}/wiki/`
+
+### 阶段 5：Validator 校验与重试
+
+- 扫描 `versions/{vid}/wiki/` 目录
+- 输出 `{valid, errors, metadata_generated}`
+- 错误类型包括：`missing_file`, `missing_metadata`, `empty_page`, `orphan_file`
+- `valid=false` 时，从 errors 提取缺失 path，重驱动 Writer 补写对应 WikiEntry
+- 最多重试 `RepoWikiWriterMaxRetry` 次（默认 2）
 
 ## 数据模型变更
 
@@ -74,242 +117,144 @@ Coordinator 启动（输入：仓库路径 + 文件扫描摘要）
 // Agent 角色常量
 const (
     AgentRoleRepoWiki             = "repowiki"             // RepoWiki 模块标识
-    AgentRoleRepoWikiCoordinator  = "repowiki:coordinator" // 主控 Agent（编排决策）
-    AgentRoleRepoWikiExplore      = "repowiki:explore"     // 探索 Agent（代码阅读）
-    AgentRoleRepoWikiWrite        = "repowiki:write"       // 写作 Agent（文档生成）
+    AgentRoleRepoWikiCoordinator  = "repowiki:coordinator" // 概要分析
+    AgentRoleRepoWikiExplore      = "repowiki:explore"     // 代码探索
+    AgentRoleRepoWikiArchitect    = "repowiki:architect"   // 架构规划
+    AgentRoleRepoWikiWrite        = "repowiki:write"       // 文档写作
+    AgentRoleRepoWikiValidator    = "repowiki:validator"   // 文档校验
 )
 
 // RepoWiki 模块下的所有子角色（用于批量查询和设置页渲染）
 var AgentRolesRepoWiki = []string{
     AgentRoleRepoWikiCoordinator,
     AgentRoleRepoWikiExplore,
+    AgentRoleRepoWikiArchitect,
     AgentRoleRepoWikiWrite,
+    AgentRoleRepoWikiValidator,
 }
 ```
 
 ### Info 表键值结构
 
 ```
-旧: llm_agent_model:repowiki                 → model_id
-新: llm_agent_model:repowiki:coordinator     → model_id
-    llm_agent_model:repowiki:explore         → model_id
-    llm_agent_model:repowiki:write           → model_id
+llm_agent_model:repowiki:coordinator  → model_id
+llm_agent_model:repowiki:explore      → model_id
+llm_agent_model:repowiki:architect     → model_id
+llm_agent_model:repowiki:write        → model_id
+llm_agent_model:repowiki:validator   → model_id
 ```
 
 ### 迁移策略
 
 启动时在 `prepare/prepare_llm.go` 中检测旧键 `llm_agent_model:repowiki` 是否存在：
 - 若存在且值非空，将其值复制到 `llm_agent_model:repowiki:coordinator`（仅当新键值为空时）
-- **保留旧键不删除**（作为 coordinator 别名，直到后端编排层重构完成，因为 `repowiki_logic.go` 仍读取旧键）
 - 保证幂等性（已迁移则跳过）
 
 ### LlmResolver 变更
 
-新增批量解析方法：
+使用 `ResolveAgentModel` 逐个解析 5 个角色，构建 `map[role]*ResolvedLlmConfig`。
 
-```go
-// ResolveAgentModels 批量解析多个角色的 LLM 配置
-// 返回 map[role]*ResolvedLlmConfig，缺失的角色不出现在 map 中
-func (r *LlmResolver) ResolveAgentModels(
-    ctx context.Context,
-    roles []string,
-    keyPrefix string,
-) (map[string]*ResolvedLlmConfig, error)
+### 存储结构变更
+
+新版存储按 WikiVersion ID 隔离：
+
+```
+{basePath}/
+├── repos/{configID}/              # 复用的 Git 克隆目录
+└── versions/{versionID}/           # 版本隔离数据
+    ├── overview.md
+    ├── explore/
+    ├── architecture.json
+    ├── wiki/
+    └── sessions/
 ```
 
-### API 变更
+旧版 `wiki/{configID}/` 目录已废弃，新版本完成后由 Pipeline 清理。
 
-**新增端点**：
-- `GET /api/v1/llm/agent/models?module=repowiki` — 返回模块下所有子角色的模型分配列表
+### 版本切换
 
-```json
-{
-  "code": 0,
-  "message": "查询成功",
-  "data": {
-    "module": "repowiki",
-    "assignments": [
-      { "role": "repowiki:coordinator", "model_id": "123", "model_name": "GPT-4o" },
-      { "role": "repowiki:explore", "model_id": "456", "model_name": "Claude Haiku" },
-      { "role": "repowiki:write", "model_id": null, "model_name": null }
-    ]
-  }
-}
-```
-
-**保留端点**：
-- `PUT /api/v1/llm/agent/:role/model` — body `{ model_id }`，role 值改为子角色标识（如 `repowiki:explore`），路由路径和请求体结构不变
-
-**废弃端点**：
-- `GET /api/v1/llm/agent/:role/model`（role=repowiki）— 旧的单角色查询。本迭代**不修改**该 handler（保持向后兼容），前端不再调用该端点，改为使用批量查询端点。后续迭代可选择在 Swagger 注释中标记 @Deprecated
+`RepoWikiConfig.SelectedVersionID` 字段指向当前对外服务的版本。查询时优先使用该版本；未设置时回退到最新完成版本。
 
 ## 后端架构变更
 
 ### 整体流程
 
 ```
-AnalyzeRepo → ResolveAgentModels(["coordinator", "explore", "write"])
-            → 3 个 ResolvedLlmConfig → 3 个独立 BambooClient
-            → 构建 Explore Agent  (explore client + file_read + file_search)
-            → 构建 Write Agent    (write client + save_wiki_page)
-            → 构建 Coordinator    (coordinator client + explore_tool + write_tool)
-            → Coordinator.Run(ctx, 编排指令) → ReAct 循环自主编排
+AnalyzeRepo
+  → 创建 WikiVersion 记录
+  → EnsureCloned / FetchAndCheckout
+  → resolveOrchestrator: 解析 5 角色模型配置 → 5 个 BambooClient
+  → NewSubAgentOrchestrator
+  → NewAnalysisPipeline
+  → pipeline.Execute
+       → SubAgentOrchestrator.Execute
+            → overview → explore → architect → writers → validator
+  → 完成后更新 SelectedVersionID
+  → 清理旧版 wiki 目录
 ```
 
-### AgentOrchestrator（替代 AgentPassRunner）
-
-当前 `AgentPassRunner` 硬编码 4 Pass 串行执行，重构为 `AgentOrchestrator`：
+### SubAgentOrchestrator
 
 ```go
-type AgentOrchestrator struct {
-    coordinatorClient bamboo.BambooClient
-    exploreClient     bamboo.BambooClient
-    writeClient       bamboo.BambooClient
-    storage           *service.WikiStorageService
-    log               *xLog.LogNamedLogger
-    repoPath          string  // 克隆的仓库路径（Explore Agent 的工具作用域）
-    versionID         int64
+type SubAgentOrchestrator struct {
+    roleClients map[string]bamboo.BambooClient // 5 角色 LLM client
+    roleModels  map[string]*ModelRunConfig     // 5 角色模型配置
+    storage     *service.WikiStorageService    // Wiki 存储服务
+    log         *xLog.LogNamedLogger
+    versionID   int64
+    repoPath    string
 }
 ```
 
-### 构建 Agent 的流程
+主要方法：
 
-1. **Explore Agent**：使用 explore 的 LLM 配置构建 BambooClient → 创建 Agent → 注入 `file_read`(repoPath) + `file_search`(repoPath)
-2. **Write Agent**：使用 write 的 LLM 配置构建 BambooClient → 创建 Agent → 注入 `save_wiki_page`(wikiDir)
-3. **Coordinator**：使用 coordinator 的 LLM 配置 → 创建 Agent → 通过 `agent.NewAgentTool("explore", "...", exploreAgent)` 和 `agent.NewAgentTool("write", "...", writeAgent)` 注册子 Agent 为工具
+| 方法 | 说明 |
+|------|------|
+| `Execute` | 完整 5 阶段流水线入口 |
+| `runOverview` | 阶段 1：Coordinator 概要 |
+| `runExploreConcurrent` | 阶段 2：Explore 并发 |
+| `runArchitect` | 阶段 3：Architect 大纲 |
+| `runWritersConcurrent` | 阶段 4：Writer 并发 |
+| `runValidator` | 阶段 5：Validator 校验 |
 
-### 工具变更
+### AnalysisPipeline
 
-| 工具 | 注入到 | 作用域 | 状态 |
-|------|--------|--------|------|
-| `file_read` | Explore | repoPath | 已有，读取仓库内文件 |
-| `file_search` | Explore | repoPath | 已有，搜索仓库内文件 |
-| `save_wiki_page` | Write | wikiDir | **新增**，将 Markdown 内容写入 Wiki 输出目录（如 `content/项目概览.md`），路径限定在 Wiki 输出目录内，防止路径穿越 |
+`AnalysisPipeline` 串联 Git 准备和 `SubAgentOrchestrator`：
 
-### Coordinator system prompt 方向
-
+```go
+type AnalysisPipeline struct {
+    logic           *RepoWikiLogic
+    log             *xLog.LogNamedLogger
+    orchestrator    *SubAgentOrchestrator
+    llmProviderName string
+    llmModelName    string
+}
 ```
-你是 RepoWiki 的主编排 Agent。你的任务是协调 Explore 和 Write 两个专家 Agent，
-为一个代码仓库生成完整的 Wiki 文档。
-
-可用工具：
-- explore(input): 调用探索专家阅读和分析代码库
-- write(input): 调用写作专家撰写 Wiki 文档页面
-
-Wiki 文档需要包含以下章节：
-1. 项目概览 — 项目定位、技术栈、入口点
-2. 模块分析 — 模块清单、职责划分、依赖关系
-3. 架构设计 — 整体架构模式、数据流、设计决策
-4. 阅读指南 — 新人上手路径、关键代码索引
-
-工作策略：
-1. 先用 explore 工具了解项目整体结构和入口文件
-2. 根据探索结果，决定需要深入分析哪些模块
-3. 当信息充足时，用 write 工具逐个生成 Wiki 章节
-4. 所有章节完成后结束
-
-仓库路径: {repoPath}
-文件扫描摘要: {fileScanJSON}
-```
-
-### 结果提取
-
-Coordinator.Run() 完成后：
-- **Wiki 文档**：由 Write Agent 通过 `save_wiki_page` 工具直接写入文件系统，无需额外组装步骤
-- **元数据 JSON**（`repowiki-metadata.json`）：由 AgentOrchestrator 在 Coordinator 完成后，基于 Wiki 目录实际产出的文件列表生成
-- **工具调用记录**：从 Coordinator session 中提取所有 explore/write 工具调用的记录，用于调试和状态追踪（替代旧的 Pass 结果 JSON）
 
 ### 状态机变更
 
-WikiVersion 的 `current_stage` 字段值调整：
-
 ```
 旧: pending → cloning → analyzing(scan/pass1/pass2/pass3/pass4/assembling) → completed/failed
-新: pending → cloning → analyzing(scan/orchestrating) → completed/failed
+新: pending → cloning → scanning → analyzing(exploring/architecting/writing/validating) → completed/failed/cancelled
 ```
-
-- `scan` — 文件扫描阶段（不变）
-- `orchestrating` — Coordinator ReAct 编排阶段（替代 pass1-4 + assembling）
 
 ## 前端变更
 
-### 类型定义变更（`web/src/lib/models/response/llm.ts`）
-
-```typescript
-// Agent 模型分配项（单个角色，含模型名称，用于批量查询）
-export interface AgentModelAssignmentItem {
-  role: string               // 如 "repowiki:coordinator"
-  model_id: string | null
-  model_name: string | null  // 关联的模型显示名
-}
-
-// 批量查询响应
-export interface AgentModelAssignmentsResponse {
-  module: string             // 如 "repowiki"
-  assignments: AgentModelAssignmentItem[]
-}
-
-// 兼容旧接口（保留，逐步废弃）
-export interface AgentModelAssignment {
-  role: string
-  model_id: string | null
-}
-```
-
-### API 客户端变更（`web/src/lib/apis/llm.ts`）
-
-```typescript
-// 旧: getAgentModel(role: string)
-// 新: 批量查询模块下所有角色
-export function getAgentModels(module: string): Promise<BaseResponse<AgentModelAssignmentsResponse>>
-
-// PUT 不变，role 值改为子角色标识
-export function updateAgentModel(role: string, modelId: string): Promise<BaseResponse<null>>
-```
-
-### Hook 变更（`web/src/hooks/useLlmConfig.ts`）
-
-```typescript
-// 旧: useAgentModel(role: string)
-// 新: 批量查询
-export function useAgentModels(module: string)
-export function useUpdateAgentModel()  // 不变
-```
-
-### 组件变更（`web/src/components/llm/agent-model-assign.tsx`）
-
-**旧设计**：`<AgentModelAssign role="repowiki" />` — 单行选择器
-
-**新设计**：`<AgentModelAssignGroup module="repowiki" />` — 按角色分组的多行选择器
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  RepoWiki 分析                                           │
-│  协调多个 Agent 协作生成 Wiki 文档                         │
-│                                                         │
-│  🎯 主控 Agent        编排决策，协调子 Agent  [选择模型 ▾] │
-│  🔍 探索 Agent        代码阅读与分析        [选择模型 ▾] │
-│  ✏️ 写作 Agent        Wiki 文档生成         [选择模型 ▾] │
-└─────────────────────────────────────────────────────────┘
-```
-
-角色显示映射：
+### 角色显示映射
 
 ```typescript
 const ROLE_DISPLAY_MAP: Record<string, { label: string; desc: string; icon: string }> = {
-  'repowiki:coordinator': { label: '主控 Agent', desc: '编排决策，协调子 Agent', icon: '🎯' },
+  'repowiki:coordinator': { label: '概要 Agent', desc: '项目整体概要分析', icon: '📋' },
   'repowiki:explore':     { label: '探索 Agent', desc: '代码阅读与分析', icon: '🔍' },
+  'repowiki:architect':   { label: '架构 Agent', desc: '构建 Wiki 目录大纲', icon: '🏗️' },
   'repowiki:write':       { label: '写作 Agent', desc: 'Wiki 文档生成', icon: '✏️' },
+  'repowiki:validator':   { label: '校验 Agent', desc: '完整性校验与修复', icon: '✅' },
 }
 ```
 
-### settings.tsx 变更
+### 设置页组件
 
-```tsx
-// 旧: <AgentModelAssign role="repowiki" />
-// 新:
-<AgentModelAssignGroup module="repowiki" />
-```
+`<AgentModelAssignGroup module="repowiki" />` 渲染 5 个角色的模型选择器。
 
 ## 文件变更清单
 
@@ -317,39 +262,36 @@ const ROLE_DISPLAY_MAP: Record<string, { label: string; desc: string; icon: stri
 
 | 文件 | 变更类型 | 说明 |
 |------|----------|------|
-| `internal/constant/llm.go` | 修改 | 新增三个角色常量 + `AgentRolesRepoWiki` 列表 |
-| `internal/service/llm_resolver.go` | 修改 | 新增 `ResolveAgentModels` 批量解析方法 |
+| `internal/constant/llm.go` | 修改 | 新增 5 个角色常量 + `AgentRolesRepoWiki` 列表 |
+| `internal/constant/repowiki.go` | 修改 | 新增阶段枚举 `exploring/architecting/writing/validating` |
+| `internal/service/llm_resolver.go` | 修改 | 支持按角色解析模型配置 |
+| `internal/service/wiki_storage.go` | 修改 | 支持版本隔离路径（versions/{vid}/） |
 | `internal/service/repo_tools.go` | 修改 | 新增 `save_wiki_page` 工具 |
-| `internal/logic/repowiki_agent.go` | 重构 | `AgentPassRunner` → `AgentOrchestrator`，移除 4 Pass 硬编码 |
-| `internal/logic/repowiki_logic.go` | 修改 | `AnalyzeRepo` 改为调用 `ResolveAgentModels` + 构建 `AgentOrchestrator` |
-| `internal/constant/repowiki.go` | 修改 | `current_stage` 枚举值调整（`orchestrating` 替代 pass1-4） |
-| `internal/handler/llm.go` | 修改 | 新增 `GetAgentModels` 批量查询 handler |
-| `internal/app/route/route_llm.go` | 修改 | 注册新端点 `GET /agent/models` |
-| `api/llm/llm.go` | 修改 | 新增批量查询请求/响应 DTO |
-| `internal/app/startup/prepare/prepare_llm.go` | 修改 | 新增旧键迁移逻辑 |
-
-### 前端（TypeScript）
-
-| 文件 | 变更类型 | 说明 |
-|------|----------|------|
-| `web/src/lib/models/response/llm.ts` | 修改 | `AgentModelAssignment` 结构变更 + 新增 `AgentModelAssignmentsResponse` |
-| `web/src/lib/apis/llm.ts` | 修改 | `getAgentModel` → `getAgentModels`（批量查询） |
-| `web/src/hooks/useLlmConfig.ts` | 修改 | `useAgentModel` → `useAgentModels`（批量查询） |
-| `web/src/components/llm/agent-model-assign.tsx` | 重构 | `AgentModelAssign` → `AgentModelAssignGroup`（多角色选择器） |
-| `web/src/routes/console/settings.tsx` | 修改 | Agent 分配 Tab 渲染变更 |
+| `internal/logic/repowiki_orchestrator.go` | 新增 | SubAgentOrchestrator：5 阶段预定义编排 |
+| `internal/logic/repowiki_subagent_prompts.go` | 新增 | 5 角色 system prompt 和 user prompt 构建 |
+| `internal/logic/repowiki_types.go` | 新增 | `WikiEntry` / `ValidationError` / `ExploreOutput` / `ModelRunConfig` |
+| `internal/logic/repowiki_pipeline.go` | 新增 | AnalysisPipeline：Git 准备 + 状态机驱动 |
+| `internal/logic/repowiki_logic.go` | 修改 | AnalyzeRepo 调用 Pipeline + Orchestrator |
+| `internal/entity/repowiki_config.go` | 修改 | 新增 `SelectedVersionID` 字段 |
+| `internal/handler/repowiki.go` | 修改 | 新增版本管理/查询接口 |
+| `internal/app/route/route_repowiki.go` | 新增 | RepoWiki REST API 路由 |
+| `internal/mcp/repowiki_tools.go` | 新增 | MCP 只读工具：repoWiki_query / repoWiki_list |
+| `internal/app/startup/prepare/prepare_llm.go` | 修改 | 旧键迁移逻辑 |
 
 ### 设计文档
 
 | 文件 | 变更类型 | 说明 |
 |------|----------|------|
-| `docs/wiki/repowiki/design.md` | 修改 | 更新"阶段三：LLM 分阶段分析"为多 Agent 协作描述 |
-| `docs/wiki/repowiki/multi-agent-design.md` | 新增 | 本文档（实际实现时创建到项目 docs 目录） |
+| `docs/wiki/repowiki/design.md` | 修改 | 更新核心流程为 5 角色 SubAgent 编排 |
+| `docs/wiki/repowiki/multi-agent-design.md` | 重写 | 本文档 |
 
 ## 风险与缓解
 
 | 风险 | 缓解措施 |
 |------|----------|
-| Coordinator 自主决策可能导致输出不稳定 | system prompt 中明确章节清单和完成条件；设置最大工具调用次数限制 |
-| 不同角色的模型来自不同 Provider，需要构建多个 BambooClient | LlmResolver 已支持按角色独立解析，BambooClient 构建逻辑按角色隔离 |
-| 旧用户升级后旧键丢失 | `prepare_llm.go` 启动迁移逻辑，幂等保证 |
-| ReAct 循环可能消耗更多 Token | Explore Agent 使用低成本模型平衡；Coordinator 使用 summary mode 减少上下文膨胀 |
+| Explore 并发导致 Token 激增 | 单 scope 独立超时，失败比例阈值控制，使用低成本模型 |
+| Architect JSON 输出不稳定 | 自动重试 2 次，追加格式提醒；仍失败标记整体失败 |
+| Writer 产出空页面或缺失 | Validator 校验 + 重驱动 Writer，最多 2 次 |
+| 版本目录磁盘占用增长 | 每个 config 保留最多 10 个版本，后台清理旧版本 |
+| 不同角色模型来自不同 Provider | 每个角色独立构建 BambooClient，配置隔离 |
+| 旧版 config 级 Wiki 目录残留 | 新版本完成后 Pipeline 清理旧目录 |

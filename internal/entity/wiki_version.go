@@ -21,11 +21,13 @@ type WikiVersion struct {
 	LLMProvider        string                 `gorm:"type:varchar(64);comment:LLM Provider" json:"llm_provider"`                      // LLM Provider
 	Status             string                 `gorm:"type:varchar(16);not null;default:pending;index;comment:分析状态" json:"status"`     // 分析状态
 	CurrentStage       string                 `gorm:"type:varchar(32);comment:当前阶段" json:"current_stage"`                             // 当前阶段
-	AgentSessionPath   string                 `gorm:"type:varchar(512);comment:bamboo-agent Session路径" json:"agent_session_path"`     // bamboo-agent Session路径
 	FileCount          int                    `gorm:"type:int;default:0;comment:分析文件数" json:"file_count"`                             // 分析文件数
 	TokenCount         int64                  `gorm:"type:bigint;default:0;comment:LLM token消耗" json:"token_count"`                   // LLM token消耗
 	DurationMs         int                    `gorm:"type:int;default:0;comment:分析耗时毫秒" json:"duration_ms"`                           // 分析耗时毫秒
 	StoragePath        string                 `gorm:"type:varchar(512);comment:版本数据存储路径" json:"storage_path,omitempty"`               // 版本数据存储路径
+	WikiPath           string                 `gorm:"type:varchar(512);comment:版本Wiki文档目录路径" json:"wiki_path,omitempty"`           // 版本Wiki文档目录路径
+	ArchitecturePath   string                 `gorm:"type:varchar(512);comment:架构师产出路径" json:"architecture_path,omitempty"`       // 架构师产出路径
+	ExploreOutputsPath string                 `gorm:"type:varchar(512);comment:Explore产出目录路径" json:"explore_outputs_path,omitempty"` // Explore产出目录路径
 	FileScanPath       string                 `gorm:"type:varchar(512);comment:file_scan.json路径" json:"file_scan_path,omitempty"`     // file_scan.json路径
 	DepSummaryPath     string                 `gorm:"type:varchar(512);comment:dep_summary.json路径" json:"dep_summary_path,omitempty"` // dep_summary.json路径
 	ManifestPath       string                 `gorm:"type:varchar(512);comment:manifest.json路径" json:"manifest_path,omitempty"`       // manifest.json路径

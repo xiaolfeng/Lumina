@@ -8,6 +8,7 @@ export interface RepoWikiConfigItem {
 	status: string
 	ssh_key_id?: string
 	has_password: boolean
+	selected_version_id?: string
 	last_accessed_at?: string
 	latest_version?: RepoWikiVersionItem
 	created_at: string

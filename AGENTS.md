@@ -10,7 +10,7 @@
 
 基于 `bamboo-base-go` 构建的后端服务 + TanStack Start 前端，包含四大核心功能模块：
 
-- **RepoWiki**：克隆项目并通过 LLM 分析生成结构化 Wiki 文档（设计中）
+- **RepoWiki**：克隆项目并通过 5 角色 SubAgent 编排生成结构化 Wiki 文档（已实现）
 - **Memory**：AI 的长期决策记忆，MCP 端主动推送构建（设计中）
 - **Q&A**：Agent 与用户的富交互式问答通道（WebSocket 实时推送）— ✅ 已实现
 - **Pin**：跨项目依赖约束传递，点对点定向推送与 FIFO 队列消费 — ✅ 已实现
@@ -35,6 +35,7 @@
 │   ├── apikey/                 # API Key 模块 DTO（CRUD + 重置）
 │   ├── project/                # 项目模块 DTO（CRUD）
 │   ├── pin/                    # Pin 模块 DTO（CRUD + 筛选）
+│   ├── repowiki/               # RepoWiki 模块 DTO（配置/版本/Wiki）
 │   ├── qa/                     # Q&A 模块 DTO（会话/问题/配置）
 │   ├── common/                 # 通用响应结构
 │   └── health/                 # 健康检查 DTO
@@ -52,13 +53,26 @@
 │   ├── app/
 │   │   ├── middleware/         # Gin 中间件（认证拦截、API Key 校验）
 │   │   ├── route/              # 路由注册与中间件绑定（含前端 SPA fallback + MCP + WebSocket）
+│   │   │   └── route_repowiki.go  # RepoWiki REST API 路由
 │   │   └── startup/            # 基础设施初始化与启动节点注册
 │   │       └── prepare/        # 幂等种子数据
 │   ├── handler/                # HTTP 处理器（薄控制器层）
+│   │   ├── repowiki.go         # RepoWiki 配置/版本管理处理器
+│   │   └── wiki_reader.go      # Wiki 内容读取处理器（公开/密码保护）
 │   ├── logic/                  # 业务编排层（QA 逻辑按职责拆分为 qa_*.go 多文件）
+│   │   ├── repowiki_logic.go   # RepoWiki 核心逻辑（分析入口、配置/版本 CRUD）
+│   │   ├── repowiki_pipeline.go # RepoWiki 分析管道（Git 准备 + 状态机驱动）
+│   │   ├── repowiki_orchestrator.go # 5 角色 SubAgent 编排引擎
+│   │   ├── repowiki_subagent_prompts.go # 5 角色 system/user prompt
+│   │   ├── repowiki_types.go   # RepoWiki 内部类型（WikiEntry / ValidationError / ExploreOutput）
+│   │   ├── repowiki_cron.go    # RepoWiki 定时清理任务
+│   │   └── repowiki_webhook.go # RepoWiki Webhook 处理逻辑
 │   ├── repository/             # 数据库/Redis 访问层
-│   │   └── cache/              # Redis 缓存操作
+│   │   ├── repowiki_config.go  # RepoWikiConfig 持久化
+│   │   └── wiki_version.go     # WikiVersion 持久化
 │   ├── service/                # 共享服务层（文件下载 Token、文件缓存、媒体回答处理）
+│   │   ├── wiki_storage.go     # RepoWiki 文件系统存储与路径管理
+│   │   └── wiki_auth_token.go  # Wiki 访问密码 Token 生成与校验
 │   ├── entity/                 # GORM 实体（需实现 GetGene() 绑定）
 │   ├── mcp/                    # MCP Server 工具注册（QA 工具拆分为 tools/handlers/type_details）
 │   ├── websocket/              # WebSocket 连接管理 + 消息分发
@@ -128,8 +142,11 @@
 | `QueueManager` | 结构体 | `internal/qa/queue.go` | Q&A 回答队列管理器（会话级 FIFO 队列 + 阻塞消费） |
 | `DownloadToken` | 结构体 | `internal/service/download_token.go` | 文件下载 Token 生成与校验（短时效签名） |
 | `MediaAnswerService` | 结构体 | `internal/service/media_answer.go` | 媒体回答处理（图片/文件附件格式化） |
-| `RepoWikiConfig` | 结构体 | `internal/entity/repowiki_config.go` | RepoWiki 配置实体（Gene=39，仓库地址/LLM 参数） |
+| `RepoWikiConfig` | 结构体 | `internal/entity/repowiki_config.go` | RepoWiki 配置实体（Gene=39，仓库地址/LLM 参数/当前选中版本） |
 | `WikiVersion` | 结构体 | `internal/entity/wiki_version.go` | Wiki 版本实体（Gene=40，版本号/状态/文件路径） |
+| `RepoWikiLogic` | 结构体 | `internal/logic/repowiki_logic.go` | RepoWiki 业务编排（配置/版本/分析入口） |
+| `SubAgentOrchestrator` | 结构体 | `internal/logic/repowiki_orchestrator.go` | 5 角色 SubAgent 编排引擎（overview → explore → architect → writer → validator） |
+| `AnalysisPipeline` | 结构体 | `internal/logic/repowiki_pipeline.go` | RepoWiki 分析管道（Git 准备 + 状态机驱动） |
 | `HealthLogic.Ping` | 方法 | `internal/logic/health.go` | 服务健康检查编排 |
 | `HealthRepo.DatabaseReady` | 方法 | `internal/repository/health.go` | 数据库就绪检查 |
 | `getRouter` | 函数 | `web/src/router.tsx` | 前端路由入口 |
@@ -169,7 +186,8 @@
 | 项目 | 项目 CRUD/别名管理 | Project 表 + Redis 缓存（Cache-Aside） | ✅ 已实现 |
 | Q&A | Session 管理、问题推送（WebSocket）、回答队列、MCP 工具、文件上传下载 | QaSession + QaQuestion + QaSupplement 表 + Redis 队列 | ✅ 已实现 |
 | Pin | 跨项目约束传递、定向推送、FIFO 消费 | Pin 表（数据库 FIFO） | ✅ 已实现 |
-| MCP Server | Streamable HTTP 端点、QA/Project/Pin 工具注册（18 个工具） | 复用各模块 Logic 层 | ✅ 已实现 |
+| RepoWiki | Git 克隆 → 5 角色 SubAgent 编排 → Wiki 生成 | RepoWikiConfig + WikiVersion 表 + 文件系统版本隔离 | ✅ 已实现 |
+| MCP Server | Streamable HTTP 端点、QA/Project/Pin/RepoWiki 工具注册（20 个工具） | 复用各模块 Logic 层 | ✅ 已实现 |
 | WebSocket | 连接管理、消息分发、心跳检测、会话恢复 | Hub 内存管理（sessionID → deviceID 索引） | ✅ 已实现 |
 | 健康检查 | 服务/数据库就绪检查 | 无持久化 | ✅ 已实现 |
 
@@ -177,7 +195,6 @@
 
 | 模块 | 职责 | 存储策略 |
 |------|------|----------|
-| RepoWiki | Git 克隆 → LLM 分析 → Wiki 生成 | PG 元数据 + 文件系统 Markdown |
 | Memory | 决策卡片 CRUD、标签分类、条件检索 | PG 全量存储 + Redis 可选缓存 |
 
 ### 前后端关系
@@ -196,7 +213,7 @@
                                        ├── WebSocket Hub（已实现）
                                        ├── 健康检查（已实现）
                                        ├── 前端 SPA 服务（已实现，go:embed）
-                                       ├── RepoWiki（设计中）
+                                       ├── RepoWiki（已实现）
                                        └── Memory（设计中）
 ```
 
@@ -251,7 +268,9 @@
 - **Interact 前端页面**：独立布局（非 Console），支持 15+ 种题型组件 + 交互原语（primitives/），WebSocket 实时交互，断线重连。
 - **前端通用组件**：`confirm-delete-dialog.tsx`、`page-header.tsx`、`skeleton-table.tsx` 跨模块复用，替代各域重复的删除对话框和页面头部。
 - **前端首页拆分**：`routes/_public/index.tsx` 拆分为 `components/landing/` 下 hero/features/tech 区块组件。
-- **Shadow DOM 沙盒**：`interact/primitives/shadow-html.tsx` 使用 Shadow DOM 隔离不可信 HTML 渲染，禁止直接 `dangerouslySetInnerHTML`。
+- **RepoWiki 子 Agent 编排**：`SubAgentOrchestrator` 按预定义 5 阶段（Coordinator → Explore → Architect → Writer → Validator）生成 Wiki，`repowiki_subagent_prompts.go` 定义 5 角色 system/user prompt，`repowiki_types.go` 定义内部类型，`repowiki_pipeline.go` 负责 Git 准备与状态机驱动。
+- **RepoWiki 版本隔离**：每个 Wiki 版本存储在 `versions/{vid}/` 下，`RepoWikiConfig.SelectedVersionID` 指定当前对外服务版本；旧版 config 级目录已废弃，新版本完成后清理。
+- **RepoWiki MCP 只读**：MCP 端仅暴露 `repoWiki_query` / `repoWiki_list` 两个只读工具，Wiki 更新由 Git Webhook 自动触发。
 - **文件下载 Token**：`service/download_token.go` 生成短时效签名 Token，用于 Q&A 文件附件下载鉴权。
 - **媒体回答处理**：`service/media_answer.go` 处理图片/文件附件的回答格式化，供 Q&A MCP 工具调用。
 
@@ -321,7 +340,7 @@ pnpm dlx shadcn@latest add <component>  # 添加 UI 组件
 - Pin 模块已完整实现（后端 Push/Consume/Peek + MCP 工具 + 前端管理页），基于数据库 FIFO 消费。
 - MCP Server 已实现，注册了 QA（10 工具）、Project（3 工具）、Pin（5 工具）三套工具共 18 个，通过 API Key 认证。
 - WebSocket Hub 已实现，支持 sessionID → deviceID 二级索引，心跳检测，优雅关闭，断线重连和会话恢复。
-- RepoWiki 和 Memory 仍为纯设计阶段，无任何后端代码，仅有 `docs/wiki/` 设计文档。RepoWiki 模块的两个数据库实体（`RepoWikiConfig`、`WikiVersion`）已先行入库以支持后续开发。
+- RepoWiki 已实现完整 5 角色 SubAgent 编排（Coordinator/Explore/Architect/Writer/Validator）和版本隔离存储，不再是纯设计阶段。MCP 端只提供 `repoWiki_query` / `repoWiki_list` 只读工具。
 
 ## 引用
 

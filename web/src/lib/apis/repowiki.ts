@@ -67,3 +67,10 @@ export function getConfigByProjectId(
 ): Promise<BaseResponse<RepoWikiConfigItem | null>> {
 	return apiClient.get(`/api/v1/repowiki/by-project/${projectId}`)
 }
+
+export function updateSelectedVersion(
+	configId: number,
+	versionId: number,
+): Promise<BaseResponse> {
+	return apiClient.put(`/api/v1/repowiki/configs/${configId}/selected-version`, { version_id: versionId })
+}

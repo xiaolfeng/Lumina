@@ -10,7 +10,6 @@ import (
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
-	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
 // ──────────────────────────────────────────────────────────────
@@ -34,9 +33,12 @@ import (
 //	│   ├── passes/                    # Agent 分析 Pass 产出
 //	│   ├── sessions/                  # Agent FileStore 会话目录
 //	│   ├── file_scan.json             # 文件扫描结果
-//	│   └── dep_summary.json           # 依赖摘要
-//	└── wiki/{projectID}/zh/           # 最终 Wiki 文档
-//	    └── meta/repowiki-metadata.json
+//	│   ├── dep_summary.json           # 依赖摘要
+//	│   ├── wiki/                      # 最终 Wiki 文档
+//	│   │   └── meta/repowiki-metadata.json
+//	│   ├── explore/                   # Explore 阶段输出
+//	│   └── architecture.json          # 架构分析结果
+//	└── wiki/{configID}/{lang}/        # 旧路径（废弃）
 //
 // basePath 来自环境变量 REPOWIKI_STORAGE_PATH，默认 ./lumina/repowiki
 type WikiStorageService struct {
@@ -84,12 +86,9 @@ func (s *WikiStorageService) GetPassesPath(versionID int64) string {
 
 // GetWikiPath 返回最终 Wiki 文档路径
 //
-// → {basePath}/wiki/{configID}/{language}/
-//
-// configID 为 RepoWiki 配置雪花 ID（非 Project ID、非 Version ID）。
-// language 取自 bConst.RepoWikiDefaultLanguage（默认 zh）。
-func (s *WikiStorageService) GetWikiPath(configID int64) string {
-	return filepath.Join(s.basePath, "wiki", fmt.Sprintf("%d", configID), bConst.RepoWikiDefaultLanguage)
+// → {versionPath}/wiki/
+func (s *WikiStorageService) GetWikiPath(versionID int64) string {
+	return filepath.Join(s.GetVersionPath(versionID), "wiki")
 }
 
 // GetFileScanPath 返回文件扫描结果路径
@@ -109,10 +108,8 @@ func (s *WikiStorageService) GetDepSummaryPath(versionID int64) string {
 // GetManifestPath 返回 Wiki 元数据清单路径
 //
 // → {wikiPath}/meta/repowiki-metadata.json
-//
-// configID 为 RepoWiki 配置雪花 ID。
-func (s *WikiStorageService) GetManifestPath(configID int64) string {
-	return filepath.Join(s.GetWikiPath(configID), "meta", "repowiki-metadata.json")
+func (s *WikiStorageService) GetManifestPath(versionID int64) string {
+	return filepath.Join(s.GetWikiPath(versionID), "meta", "repowiki-metadata.json")
 }
 
 // GetSessionPath 返回 Agent FileStore 会话目录路径
@@ -120,6 +117,30 @@ func (s *WikiStorageService) GetManifestPath(configID int64) string {
 // → {versionPath}/sessions/
 func (s *WikiStorageService) GetSessionPath(versionID int64) string {
 	return filepath.Join(s.GetVersionPath(versionID), "sessions")
+}
+
+// GetExploreOutputsPath 返回 Explore 阶段输出路径
+//
+// → {versionPath}/explore/
+func (s *WikiStorageService) GetExploreOutputsPath(versionID int64) string {
+	return filepath.Join(s.GetVersionPath(versionID), "explore")
+}
+
+// GetArchitecturePath 返回架构分析结果路径
+//
+// → {versionPath}/architecture.json
+func (s *WikiStorageService) GetArchitecturePath(versionID int64) string {
+	return filepath.Join(s.GetVersionPath(versionID), "architecture.json")
+}
+
+// GetLegacyWikiPath 返回旧版 config 级 Wiki 文档路径
+//
+// → {basePath}/wiki/{configID}/
+//
+// 旧版布局按 configID 聚合 Wiki 文档，新版改为按 versionID 隔离。
+// 新版本完成后由 Pipeline 调用此方法清理残留的旧版目录。
+func (s *WikiStorageService) GetLegacyWikiPath(configID int64) string {
+	return filepath.Join(s.basePath, "wiki", fmt.Sprintf("%d", configID))
 }
 
 // ── 文件 I/O ──

@@ -9,12 +9,10 @@ import (
 
 // ── 辅助：用临时目录构造 WikiStorageService ──
 
-// newTestWikiStorage 使用 RepoWikiTestHelper 的临时目录构造测试用 WikiStorageService
-func newTestWikiStorage(t *testing.T) (*WikiStorageService, *RepoWikiTestHelper) {
+// newTestWikiStorage 使用 testing.T 内置临时目录构造测试用 WikiStorageService
+func newTestWikiStorage(t *testing.T) *WikiStorageService {
 	t.Helper()
-	helper := NewRepoWikiTestHelper(t)
-	storage := &WikiStorageService{basePath: helper.TempDir}
-	return storage, helper
+	return &WikiStorageService{basePath: t.TempDir()}
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -22,7 +20,7 @@ func newTestWikiStorage(t *testing.T) (*WikiStorageService, *RepoWikiTestHelper)
 // ──────────────────────────────────────────────────────────────
 
 func TestSanitizePath(t *testing.T) {
-	storage, _ := newTestWikiStorage(t)
+	storage := newTestWikiStorage(t)
 
 	tests := []struct {
 		name      string
@@ -103,7 +101,7 @@ func TestSanitizePath(t *testing.T) {
 
 // TestSanitizePath_AbsoluteTraversal 绝对路径遍历拦截
 func TestSanitizePath_AbsoluteTraversal(t *testing.T) {
-	storage, _ := newTestWikiStorage(t)
+	storage := newTestWikiStorage(t)
 
 	// 绝对路径在 basePath 之外
 	absOutside := "/etc/passwd"
@@ -128,7 +126,7 @@ type testJSONData struct {
 }
 
 func TestWikiStorageJSON(t *testing.T) {
-	storage, _ := newTestWikiStorage(t)
+	storage := newTestWikiStorage(t)
 
 	original := testJSONData{
 		Name:    "Lumina RepoWiki",
@@ -235,7 +233,7 @@ func indexOf(s, sub string) int {
 // ──────────────────────────────────────────────────────────────
 
 func TestWikiStorageMarkdown(t *testing.T) {
-	storage, _ := newTestWikiStorage(t)
+	storage := newTestWikiStorage(t)
 
 	original := "# Lumina 项目\n\n## 概述\n这是一个 **Wiki** 文档测试。\n\n- 项目一\n- 项目二\n- 项目三\n\n```go\nfunc main() {\n    fmt.Println(\"Hello, Lumina!\")\n}\n```\n"
 
@@ -268,7 +266,7 @@ func TestWikiStorageMarkdown(t *testing.T) {
 // ──────────────────────────────────────────────────────────────
 
 func TestCleanVersion(t *testing.T) {
-	storage, _ := newTestWikiStorage(t)
+	storage := newTestWikiStorage(t)
 
 	versionID := int64(888)
 
@@ -322,7 +320,7 @@ func TestCleanVersion(t *testing.T) {
 
 // TestCleanRepo 仓库清理测试
 func TestCleanRepo(t *testing.T) {
-	storage, _ := newTestWikiStorage(t)
+	storage := newTestWikiStorage(t)
 
 	configID := int64(666)
 
@@ -347,7 +345,7 @@ func TestCleanRepo(t *testing.T) {
 // ──────────────────────────────────────────────────────────────
 
 func TestWikiStoragePaths(t *testing.T) {
-	storage, _ := newTestWikiStorage(t)
+	storage := newTestWikiStorage(t)
 
 	t.Run("GetRepoPath", func(t *testing.T) {
 		got := storage.GetRepoPath(100)
@@ -383,7 +381,7 @@ func TestWikiStoragePaths(t *testing.T) {
 
 	t.Run("GetWikiPath", func(t *testing.T) {
 		got := storage.GetWikiPath(400)
-		wantSuffix := filepath.Join("wiki", "400", "zh")
+		wantSuffix := filepath.Join("versions", "400", "wiki")
 		if !endsWith(got, wantSuffix) {
 			t.Errorf("GetWikiPath 后缀错误: got=%q want suffix=%q", got, wantSuffix)
 		}
@@ -407,7 +405,7 @@ func TestWikiStoragePaths(t *testing.T) {
 
 	t.Run("GetManifestPath", func(t *testing.T) {
 		got := storage.GetManifestPath(600)
-		wantSuffix := filepath.Join("wiki", "600", "zh", "meta", "repowiki-metadata.json")
+		wantSuffix := filepath.Join("versions", "600", "wiki", "meta", "repowiki-metadata.json")
 		if !endsWith(got, wantSuffix) {
 			t.Errorf("GetManifestPath 后缀错误: got=%q want suffix=%q", got, wantSuffix)
 		}
@@ -432,7 +430,7 @@ func endsWith(path, suffix string) bool {
 // ──────────────────────────────────────────────────────────────
 
 func TestEnsureDir(t *testing.T) {
-	storage, _ := newTestWikiStorage(t)
+	storage := newTestWikiStorage(t)
 
 	dirPath := filepath.Join(storage.basePath, "deeply", "nested", "dir")
 

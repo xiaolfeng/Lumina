@@ -27,6 +27,7 @@ import (
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	xAsync "github.com/bamboo-services/bamboo-base-go/plugins/async"
+	"github.com/bamboo-services/bamboo-messages/bamboo"
 
 	apiRepowiki "github.com/xiaolfeng/Lumina/api/repowiki"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
@@ -38,9 +39,6 @@ import (
 
 // ──────────────────────────────────────────────────────────────────────
 // RepoWikiLogic
-//
-// DocumentAssembler（文档组装器）定义在 repowiki_assembler.go 中，
-// 通过 SetDocumentAssembler 注入。Pipeline 中通过 assembler.Assemble() 调用。
 // ──────────────────────────────────────────────────────────────────────
 
 // repowikiRepo RepoWiki 模块依赖的仓储集合
@@ -77,14 +75,12 @@ type repowikiSvc struct {
 //   - Wiki 内容查询（为 MCP 工具提供入口）
 //
 // 非职责：
-//   - 不直接执行 Git 克隆 / 文件扫描 / LLM 分析（由 service 层 + AgentPassRunner 完成）
-//   - 不负责文档组装（由 DocumentAssembler — Task 16 — 完成）
+//   - 不直接执行 Git 克隆 / 文件扫描 / LLM 分析（由 service 层 + SubAgentOrchestrator 完成）
 //   - 不直接操作数据库（经由 repository 层）
 type RepoWikiLogic struct {
 	logic
 	repo        repowikiRepo         // 仓储层依赖
 	svc         repowikiSvc          // 服务层依赖
-	assembler   *DocumentAssembler   // 文档组装器（nil 表示未注入，Pipeline 跳过组装并记录日志）
 	semaphore   chan struct{}        // 并发控制信号量（容量 = REPOWIKI_MAX_CONCURRENT）
 	llmResolver *service.LlmResolver // LLM 配置解析器（nil 表示未注入，AnalyzeRepo 返回错误）
 }
@@ -138,13 +134,6 @@ func GetRepoWikiLogicFromContext(ctx context.Context) *RepoWikiLogic {
 		return l
 	}
 	return nil
-}
-
-// SetDocumentAssembler 注入文档组装器（由 startup 阶段调用）
-//
-// assembler 为 nil 时 Pipeline 跳过文档组装步骤并记录日志。
-func (l *RepoWikiLogic) SetDocumentAssembler(assembler *DocumentAssembler) {
-	l.assembler = assembler
 }
 
 // SetLlmResolver 注入 LLM 配置解析器（由 startup 阶段调用）
@@ -388,6 +377,41 @@ func (l *RepoWikiLogic) DeleteConfig(ctx context.Context, id xSnowflake.Snowflak
 	return l.repo.config.Delete(ctx, id)
 }
 
+// UpdateSelectedVersion 切换配置当前选中的 Wiki 版本
+//
+// 业务规则：
+//   - versionID 必须属于该 configID（防越权切换其他配置的版本）
+//   - 目标版本状态必须为 completed（分析中或失败的版本不可选）
+//
+// 参数说明:
+//   - ctx:       上下文
+//   - configID:  配置雪花 ID
+//   - versionID: 目标 Wiki 版本雪花 ID
+func (l *RepoWikiLogic) UpdateSelectedVersion(ctx context.Context, configID, versionID xSnowflake.SnowflakeID) *xError.Error {
+	l.log.Info(ctx, fmt.Sprintf("UpdateSelectedVersion - 切换选中版本 [configID=%d, versionID=%d]", configID.Int64(), versionID.Int64()))
+
+	config, xErr := l.repo.config.GetByID(ctx, configID)
+	if xErr != nil {
+		return xErr
+	}
+
+	version, xErr := l.repo.version.GetByID(ctx, versionID)
+	if xErr != nil {
+		return xErr
+	}
+
+	if version.ConfigID != configID {
+		return xError.NewError(ctx, xError.ValidationError, "目标版本不属于该配置", false, nil)
+	}
+	if version.Status != bConst.RepoWikiStatusCompleted {
+		return xError.NewError(ctx, xError.ValidationError,
+			xError.ErrMessage(fmt.Sprintf("仅可选择已完成的版本（当前状态: %s）", version.Status)), false, nil)
+	}
+
+	config.SelectedVersionID = &versionID
+	return l.repo.config.Update(ctx, config)
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // 版本管理方法
 // ──────────────────────────────────────────────────────────────────────
@@ -396,12 +420,13 @@ func (l *RepoWikiLogic) DeleteConfig(ctx context.Context, id xSnowflake.Snowflak
 //
 // 业务流程：
 //  1. 获取配置详情，校验存在性
-//  2. 检查 AgentPassRunner 是否就绪（LLM Provider 已配置）
+//  2. 检查 LlmResolver 就绪状态（快速失败，避免无谓创建版本记录）
 //  3. 非阻塞获取并发信号量（满则返回 BusinessError）
 //  4. 确定分支和语言（优先请求参数，其次配置默认值）
 //  5. 创建 WikiVersion 记录（status=pending）
-//  6. 启动后台 goroutine 执行 AnalysisPipeline.Execute
-//  7. 立即返回版本记录（status=pending），调用方可轮询 GetVersionStatus
+//  6. 批量解析 5 角色 LLM 配置并构建 SubAgentOrchestrator（失败标记版本 failed）
+//  7. 启动后台 goroutine 执行 AnalysisPipeline.Execute
+//  8. 立即返回版本记录（status=pending），调用方可轮询 GetVersionStatus
 //
 // 并发控制：
 //   - 信号量在 goroutine 内 defer 释放，确保异常退出也能释放
@@ -424,10 +449,10 @@ func (l *RepoWikiLogic) AnalyzeRepo(ctx context.Context, configID xSnowflake.Sno
 		return nil, xErr
 	}
 
-	// Step 2: 解析 LLM 配置并构建 AgentPassRunner
-	runner, proto, model, xErr := l.resolveRunner(ctx)
-	if xErr != nil {
-		return nil, xErr
+	// Step 2: 检查 LlmResolver 就绪状态（快速失败，完整角色解析在创建版本后进行）
+	if l.llmResolver == nil {
+		return nil, xError.NewError(ctx, xError.BusinessError,
+			"LLM 配置未就绪，请先在前端配置 Provider 和 Model", false, nil)
 	}
 
 	// Step 3: 非阻塞获取并发信号量
@@ -472,8 +497,23 @@ func (l *RepoWikiLogic) AnalyzeRepo(ctx context.Context, configID xSnowflake.Sno
 		return nil, xErr
 	}
 
-	// Step 6: 启动后台 goroutine 执行分析管道
-	pipeline := NewAnalysisPipeline(l, l.log, runner, proto, model)
+	// Step 6: 批量解析 5 角色 LLM 配置并构建 SubAgentOrchestrator
+	// 复用 config 级克隆目录作为 Agent 仓库作用域（与 Pipeline Step 1 一致）
+	repoPath := l.svc.storage.GetRepoPath(config.ID.Int64())
+	orchestrator, proto, model, xErr := l.resolveOrchestrator(ctx, created.ID.Int64(), repoPath)
+	if xErr != nil {
+		// 角色配置不完整：标记版本 failed + 释放信号量（保留版本记录供用户排查）
+		created.Status = bConst.RepoWikiStatusFailed
+		created.ErrorMsg = xErr.Error()
+		_ = l.repo.version.Update(ctx, created)
+		config.Status = bConst.RepoWikiStatusFailed
+		_ = l.repo.config.Update(ctx, config)
+		<-l.semaphore
+		return nil, xErr
+	}
+
+	// Step 7: 启动后台 goroutine 执行分析管道
+	pipeline := NewAnalysisPipeline(l, l.log, orchestrator, proto, model)
 
 	xAsync.Async(ctx, func(asyncCtx context.Context) {
 		defer func() { <-l.semaphore }()
@@ -495,46 +535,63 @@ func (l *RepoWikiLogic) AnalyzeRepo(ctx context.Context, configID xSnowflake.Sno
 	return created, nil
 }
 
-// resolveRunner 解析 Agent 模型配置并构建 AgentPassRunner
+// resolveOrchestrator 批量解析 5 角色 LLM 配置并构建 SubAgentOrchestrator
 //
-// 从 AnalyzeRepo 和 RetryStaleTask 共用，返回 runner + providerName + modelName。
-// 失败时返回 *xError.Error（LLM 未配置 / 解析失败 / 客户端创建失败）。
-func (l *RepoWikiLogic) resolveRunner(ctx context.Context) (runner *AgentPassRunner, providerName string, modelName string, xErr *xError.Error) {
+// 从 AnalyzeRepo 和 RetryStaleTask 共用，返回 orchestrator + providerName + modelName。
+// providerName/modelName 取自 coordinator 角色（主控角色，写入 WikiVersion 供展示）。
+// 失败时返回 *xError.Error（LLM 未配置 / 角色不全 / 客户端创建失败）。
+//
+// 参数说明:
+//   - ctx:       上下文
+//   - versionID: Wiki 版本 ID（定位 versions/{vid}/ 下各子目录）
+//   - repoPath:  仓库根目录绝对路径（Agent 工具作用域根）
+func (l *RepoWikiLogic) resolveOrchestrator(ctx context.Context, versionID int64, repoPath string) (orchestrator *SubAgentOrchestrator, providerName string, modelName string, xErr *xError.Error) {
 	// 检查 LlmResolver 就绪状态
 	if l.llmResolver == nil {
 		return nil, "", "", xError.NewError(ctx, xError.BusinessError,
 			"LLM 配置未就绪，请先在前端配置 Provider 和 Model", false, nil)
 	}
 
-	// 解析 Agent 模型配置（Info 表 → Model → Provider → 解密 APIKey）
-	// 优先使用 coordinator 角色配置（AgentPassRunner 为单角色设计，coordinator 是主控角色）
-	// 回退到旧的无角色 key（兼容 multi-agent 改造前的配置）
-	resolved, err := l.llmResolver.ResolveAgentModel(ctx, bConst.AgentRoleRepoWikiCoordinator, bConst.LlmAgentModelKeyPrefix)
+	// 批量解析 5 角色 LLM 配置
+	resolved, err := l.llmResolver.ResolveAgentModels(ctx, bConst.AgentRolesRepoWiki, bConst.LlmAgentModelKeyPrefix)
 	if err != nil {
-		resolved, err = l.llmResolver.ResolveAgentModel(ctx, bConst.AgentRoleRepoWiki, bConst.LlmAgentModelKeyPrefix)
-		if err != nil {
-			return nil, "", "", xError.NewError(ctx, xError.BusinessError,
-				xError.ErrMessage("LLM 配置解析失败: "+err.Error()), false, nil)
+		return nil, "", "", xError.NewError(ctx, xError.BusinessError,
+			xError.ErrMessage("LLM 配置解析失败: "+err.Error()), false, nil)
+	}
+	if len(resolved) != len(bConst.AgentRolesRepoWiki) {
+		missing := make([]string, 0, len(bConst.AgentRolesRepoWiki))
+		for _, role := range bConst.AgentRolesRepoWiki {
+			if _, ok := resolved[role]; !ok {
+				missing = append(missing, role)
+			}
+		}
+		return nil, "", "", xError.NewError(ctx, xError.BusinessError,
+			xError.ErrMessage(fmt.Sprintf("LLM 角色配置不完整，缺少: %v", missing)), false, nil)
+	}
+
+	// 为每个角色构建 LLM 客户端 + 模型运行配置
+	roleClients := make(map[string]bamboo.BambooClient, len(resolved))
+	roleModels := make(map[string]*ModelRunConfig, len(resolved))
+	for role, cfg := range resolved {
+		client, cErr := service.NewLLMProviderFromEntity(cfg.Protocol, cfg.BaseURL, cfg.DecryptedAPIKey)
+		if cErr != nil {
+			return nil, "", "", xError.NewError(ctx, xError.ServerInternalError,
+				xError.ErrMessage(fmt.Sprintf("角色 %s LLM 客户端创建失败: %s", role, cErr.Error())), false, nil)
+		}
+		roleClients[role] = client
+		roleModels[role] = &ModelRunConfig{
+			ModelName:     cfg.ModelName,
+			MaxTokens:     cfg.MaxTokens,
+			ContextWindow: cfg.ContextWindow,
+			Temperature:   cfg.Temperature,
 		}
 	}
 
-	// 构建 LLM 客户端
-	client, cErr := service.NewLLMProviderFromEntity(resolved.Protocol, resolved.BaseURL, resolved.DecryptedAPIKey)
-	if cErr != nil {
-		return nil, "", "", xError.NewError(ctx, xError.ServerInternalError,
-			xError.ErrMessage("LLM 客户端创建失败: "+cErr.Error()), false, nil)
-	}
+	// providerName/modelName 取自 coordinator 角色
+	coordCfg := resolved[bConst.AgentRoleRepoWikiCoordinator]
+	o := NewSubAgentOrchestrator(roleClients, roleModels, l.svc.storage, l.log, versionID, repoPath)
 
-	// 构建模型配置 + AgentPassRunner
-	modelConfig := &ModelRunConfig{
-		ModelName:     resolved.ModelName,
-		MaxTokens:     resolved.MaxTokens,
-		ContextWindow: resolved.ContextWindow,
-		Temperature:   resolved.Temperature,
-	}
-	r := NewAgentPassRunner(client, l.svc.storage, l.log, nil, modelConfig)
-
-	return r, resolved.Protocol, resolved.ModelName, nil
+	return o, coordCfg.Protocol, coordCfg.ModelName, nil
 }
 
 // GetVersionStatus 获取版本分析状态
@@ -589,13 +646,13 @@ func (l *RepoWikiLogic) QueryWiki(ctx context.Context, wikiID int64, query strin
 	}
 
 	// 尝试读取 manifest
-	manifestPath := l.svc.storage.GetManifestPath(version.ConfigID.Int64())
+	manifestPath := l.svc.storage.GetManifestPath(version.ID.Int64())
 	if content, xErr := l.svc.storage.ReadMarkdown(manifestPath); xErr == nil {
 		return content, nil
 	}
 
 	// manifest 不存在，尝试读取首页 index.md
-	wikiPath := l.svc.storage.GetWikiPath(version.ConfigID.Int64())
+	wikiPath := l.svc.storage.GetWikiPath(version.ID.Int64())
 	indexPath := filepath.Join(wikiPath, "index.md")
 	if content, xErr := l.svc.storage.ReadMarkdown(indexPath); xErr == nil {
 		return content, nil

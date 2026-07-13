@@ -45,8 +45,7 @@ func containsEntryPoint(result *FileScanResult, target string) bool {
 //  3. 入口文件识别：main.go、go.mod、src/index.ts 标记为入口
 //  4. 统计字段一致性：TotalFiles == len(Files)，TotalSize == 各文件大小之和
 func TestFileScanner(t *testing.T) {
-	helper := NewRepoWikiTestHelper(t)
-	repoPath := helper.CreateSampleRepo()
+	repoPath := createSampleRepo(t)
 
 	scanner := NewFileScannerService()
 	result, xErr := scanner.Scan(context.Background(), repoPath)
@@ -163,8 +162,7 @@ func TestFileScanner(t *testing.T) {
 
 // TestFileScanner_ExcludeDirs 验证各种排除目录场景。
 func TestFileScanner_ExcludeDirs(t *testing.T) {
-	helper := NewRepoWikiTestHelper(t)
-	repoPath := helper.CreateSampleRepo()
+	repoPath := createSampleRepo(t)
 
 	// 追加额外的排除目录测试（大小写不敏感）
 	extraDirs := []string{
@@ -200,8 +198,7 @@ func TestFileScanner_ExcludeDirs(t *testing.T) {
 
 // TestFileScanner_BinaryFilter 验证二进制扩展名文件被过滤。
 func TestFileScanner_BinaryFilter(t *testing.T) {
-	helper := NewRepoWikiTestHelper(t)
-	repoPath := helper.CreateSampleRepo()
+	repoPath := createSampleRepo(t)
 
 	// 创建二进制文件
 	binaryFiles := []string{"logo.png", "archive.zip", "binary.exe", "font.woff2"}
@@ -229,8 +226,7 @@ func TestFileScanner_BinaryFilter(t *testing.T) {
 
 // TestFileScanner_OversizedFile 验证超过 maxFileSize 的文件被跳过。
 func TestFileScanner_OversizedFile(t *testing.T) {
-	helper := NewRepoWikiTestHelper(t)
-	repoPath := helper.CreateSampleRepo()
+	repoPath := createSampleRepo(t)
 
 	// 创建超大文件（2MB > 默认 1MB）
 	bigContent := make([]byte, 2*1024*1024)
@@ -263,8 +259,7 @@ func TestFileScanner_InvalidPath(t *testing.T) {
 	}
 
 	// 非目录路径（使用一个文件）
-	helper := NewRepoWikiTestHelper(t)
-	filePath := filepath.Join(helper.TempDir, "afile.txt")
+	filePath := filepath.Join(t.TempDir(), "afile.txt")
 	if err := os.WriteFile(filePath, []byte("hi"), 0644); err != nil {
 		t.Fatalf("创建文件失败: %v", err)
 	}
@@ -333,8 +328,7 @@ func TestEntryPointDetection(t *testing.T) {
 
 // TestEntryPointDetection_ScanIntegration 验证扫描结果中入口文件的标记与独立检测一致。
 func TestEntryPointDetection_ScanIntegration(t *testing.T) {
-	helper := NewRepoWikiTestHelper(t)
-	repoPath := helper.CreateSampleRepo()
+	repoPath := createSampleRepo(t)
 
 	scanner := NewFileScannerService()
 	result, xErr := scanner.Scan(context.Background(), repoPath)

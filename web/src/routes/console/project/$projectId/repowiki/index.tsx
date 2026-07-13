@@ -7,6 +7,7 @@ import { Badge } from '#/components/ui/badge'
 import { PageHeader } from '#/components/page-header'
 import { useRepoWikiConfigByProjectId } from '#/hooks/useRepoWiki'
 import { AnalyzeButton, UpdateButton, VersionList } from '#/components/repowiki/version-list'
+import { VersionSwitcher } from '#/components/repowiki/version-switcher'
 import { staggerContainer, staggerItem } from '#/lib/motion'
 import { buildWikiReaderUrl } from '#/lib/utils'
 
@@ -133,6 +134,11 @@ function RepoWikiDetailPage() {
 				</a>
 			</Button>
 		)}
+			</motion.div>
+
+			{/* 选中版本切换 */}
+			<motion.div variants={staggerItem}>
+				<VersionSwitcher configId={config.id} selectedVersionId={config.selected_version_id} />
 			</motion.div>
 
 			{/* 版本列表 */}

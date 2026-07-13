@@ -24,11 +24,10 @@ func TestGitClonePublic(t *testing.T) {
 		t.Skip("跳过网络测试（short 模式）")
 	}
 
-	helper := NewRepoWikiTestHelper(t)
 	svc := NewGitCloneService()
 
 	const repoURL = "https://github.com/octocat/Hello-World.git"
-	destPath := filepath.Join(helper.TempDir, "hello-world")
+	destPath := filepath.Join(t.TempDir(), "hello-world")
 
 	// 设置 30 秒超时，避免网络卡死
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

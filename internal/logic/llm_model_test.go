@@ -60,7 +60,7 @@ func TestLlmModelGetAgentModelConfig(t *testing.T) {
 	l := setupLlmModelTestLogic(t)
 	ctx := context.Background()
 
-	_, xErr := l.GetAgentModelConfig(ctx, bConst.AgentRoleRepoWiki)
+	_, xErr := l.GetAgentModelConfig(ctx, bConst.AgentRoleRepoWikiCoordinator)
 	if xErr == nil {
 		t.Fatal("expected NotFound error for unconfigured agent, got nil")
 	}
@@ -92,12 +92,12 @@ func TestLlmModelSetAgentModel(t *testing.T) {
 	}
 
 	// 设置 Agent 模型
-	if xErr := l.SetAgentModel(ctx, bConst.AgentRoleRepoWiki, model.ID); xErr != nil {
+	if xErr := l.SetAgentModel(ctx, bConst.AgentRoleRepoWikiCoordinator, model.ID); xErr != nil {
 		t.Fatalf("SetAgentModel failed: %v", xErr)
 	}
 
 	// 读回验证
-	config, xErr := l.GetAgentModelConfig(ctx, bConst.AgentRoleRepoWiki)
+	config, xErr := l.GetAgentModelConfig(ctx, bConst.AgentRoleRepoWikiCoordinator)
 	if xErr != nil {
 		t.Fatalf("GetAgentModelConfig failed: %v", xErr)
 	}

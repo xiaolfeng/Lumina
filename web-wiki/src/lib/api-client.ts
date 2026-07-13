@@ -16,8 +16,6 @@ import JSONBig from 'json-bigint'
 export interface AuthCheckResponse {
   password_required: boolean
   authenticated: boolean
-  wiki_name?: string
-  wiki_description?: string
 }
 
 /** auth 接口响应数据 */
@@ -115,6 +113,10 @@ wikiApi.interceptors.response.use(
         ),
       )
     }
+    // 解包 BaseResponse：返回内层 data 字段
+    if (data && typeof data === 'object' && 'data' in data) {
+      return (data as { data: unknown }).data
+    }
     return data
   },
   (error: AxiosError) => {
@@ -145,17 +147,17 @@ wikiApi.interceptors.response.use(
 export const wikiReaderApi = {
   /** 检查 Wiki 授权状态 */
   checkAuth: (wikiId: string): Promise<AuthCheckResponse> =>
-    wikiApi.get(`/wiki/${wikiId}/auth-check`).then((res) => res.data),
+    wikiApi.get(`/wiki/${wikiId}/auth-check`),
 
   /** 密码验证 */
   auth: (wikiId: string, password: string): Promise<AuthResponse> =>
-    wikiApi.post(`/wiki/${wikiId}/auth`, { password }).then((res) => res.data),
+    wikiApi.post(`/wiki/${wikiId}/auth`, { password }),
 
   /** 获取页面内容（Task 25 使用） */
   getPage: (wikiId: string, path: string): Promise<PageResponse> =>
-    wikiApi.get(`/wiki/${wikiId}/page/${path}`).then((res) => res.data),
+    wikiApi.get(`/wiki/${wikiId}/page/${path}`),
 
   /** 获取导航清单（Task 26 使用） */
   getManifest: (wikiId: string): Promise<ManifestResponse> =>
-    wikiApi.get(`/wiki/${wikiId}/manifest`).then((res) => res.data),
+    wikiApi.get(`/wiki/${wikiId}/manifest`),
 }

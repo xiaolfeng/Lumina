@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -55,10 +57,8 @@ func NewGitCloneService() *GitCloneService {
 //   - error: 克隆过程中的错误
 func (s *GitCloneService) CloneRepo(ctx context.Context, gitURL, branch, privateKey, destPath string) error {
 	opts := &git.CloneOptions{
-		URL:          gitURL,
-		Depth:        1, // RepoWiki v1 只需最新代码，浅克隆加速
-		SingleBranch: true,
-		Tags:         git.NoTags,
+		URL:   gitURL,
+		Depth: 0, // 完整克隆，支持 checkout 到任意历史 hash
 	}
 
 	// 设置分支引用（空则克隆默认分支 HEAD）
@@ -164,46 +164,75 @@ func (s *GitCloneService) GetChangedFiles(repoPath, oldHash, newHash string) ([]
 	return files, nil
 }
 
-// PullLatest 拉取最新代码（Fast-forward 合并）
+// FetchAndCheckout 拉取最新代码并切换到指定 commit hash
 //
-// 仅支持 fast-forward 合并，不支持三方合并（与 go-git Pull 一致）。
-// 浅克隆仓库拉取后仍保持浅克隆特性。
-//
-// 参数说明:
-//   - repoPath: 仓库本地路径
-//   - branch:   要拉取的分支名（空字符串则拉取当前分支）
-//
-// 返回值:
-//   - error: 仓库打开或 Pull 失败（NoErrAlreadyUpToDate 返回 nil）
-func (s *GitCloneService) PullLatest(repoPath, branch string) error {
+// 先 fetch 远程更新，再 checkout 到指定 commit hash（强制）。
+// commitHash 为空时 checkout 到 branch 的 HEAD。
+func (s *GitCloneService) FetchAndCheckout(ctx context.Context, repoPath, branch, commitHash, privateKey string) error {
 	repo, err := git.PlainOpen(repoPath)
 	if err != nil {
 		return fmt.Errorf("打开仓库失败 [%s]: %w", repoPath, err)
 	}
 
+	// 构建 fetch 选项
+	fetchOpts := &git.FetchOptions{
+		RemoteName: "origin",
+		Force:      true,
+	}
+	if privateKey != "" {
+		auth, err := s.buildSSHAuth(privateKey)
+		if err != nil {
+			return fmt.Errorf("SSH 认证准备失败: %w", err)
+		}
+		fetchOpts.Auth = auth
+	}
+
+	// fetch 远程更新
+	if err := repo.Fetch(fetchOpts); err != nil {
+		if err != git.NoErrAlreadyUpToDate {
+			return fmt.Errorf("fetch 远程更新失败: %w", err)
+		}
+	}
+
+	// 获取 worktree
 	worktree, err := repo.Worktree()
 	if err != nil {
 		return fmt.Errorf("获取 Worktree 失败: %w", err)
 	}
 
-	opts := &git.PullOptions{
-		RemoteName: "origin",
-		Force:      true,
+	// checkout 到指定 commit hash 或分支
+	checkoutOpts := &git.CheckoutOptions{Force: true}
+	if commitHash != "" {
+		checkoutOpts.Hash = plumbing.NewHash(commitHash)
+	} else if branch != "" {
+		checkoutOpts.Branch = plumbing.NewBranchReferenceName(branch)
 	}
-	if branch != "" {
-		opts.ReferenceName = plumbing.NewBranchReferenceName(branch)
-		opts.SingleBranch = true
-	}
-
-	if err := worktree.Pull(opts); err != nil {
-		// 已经是最新的，不算错误
-		if err == git.NoErrAlreadyUpToDate {
-			return nil
-		}
-		return fmt.Errorf("Pull 失败: %w", err)
+	if err := worktree.Checkout(checkoutOpts); err != nil {
+		return fmt.Errorf("checkout 失败: %w", err)
 	}
 
+	s.log.Info(ctx, "仓库 fetch 并 checkout 成功",
+		slog.String("repoPath", repoPath),
+		slog.String("branch", branch),
+		slog.String("commitHash", commitHash),
+	)
 	return nil
+}
+
+// EnsureCloned 确保仓库已克隆到指定路径（幂等）
+//
+// 如 destPath 已有 .git 目录则跳过克隆直接返回（调用方后续调 FetchAndCheckout 更新）。
+// 否则执行完整克隆。
+func (s *GitCloneService) EnsureCloned(ctx context.Context, gitURL, branch, privateKey, destPath string) error {
+	gitDir := filepath.Join(destPath, ".git")
+	if _, err := os.Stat(gitDir); err == nil {
+		s.log.Info(ctx, "仓库已存在，跳过克隆",
+			slog.String("destPath", destPath),
+		)
+		return nil
+	}
+
+	return s.CloneRepo(ctx, gitURL, branch, privateKey, destPath)
 }
 
 // buildSSHAuth 从明文 PEM 私钥构建 go-git SSH 认证方法

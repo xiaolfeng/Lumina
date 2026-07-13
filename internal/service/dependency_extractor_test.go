@@ -12,7 +12,7 @@ func TestExtractGoImports(t *testing.T) {
 
 	// 合并所有 sample 片段为一段完整内容
 	var content string
-	for _, sample := range SampleGoImports {
+	for _, sample := range sampleGoImports {
 		content += sample + "\n"
 	}
 
@@ -49,7 +49,7 @@ func TestExtractPythonImports(t *testing.T) {
 	svc := NewDependencyExtractorService()
 
 	var content string
-	for _, sample := range SamplePythonImports {
+	for _, sample := range samplePythonImports {
 		content += sample + "\n"
 	}
 
@@ -81,7 +81,7 @@ func TestExtractJSImports(t *testing.T) {
 	svc := NewDependencyExtractorService()
 
 	var content string
-	for _, sample := range SampleJSImports {
+	for _, sample := range sampleJSImports {
 		content += sample + "\n"
 	}
 
@@ -113,7 +113,7 @@ func TestExtractJavaImports(t *testing.T) {
 	svc := NewDependencyExtractorService()
 
 	var content string
-	for _, sample := range SampleJavaImports {
+	for _, sample := range sampleJavaImports {
 		content += sample + "\n"
 	}
 
@@ -143,7 +143,7 @@ func TestExtractRustImports(t *testing.T) {
 	svc := NewDependencyExtractorService()
 
 	var content string
-	for _, sample := range SampleRustImports {
+	for _, sample := range sampleRustImports {
 		content += sample + "\n"
 	}
 
@@ -170,11 +170,10 @@ func TestExtractRustImports(t *testing.T) {
 
 // TestModuleDependencySummary 验证模块级依赖摘要构建
 //
-// 使用 CreateSampleRepo 创建模拟仓库，手动构建 FileScanResult，
+// 使用 createSampleRepo 创建模拟仓库，手动构建 FileScanResult，
 // 调用 Extract 验证模块间依赖关系和核心模块识别。
 func TestModuleDependencySummary(t *testing.T) {
-	helper := NewRepoWikiTestHelper(t)
-	repoPath := helper.CreateSampleRepo()
+	repoPath := createSampleRepo(t)
 
 	// 手动构建 FileScanResult（模拟 FileScannerService.Scan 输出，语言名使用首字母大写格式）
 	scanResult := &FileScanResult{

@@ -99,10 +99,16 @@ func (h *WikiReaderHandler) GetWikiPage(ctx *gin.Context) {
 		return
 	}
 
+	// 经 config.SelectedVersionID 间接定位版本目录
+	versionID, ok := h.resolveSelectedVersion(ctx, configID)
+	if !ok {
+		return // resolveSelectedVersion 已写入响应
+	}
+
 	pagePath := ctx.Param("path") // catch-all 参数，以 "/" 开头
 
 	// 获取 Wiki 文档目录
-	wikiPath := h.storage.GetWikiPath(configID)
+	wikiPath := h.storage.GetWikiPath(versionID)
 
 	// 路径遍历防护：双层校验
 	safePath, err := sanitizeWikiPath(wikiPath, pagePath)
@@ -159,7 +165,13 @@ func (h *WikiReaderHandler) GetWikiManifest(ctx *gin.Context) {
 		return
 	}
 
-	manifestPath := h.storage.GetManifestPath(configID)
+	// 经 config.SelectedVersionID 间接定位版本目录
+	versionID, ok := h.resolveSelectedVersion(ctx, configID)
+	if !ok {
+		return
+	}
+
+	manifestPath := h.storage.GetManifestPath(versionID)
 
 	// 直接反序列化到响应 DTO（JSON 字段名与 DTO tag 对齐）
 	var manifest apiRepowiki.WikiManifestResponse
@@ -322,6 +334,23 @@ func (h *WikiReaderHandler) GetConfigPasswordHash(ctx context.Context, wikiID in
 		return "", xErr
 	}
 	return config.WikiPasswordHash, nil
+}
+
+// resolveSelectedVersion 经 config.SelectedVersionID 解析当前 Wiki 版本目录 ID。
+//
+// WikiReader 通过配置选中的版本间接定位 Wiki 文件，而非直接以 configID 作为目录。
+// 失败时已写入 HTTP 响应（404），调用方仅需 return。
+func (h *WikiReaderHandler) resolveSelectedVersion(ctx *gin.Context, configID int64) (int64, bool) {
+	config, xErr := h.logic.GetConfig(ctx.Request.Context(), xSnowflake.SnowflakeID(configID))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return 0, false
+	}
+	if config.SelectedVersionID == nil {
+		xResult.AbortError(ctx, xError.NotFound, "Wiki 尚未生成或未选择版本", false)
+		return 0, false
+	}
+	return config.SelectedVersionID.Int64(), true
 }
 
 // ──────────────────────────────────────────────────────────────────────

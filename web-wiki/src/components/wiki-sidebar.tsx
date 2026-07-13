@@ -2,14 +2,15 @@
  * Wiki 侧边栏导航组件
  *
  * 功能特性：
- * - 从 manifest API 获取导航结构（文件树）
+ * - 从 manifest API 获取导航结构（TanStack Query 自动管理）
  * - 支持目录展开/折叠交互
  * - 当前页面路径高亮显示
  * - 使用 TanStack Router Link 进行客户端导航
  * - 响应式设计：移动端可隐藏
  */
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import {
   ChevronRight,
   ChevronDown,
@@ -20,14 +21,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { wikiReaderApi } from '#/lib/api-client'
-import type { ManifestResponse } from '#/lib/api-client'
-
-/** 导航条目类型（与后端 WikiNavItem 对齐） */
-interface NavEntry {
-  path: string
-  title: string
-  children?: NavEntry[]
-}
+import type { ManifestResponse, WikiNavItem } from '#/lib/api-client'
 
 interface WikiSidebarProps {
   wikiId: string
@@ -42,40 +36,35 @@ export function WikiSidebar({
   isOpen,
   onToggle,
 }: WikiSidebarProps) {
-  const [manifest, setManifest] = useState<ManifestResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
 
-  // 获取 manifest 数据
-  useEffect(() => {
-    const fetchManifest = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const data = await wikiReaderApi.getManifest(wikiId)
-        setManifest(data)
+  const {
+    data: manifest,
+    isLoading,
+    error,
+  } = useQuery<ManifestResponse>({
+    queryKey: ['wiki-manifest', wikiId],
+    queryFn: () => wikiReaderApi.getManifest(wikiId),
+    enabled: !!wikiId,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  })
 
-        // 默认展开所有包含当前页面的父目录
-        if (currentPagePath) {
-          const dirsToExpand = new Set<string>()
-          const pathParts = currentPagePath.split('/').filter(Boolean)
-          let currentPath = ''
-          for (const part of pathParts.slice(0, -1)) {
-            currentPath += (currentPath ? '/' : '') + part
-            dirsToExpand.add(currentPath)
-          }
-          setExpandedDirs(dirsToExpand)
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '加载导航失败')
-      } finally {
-        setLoading(false)
-      }
+  const navEntries: WikiNavItem[] = manifest?.navigation ?? []
+  const homePath = manifest?.home ?? ''
+
+  // 默认展开包含当前页面的父目录
+  if (currentPagePath && expandedDirs.size === 0 && navEntries.length > 0) {
+    const dirsToExpand = new Set<string>()
+    const pathParts = currentPagePath.split('/').filter(Boolean)
+    let currentPath = ''
+    for (const part of pathParts.slice(0, -1)) {
+      currentPath += (currentPath ? '/' : '') + part
+      dirsToExpand.add(currentPath)
     }
-
-    fetchManifest()
-  }, [wikiId])
+    setExpandedDirs(dirsToExpand)
+  }
 
   // 切换目录展开状态
   const toggleDir = (dirPath: string) => {
@@ -91,17 +80,17 @@ export function WikiSidebar({
   }
 
   // 渲染单个导航项
-  const renderNavItem = (entry: NavEntry, depth: number = 0) => {
+  const renderNavItem = (entry: WikiNavItem, depth: number = 0) => {
     const isExpanded = expandedDirs.has(entry.path)
-    const isDirectory = entry.children !== undefined
+    const isDirectory = entry.children !== undefined && entry.children.length > 0
     const isActive = !isDirectory && entry.path === currentPagePath
 
     return (
       <div key={entry.path} className="nav-item">
         <div
           className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent ${
-            depth > 0 ? 'ml-' + Math.min(depth * 3, 9) : ''
-          } ${isActive ? 'bg-accent text-lagoon font-medium' : 'text-sea-ink-soft'}`}
+            isActive ? 'bg-accent text-lagoon font-medium' : 'text-sea-ink-soft'
+          }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
           {isDirectory ? (
@@ -149,7 +138,7 @@ export function WikiSidebar({
         </div>
 
         {/* 子目录递归渲染 */}
-        {isDirectory && isExpanded && entry.children && (
+        {isExpanded && entry.children && entry.children.length > 0 && (
           <div className="children">
             {entry.children.map((child) => renderNavItem(child, depth + 1))}
           </div>
@@ -194,8 +183,8 @@ export function WikiSidebar({
         <nav className="flex-1 overflow-y-auto p-2">
           {/* 首页链接 */}
           <Link
-            to="/wiki/$wikiId"
-            params={{ wikiId }}
+            to={homePath ? "/wiki/$wikiId/$" : "/wiki/$wikiId"}
+            params={homePath ? { wikiId, _splat: homePath } : { wikiId }}
             className={`mb-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent ${
               !currentPagePath ? 'bg-accent text-lagoon' : 'text-sea-ink-soft'
             }`}
@@ -205,7 +194,7 @@ export function WikiSidebar({
           </Link>
 
           {/* 加载状态 */}
-          {loading && (
+          {isLoading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-lagoon" />
               <span className="ml-2 text-sm text-sea-ink-soft">加载中...</span>
@@ -215,21 +204,21 @@ export function WikiSidebar({
           {/* 错误提示 */}
           {error && (
             <div className="mx-2 rounded-md bg-destructive/10 p-3 text-xs text-destructive">
-              {error}
+              {error instanceof Error ? error.message : '加载导航失败'}
             </div>
           )}
 
           {/* 导航树 */}
-          {!loading && !error && manifest && manifest.navigation.length > 0 && (
+          {!isLoading && !error && navEntries.length > 0 && (
             <div className="nav-tree space-y-0.5">
-              {manifest.navigation.map((entry) => renderNavItem(entry))}
+              {navEntries.map((entry) => renderNavItem(entry))}
             </div>
           )}
 
           {/* 空状态 */}
-          {!loading &&
+          {!isLoading &&
             !error &&
-            (!manifest?.navigation || manifest.navigation.length === 0) && (
+            navEntries.length === 0 && (
               <div className="py-8 text-center text-sm text-sea-ink-soft">
                 暂无页面
               </div>

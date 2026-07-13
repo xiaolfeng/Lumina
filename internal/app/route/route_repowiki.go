@@ -20,6 +20,7 @@ func (r *route) repowikiRouter(route gin.IRouter) {
 	g.GET("/configs/:id", h.GetConfig)
 	g.GET("/by-project/:projectId", h.GetConfigByProjectID)
 	g.PUT("/configs/:id", h.UpdateConfig)
+	g.PUT("/configs/:id/selected-version", h.UpdateSelectedVersion)
 	g.DELETE("/configs/:id", h.DeleteConfig)
 
 	g.POST("/configs/:id/analyze", h.Analyze)

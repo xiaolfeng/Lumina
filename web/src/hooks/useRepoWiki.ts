@@ -9,6 +9,7 @@ import {
 	analyzeRepoWiki,
 	updateRepoWiki as updateRepoWikiApi,
 	getRepoWikiVersionList,
+	updateSelectedVersion,
 } from '#/lib/apis/repowiki'
 import type {
 	CreateRepoWikiConfigRequest,
@@ -131,6 +132,25 @@ export function useRepoWikiVersions(configId: string, page = 1, size = 20) {
 				ACTIVE_STATUSES.includes(v.status as (typeof ACTIVE_STATUSES)[number]),
 			)
 			return hasActive ? 3000 : false
+		},
+	})
+}
+
+// ── 切换选中版本 ──
+
+export function useUpdateSelectedVersion() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: ({ configId, versionId }: { configId: number; versionId: number }) =>
+			updateSelectedVersion(configId, versionId),
+		onSuccess: () => {
+			toast.success('已切换选中版本')
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'configs'] })
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'by-project'] })
+		},
+		onError: (error: Error) => {
+			toast.error(error.message || '切换版本失败')
 		},
 	})
 }

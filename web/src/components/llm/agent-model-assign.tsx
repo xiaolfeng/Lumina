@@ -32,9 +32,17 @@ const ROLE_DISPLAY_MAP: Partial<Record<string, RoleDisplay>> = {
     label: '探索 Agent',
     description: '负责阅读和分析代码库结构',
   },
+  'repowiki:architect': {
+    label: '架构师 Agent',
+    description: '基于探索产出构建 Wiki 目录大纲',
+  },
   'repowiki:write': {
     label: '写作 Agent',
     description: '负责生成结构化的 Wiki 文档',
+  },
+  'repowiki:validator': {
+    label: '校验 Agent',
+    description: '校验 Wiki 文件完整性 + 生成 metadata',
   },
 }
 

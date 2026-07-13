@@ -44,7 +44,8 @@ func (p *Prepare) prepareLlm() {
 // 迁移规则：旧键不存在或值为空时不处理；新键已存在且非空时不覆盖；否则将旧值复制到新键。
 // 旧键保留不删除，作为 coordinator 的兼容别名。
 func (p *Prepare) migrateOldAgentModelKey() {
-	oldKey := bConst.LlmAgentModelKeyPrefix + bConst.AgentRoleRepoWiki
+	const legacyRepoWikiRole = "repowiki"
+	oldKey := bConst.LlmAgentModelKeyPrefix + legacyRepoWikiRole
 	newKey := bConst.LlmAgentModelKeyPrefix + bConst.AgentRoleRepoWikiCoordinator
 
 	var oldInfo entity.Info

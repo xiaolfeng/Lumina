@@ -46,10 +46,6 @@ func (r *reg) repoWikiInit(ctx context.Context) (any, error) {
 	resolver := service.NewLlmResolver(modelRepo, providerRepo, infoRepo, encryptSecret)
 	repoWikiLogic.SetLlmResolver(resolver)
 
-	// 创建并注入 DocumentAssembler（Pipeline Step 5 依赖此组件生成 Wiki 文档）
-	storageService := service.NewWikiStorageService()
-	repoWikiLogic.SetDocumentAssembler(logic.NewDocumentAssembler(storageService, nil))
-
 	r.ctx = context.WithValue(r.ctx, bConst.RepoWikiLogicKey, repoWikiLogic)
 
 	log.Info(ctx, "RepoWikiLogic 初始化完成")
