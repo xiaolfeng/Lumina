@@ -243,6 +243,24 @@ func (l *RepoWikiLogic) CreateConfig(ctx context.Context, req *apiRepowiki.Creat
 		return nil, xErr
 	}
 
+	// 持久化成功后，通过 xAsync 异步触发首次仓库分析（不阻塞 HTTP 响应）
+	// 失败仅记录日志，不影响配置创建结果（用户可后续手动 Analyze）
+	xAsync.Async(ctx, func(asyncCtx context.Context) {
+		l.log.Info(asyncCtx, "CreateConfig - 自动触发首次分析",
+			slog.Int64("configID", created.ID.Int64()))
+		if _, xErr := l.AnalyzeRepo(asyncCtx, created.ID, &apiRepowiki.AnalyzeRequest{
+			Branch:   created.DefaultBranch,
+			Language: created.DefaultLanguage,
+		}); xErr != nil {
+			l.log.Warn(asyncCtx, "CreateConfig - 自动触发首次分析失败（不影响配置创建）",
+				slog.Int64("configID", created.ID.Int64()),
+				slog.String("err", xErr.Error()))
+		}
+	},
+		xAsync.WithName("RepoWiki-CreateConfig-InitialAnalyze"),
+		xAsync.WithLogger(l.log),
+	)
+
 	return created, nil
 }
 
