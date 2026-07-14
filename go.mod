@@ -45,7 +45,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/bamboo-services/bamboo-agent v0.0.1
+	github.com/bamboo-services/bamboo-agent v0.0.2
 	github.com/bamboo-services/bamboo-base-go/plugins/email v1.0.0-202605032001 // indirect
 	github.com/bamboo-services/bamboo-messages v0.8.10
 	github.com/bytedance/gopkg v0.1.4 // indirect
