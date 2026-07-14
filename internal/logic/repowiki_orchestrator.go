@@ -179,7 +179,9 @@ func (o *SubAgentOrchestrator) runOverview(ctx context.Context) (string, *xError
 		slog.Int64("version_id", o.versionID))
 	start := time.Now()
 
-	result, runErr := ag.Run(ctx, BuildOverviewUserPrompt(o.repoPath))
+	userInput := BuildOverviewUserPrompt(o.repoPath)
+	result, runErr := ag.Run(ctx, userInput)
+	o.saveSessionArtifact(ctx, bConst.AgentRoleRepoWikiCoordinator, bConst.AgentRoleRepoWikiCoordinator, userInput, result, runErr, start, 0)
 	if runErr != nil {
 		if ctx.Err() != nil {
 			return "", xError.NewError(ctx, xError.ServerInternalError,
@@ -306,7 +308,9 @@ func (o *SubAgentOrchestrator) runSingleExplore(ctx context.Context, scope strin
 		return exploreOutcome{scope: scope, err: fmt.Errorf("构建 Explore Agent 失败: %w", err)}
 	}
 
-	result, runErr := ag.Run(exploreCtx, BuildExploreUserPrompt(scope))
+	userInput := BuildExploreUserPrompt(scope)
+	result, runErr := ag.Run(exploreCtx, userInput)
+	o.saveSessionArtifact(exploreCtx, bConst.AgentRoleRepoWikiExplore, sessionID, userInput, result, runErr, start, 0)
 	if runErr != nil {
 		if exploreCtx.Err() != nil {
 			return exploreOutcome{scope: scope, err: fmt.Errorf("scope %s 探索超时或被取消: %w", scope, exploreCtx.Err())}
@@ -365,6 +369,7 @@ func (o *SubAgentOrchestrator) runArchitect(ctx context.Context, overviewSummary
 		slog.Int64("version_id", o.versionID),
 		slog.Int("explore_count", len(exploreList)))
 
+	start := time.Now()
 	userInput := BuildArchitectUserPrompt(overviewSummary, exploreList)
 	var outline []WikiEntry
 
@@ -380,6 +385,7 @@ func (o *SubAgentOrchestrator) runArchitect(ctx context.Context, overviewSummary
 		}
 
 		result, runErr := ag.Run(ctx, currentInput)
+		o.saveSessionArtifact(ctx, bConst.AgentRoleRepoWikiArchitect, bConst.AgentRoleRepoWikiArchitect, currentInput, result, runErr, start, attempt+1)
 		if runErr != nil {
 			if ctx.Err() != nil {
 				return nil, xError.NewError(ctx, xError.ServerInternalError,
@@ -554,7 +560,9 @@ func (o *SubAgentOrchestrator) runSingleWriter(
 		return
 	}
 
-	result, runErr := ag.Run(ctx, BuildWriterUserPrompt(entries, relevantExplores))
+	userInput := BuildWriterUserPrompt(entries, relevantExplores)
+	result, runErr := ag.Run(ctx, userInput)
+	o.saveSessionArtifact(ctx, bConst.AgentRoleRepoWikiWrite, sessionID, userInput, result, runErr, start, 0)
 	if runErr != nil {
 		if ctx.Err() != nil {
 			o.log.Warn(ctx, "Writer 超时或被取消",
@@ -601,40 +609,97 @@ func (o *SubAgentOrchestrator) checkWriterOutputs(ctx context.Context, outline [
 
 // collectRelevantExplores 收集 entries 引用的 Explore 产出内容
 //
-// 匹配策略：先精确匹配 ExploreRefs 与 scope；未命中则按子串包含关系匹配。
-// 单个 ref 无匹配时跳过（不影响整体）。
+// 匹配策略（多级 fallback，确保 Writer 不至于空手）:
+//  1. 精确匹配：ref 与 scope 完全相等
+//  2. 子串匹配：scope 包含 ref 或 ref 包含 scope
+//  3. 去前缀匹配：剥离 ref 中的 "explore-" 前缀后做子串匹配（兼容 LLM 擅自加前缀的常见错误）
+//  4. 最终兜底：若 entry 的所有 ref 都未命中，返回所有 Explore 产出（保证 Writer 有素材可用）
+//
+// 每个 entry 独立计算匹配；result 的 key 为 scope 原文。
 func (o *SubAgentOrchestrator) collectRelevantExplores(entries []WikiEntry, exploreFiles map[string]string) map[string]string {
 	result := make(map[string]string)
+	// 预读所有 Explore 内容，避免重复 IO
+	allContent := make(map[string]string, len(exploreFiles))
+	for scope, file := range exploreFiles {
+		if data, err := os.ReadFile(file); err == nil {
+			allContent[scope] = string(data)
+		}
+	}
+
 	for _, entry := range entries {
-		for _, ref := range entry.ExploreRefs {
-			ref = strings.TrimSpace(ref)
-			if ref == "" {
-				continue
+		matchedScopes := o.matchEntryExplores(entry.ExploreRefs, exploreFiles, allContent)
+		if len(matchedScopes) == 0 && len(allContent) > 0 {
+			// 最终兜底：所有 ref 未命中时给 Writer 全量素材
+			o.log.Warn(nil, "Entry 的所有 ExploreRefs 均未命中，回退为全量 Explore 内容",
+				slog.String("entry_title", entry.Title),
+				slog.Any("explore_refs", entry.ExploreRefs))
+			for scope, content := range allContent {
+				result[scope] = content
 			}
-			// 精确匹配
-			if file, ok := exploreFiles[ref]; ok {
-				if content, rErr := os.ReadFile(file); rErr == nil {
-					result[ref] = string(content)
-				}
-				continue
-			}
-			// 子串匹配
-			matched := false
-			for scope, file := range exploreFiles {
-				if strings.Contains(scope, ref) || strings.Contains(ref, scope) {
-					if content, rErr := os.ReadFile(file); rErr == nil {
-						result[scope] = string(content)
-						matched = true
-						break
-					}
-				}
-			}
-			if !matched {
-				o.log.Debug(nil, "Writer 引用的 Explore scope 未找到匹配",
-					slog.String("ref", ref))
+			continue
+		}
+		for _, scope := range matchedScopes {
+			if content, ok := allContent[scope]; ok {
+				result[scope] = content
 			}
 		}
 	}
+	return result
+}
+
+// matchEntryExplores 对单个 entry 的 ExploreRefs 执行多级匹配，返回命中的 scope 列表
+func (o *SubAgentOrchestrator) matchEntryExplores(refs []string, exploreFiles map[string]string, allContent map[string]string) []string {
+	matched := make(map[string]struct{})
+	for _, rawRef := range refs {
+		ref := strings.TrimSpace(rawRef)
+		if ref == "" {
+			continue
+		}
+
+		// 级别 1：精确匹配
+		if _, ok := exploreFiles[ref]; ok {
+			matched[ref] = struct{}{}
+			continue
+		}
+
+		// 级别 2：子串匹配
+		found := false
+		for scope := range exploreFiles {
+			if strings.Contains(scope, ref) || strings.Contains(ref, scope) {
+				matched[scope] = struct{}{}
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+
+		// 级别 3：去 "explore-" 前缀后子串匹配（兼容 LLM 擅自加前缀）
+		stripped := strings.TrimPrefix(ref, "explore-")
+		if stripped != ref {
+			for scope := range exploreFiles {
+				if strings.Contains(scope, stripped) || strings.Contains(stripped, scope) {
+					matched[scope] = struct{}{}
+					found = true
+					break
+				}
+			}
+		}
+		if found {
+			continue
+		}
+
+		// 级别 4：单个 ref 全部未命中（不影响其他 ref 的匹配结果）
+		o.log.Debug(nil, "Writer 引用的 Explore scope 未找到匹配",
+			slog.String("ref", ref))
+	}
+
+	result := make([]string, 0, len(matched))
+	for scope := range matched {
+		result = append(result, scope)
+	}
+	sort.Strings(result)
 	return result
 }
 
@@ -672,7 +737,10 @@ func (o *SubAgentOrchestrator) runValidator(ctx context.Context, outline []WikiE
 		slog.Int64("version_id", o.versionID),
 		slog.Int("entry_count", len(outline)))
 
-	result, runErr := ag.Run(ctx, BuildValidatorUserPrompt(wikiDir, architectRawJSON))
+	start := time.Now()
+	userInput := BuildValidatorUserPrompt(wikiDir, architectRawJSON)
+	result, runErr := ag.Run(ctx, userInput)
+	o.saveSessionArtifact(ctx, bConst.AgentRoleRepoWikiValidator, bConst.AgentRoleRepoWikiValidator, userInput, result, runErr, start, 0)
 	if runErr != nil {
 		if ctx.Err() != nil {
 			return false, nil, xError.NewError(ctx, xError.ServerInternalError,
@@ -977,4 +1045,114 @@ func findMissingEntries(errors []ValidationError, outline []WikiEntry) []WikiEnt
 // buildArchitectRetryHint 构建 Architect 重试时追加到 user prompt 末尾的格式提醒
 func buildArchitectRetryHint(attempt int) string {
 	return fmt.Sprintf("\n\n---\n⚠️ 重要提醒（第 %d 次重试）：你上一次的输出无法解析为有效 JSON。\n请确保你**仅**输出纯 JSON 数组，不要包含 markdown 代码块（```）、解释性文字或任何其他内容。\nJSON 必须以 '[' 开头、']' 结尾，每个元素是包含 title/path/description/explore_refs/complexity 字段的对象。", attempt)
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Session 留痕（审计 trail）
+// ──────────────────────────────────────────────────────────────────────
+
+// sessionArtifactMeta session 目录下 meta.json 的结构
+type sessionArtifactMeta struct {
+	Role         string            `json:"role"`
+	Model        string            `json:"model"`
+	SessionID    string            `json:"session_id"`
+	StartedAt    string            `json:"started_at"`
+	FinishedAt   string            `json:"finished_at"`
+	DurationMS   int64             `json:"duration_ms"`
+	Iterations   int               `json:"iterations,omitempty"`
+	ExitReason   string            `json:"exit_reason,omitempty"`
+	InputTokens  int64             `json:"input_tokens"`
+	OutputTokens int64             `json:"output_tokens"`
+	TotalTokens  int64             `json:"total_tokens"`
+	ToolCalls    []toolCallSummary `json:"tool_calls,omitempty"`
+	Attempt      int               `json:"attempt,omitempty"`
+	Error        string            `json:"error,omitempty"`
+}
+
+type toolCallSummary struct {
+	Name      string `json:"name"`
+	IsError   bool   `json:"is_error,omitempty"`
+	InputLen  int    `json:"input_len"`
+	ResultLen int    `json:"result_len"`
+}
+
+// saveSessionArtifact 在 Agent 执行后持久化审计 trail 到 session 目录
+//
+// 写入文件:
+//   - input.md       — user prompt 原文
+//   - output.md      — Agent 最终输出（result.Content）
+//   - meta.json      — 摘要元数据（角色/模型/耗时/token/工具调用/错误）
+//   - messages.json  — 完整消息历史（仅当 result 非 nil 且有 Messages 时）
+//
+// 单次写入失败不影响主流程（仅 log.Warn）。
+// attempt 用于 Architect 重试时区分每次尝试（其他阶段传 0）。
+func (o *SubAgentOrchestrator) saveSessionArtifact(
+	_ context.Context,
+	role, sessionID, userInput string,
+	result *agent.AgentResult,
+	runErr error,
+	start time.Time,
+	attempt int,
+) {
+	sessionDir := filepath.Join(o.storage.GetSessionPath(o.versionID), sessionID)
+
+	if mErr := o.storage.WriteMarkdown(filepath.Join(sessionDir, "input.md"), userInput); mErr != nil {
+		o.log.Warn(nil, "写入 session input.md 失败",
+			slog.String("session", sessionID),
+			slog.String("err", mErr.Error()))
+	}
+
+	meta := sessionArtifactMeta{
+		Role:      role,
+		SessionID: sessionID,
+		StartedAt: start.Format(time.RFC3339),
+		FinishedAt: time.Now().Format(time.RFC3339),
+		DurationMS: time.Since(start).Milliseconds(),
+		Attempt:   attempt,
+	}
+	if mc, ok := o.roleModels[role]; ok && mc != nil {
+		meta.Model = mc.ModelName
+	}
+
+	if runErr != nil {
+		meta.Error = runErr.Error()
+	}
+
+	if result != nil {
+		if mErr := o.storage.WriteMarkdown(filepath.Join(sessionDir, "output.md"), result.Content); mErr != nil {
+			o.log.Warn(nil, "写入 session output.md 失败",
+				slog.String("session", sessionID),
+				slog.String("err", mErr.Error()))
+		}
+
+		meta.Iterations = result.Iterations
+		meta.ExitReason = string(result.ExitReason)
+		meta.InputTokens = result.Usage.InputTokens
+		meta.OutputTokens = result.Usage.OutputTokens
+		meta.TotalTokens = result.Usage.InputTokens + result.Usage.OutputTokens
+
+		meta.ToolCalls = make([]toolCallSummary, 0, len(result.ToolCalls))
+		for _, tc := range result.ToolCalls {
+			meta.ToolCalls = append(meta.ToolCalls, toolCallSummary{
+				Name:      tc.Name,
+				IsError:   tc.IsError,
+				InputLen:  len(tc.Input),
+				ResultLen: len(tc.Result),
+			})
+		}
+
+		if len(result.Messages) > 0 {
+			if mErr := o.storage.WriteJSON(filepath.Join(sessionDir, "messages.json"), result.Messages); mErr != nil {
+				o.log.Warn(nil, "写入 session messages.json 失败",
+					slog.String("session", sessionID),
+					slog.String("err", mErr.Error()))
+			}
+		}
+	}
+
+	if mErr := o.storage.WriteJSON(filepath.Join(sessionDir, "meta.json"), meta); mErr != nil {
+		o.log.Warn(nil, "写入 session meta.json 失败",
+			slog.String("session", sessionID),
+			slog.String("err", mErr.Error()))
+	}
 }

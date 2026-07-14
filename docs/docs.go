@@ -5098,7 +5098,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "API Key ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "is_active": {
                     "description": "是否启用",
@@ -5161,7 +5161,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "API Key ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "is_active": {
                     "description": "是否启用",
@@ -5198,7 +5198,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "API Key ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "is_active": {
                     "description": "是否启用",
@@ -5239,7 +5239,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "API Key ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "is_active": {
                     "description": "是否启用",
@@ -5528,7 +5528,7 @@ const docTemplate = `{
             "properties": {
                 "model_id": {
                     "description": "关联模型ID(nil表示未分配)",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "model_name": {
                     "description": "模型显示名称(nil表示未分配)",
@@ -5586,7 +5586,7 @@ const docTemplate = `{
                 },
                 "provider_id": {
                     "description": "关联Provider ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "temperature": {
                     "description": "生成温度",
@@ -5645,7 +5645,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "模型 ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "is_active": {
                     "description": "是否启用",
@@ -5661,7 +5661,7 @@ const docTemplate = `{
                 },
                 "provider_id": {
                     "description": "关联Provider ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "temperature": {
                     "description": "生成温度",
@@ -5694,7 +5694,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "模型 ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "is_active": {
                     "description": "是否启用",
@@ -5710,7 +5710,7 @@ const docTemplate = `{
                 },
                 "provider_id": {
                     "description": "关联Provider ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "temperature": {
                     "description": "生成温度",
@@ -5739,7 +5739,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "Provider ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "is_active": {
                     "description": "是否启用",
@@ -5780,7 +5780,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "Provider ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "is_active": {
                     "description": "是否启用",
@@ -5804,7 +5804,7 @@ const docTemplate = `{
             "properties": {
                 "model_id": {
                     "description": "模型ID",
-                    "type": "string"
+                    "type": "integer"
                 }
             }
         },
@@ -5889,7 +5889,7 @@ const docTemplate = `{
                 },
                 "from_project_id": {
                     "description": "来源项目ID (可选)",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "priority": {
                     "description": "优先级 (high/medium/low)",
@@ -5901,7 +5901,7 @@ const docTemplate = `{
                 },
                 "to_project_id": {
                     "description": "目标项目ID",
-                    "type": "string"
+                    "type": "integer"
                 }
             }
         },
@@ -5942,11 +5942,11 @@ const docTemplate = `{
                 },
                 "from_project_id": {
                     "description": "来源项目ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "id": {
                     "description": "Pin ID (雪花ID字符串)",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "priority": {
                     "description": "优先级",
@@ -5962,7 +5962,7 @@ const docTemplate = `{
                 },
                 "to_project_id": {
                     "description": "目标项目ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "updated_at": {
                     "description": "更新时间",
@@ -6043,7 +6043,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "项目ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "match_path": {
                     "description": "项目路径匹配列表",
@@ -6104,7 +6104,7 @@ const docTemplate = `{
                 },
                 "project_id": {
                     "description": "关联项目ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "title": {
                     "description": "会话标题",
@@ -6167,14 +6167,14 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "问题ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "options": {
                     "description": "选项配置"
                 },
                 "session_id": {
                     "description": "所属Session",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "status": {
                     "description": "状态",
@@ -6223,7 +6223,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "问题ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "media": {
                     "description": "多媒体数据"
@@ -6277,7 +6277,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "Session ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "online_devices": {
                     "description": "在线设备数",
@@ -6285,7 +6285,7 @@ const docTemplate = `{
                 },
                 "project_id": {
                     "description": "关联项目ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "project_name": {
                     "description": "关联项目名称",
@@ -6353,7 +6353,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "Session ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "online_devices": {
                     "description": "在线设备数",
@@ -6361,7 +6361,7 @@ const docTemplate = `{
                 },
                 "project_id": {
                     "description": "关联项目ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "project_name": {
                     "description": "关联项目名称",
@@ -6402,11 +6402,11 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "补充内容ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "target_id": {
                     "description": "关联ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "target_type": {
                     "description": "question/option",
@@ -6534,7 +6534,7 @@ const docTemplate = `{
                 },
                 "ssh_key_id": {
                     "description": "关联SSH密钥ID（字符串形式的雪花ID，nil 表示未关联）",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "status": {
                     "description": "当前分析状态",
@@ -7036,7 +7036,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "密钥ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "key_type": {
                     "description": "密钥类型(ed25519|rsa)",
@@ -7097,7 +7097,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "密钥ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "key_type": {
                     "description": "密钥类型(ed25519|rsa)",
@@ -7151,7 +7151,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "凭证 ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "last_used_at": {
                     "description": "最后使用时间戳（nil 表示未使用）",
