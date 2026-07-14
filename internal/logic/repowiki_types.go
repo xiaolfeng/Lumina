@@ -28,8 +28,9 @@ type ExploreOutput struct {
 // 由 RepoWikiLogic 调用 LlmResolver.ResolveAgentModel 后构建，
 // 传入 Orchestrator 供各子 Agent 构建时使用。
 type ModelRunConfig struct {
-	ModelName     string  // 模型标识（如 gpt-4o）
-	MaxTokens     int64   // 单次响应最大输出 Token 数
-	ContextWindow int64   // 模型上下文窗口大小
-	Temperature   float64 // 生成温度
+	ModelName      string  // 模型标识（如 gpt-4o）
+	MaxTokens      int64   // 单次响应最大输出 Token 数
+	ContextWindow  int64   // 模型上下文窗口大小
+	Temperature    float64 // 生成温度
+	ThinkingEffort string  // 思考强度："none"|"low"|"medium"|"high"（空字符串=不启用思考模式）
 }

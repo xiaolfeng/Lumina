@@ -40,6 +40,11 @@ func NewLLMProviderFromEntity(protocol, baseURL, decryptedAPIKey string) (bamboo
 		opts := []completions.Option{completions.WithAPIKey(decryptedAPIKey)}
 		if baseURL != "" {
 			opts = append(opts, completions.WithBaseURL(baseURL))
+			// 第三方 OpenAI 兼容端点（GLM/Kimi/DeepSeek 等）需要 Legacy 兼容模式：
+			//   - 使用 max_tokens 而非 max_completion_tokens
+			//   - 允许 thinking 参数透传（GLM-5.2 思考模式需要 thinking:{type:"enabled"}）
+			//   - 省略 stream_options（部分端点不支持）
+			opts = append(opts, completions.WithLegacyCompat())
 		}
 		p = completions.NewCompletionsProviderWithOptions(opts...)
 	}

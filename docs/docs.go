@@ -5591,6 +5591,10 @@ const docTemplate = `{
                 "temperature": {
                     "description": "生成温度",
                     "type": "number"
+                },
+                "thinking_effort": {
+                    "description": "思考强度(none/low/medium/high,空=不启用)",
+                    "type": "string"
                 }
             }
         },
@@ -5667,6 +5671,10 @@ const docTemplate = `{
                     "description": "生成温度",
                     "type": "number"
                 },
+                "thinking_effort": {
+                    "description": "思考强度",
+                    "type": "string"
+                },
                 "updated_at": {
                     "description": "更新时间",
                     "type": "string"
@@ -5715,6 +5723,10 @@ const docTemplate = `{
                 "temperature": {
                     "description": "生成温度",
                     "type": "number"
+                },
+                "thinking_effort": {
+                    "description": "思考强度",
+                    "type": "string"
                 }
             }
         },
@@ -5838,6 +5850,10 @@ const docTemplate = `{
                 "temperature": {
                     "description": "生成温度",
                     "type": "number"
+                },
+                "thinking_effort": {
+                    "description": "思考强度(none/low/medium/high,空=不启用)",
+                    "type": "string"
                 }
             }
         },

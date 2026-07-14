@@ -252,6 +252,7 @@ func (p *AnalysisPipeline) Execute(
 	version.WikiPath = p.logic.svc.storage.GetWikiPath(versionID)
 	version.ExploreOutputsPath = p.logic.svc.storage.GetExploreOutputsPath(versionID)
 	version.ArchitecturePath = p.logic.svc.storage.GetArchitecturePath(versionID)
+	version.ManifestPath = p.logic.svc.storage.GetManifestPath(versionID)
 
 	// 自动指向新版本（SelectedVersionID）
 	config.SelectedVersionID = &version.ID

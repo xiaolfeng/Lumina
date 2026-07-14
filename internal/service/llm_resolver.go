@@ -23,6 +23,7 @@ type ResolvedLlmConfig struct {
 	MaxTokens       int64   // 单次响应最大输出 Token 数
 	ContextWindow   int64   // 模型上下文窗口大小
 	Temperature     float64 // 生成温度
+	ThinkingEffort  string  // 思考强度（"none"|"low"|"medium"|"high"，空=不启用）
 }
 
 // LlmResolver LLM 配置解析器（持有 Repository 引用，避免循环导入）
@@ -117,6 +118,7 @@ func (r *LlmResolver) ResolveAgentModel(ctx context.Context, role string, keyPre
 		MaxTokens:       model.MaxTokens,
 		ContextWindow:   model.ContextWindow,
 		Temperature:     model.Temperature,
+		ThinkingEffort:  model.ThinkingEffort,
 	}, nil
 }
 

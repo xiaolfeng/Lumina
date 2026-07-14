@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/bamboo-services/bamboo-agent/agent"
@@ -81,12 +82,14 @@ const (
 //   - versionID:   当前 Wiki 版本 ID（定位 versions/{vid}/ 下各子目录）
 //   - repoPath:    克隆的仓库根目录（Agent 工具的作用域根）
 type SubAgentOrchestrator struct {
-	roleClients map[string]bamboo.BambooClient // 5 角色的 LLM client
-	roleModels  map[string]*ModelRunConfig     // 5 角色的模型配置
-	storage     *service.WikiStorageService    // Wiki 存储服务
-	log         *xLog.LogNamedLogger           // 命名日志器
-	versionID   int64                          // Wiki 版本 ID
-	repoPath    string                         // 仓库根目录绝对路径
+	roleClients  map[string]bamboo.BambooClient // 5 角色的 LLM client
+	roleModels   map[string]*ModelRunConfig     // 5 角色的模型配置
+	storage      *service.WikiStorageService    // Wiki 存储服务
+	log          *xLog.LogNamedLogger           // 命名日志器
+	versionID    int64                          // Wiki 版本 ID
+	repoPath     string                         // 仓库根目录绝对路径
+	projectName  string                         // 项目名称（写入 manifest 的 project_name 字段）
+	language     string                         // Wiki 语言（写入 manifest 的 language 字段）
 }
 
 // NewSubAgentOrchestrator 创建 SubAgentOrchestrator 实例
@@ -105,6 +108,8 @@ func NewSubAgentOrchestrator(
 	log *xLog.LogNamedLogger,
 	versionID int64,
 	repoPath string,
+	projectName string,
+	language string,
 ) *SubAgentOrchestrator {
 	return &SubAgentOrchestrator{
 		roleClients: roleClients,
@@ -113,6 +118,8 @@ func NewSubAgentOrchestrator(
 		log:         log,
 		versionID:   versionID,
 		repoPath:    repoPath,
+		projectName: projectName,
+		language:    language,
 	}
 }
 
@@ -124,18 +131,20 @@ func NewSubAgentOrchestrator(
 //
 // 适用于单实例阶段（Overview / Architect / Validator）。
 // 并发阶段（Explore / Writer）请使用 buildAgentSession 传入唯一 sessionID。
-func (o *SubAgentOrchestrator) buildRoleAgent(role string, systemPrompt string, tools []tool.Tool) (agent.Agent, error) {
-	return o.buildAgentSession(role, role, systemPrompt, tools)
+// buildRoleAgent 按角色构建 Agent，使用 role 作为 sessionID。
+//
+// System prompt 从 service/prompts/{role}.md 内嵌资源加载。
+func (o *SubAgentOrchestrator) buildRoleAgent(role string, tools []tool.Tool) (agent.Agent, error) {
+	return o.buildAgentSession(role, role, tools)
 }
 
 // buildAgentSession 按角色构建 Agent，使用指定 sessionID 作为 session 子目录
 //
 // 参数说明:
-//   - role:       角色常量（用于查 roleClients/roleModels）
+//   - role:       角色常量（用于查 roleClients/roleModels + 加载 prompts/{role}.md）
 //   - sessionID:  session 子目录标识（并发阶段需唯一，如 "explore-internal"、"writer-batch0-0"）
-//   - systemPrompt: 系统提示词
 //   - tools:      Agent 可用工具集
-func (o *SubAgentOrchestrator) buildAgentSession(role, sessionID, systemPrompt string, tools []tool.Tool) (agent.Agent, error) {
+func (o *SubAgentOrchestrator) buildAgentSession(role, sessionID string, tools []tool.Tool) (agent.Agent, error) {
 	client, ok := o.roleClients[role]
 	if !ok || client == nil {
 		return nil, fmt.Errorf("未配置角色 %s 的 LLM client", role)
@@ -144,10 +153,14 @@ func (o *SubAgentOrchestrator) buildAgentSession(role, sessionID, systemPrompt s
 	if !ok || mc == nil {
 		return nil, fmt.Errorf("未配置角色 %s 的模型运行配置", role)
 	}
+	systemPrompt := service.LoadSystemPrompt(role)
+	if systemPrompt == "" {
+		return nil, fmt.Errorf("角色 %s 的 system prompt 加载失败", role)
+	}
 	sessionDir := filepath.Join(o.storage.GetSessionPath(o.versionID), sessionID)
 	return service.NewRepoWikiSubAgent(
 		client, role,
-		mc.ModelName, mc.MaxTokens, mc.ContextWindow, mc.Temperature,
+		mc.ModelName, mc.MaxTokens, mc.ContextWindow, mc.Temperature, mc.ThinkingEffort,
 		systemPrompt, tools, sessionDir,
 	)
 }
@@ -169,7 +182,7 @@ func (o *SubAgentOrchestrator) runOverview(ctx context.Context) (string, *xError
 		service.NewFileSearchTool(o.repoPath),
 		service.NewListDirTool(o.repoPath),
 	}
-	ag, err := o.buildRoleAgent(bConst.AgentRoleRepoWikiCoordinator, CoordinatorSystemPrompt, tools)
+	ag, err := o.buildRoleAgent(bConst.AgentRoleRepoWikiCoordinator, tools)
 	if err != nil {
 		return "", xError.NewError(ctx, xError.ServerInternalError,
 			xError.ErrMessage("构建 Coordinator Agent 失败: "+err.Error()), false, err)
@@ -303,7 +316,7 @@ func (o *SubAgentOrchestrator) runSingleExplore(ctx context.Context, scope strin
 		service.NewFileSearchTool(o.repoPath),
 	}
 	sessionID := "explore-" + sanitizeScopeForFilename(scope)
-	ag, err := o.buildAgentSession(bConst.AgentRoleRepoWikiExplore, sessionID, ExploreSystemPrompt, tools)
+	ag, err := o.buildAgentSession(bConst.AgentRoleRepoWikiExplore, sessionID, tools)
 	if err != nil {
 		return exploreOutcome{scope: scope, err: fmt.Errorf("构建 Explore Agent 失败: %w", err)}
 	}
@@ -359,7 +372,7 @@ func (o *SubAgentOrchestrator) runArchitect(ctx context.Context, overviewSummary
 	tools := []tool.Tool{
 		service.NewFileReadTool(o.repoPath),
 	}
-	ag, err := o.buildRoleAgent(bConst.AgentRoleRepoWikiArchitect, ArchitectSystemPrompt, tools)
+	ag, err := o.buildRoleAgent(bConst.AgentRoleRepoWikiArchitect, tools)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.ServerInternalError,
 			xError.ErrMessage("构建 Architect Agent 失败: "+err.Error()), false, err)
@@ -474,27 +487,40 @@ func (o *SubAgentOrchestrator) loadExploreOutputs(exploreFiles map[string]string
 // 分批以 RepoWikiWriterMaxConcurrent 并发，每批独立超时（RepoWikiWriterTimeoutMin）。
 // 等待一批完成再发下一批。Writer 通过 save_wiki_page 工具写入 Wiki 目录。
 //
+// validationErrors 非 nil 时进入重试模式：使用 BuildWriterRetryUserPrompt 替代普通 prompt，
+// 让 Writer 明确知道哪些页面需要修复。
+//
 // 缺失/空文件记录为警告（不硬性中断），由 Validator 阶段触发重试。
-func (o *SubAgentOrchestrator) runWritersConcurrent(ctx context.Context, outline []WikiEntry, exploreOutputs map[string]string) *xError.Error {
+func (o *SubAgentOrchestrator) runWritersConcurrent(ctx context.Context, outline []WikiEntry, exploreOutputs map[string]string, validationErrors []ValidationError) *xError.Error {
 	if len(outline) == 0 {
 		return xError.NewError(ctx, xError.ServerInternalError,
 			xError.ErrMessage("Writer 阶段 outline 为空，无法撰写"), false, nil)
 	}
 
-	// 按 Complexity 拆分 Writer 分配组
+	isRetry := validationErrors != nil
 	groups := splitWriterGroups(outline)
 	wikiDir := o.storage.GetWikiPath(o.versionID)
+
+	// 预创建 Wiki 目录，确保 Validator 即使在 Writer 全部失败时也能正常扫描
+	if err := o.storage.EnsureDir(wikiDir); err != nil {
+		return xError.NewError(ctx, xError.ServerInternalError,
+			xError.ErrMessage("创建 Wiki 目录失败: "+err.Error()), false, err)
+	}
 
 	o.log.Info(ctx, "文档撰写阶段开始",
 		slog.Int64("version_id", o.versionID),
 		slog.Int("entry_count", len(outline)),
-		slog.Int("writer_group_count", len(groups)))
+		slog.Int("writer_group_count", len(groups)),
+		slog.Bool("is_retry", isRetry))
 
 	// 分批并发，每批最多 RepoWikiWriterMaxConcurrent 个 Writer
 	maxConcurrent := bConst.RepoWikiWriterMaxConcurrent
 	if maxConcurrent <= 0 {
 		maxConcurrent = 1
 	}
+
+	buildFailures := int32(0) // Agent 构建失败 = 系统性错误，非个别 Writer 问题
+	totalWorkers := len(groups)
 
 	for batchStart := 0; batchStart < len(groups); batchStart += maxConcurrent {
 		batchEnd := batchStart + maxConcurrent
@@ -512,36 +538,49 @@ func (o *SubAgentOrchestrator) runWritersConcurrent(ctx context.Context, outline
 			wg.Add(1)
 			go func(workerIdx int, entries []WikiEntry) {
 				defer wg.Done()
-				o.runSingleWriter(batchCtx, batchIdx, workerIdx, entries, exploreOutputs, wikiDir)
+				if buildErr := o.runSingleWriter(batchCtx, batchIdx, workerIdx, entries, exploreOutputs, wikiDir, validationErrors); buildErr != nil {
+					atomic.AddInt32(&buildFailures, 1)
+				}
 			}(j, group)
 		}
 		wg.Wait()
 		cancel()
 	}
 
-	// 校验所有 outline 条目对应文件是否存在且非空（警告级别，由 Validator 驱动重试）
-	o.checkWriterOutputs(ctx, outline, wikiDir)
-
 	o.log.Info(ctx, "文档撰写阶段完成",
-		slog.Int64("version_id", o.versionID))
+		slog.Int64("version_id", o.versionID),
+		slog.Int("build_failures", int(buildFailures)),
+		slog.Int("total_workers", totalWorkers))
+
+	// 全部构建失败 = 系统性配置错误（prompt 文件缺失等），直接报错而非静默继续
+	if int(buildFailures) == totalWorkers && totalWorkers > 0 {
+		return xError.NewError(ctx, xError.ServerInternalError,
+			xError.ErrMessage(fmt.Sprintf("全部 %d 个 Writer Agent 构建失败，请检查 LLM 配置和 prompt 文件", totalWorkers)), false, nil)
+	}
+
 	return nil
 }
 
 // runSingleWriter 执行单个 Writer Agent 调用
 //
 // 参数说明:
-//   - batchIdx:   批次索引（用于 session 目录命名）
-//   - workerIdx:  批内 worker 索引
-//   - entries:    本次 Writer 负责的 Wiki 条目（1-2 个）
-//   - exploreOutputs: 全局 Explore 产出 map（scope → filePath）
-//   - wikiDir:    Wiki 输出目录（save_wiki_page 工具的作用域）
+//   - batchIdx:         批次索引（用于 session 目录命名）
+//   - workerIdx:        批内 worker 索引
+//   - entries:          本次 Writer 负责的 Wiki 条目（1-2 个）
+//   - exploreOutputs:   全局 Explore 产出 map（scope → filePath）
+//   - wikiDir:          Wiki 输出目录（save_wiki_page 工具的作用域）
+//   - validationErrors: 非 nil 时使用重试 prompt（含校验错误信息），nil 时使用普通 prompt
+//
+// 返回值:
+//   - error: Agent 构建失败时返回非 nil（执行阶段失败仅 log，不返回错误）
 func (o *SubAgentOrchestrator) runSingleWriter(
 	ctx context.Context,
 	batchIdx, workerIdx int,
 	entries []WikiEntry,
 	exploreOutputs map[string]string,
 	wikiDir string,
-) {
+	validationErrors []ValidationError,
+) error {
 	start := time.Now()
 
 	// 汇总本组条目引用的 Explore 产出内容
@@ -552,15 +591,23 @@ func (o *SubAgentOrchestrator) runSingleWriter(
 		service.NewSaveWikiPageTool(wikiDir),
 	}
 	sessionID := fmt.Sprintf("writer-batch%d-%d", batchIdx, workerIdx)
-	ag, err := o.buildAgentSession(bConst.AgentRoleRepoWikiWrite, sessionID, WriterSystemPrompt, tools)
+	if validationErrors != nil {
+		sessionID = fmt.Sprintf("writer-retry-batch%d-%d", batchIdx, workerIdx)
+	}
+	ag, err := o.buildAgentSession(bConst.AgentRoleRepoWikiWrite, sessionID, tools)
 	if err != nil {
 		o.log.Error(ctx, "构建 Writer Agent 失败",
 			slog.String("session", sessionID),
 			slog.String("err", err.Error()))
-		return
+		return err
 	}
 
-	userInput := BuildWriterUserPrompt(entries, relevantExplores)
+	var userInput string
+	if validationErrors != nil {
+		userInput = BuildWriterRetryUserPrompt(entries, relevantExplores, validationErrors)
+	} else {
+		userInput = BuildWriterUserPrompt(entries, relevantExplores)
+	}
 	result, runErr := ag.Run(ctx, userInput)
 	o.saveSessionArtifact(ctx, bConst.AgentRoleRepoWikiWrite, sessionID, userInput, result, runErr, start, 0)
 	if runErr != nil {
@@ -568,12 +615,12 @@ func (o *SubAgentOrchestrator) runSingleWriter(
 			o.log.Warn(ctx, "Writer 超时或被取消",
 				slog.String("session", sessionID),
 				slog.String("err", ctx.Err().Error()))
-			return
+			return nil
 		}
 		o.log.Error(ctx, "Writer Agent 执行失败",
 			slog.String("session", sessionID),
 			slog.String("err", runErr.Error()))
-		return
+		return nil
 	}
 
 	o.log.Debug(ctx, "Writer 完成",
@@ -581,30 +628,78 @@ func (o *SubAgentOrchestrator) runSingleWriter(
 		slog.Int("entry_count", len(entries)),
 		slog.Int64("duration_ms", time.Since(start).Milliseconds()),
 		slog.Int64("tokens", result.Usage.InputTokens+result.Usage.OutputTokens))
+	return nil
 }
 
-// checkWriterOutputs 检查 outline 条目对应的 Wiki 文件是否存在且非空
+// verifyWriterOutputs 程序化校验 outline 条目对应的 Wiki 文件是否存在且非空
 //
-// 缺失或空文件记录为警告（不中断流程），由 Validator 阶段捕获并触发重试。
-func (o *SubAgentOrchestrator) checkWriterOutputs(ctx context.Context, outline []WikiEntry, wikiDir string) {
+// 检查每个 entry.Path 对应的文件（filepath.Join(wikiDir, entry.Path)）是否存在且
+// 大小 >= writerFileMinSize（100 字节）。返回缺失/空文件的 WikiEntry 列表。
+func (o *SubAgentOrchestrator) verifyWriterOutputs(outline []WikiEntry, wikiDir string) []WikiEntry {
+	var missing []WikiEntry
 	for _, entry := range outline {
 		if entry.Path == "" {
 			continue
 		}
 		fullPath := filepath.Join(wikiDir, entry.Path)
 		info, err := os.Stat(fullPath)
-		if err != nil {
-			o.log.Warn(ctx, "Wiki 文件缺失，将由 Validator 捕获",
-				slog.String("path", entry.Path),
-				slog.String("title", entry.Title))
-			continue
-		}
-		if info.Size() < writerFileMinSize {
-			o.log.Warn(ctx, "Wiki 文件可能为空页面，将由 Validator 捕获",
-				slog.String("path", entry.Path),
-				slog.Int64("size", info.Size()))
+		if err != nil || info.Size() < writerFileMinSize {
+			missing = append(missing, entry)
 		}
 	}
+	return missing
+}
+
+// manifestNavItem manifest 导航项（本地结构体，与 api/repowiki.WikiNavItem JSON 对齐）
+type manifestNavItem struct {
+	Title    string             `json:"title"`
+	Path     string             `json:"path"`
+	Children []manifestNavItem  `json:"children,omitempty"`
+}
+
+// manifestData Wiki 元数据清单（本地结构体，与 api/repowiki.WikiManifestResponse JSON 对齐）
+type manifestData struct {
+	Navigation  []manifestNavItem `json:"navigation"`
+	Home        string            `json:"home"`
+	Language    string            `json:"language"`
+	ProjectName string            `json:"project_name"`
+}
+
+// generateManifest 生成 Wiki 导航清单（meta/repowiki-metadata.json）
+//
+// 将 outline 转换为扁平导航项列表，写入 manifest 路径。
+// home 取 outline[0].Path（非空时），否则回退 "index.md"。
+func (o *SubAgentOrchestrator) generateManifest(outline []WikiEntry) *xError.Error {
+	nav := make([]manifestNavItem, 0, len(outline))
+	for _, entry := range outline {
+		nav = append(nav, manifestNavItem{
+			Title:    entry.Title,
+			Path:     entry.Path,
+			Children: nil,
+		})
+	}
+
+	home := "index.md"
+	if len(outline) > 0 && outline[0].Path != "" {
+		home = outline[0].Path
+	}
+
+	manifest := manifestData{
+		Navigation:  nav,
+		Home:        home,
+		Language:    o.language,
+		ProjectName: o.projectName,
+	}
+
+	manifestPath := o.storage.GetManifestPath(o.versionID)
+	if writeErr := o.storage.WriteJSON(manifestPath, manifest); writeErr != nil {
+		return writeErr
+	}
+
+	o.log.Info(nil, "Wiki manifest 已生成",
+		slog.String("path", manifestPath),
+		slog.Int("nav_count", len(nav)))
+	return nil
 }
 
 // collectRelevantExplores 收集 entries 引用的 Explore 产出内容
@@ -709,15 +804,14 @@ func (o *SubAgentOrchestrator) matchEntryExplores(refs []string, exploreFiles ma
 
 // validatorResult Validator Agent 输出的校验结果 JSON 结构
 type validatorResult struct {
-	Valid             bool             `json:"valid"`                // 校验是否通过
-	Errors            []ValidationError `json:"errors"`              // 校验错误项
-	MetadataGenerated bool             `json:"metadata_generated"`   // metadata.json 是否已生成
+	Valid  bool             `json:"valid"`                // 校验是否通过
+	Errors []ValidationError `json:"errors"`              // 校验错误项
 }
 
 // runValidator 执行文档校验阶段
 //
-// 构建 Validator Agent（工具：file_read + save_wiki_page，作用域 wikiDir），
-// 执行校验并解析 JSON 结果 {valid, errors, metadata_generated}。
+// 构建 Validator Agent（工具：file_read + list_dir + file_search，作用域 wikiDir），
+// 执行校验并解析 JSON 结果 {valid, errors}。
 func (o *SubAgentOrchestrator) runValidator(ctx context.Context, outline []WikiEntry, architectRawJSON string) (bool, []ValidationError, *xError.Error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(bConst.RepoWikiValidatorTimeoutMin)*time.Minute)
 	defer cancel()
@@ -725,9 +819,10 @@ func (o *SubAgentOrchestrator) runValidator(ctx context.Context, outline []WikiE
 	wikiDir := o.storage.GetWikiPath(o.versionID)
 	tools := []tool.Tool{
 		service.NewFileReadTool(wikiDir),
-		service.NewSaveWikiPageTool(wikiDir),
+		service.NewListDirTool(wikiDir),
+		service.NewFileSearchTool(wikiDir),
 	}
-	ag, err := o.buildRoleAgent(bConst.AgentRoleRepoWikiValidator, ValidatorSystemPrompt, tools)
+	ag, err := o.buildRoleAgent(bConst.AgentRoleRepoWikiValidator, tools)
 	if err != nil {
 		return false, nil, xError.NewError(ctx, xError.ServerInternalError,
 			xError.ErrMessage("构建 Validator Agent 失败: "+err.Error()), false, err)
@@ -750,6 +845,24 @@ func (o *SubAgentOrchestrator) runValidator(ctx context.Context, outline []WikiE
 			xError.ErrMessage("Validator Agent 执行失败: "+runErr.Error()), false, runErr)
 	}
 
+	// 当 Agent 达到最大迭代次数时，Content 可能为空（最后一轮只有 tool_use 无文本）。
+	// 此时跟进一轮强制输出 prompt，让 Agent 基于已读内容产出校验 JSON。
+	if strings.TrimSpace(result.Content) == "" && result.ExitReason == agent.TerminalMaxIterations {
+		o.log.Warn(ctx, "Validator 达到最大迭代次数，跟进强制输出",
+			slog.Int64("version_id", o.versionID),
+			slog.Int("iterations", result.Iterations))
+
+		forcePrompt := "你已用完所有工具调用迭代。请立即基于你已读取的文件信息，输出校验结果 JSON。不要再调用任何工具，直接输出 JSON。"
+		forceStart := time.Now()
+		forceResult, forceErr := ag.Run(ctx, forcePrompt)
+		o.saveSessionArtifact(ctx, bConst.AgentRoleRepoWikiValidator, bConst.AgentRoleRepoWikiValidator+":force", forcePrompt, forceResult, forceErr, forceStart, 0)
+		if forceErr != nil {
+			return false, nil, xError.NewError(ctx, xError.ServerInternalError,
+				xError.ErrMessage("Validator 强制输出失败: "+forceErr.Error()), false, forceErr)
+		}
+		result = forceResult
+	}
+
 	// 解析校验结果 JSON
 	rawOutput := strings.TrimSpace(result.Content)
 	parsed, parseErr := parseAgentJSON(rawOutput)
@@ -767,8 +880,7 @@ func (o *SubAgentOrchestrator) runValidator(ctx context.Context, outline []WikiE
 	o.log.Info(ctx, "文档校验阶段完成",
 		slog.Int64("version_id", o.versionID),
 		slog.Bool("valid", vr.Valid),
-		slog.Int("error_count", len(vr.Errors)),
-		slog.Bool("metadata_generated", vr.MetadataGenerated))
+		slog.Int("error_count", len(vr.Errors)))
 
 	return vr.Valid, vr.Errors, nil
 }
@@ -819,8 +931,31 @@ func (o *SubAgentOrchestrator) Execute(ctx context.Context, progressCallback fun
 
 	// ── 阶段 4: 文档撰写 ──
 	notify(bConst.RepoWikiStageWriting)
-	if wErr := o.runWritersConcurrent(ctx, outline, exploreOutputs); wErr != nil {
+	wikiDir := o.storage.GetWikiPath(o.versionID)
+	if wErr := o.runWritersConcurrent(ctx, outline, exploreOutputs, nil); wErr != nil {
 		return wErr
+	}
+
+	// 程序化校验 Writer 产出：缺失/空文件最多重试 1 次（普通 prompt）
+	missing := o.verifyWriterOutputs(outline, wikiDir)
+	if len(missing) > 0 {
+		o.log.Warn(ctx, "Writer 产出存在缺失/空文件，重试一次",
+			slog.Int("missing_count", len(missing)))
+		if wErr := o.runWritersConcurrent(ctx, missing, exploreOutputs, nil); wErr != nil {
+			o.log.Warn(ctx, "缺失条目重试失败（继续校验）",
+				slog.String("err", wErr.Error()))
+		}
+		missing = o.verifyWriterOutputs(outline, wikiDir)
+		if len(missing) > 0 {
+			o.log.Warn(ctx, "Writer 产出仍有缺失/空文件（继续生成 manifest 并校验）",
+				slog.Int("missing_count", len(missing)))
+		}
+	}
+
+	// 生成 Wiki 导航清单（manifest）
+	if mErr := o.generateManifest(outline); mErr != nil {
+		o.log.Warn(ctx, "生成 manifest 失败（继续校验流程）",
+			slog.String("err", mErr.Error()))
 	}
 
 	// ── 阶段 5: 文档校验（含重试循环） ──
@@ -845,8 +980,8 @@ func (o *SubAgentOrchestrator) Execute(ctx context.Context, progressCallback fun
 			slog.Int("retry", retry+1),
 			slog.Int("missing_count", len(missingEntries)))
 
-		// 重驱动缺失条目的 Writer
-		if wErr := o.runWritersConcurrent(ctx, missingEntries, exploreOutputs); wErr != nil {
+		// 重驱动缺失条目的 Writer（传入校验错误让 Writer 针对性修复）
+		if wErr := o.runWritersConcurrent(ctx, missingEntries, exploreOutputs, errors); wErr != nil {
 			o.log.Warn(ctx, "重驱动 Writer 失败（继续重新校验）",
 				slog.String("err", wErr.Error()))
 		}
@@ -1014,17 +1149,20 @@ func splitWriterGroups(outline []WikiEntry) [][]WikiEntry {
 	return groups
 }
 
-// findMissingEntries 从 ValidationError 列表中提取缺失/空页面对应的 WikiEntry
+// findMissingEntries 从 ValidationError 列表中提取需要重写的 WikiEntry。
 //
 // 匹配 ValidationError.Path 与 WikiEntry.Path（精确匹配）。
 // 错误类型为 missing_file / empty_page / orphan_file 时视为需要重写的条目。
+// 若无法精确匹配任何条目，则返回 nil，避免无差别重写全部 outline。
 func findMissingEntries(errors []ValidationError, outline []WikiEntry) []WikiEntry {
 	pathSet := make(map[string]bool)
 	for _, e := range errors {
+		if e.Type == "missing_metadata" {
+			continue
+		}
 		if e.Path == "" {
 			continue
 		}
-		// 所有带 path 的错误都尝试匹配（missing_file / empty_page / orphan_file 等）
 		pathSet[e.Path] = true
 	}
 	if len(pathSet) == 0 {

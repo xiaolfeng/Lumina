@@ -500,7 +500,7 @@ func (l *RepoWikiLogic) AnalyzeRepo(ctx context.Context, configID xSnowflake.Sno
 	// Step 6: 批量解析 5 角色 LLM 配置并构建 SubAgentOrchestrator
 	// 复用 config 级克隆目录作为 Agent 仓库作用域（与 Pipeline Step 1 一致）
 	repoPath := l.svc.storage.GetRepoPath(config.ID.Int64())
-	orchestrator, proto, model, xErr := l.resolveOrchestrator(ctx, created.ID.Int64(), repoPath)
+	orchestrator, proto, model, xErr := l.resolveOrchestrator(ctx, created.ID.Int64(), repoPath, config.Name, created.Language)
 	if xErr != nil {
 		// 角色配置不完整：标记版本 failed + 释放信号量（保留版本记录供用户排查）
 		created.Status = bConst.RepoWikiStatusFailed
@@ -545,7 +545,7 @@ func (l *RepoWikiLogic) AnalyzeRepo(ctx context.Context, configID xSnowflake.Sno
 //   - ctx:       上下文
 //   - versionID: Wiki 版本 ID（定位 versions/{vid}/ 下各子目录）
 //   - repoPath:  仓库根目录绝对路径（Agent 工具作用域根）
-func (l *RepoWikiLogic) resolveOrchestrator(ctx context.Context, versionID int64, repoPath string) (orchestrator *SubAgentOrchestrator, providerName string, modelName string, xErr *xError.Error) {
+func (l *RepoWikiLogic) resolveOrchestrator(ctx context.Context, versionID int64, repoPath, projectName, language string) (orchestrator *SubAgentOrchestrator, providerName string, modelName string, xErr *xError.Error) {
 	// 检查 LlmResolver 就绪状态
 	if l.llmResolver == nil {
 		return nil, "", "", xError.NewError(ctx, xError.BusinessError,
@@ -580,16 +580,17 @@ func (l *RepoWikiLogic) resolveOrchestrator(ctx context.Context, versionID int64
 		}
 		roleClients[role] = client
 		roleModels[role] = &ModelRunConfig{
-			ModelName:     cfg.ModelName,
-			MaxTokens:     cfg.MaxTokens,
-			ContextWindow: cfg.ContextWindow,
-			Temperature:   cfg.Temperature,
+			ModelName:      cfg.ModelName,
+			MaxTokens:      cfg.MaxTokens,
+			ContextWindow:  cfg.ContextWindow,
+			Temperature:    cfg.Temperature,
+			ThinkingEffort: cfg.ThinkingEffort,
 		}
 	}
 
 	// providerName/modelName 取自 coordinator 角色
 	coordCfg := resolved[bConst.AgentRoleRepoWikiCoordinator]
-	o := NewSubAgentOrchestrator(roleClients, roleModels, l.svc.storage, l.log, versionID, repoPath)
+	o := NewSubAgentOrchestrator(roleClients, roleModels, l.svc.storage, l.log, versionID, repoPath, projectName, language)
 
 	return o, coordCfg.Protocol, coordCfg.ModelName, nil
 }

@@ -9,18 +9,18 @@ import (
 
 const (
 	// repoWikiAgentMaxIterations 是 RepoWiki Agent 的最大 ReAct 迭代次数。
-	repoWikiAgentMaxIterations = 30
+	repoWikiAgentMaxIterations = 128
 	// repoWikiAgentMaxConcurrentTools 是 RepoWiki Agent 并发执行工具的最大数量。
 	repoWikiAgentMaxConcurrentTools = 5
 )
 
 // roleMaxIterations 不同 Agent 角色的最大 ReAct 迭代次数
 var roleMaxIterations = map[string]int{
-	"repowiki:coordinator": 50, // 调度需要更多轮
-	"repowiki:explore":     40, // 探索需要较多轮
-	"repowiki:architect":   30, // 架构分析中等
-	"repowiki:write":       40, // 写作需要较多轮
-	"repowiki:validator":   20, // 校验较少轮
+	"repowiki:coordinator": 128,
+	"repowiki:explore":     128,
+	"repowiki:architect":   128,
+	"repowiki:write":       128,
+	"repowiki:validator":   128,
 }
 
 // NewRepoWikiAgentFromModel 构建用于分析代码库并生成 Wiki 的 Agent（使用数据库模型参数）
@@ -78,6 +78,7 @@ func NewRepoWikiAgentFromModel(
 //
 // 与 NewRepoWikiAgentFromModel 签名相同，但根据 role 返回不同的 MaxIterations。
 // 参数 role 用于查 roleMaxIterations map 决定迭代上限。
+// 当 thinkingEffort 非空时，设置 ThinkingConfig 启用思考模式（GLM-5.2 等思考模型需要）。
 func NewRepoWikiSubAgent(
 	client bamboo.BambooClient,
 	role string,
@@ -85,6 +86,7 @@ func NewRepoWikiSubAgent(
 	maxTokens int64,
 	contextWindow int64,
 	temperature float64,
+	thinkingEffort string,
 	systemPrompt string,
 	tools []tool.Tool,
 	workDir string,
@@ -108,6 +110,10 @@ func NewRepoWikiSubAgent(
 		SystemPrompt:       systemPrompt,
 		MaxIterations:      maxIter,
 		MaxConcurrentTools: repoWikiAgentMaxConcurrentTools,
+	}
+
+	if thinkingEffort != "" {
+		config.ThinkingConfig = &bamboo.ThinkingConfig{Effort: thinkingEffort}
 	}
 
 	ag := agent.NewAgentWithOptions(

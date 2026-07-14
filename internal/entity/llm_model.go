@@ -17,6 +17,7 @@ type LlmModel struct {
 	MaxTokens          int64                  `gorm:"not null;default:32000;comment:单次响应最大输出Token数" json:"max_tokens"`        // 单次响应最大输出Token数
 	ContextWindow      int64                  `gorm:"not null;default:128000;comment:模型上下文窗口大小(Token)" json:"context_window"` // 模型上下文窗口大小
 	Temperature        float64                `gorm:"not null;default:0.3;comment:生成温度" json:"temperature"`                   // 生成温度
+	ThinkingEffort     string                 `gorm:"type:varchar(16);not null;default:'';comment:思考强度(none/low/medium/high,空=不启用)" json:"thinking_effort"` // 思考强度
 	IsActive           bool                   `gorm:"not null;default:true;index;comment:是否启用" json:"is_active"`              // 是否启用
 	Description        string                 `gorm:"type:varchar(255);not null;default:'';comment:描述说明" json:"description"`  // 描述说明
 }

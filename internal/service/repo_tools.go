@@ -312,7 +312,7 @@ func (t *saveWikiPageTool) Execute(ctx context.Context, input json.RawMessage) (
 		return &tool.ToolResult{Content: "path 不能为空", IsError: true}, nil
 	}
 
-	// 禁止写入 meta/ 目录，该目录由 Validator 生成 metadata
+	// meta/ 目录由 Orchestrator 程序通过 storage.WriteJSON 直接写入（绕过本工具），禁止 Agent 通过 save_wiki_page 写入
 	if strings.HasPrefix(filepath.Clean(args.Path), "meta"+string(filepath.Separator)) ||
 		filepath.Clean(args.Path) == "meta" {
 		return &tool.ToolResult{Content: "禁止覆盖 meta/ 目录下的文件", IsError: true}, nil
