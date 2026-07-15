@@ -1,13 +1,13 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { MoreHorizontal } from 'lucide-react'
-import { Badge } from '#/components/ui/badge'
-import { Button } from '#/components/ui/button'
+import { Badge } from '@lumina/components/ui/badge'
+import { Button } from '@lumina/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '#/components/ui/dropdown-menu'
+} from '@lumina/components/ui/dropdown-menu'
 import type { Provider } from '#/lib/models/response/llm'
 
 interface ProviderColumnActions {

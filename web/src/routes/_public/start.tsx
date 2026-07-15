@@ -12,7 +12,7 @@ import {
   Plug,
 } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 import { Link } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_public/start')({

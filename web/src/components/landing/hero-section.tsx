@@ -2,14 +2,14 @@ import { Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { ArrowRight, Sparkles } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 import {
   fadeUp,
   fadeIn,
   heroStagger,
   sectionStagger,
   viewportOnce,
-} from '#/lib/motion'
+} from '@lumina/components/motion'
 
 const shellBase =
   'border border-line bg-surface shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-sm'

@@ -70,14 +70,19 @@ function convertIdStringsToBigInt(data: unknown): unknown {
   if (data && typeof data === 'object') {
     const result: Record<string, unknown> = {}
     for (const key of Object.keys(data)) {
-      result[key] = convertIdStringsToBigInt((data as Record<string, unknown>)[key])
+      result[key] = convertIdStringsToBigInt(
+        (data as Record<string, unknown>)[key],
+      )
     }
     return result
   }
   return data
 }
 
-function bigintTransformRequest(data: unknown, headers?: Record<string, string>): string {
+function bigintTransformRequest(
+  data: unknown,
+  headers?: Record<string, string>,
+): string {
   if (headers) {
     headers['Content-Type'] = 'application/json'
   }

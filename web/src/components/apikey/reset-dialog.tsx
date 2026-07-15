@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '#/components/ui/dialog'
+} from '@lumina/components/ui/dialog'
 import { useResetApikey } from '#/hooks/useApikey'
 import type {
   ApikeyItem,

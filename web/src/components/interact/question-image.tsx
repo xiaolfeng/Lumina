@@ -1,7 +1,7 @@
 import { ImagePlus, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 
 import { QuestionShell  } from './question-shell'
 import type {QuestionComponentProps} from './question-shell';

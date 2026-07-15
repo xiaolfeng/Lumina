@@ -2,8 +2,8 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { ArrowRight, CheckCircle2, MessageSquare } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
-import { staggerContainer, staggerItem, staggerItemLeft } from '#/lib/motion'
+import { Button } from '@lumina/components/ui/button'
+import { staggerContainer, staggerItem, staggerItemLeft } from '@lumina/components/motion'
 
 export const Route = createFileRoute('/interact/thank')({
 	component: ThankPage,

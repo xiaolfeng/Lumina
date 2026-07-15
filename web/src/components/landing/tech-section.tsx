@@ -12,7 +12,7 @@ import {
   fadeUp,
   sectionStagger,
   viewportOnce,
-} from '#/lib/motion'
+} from '@lumina/components/motion'
 import { kickerBase } from './hero-section'
 
 const shellBase =

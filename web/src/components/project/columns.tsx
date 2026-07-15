@@ -1,18 +1,18 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { BookOpen, MoreHorizontal } from 'lucide-react'
-import { Badge } from '#/components/ui/badge'
-import { Button } from '#/components/ui/button'
+import { Badge } from '@lumina/components/ui/badge'
+import { Button } from '@lumina/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '#/components/ui/dropdown-menu'
+} from '@lumina/components/ui/dropdown-menu'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '#/components/ui/tooltip'
+} from '@lumina/components/ui/tooltip'
 import type { ProjectItem } from '#/lib/models/response/project'
 
 interface ColumnActions {

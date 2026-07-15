@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
-import { Button } from '#/components/ui/button'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
+import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
+import { Button } from '@lumina/components/ui/button'
+import { Input } from '@lumina/components/ui/input'
+import { Label } from '@lumina/components/ui/label'
+import { Textarea } from '@lumina/components/ui/textarea'
 import { useSettings, useUpdateSettings } from '#/hooks/useSettings'
 import { EnvInfoCard } from './env-info-card'
 import { toast } from 'sonner'
 import { motion } from 'motion/react'
-import { staggerContainer, staggerItem } from '#/lib/motion'
+import { staggerContainer, staggerItem } from '@lumina/components/motion'
 
 export function SiteSettingsForm() {
   const { data, isLoading } = useSettings('site')

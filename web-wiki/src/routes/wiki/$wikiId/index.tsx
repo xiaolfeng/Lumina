@@ -51,7 +51,9 @@ function WikiHomePage() {
       <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">
         <AlertCircle className="h-5 w-5 flex-shrink-0" />
         <p>
-          {manifestError instanceof Error ? manifestError.message : '加载导航失败'}
+          {manifestError instanceof Error
+            ? manifestError.message
+            : '加载导航失败'}
         </p>
       </div>
     )

@@ -1,13 +1,13 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { Download, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import { Badge } from '#/components/ui/badge'
-import { Button } from '#/components/ui/button'
+import { Badge } from '@lumina/components/ui/badge'
+import { Button } from '@lumina/components/ui/button'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from '#/components/ui/dropdown-menu'
+} from '@lumina/components/ui/dropdown-menu'
 import type { SshKeyItem } from '#/lib/models/response/ssh'
 import { getSshPublicKey } from '#/lib/apis/ssh'
 import { toast } from 'sonner'

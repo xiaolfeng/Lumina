@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-import { Sheet, SheetContent } from '#/components/ui/sheet'
+import { Sheet, SheetContent } from '@lumina/components/ui/sheet'
 
 import { useSidebarOpen } from '#/hooks/useSidebarOpen'
 import { SessionPanel } from './session-panel'

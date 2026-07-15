@@ -1,4 +1,4 @@
-import { Badge } from '#/components/ui/badge'
+import { Badge } from '@lumina/components/ui/badge'
 import { Loader2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 

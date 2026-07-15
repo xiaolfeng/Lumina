@@ -5,9 +5,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'motion/react'
 import { Eye, EyeOff, Sparkles } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
+import { Button } from '@lumina/components/ui/button'
+import { Input } from '@lumina/components/ui/input'
+import { Label } from '@lumina/components/ui/label'
 
 import { getStatus } from '#/lib/apis/auth'
 import { rightItemVariants } from '../auth'

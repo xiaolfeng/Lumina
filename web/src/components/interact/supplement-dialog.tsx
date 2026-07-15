@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Button } from "#/components/ui/button";
+import { Button } from "@lumina/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -8,10 +8,10 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "#/components/ui/dialog";
-import { Label } from "#/components/ui/label";
-import { Switch } from "#/components/ui/switch";
-import { Textarea } from "#/components/ui/textarea";
+} from "@lumina/components/ui/dialog";
+import { Label } from "@lumina/components/ui/label";
+import { Switch } from "@lumina/components/ui/switch";
+import { Textarea } from "@lumina/components/ui/textarea";
 
 export interface SupplementRequestPayload {
 	note: string;

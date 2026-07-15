@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 
-import { ScrollArea } from '#/components/ui/scroll-area'
-import { Separator } from '#/components/ui/separator'
+import { ScrollArea } from '@lumina/components/ui/scroll-area'
+import { Separator } from '@lumina/components/ui/separator'
 
 import { Kicker } from './primitives'
 import { SessionItem } from './session-item'

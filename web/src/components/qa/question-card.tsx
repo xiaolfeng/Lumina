@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
-import { Badge } from '#/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
+import { Badge } from '@lumina/components/ui/badge'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { SupplementItem } from '#/lib/models/response/qa-admin'
 import { useQuestionDetail } from '#/hooks/useQaAdmin'

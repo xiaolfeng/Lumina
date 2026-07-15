@@ -1,10 +1,10 @@
 import { Pencil, Star } from 'lucide-react'
 import { useState } from 'react'
 
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '#/components/ui/radio-group'
-import { Textarea } from '#/components/ui/textarea'
+import { Input } from '@lumina/components/ui/input'
+import { Label } from '@lumina/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@lumina/components/ui/radio-group'
+import { Textarea } from '@lumina/components/ui/textarea'
 import { SupplementLoadingBanner } from './supplement-loading-banner'
 
 import { OptionDetailLabel } from './option-detail-label'

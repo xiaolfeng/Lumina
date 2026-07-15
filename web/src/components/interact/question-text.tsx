@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
-import { Input } from '#/components/ui/input'
-import { Textarea } from '#/components/ui/textarea'
+import { Input } from '@lumina/components/ui/input'
+import { Textarea } from '@lumina/components/ui/textarea'
 
 import { QuestionShell  } from './question-shell'
 import type {QuestionComponentProps} from './question-shell';

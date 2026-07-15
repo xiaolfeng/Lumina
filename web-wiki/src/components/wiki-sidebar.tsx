@@ -1,16 +1,18 @@
 /**
- * Wiki 侧边栏导航组件
+ * Wiki 侧边栏导航组件（shadcn Sidebar inset + motion 动画）
  *
  * 功能特性：
  * - 从 manifest API 获取导航结构（TanStack Query 自动管理）
- * - 支持目录展开/折叠交互
+ * - 使用 shadcn/ui Sidebar variant="inset" 布局（自动处理移动端 Sheet 行为）
+ * - motion 交错入场动画（sidebarStaggerContainer / sidebarItem）
+ * - 支持目录展开/折叠交互（递归渲染 WikiNavItem 树）
  * - 当前页面路径高亮显示
- * - 使用 TanStack Router Link 进行客户端导航
- * - 响应式设计：移动端可隐藏
+ * - 底部 Powered-by Lumina 卡片
  */
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import { motion } from 'motion/react'
 import {
   ChevronRight,
   ChevronDown,
@@ -19,22 +21,32 @@ import {
   FileText,
   BookOpen,
   Loader2,
+  Sparkles,
 } from 'lucide-react'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@lumina/components/ui/sidebar'
+import { Card, CardContent } from '@lumina/components/ui/card'
+import { sidebarItem, sidebarStaggerContainer } from '@lumina/components/motion'
 import { wikiReaderApi } from '#/lib/api-client'
 import type { ManifestResponse, WikiNavItem } from '#/lib/api-client'
 
 interface WikiSidebarProps {
   wikiId: string
   currentPagePath?: string
-  isOpen: boolean
-  onToggle: () => void
 }
 
 export function WikiSidebar({
   wikiId,
   currentPagePath = '',
-  isOpen,
-  onToggle,
 }: WikiSidebarProps) {
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
 
@@ -53,6 +65,7 @@ export function WikiSidebar({
 
   const navEntries: WikiNavItem[] = manifest?.navigation ?? []
   const homePath = manifest?.home ?? ''
+  const projectName = manifest?.project_name ?? 'Wiki'
 
   // 默认展开包含当前页面的父目录
   if (currentPagePath && expandedDirs.size === 0 && navEntries.length > 0) {
@@ -79,157 +92,208 @@ export function WikiSidebar({
     })
   }
 
-  // 渲染单个导航项
+  // 渲染单个导航项（递归）
   const renderNavItem = (entry: WikiNavItem, depth: number = 0) => {
     const isExpanded = expandedDirs.has(entry.path)
-    const isDirectory = entry.children !== undefined && entry.children.length > 0
+    const isDirectory =
+      entry.children !== undefined && entry.children.length > 0
     const isActive = !isDirectory && entry.path === currentPagePath
 
     return (
-      <div key={entry.path} className="nav-item">
-        <div
-          className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent ${
-            isActive ? 'bg-accent text-lagoon font-medium' : 'text-sea-ink-soft'
-          }`}
-          style={{ paddingLeft: `${depth * 12 + 8}px` }}
-        >
+      <SidebarMenuItem key={entry.path}>
+        <motion.div variants={sidebarItem}>
           {isDirectory ? (
-            <>
-              <button
+            /* ── 目录项：展开/折叠按钮 + 目录名链接 ── */
+            <SidebarMenuButton
+              isActive={false}
+              tooltip={entry.title}
+              className={
+                isExpanded ? 'bg-accent/50 text-lagoon font-medium' : ''
+              }
+              onClick={(e) => {
+                e.preventDefault()
+                toggleDir(entry.path)
+              }}
+            >
+              <span
+                className="inline-flex size-4 items-center justify-center rounded hover:bg-muted"
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
                   toggleDir(entry.path)
                 }}
-                className="inline-flex h-4 w-4 items-center justify-center rounded hover:bg-muted"
               >
                 {isExpanded ? (
-                  <ChevronDown className="h-3 w-3" />
+                  <ChevronDown className="size-3" />
                 ) : (
-                  <ChevronRight className="h-3 w-3" />
+                  <ChevronRight className="size-3" />
                 )}
-              </button>
+              </span>
               <Link
                 to="/wiki/$wikiId/$"
                 params={{ wikiId, _splat: entry.path }}
                 className="flex flex-1 items-center gap-2"
+                onClick={(e) => e.stopPropagation()}
               >
                 {isExpanded ? (
-                  <FolderOpen className="h-4 w-4 text-lagoon" />
+                  <FolderOpen className="size-4 text-lagoon" />
                 ) : (
-                  <FolderClosed className="h-4 w-4 text-muted-foreground" />
+                  <FolderClosed className="size-4 text-muted-foreground" />
                 )}
                 <span className="truncate">{entry.title}</span>
               </Link>
-            </>
+            </SidebarMenuButton>
           ) : (
-            <>
-              <span className="w-4" /> {/* 占位，保持对齐 */}
+            /* ── 文件项：页面链接 ── */
+            <SidebarMenuButton
+              asChild
+              isActive={isActive}
+              tooltip={entry.title}
+              className={
+                isActive
+                  ? 'bg-chip-bg text-lagoon border border-chip-line font-medium'
+                  : ''
+              }
+            >
               <Link
                 to="/wiki/$wikiId/$"
                 params={{ wikiId, _splat: entry.path }}
-                className={`flex flex-1 items-center gap-2 ${isActive ? 'text-lagoon' : ''}`}
               >
-                <FileText className="h-4 w-4" />
+                <FileText className="size-4" />
                 <span className="truncate">{entry.title}</span>
               </Link>
-            </>
+            </SidebarMenuButton>
           )}
-        </div>
+        </motion.div>
 
         {/* 子目录递归渲染 */}
         {isExpanded && entry.children && entry.children.length > 0 && (
-          <div className="children">
+          <motion.div variants={sidebarItem}>
             {entry.children.map((child) => renderNavItem(child, depth + 1))}
-          </div>
+          </motion.div>
         )}
-      </div>
+      </SidebarMenuItem>
     )
   }
 
   return (
-    <>
-      {/* 移动端遮罩层 */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm md:hidden"
-          onClick={onToggle}
-        />
-      )}
-
-      {/* 侧边栏主体 */}
-      <aside
-        className={`sidebar fixed left-0 top-0 z-40 flex h-full w-72 flex-col border-r border-line bg-surface-strong backdrop-blur-xl transition-transform duration-300 ease-in-out md:relative md:z-auto md:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+    <Sidebar variant="inset">
+      <motion.div
+        className="flex h-full flex-col"
+        initial="hidden"
+        animate="visible"
+        variants={sidebarStaggerContainer}
       >
-        {/* 头部 */}
-        <div className="flex items-center justify-between border-b border-line px-4 py-3">
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-lagoon" />
-            <span className="font-semibold text-sea-ink">Wiki 导航</span>
-          </div>
-          {/* 关闭按钮（移动端） */}
-          <button
-            onClick={onToggle}
-            className="rounded-md p-1 hover:bg-accent md:hidden"
-            aria-label="关闭侧边栏"
-          >
-            ✕
-          </button>
-        </div>
+        {/* ── 头部：项目名称 ── */}
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <motion.div variants={sidebarItem}>
+                <SidebarMenuButton size="lg" className="hover:bg-link-bg-hover">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-lagoon text-foam shadow-sm shadow-hero-a">
+                    <BookOpen className="size-4" />
+                  </div>
+                  <div className="flex flex-col gap-0.5 leading-none">
+                    <span className="font-semibold text-sea-ink">
+                      {projectName}
+                    </span>
+                    <span className="text-xs text-sea-ink-soft">Wiki 导航</span>
+                  </div>
+                </SidebarMenuButton>
+              </motion.div>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
 
-        {/* 导航内容区 */}
-        <nav className="flex-1 overflow-y-auto p-2">
-          {/* 首页链接 */}
-          <Link
-            to={homePath ? "/wiki/$wikiId/$" : "/wiki/$wikiId"}
-            params={homePath ? { wikiId, _splat: homePath } : { wikiId }}
-            className={`mb-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent ${
-              !currentPagePath ? 'bg-accent text-lagoon' : 'text-sea-ink-soft'
-            }`}
-          >
-            <BookOpen className="h-4 w-4" />
-            <span>首页</span>
-          </Link>
+        {/* ── 导航内容区 ── */}
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {/* 首页链接 */}
+                <motion.div variants={sidebarItem}>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={!currentPagePath}
+                      tooltip="首页"
+                      className={
+                        !currentPagePath
+                          ? 'bg-chip-bg text-lagoon border border-chip-line font-medium'
+                          : 'hover:bg-link-bg-hover'
+                      }
+                    >
+                      <Link
+                        to={homePath ? '/wiki/$wikiId/$' : '/wiki/$wikiId'}
+                        params={
+                          homePath ? { wikiId, _splat: homePath } : { wikiId }
+                        }
+                      >
+                        <BookOpen className="size-4" />
+                        <span>首页</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </motion.div>
 
-          {/* 加载状态 */}
-          {isLoading && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-lagoon" />
-              <span className="ml-2 text-sm text-sea-ink-soft">加载中...</span>
-            </div>
-          )}
+                {/* 加载状态 */}
+                {isLoading && (
+                  <motion.div variants={sidebarItem}>
+                    <div className="flex items-center justify-center gap-2 py-6 text-sm text-sea-ink-soft">
+                      <Loader2 className="size-4 animate-spin text-lagoon" />
+                      <span>加载中...</span>
+                    </div>
+                  </motion.div>
+                )}
 
-          {/* 错误提示 */}
-          {error && (
-            <div className="mx-2 rounded-md bg-destructive/10 p-3 text-xs text-destructive">
-              {error instanceof Error ? error.message : '加载导航失败'}
-            </div>
-          )}
+                {/* 错误提示 */}
+                {error && (
+                  <motion.div variants={sidebarItem}>
+                    <div className="mx-1 rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+                      {error instanceof Error ? error.message : '加载导航失败'}
+                    </div>
+                  </motion.div>
+                )}
 
-          {/* 导航树 */}
-          {!isLoading && !error && navEntries.length > 0 && (
-            <div className="nav-tree space-y-0.5">
-              {navEntries.map((entry) => renderNavItem(entry))}
-            </div>
-          )}
+                {/* 导航树 */}
+                {!isLoading &&
+                  !error &&
+                  navEntries.length > 0 &&
+                  navEntries.map((entry) => renderNavItem(entry))}
 
-          {/* 空状态 */}
-          {!isLoading &&
-            !error &&
-            navEntries.length === 0 && (
-              <div className="py-8 text-center text-sm text-sea-ink-soft">
-                暂无页面
-              </div>
-            )}
-        </nav>
+                {/* 空状态 */}
+                {!isLoading && !error && navEntries.length === 0 && (
+                  <motion.div variants={sidebarItem}>
+                    <div className="py-8 text-center text-sm text-sea-ink-soft">
+                      暂无页面
+                    </div>
+                  </motion.div>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
 
-        {/* 底部信息 */}
-        <div className="border-t border-line px-4 py-2 text-xs text-muted-foreground">
-          Wiki Reader v0.1.0
-        </div>
-      </aside>
-    </>
+        {/* ── 底部：Powered-by 卡片 ── */}
+        <SidebarFooter className="border-t border-line">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <motion.div variants={sidebarItem}>
+                <Card className="border-border/50 bg-surface shadow-none">
+                  <CardContent className="flex items-center gap-2 p-3">
+                    <Sparkles className="size-4 text-lagoon" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-sea-ink">
+                        由 Lumina · 微明 驱动
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </motion.div>
+    </Sidebar>
   )
 }

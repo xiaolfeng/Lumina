@@ -2,7 +2,7 @@
 
 ## 概述
 
-TanStack Start（React 19）+ Tailwind CSS 4 + shadcn/ui 构建的 Lumina 前端应用，通过 REST API + WebSocket 与后端通信。前端构建产物通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。
+TanStack Start（React 19）+ Tailwind CSS 4 + shadcn/ui 构建的 Lumina 前端应用，通过 REST API + WebSocket 与后端通信。前端构建产物通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。同时通过 `@lumina/components` workspace 包与 `web-wiki` 共享 shadcn/ui 组件、Markdown 原语、motion 动画变体和微明主题 CSS。
 
 ## 目录结构
 ```text
@@ -36,12 +36,20 @@ web/
     │   │   ├── index.tsx       # 控制台入口（重定向到 dashboard）
     │   │   ├── dashboard.tsx   # 仪表盘
     │   │   ├── apikey.tsx      # API Key 管理
-    │   │   ├── project.tsx     # 项目管理
+    │   │   ├── project.tsx     # 项目管理（含项目列表 + 跳转到子页面）
+    │   │   ├── project/        # 项目子路由
+    │   │   │   ├── index.tsx            # 项目列表页
+    │   │   │   └── $projectId/         # 单项目详情
+    │   │   │       └── repowiki/        # 项目级 RepoWiki 配置
+    │   │   │           ├── index.tsx   # RepoWiki 配置 + 版本列表
+    │   │   │           └── create.tsx   # 新建 RepoWiki 配置
     │   │   ├── pin.tsx         # Pin 约束管理
     │   │   ├── qa.tsx          # Q&A 会话管理（状态筛选 + 分页列表 + 删除）
-    │   │   ├── qa/$sessionId.tsx  # Q&A 会话详情（问题列表）
-    │   │   ├── profile.tsx     # 个人资料（资料/密码/生物认证三标签页）
-    │   │   └── settings.tsx    # 系统设置
+    │   │   ├── qa/             # Q&A 子路由
+    │   │   │   └── $sessionId.tsx  # Q&A 会话详情（问题列表）
+    │   │   ├── ssh.tsx         # SSH Key 管理
+    │   │   ├── settings.tsx    # 系统设置（站点/安全/Q&A/RepoWiki 多标签页）
+    │   │   └── profile.tsx     # 个人资料（资料/密码/生物认证三标签页）
     │   └── interact.tsx        # Interact 交互布局（品牌栏 + 三栏主体）
     │       └── interact/
     │           ├── index.tsx   # Interact 交互主页（WebSocket 连接 + 问题展示）
@@ -49,7 +57,7 @@ web/
     ├── components/             # 组件
     │   ├── Navbar.tsx          # 公开页面导航栏
     │   ├── Footer.tsx          # 公开页面页脚
-    │   ├── app-sidebar.tsx     # 控制台侧边栏（导航菜单）
+    │   ├── app-sidebar.tsx     # 控制台侧边栏（导航菜单，含 SSH/Settings 等新入口）
     │   ├── data-table.tsx      # 通用数据表格组件
     │   ├── data-table-pagination.tsx # 通用分页组件
     │   ├── confirm-delete-dialog.tsx # 通用删除确认对话框（跨模块复用）
@@ -73,6 +81,32 @@ web/
     │   │   ├── columns.tsx     # 会话列表列定义
     │   │   ├── question-card.tsx   # 问题卡片展示
     │   │   └── session-detail.tsx  # 会话详情组件
+    │   ├── llm/                # LLM 配置业务组件
+    │   │   ├── provider-columns.tsx       # Provider 表格列定义
+    │   │   ├── provider-create-dialog.tsx # Provider 创建对话框
+    │   │   ├── provider-edit-dialog.tsx   # Provider 编辑对话框
+    │   │   ├── model-columns.tsx          # Model 表格列定义
+    │   │   ├── model-create-dialog.tsx   # Model 创建对话框
+    │   │   ├── model-edit-dialog.tsx      # Model 编辑对话框
+    │   │   └── agent-model-assign.tsx     # Agent 角色模型分配面板
+    │   ├── ssh/                # SSH Key 业务组件
+    │   │   ├── columns.tsx     # 表格列定义
+    │   │   ├── create-dialog.tsx # 创建对话框（含密钥对生成）
+    │   │   └── edit-dialog.tsx # 编辑对话框
+    │   ├── repowiki/           # RepoWiki 业务组件
+    │   │   ├── config-form.tsx        # 配置表单（仓库地址/分支/LLM 参数）
+    │   │   ├── status-badge.tsx       # 版本状态徽章
+    │   │   ├── version-list.tsx        # 版本列表（状态/操作）
+    │   │   ├── version-switcher.tsx   # 版本切换器（选择对外服务版本）
+    │   │   ├── webhook-config.tsx      # Webhook 配置面板（HMAC 密钥/分支规则）
+    │   │   ├── webhook-branches.tsx    # Webhook 触发分支管理
+    │   │   └── webhook-events.tsx     # Webhook 事件历史列表
+    │   ├── settings/           # 系统设置业务组件
+    │   │   ├── env-info-card.tsx           # 环境信息卡片
+    │   │   ├── site-settings-form.tsx     # 站点设置表单
+    │   │   ├── security-settings-form.tsx # 安全设置表单
+    │   │   ├── qa-settings-form.tsx       # Q&A 设置表单
+    │   │   └── repowiki-settings-form.tsx # RepoWiki 设置表单
     │   ├── interact/           # Interact 交互组件
     │   │   ├── types.ts        # 类型定义（Question/Session/SupplementItem）
     │   │   ├── question-shell.tsx    # 题型统一外壳（布局 + 动画）
@@ -113,7 +147,7 @@ web/
     │   │       ├── shadow-html.tsx  # Shadow DOM HTML 沙盒渲染器（安全隔离）
     │   │       ├── state-views.tsx  # 状态视图（空/加载/错误）
     │   │       └── prose.ts         # Prose 样式配置
-    │   └── ui/                 # shadcn/ui 组件（通过 CLI 添加，含 27 个组件）
+    │   └── ui/                 # shadcn/ui 组件（通过 CLI 添加，含 27+ 个组件）
     ├── hooks/                  # React Hooks
     │   ├── useAuth.ts          # 认证 Hook（登录/登出/刷新/初始化/自动续期/WebAuthn）
     │   ├── useApikey.ts        # API Key 数据 Hook（CRUD + 分页）
@@ -124,6 +158,11 @@ web/
     │   ├── useQaAdmin.ts       # Q&A 管理 Hook（会话列表/详情/删除/配置）
     │   ├── useQaSession.ts     # Q&A 会话 Hook（问题状态管理 + 回答提交 + 文件上传）
     │   ├── useQaWebSocket.ts   # Q&A WebSocket Hook（连接管理 + 消息回调 + 重连恢复）
+    │   ├── useLlmConfig.ts     # LLM 配置 Hook（Provider/Model CRUD + Agent 模型分配）
+    │   ├── useSshKey.ts        # SSH Key 数据 Hook（CRUD + 分页）
+    │   ├── useRepoWiki.ts      # RepoWiki Hook（配置/版本/分析触发/Webhook 事件）
+    │   ├── useWebhook.ts       # Webhook 数据 Hook（事件列表 + 状态查询）
+    │   ├── useSettings.ts      # 系统设置 Hook（分组配置读写）
     │   ├── useSidebarOpen.ts   # 侧边栏开合状态 Hook
     │   └── use-mobile.ts       # 移动端检测 Hook
     └── lib/
@@ -141,7 +180,12 @@ web/
         │   ├── apikey.ts       # API Key API
         │   ├── project.ts      # 项目 API
         │   ├── pin.ts          # Pin API（CRUD + 分页）
-        │   └── qa-admin.ts     # Q&A 管理 API（会话/问题/配置）
+        │   ├── qa-admin.ts     # Q&A 管理 API（会话/问题/配置）
+        │   ├── llm.ts          # LLM API（Provider/Model CRUD + Agent 模型分配）
+        │   ├── ssh.ts          # SSH Key API（CRUD + 分页 + 公钥导出）
+        │   ├── repowiki.ts     # RepoWiki API（配置/版本/分析触发）
+        │   ├── webhook.ts      # Webhook API（事件列表 + 配置查询）
+        │   └── settings.ts     # 系统设置 API（分组配置读写）
         └── models/             # TypeScript 类型定义
             ├── request/        # 请求 DTO
             │   ├── auth.ts
@@ -150,7 +194,10 @@ web/
             │   ├── apikey.ts
             │   ├── project.ts
             │   ├── pin.ts      # Pin 请求（创建/更新/筛选）
-            │   └── qa-admin.ts # Q&A 请求参数
+            │   ├── qa-admin.ts # Q&A 请求参数
+            │   ├── llm.ts      # LLM 请求（Provider/Model 创建/更新/分配）
+            │   ├── ssh.ts      # SSH Key 请求（创建/更新）
+            │   └── repowiki.ts # RepoWiki 请求（配置创建/更新）
             └── response/       # 响应 DTO
                 ├── common.ts   # BaseResponse 通用响应
                 ├── page.ts     # 分页响应
@@ -160,7 +207,10 @@ web/
                 ├── apikey.ts
                 ├── project.ts
                 ├── pin.ts      # Pin 响应（Pin 详情/分页）
-                └── qa-admin.ts # Q&A 响应类型
+                ├── qa-admin.ts # Q&A 响应类型
+                ├── llm.ts      # LLM 响应（Provider/Model 详情/分页）
+                ├── ssh.ts      # SSH Key 响应（详情/分页/公钥）
+                └── repowiki.ts # RepoWiki 响应（配置/版本/状态）
 ```
 
 ## 导航指南
@@ -169,13 +219,18 @@ web/
 |---|---|---|
 | 新增页面 | `src/routes/` | 文件路径即路由路径；布局路由以 `_` 前缀 |
 | 新增控制台子页面 | `src/routes/console/` | 在 `console.tsx` 布局下添加，自动继承 Sidebar + Breadcrumb |
+| 新增项目级子页面 | `src/routes/console/project/$projectId/` | 按模块划分子目录（如 `repowiki/`） |
 | 新增 Interact 子页面 | `src/routes/interact/` | 在 `interact.tsx` 布局下添加 |
 | 新增布局路由 | `src/routes/<name>.tsx` | 含 `Outlet` 的布局组件 |
 | 新增通用组件 | `src/components/` | 全局级组件（Navbar/Footer/Sidebar/通用对话框/骨架屏等） |
 | 新增首页落地页区块 | `src/components/landing/` | 首页拆分为 hero/features/tech 等区块组件 |
-| 新增业务组件 | `src/components/<domain>/` | 按业务域组织（apikey/、project/、pin/、profile/、qa/、interact/） |
+| 新增业务组件 | `src/components/<domain>/` | 按业务域组织（apikey/、project/、pin/、profile/、qa/、interact/、llm/、ssh/、repowiki/、settings/） |
 | 新增题型组件 | `src/components/interact/question-*.tsx` | 遵循 `question-<type>.tsx` 命名，通过 `question-card.tsx` 分发 |
 | 新增交互原语 | `src/components/interact/primitives/` | 可复用的展示原语（Markdown/Kicker/PanelCard 等） |
+| 新增 LLM 配置组件 | `src/components/llm/` | Provider/Model CRUD + Agent 角色模型分配 |
+| 新增 SSH Key 组件 | `src/components/ssh/` | CRUD 对话框 + 密钥生成入口 |
+| 新增 RepoWiki 组件 | `src/components/repowiki/` | 配置表单/版本管理/Webhook 配置 |
+| 新增系统设置组件 | `src/components/settings/` | 按分组组织（站点/安全/Q&A/RepoWiki） |
 | 新增 shadcn/ui 组件 | `src/components/ui/` | 通过 `pnpm dlx shadcn@latest add <name>` |
 | 新增 API 接口 | `src/lib/apis/` | 使用 apiClient 封装，返回类型化响应 |
 | 新增数据 Hook | `src/hooks/` | 基于 TanStack Query 的 useMutation/useQuery |
@@ -191,7 +246,9 @@ web/
 - **包管理器为 pnpm**：禁止使用 npm 或 yarn，确保 lock 文件一致性。
 - **代码风格**：Prettier（`semi: false`、`singleQuote: true`、`trailingComma: "all"`）+ ESLint（`@tanstack/eslint-config`）。
 - **路径别名**：`#/*` 映射到 `./src/*`；组件内使用 `#/components/xxx` 导入。
+- **共享组件包**：shadcn/ui 组件、Markdown 渲染原语、motion 动画变体、微明主题 CSS 统一在 `@lumina/components` workspace 包管理，被 `web` 和 `web-wiki` 共同消费。
 - **路由模式**：TanStack Start file-router；文件名即路由路径，`_` 前缀为布局路由。
+- **项目级子路由**：`console/project/$projectId/` 下按模块划分子目录（如 `repowiki/`），便于项目级配置的聚合。
 - **认证守卫**：`__root.tsx` 通过 `beforeLoad` 检查初始化状态并自动重定向；`console.tsx` 通过 Cookie 检查 `access_token` 守卫。
 - **Token 管理**：使用 `js-cookie` 存储 AT/RT/expires_at，`lib/auth/cookie-utils.ts` 封装统一读写接口；`useAuth` Hook 每 30 秒检查并在 AT 过期前 5 分钟自动续期。
 - **通用组件复用**：`confirm-delete-dialog.tsx` 统一替代各模块的 `delete-dialog.tsx`；`page-header.tsx`、`skeleton-table.tsx` 为跨模块通用组件，禁止重复创建。
@@ -212,6 +269,10 @@ web/
 - **WebAuthn 集成**：浏览器端通过 `lib/webauthn/helpers.ts` 处理 ArrayBuffer/Base64 编解码，`useBiometric` Hook 管理注册/登录/凭证 CRUD 流程。
 - **个人资料管理**：`console/profile.tsx` 页面包含三个标签页（资料/密码/生物认证），分别对应 `profile/` 下的三个组件。
 - **首页模块化**：`routes/_public/index.tsx` 已拆分为 `components/landing/` 下的区块组件（hero/features/tech），禁止在路由文件中内联大段 JSX。
+- **LLM 配置**：Provider/Model CRUD + Agent 角色模型分配通过 `useLlmConfig` Hook + `components/llm/` 组件实现，API Key 仅在创建/编辑时输入，不在前端缓存。
+- **SSH Key 管理**：通过 `useSshKey` Hook + `components/ssh/` 实现，密钥对生成请求后端，前端不接触私钥明文。
+- **RepoWiki 配置**：通过 `useRepoWiki` Hook + `components/repowiki/` 实现，包括配置表单、版本管理、Webhook 配置三部分；版本切换需二次确认。
+- **系统设置**：`console/settings.tsx` 重构为多标签页（站点/安全/Q&A/RepoWiki），对应 `components/settings/` 下五个表单组件，统一通过 `useSettings` Hook 读写。
 
 ## 反模式
 
@@ -228,6 +289,8 @@ web/
 - 禁止直接使用 `dangerouslySetInnerHTML` 渲染不可信 HTML；必须通过 `shadow-html.tsx` 沙盒组件。
 - 禁止在业务模块中重复创建删除确认对话框；统一使用 `confirm-delete-dialog.tsx`。
 - 禁止在路由文件（`routes/*.tsx`）中内联大段页面 JSX；拆分到 `components/` 下。
+- 禁止在前端缓存或持久化 LLM API Key / SSH 私钥明文。
+- 禁止在 `components/` 下跨业务域直接 import 组件；通过通用组件或 `@lumina/components` 共享。
 
 ## 调试路径
 
@@ -245,3 +308,8 @@ web/
 12. WebAuthn 注册失败 → 检查 `lib/webauthn/helpers.ts` 编解码 + `useBiometric.ts` 流程 + 浏览器控制台 WebAuthn 错误。
 13. Interact 连接后无问题推送 → 检查 `useQaWebSocket.ts` 消息回调注册 + `lobby-view.tsx` 是否正确切换到问题视图。
 14. 补充内容未显示 → 检查 `supplement-dialog.tsx` + `detail-panel.tsx` 的 Markdown 渲染。
+15. LLM 配置保存失败 → 检查 `useLlmConfig.ts` mutation + `lib/apis/llm.ts` 请求 + 后端 `LLM_ENCRYPT_SECRET` 是否设置。
+16. SSH Key 创建无响应 → 检查 `useSshKey.ts` + `components/ssh/create-dialog.tsx`，确认后端密钥生成成功。
+17. RepoWiki 版本切换无效 → 检查 `useRepoWiki.ts` 的切换 mutation + `components/repowiki/version-switcher.tsx` 确认逻辑。
+18. Webhook 事件不刷新 → 检查 `useWebhook.ts` queryKey + `components/repowiki/webhook-events.tsx` 轮询配置。
+19. 系统设置保存后未生效 → 检查 `useSettings.ts` mutation 失效策略 + `components/settings/*-form.tsx` 表单初始值。

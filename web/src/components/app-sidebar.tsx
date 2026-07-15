@@ -13,7 +13,7 @@ import {
 	User,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { Avatar, AvatarFallback } from "#/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@lumina/components/ui/avatar";
 import {
 	Sidebar,
 	SidebarContent,
@@ -25,9 +25,9 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
-} from "#/components/ui/sidebar";
+} from "@lumina/components/ui/sidebar";
 import { useAuth } from "#/hooks/useAuth";
-import { sidebarItem, sidebarStaggerContainer } from "#/lib/motion";
+import { sidebarItem, sidebarStaggerContainer } from "@lumina/components/motion";
 
 interface NavItem {
 	title: string;

@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Plus } from 'lucide-react'
-import { Button } from '#/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
+import { Button } from '@lumina/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@lumina/components/ui/tabs'
 import { PageHeader } from '#/components/page-header'
 import { DataTable } from '#/components/data-table'
 import { SkeletonTable } from '#/components/skeleton-table'
@@ -25,7 +25,7 @@ import {
   useModels,
   useDeleteModel,
 } from '#/hooks/useLlmConfig'
-import { staggerContainer, staggerItem } from '#/lib/motion'
+import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import type { Provider, Model } from '#/lib/models/response/llm'
 
 export const Route = createFileRoute('/console/settings')({

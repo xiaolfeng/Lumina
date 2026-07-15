@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Bot, Clock, FolderOpen, Loader2, Plus, Users } from 'lucide-react'
 
-import { ScrollArea } from '#/components/ui/scroll-area'
+import { ScrollArea } from '@lumina/components/ui/scroll-area'
 import { createSession } from '#/lib/apis/qa-admin'
 import { getProjectList } from '#/lib/apis/project'
 import type { ProjectItem } from '#/lib/models/response/project'

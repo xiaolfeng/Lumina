@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 import {
 	Dialog,
 	DialogContent,
@@ -7,11 +7,11 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from '#/components/ui/dialog'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
+} from '@lumina/components/ui/dialog'
+import { Input } from '@lumina/components/ui/input'
+import { Label } from '@lumina/components/ui/label'
+import { Textarea } from '@lumina/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@lumina/components/ui/tabs'
 import { useCreateSshKey } from '#/hooks/useSshKey'
 import type { CreateSshKeyResponse } from '#/lib/models/response/ssh'
 import { Copy, Check, Download, KeyRound } from 'lucide-react'

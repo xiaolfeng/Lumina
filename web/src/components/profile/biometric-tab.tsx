@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
-import { Button } from '#/components/ui/button'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
+import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
+import { Button } from '@lumina/components/ui/button'
+import { Input } from '@lumina/components/ui/input'
+import { Label } from '@lumina/components/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '#/components/ui/dialog'
+} from '@lumina/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +21,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '#/components/ui/alert-dialog'
+} from '@lumina/components/ui/alert-dialog'
 import { Fingerprint, Plus, Trash2, Monitor } from 'lucide-react'
 import { useBiometricCredentials, useRegisterBiometric, useDeleteBiometric } from '#/hooks/useBiometric'
 import type { BiometricCredentialItem } from '#/lib/models/response/user'

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
-import { Button } from "#/components/ui/button";
+import { Button } from "@lumina/components/ui/button";
 
 const WARN_THRESHOLD = 30_000; // 30s：显示提示 + 忽略按钮
 const DANGER_THRESHOLD = 120_000; // 2min：变红色 + 追加提示

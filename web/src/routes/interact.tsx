@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Toaster } from "#/components/ui/sonner";
+import { Toaster } from "@lumina/components/ui/sonner";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { PanelRightOpen, Sparkles } from "lucide-react";
 import { SidebarOpenContext, type SessionProgress } from "#/hooks/useSidebarOpen";

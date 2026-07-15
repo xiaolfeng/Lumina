@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
-import { Badge } from '#/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
+import { Badge } from '@lumina/components/ui/badge'
 import type { SessionDetailResponse } from '#/lib/models/response/qa-admin'
 
 interface SessionDetailProps {

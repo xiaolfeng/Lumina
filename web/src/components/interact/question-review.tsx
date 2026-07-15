@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { Textarea } from '#/components/ui/textarea'
+import { Textarea } from '@lumina/components/ui/textarea'
 
 import { DecisionButtons } from './decision-buttons'
 import { Markdown, proseQuestion } from './primitives'

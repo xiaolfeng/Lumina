@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 import {
 	Table,
 	TableBody,
@@ -7,7 +7,7 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from '#/components/ui/table'
+} from '@lumina/components/ui/table'
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -17,7 +17,7 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-} from '#/components/ui/alert-dialog'
+} from '@lumina/components/ui/alert-dialog'
 import { SkeletonTable } from '#/components/skeleton-table'
 import { StatusBadge } from '#/components/repowiki/status-badge'
 import { DataTablePagination } from '#/components/data-table-pagination'

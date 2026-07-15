@@ -8,11 +8,14 @@ OUTPUT_BIN = lumina
 
 .DEFAULT_GOAL := help
 
-.PHONY: help swag run dev dev-backend dev-frontend dev-wiki-frontend build-frontend build-wiki-frontend tidy fmt test vet lint build generate
+.PHONY: help install swag run dev dev-backend dev-frontend dev-wiki-frontend build-frontend build-wiki-frontend tidy fmt test vet lint build generate
 
 # 显示帮助信息
 help:
 	@echo "Lumina · 微明 - 可用命令"
+	@echo ""
+	@echo "初始化命令:"
+	@echo "  make install             - 安装根 pnpm workspace 依赖"
 	@echo ""
 	@echo "开发命令:"
 	@echo "  make swag                - 生成 Swagger 文档"
@@ -23,7 +26,7 @@ help:
 	@echo "  make dev-wiki-frontend   - 运行 Wiki Reader 前端开发服务器"
 	@echo ""
 	@echo "构建命令:"
-	@echo "  make generate            - 一键构建：主前端 → Wiki Reader → Swagger → Go 编译"
+	@echo "  make generate            - 一键构建：主前端 → Wiki Reader → Swagger → Go 编译（运行前请先 make install 确保依赖最新）"
 	@echo "  make build               - 同 generate"
 	@echo "  make build-frontend      - 仅构建主前端 (产出 web/dist)"
 	@echo "  make build-wiki-frontend - 仅构建 Wiki Reader 前端 (产出 web-wiki/dist)"
@@ -40,6 +43,10 @@ help:
 	@echo "  make dev-backend"
 	@echo "  make build"
 	@echo ""
+
+# 安装所有 workspace 依赖（根 pnpm workspace）
+install:
+	pnpm install
 
 # 提取出的 Swagger 生成目标
 swag:

@@ -1,6 +1,6 @@
 import { CheckCircle, Pencil, XCircle } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 
 /**
  * 决策按钮组 —— 收敛 diff/plan/review 三处重复的决策按钮。

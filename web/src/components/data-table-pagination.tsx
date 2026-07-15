@@ -1,4 +1,4 @@
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface DataTablePaginationProps {

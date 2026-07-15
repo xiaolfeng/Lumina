@@ -1,0 +1,6 @@
+packages:
+  - 'web'
+  - 'web-wiki'
+  - 'components'
+allowBuilds:
+  unrs-resolver: true

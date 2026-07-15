@@ -1,4 +1,4 @@
-import { Skeleton } from '#/components/ui/skeleton'
+import { Skeleton } from '@lumina/components/ui/skeleton'
 
 interface SkeletonTableProps {
   /** 渲染行数，默认 3 */

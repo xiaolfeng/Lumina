@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Check, ChevronsUpDown } from 'lucide-react'
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -8,22 +8,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '#/components/ui/dialog'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
+} from '@lumina/components/ui/dialog'
+import { Input } from '@lumina/components/ui/input'
+import { Label } from '@lumina/components/ui/label'
+import { Textarea } from '@lumina/components/ui/textarea'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '#/components/ui/select'
+} from '@lumina/components/ui/select'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '#/components/ui/popover'
+} from '@lumina/components/ui/popover'
 import {
   Command,
   CommandEmpty,
@@ -31,7 +31,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '#/components/ui/command'
+} from '@lumina/components/ui/command'
 import { cn } from '#/lib/utils'
 import { useCreatePin } from '#/hooks/usePin'
 import { useProjectList } from '#/hooks/useProject'

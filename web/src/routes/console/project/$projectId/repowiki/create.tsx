@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { ArrowLeft } from 'lucide-react'
-import { Button } from '#/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#/components/ui/card'
+import { Button } from '@lumina/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@lumina/components/ui/card'
 import { useCreateRepoWikiConfig } from '#/hooks/useRepoWiki'
 import { ConfigForm } from '#/components/repowiki/config-form'
-import { staggerContainer, staggerItem } from '#/lib/motion'
+import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { PageHeader } from '#/components/page-header'
 
 export const Route = createFileRoute('/console/project/$projectId/repowiki/create')({

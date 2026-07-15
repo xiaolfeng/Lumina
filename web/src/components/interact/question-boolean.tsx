@@ -1,6 +1,6 @@
 import { Check, SkipForward, X } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 import { QuestionShell  } from './question-shell'
 import type {QuestionComponentProps} from './question-shell';
 

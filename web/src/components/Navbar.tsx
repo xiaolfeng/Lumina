@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 import { Link, useRouter } from '@tanstack/react-router'
 import { Github, LayoutDashboard, LogOut, Menu, Sparkles, X } from 'lucide-react'
 import { motion } from 'motion/react'

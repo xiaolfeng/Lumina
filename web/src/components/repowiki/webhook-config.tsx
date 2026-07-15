@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Button } from '#/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
+import { Button } from '@lumina/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
+import { Input } from '@lumina/components/ui/input'
+import { Label } from '@lumina/components/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -10,14 +10,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '#/components/ui/dialog'
+} from '@lumina/components/ui/dialog'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '#/components/ui/select'
+} from '@lumina/components/ui/select'
 import { useWebhookConfig, useRegenerateWebhook } from '#/hooks/useWebhook'
 import { Copy, Check, AlertTriangle, RefreshCw, Shield } from 'lucide-react'
 import { toast } from 'sonner'

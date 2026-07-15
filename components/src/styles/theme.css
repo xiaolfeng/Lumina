@@ -1,0 +1,276 @@
+/* ─── 微明色盘 · 共享主题 ───────────────────────── */
+
+@import 'katex/dist/katex.min.css';
+
+/* ─── 微明色盘 · 烛照幽微 ─────────────────────────────── */
+/* 以幽暗为底，燃一寸静烛。不求烈日灼目，只愿微光渡桥。 */
+
+:root {
+  /* ── 意象层 ── */
+  --sea-ink: #2a2420; /* 深墨褐 — 幽暗之主 */
+  --sea-ink-soft: #5c534a; /* 柔褐 — 隐于幽微，需保证对比度 */
+  --lagoon: #c9883a; /* 琥珀金 — 烛光本体 */
+  --lagoon-deep: #7a4e1a; /* 深琥珀 — 烛芯，需保证对比度 */
+  --palm: #b87050; /* 余烬橙 — 温暖余温 */
+  --sand: #ede5d8; /* 沙褐 — 沉淀之壤 */
+  --foam: #f8f4ee; /* 烛晕 — 微光弥漫 */
+
+  /* ── 材质层 ── */
+  --surface: rgba(255, 251, 245, 0.72);
+  --surface-strong: rgba(255, 251, 245, 0.92);
+  --line: rgba(42, 36, 32, 0.11);
+  --inset-glint: rgba(255, 251, 245, 0.78);
+  --kicker: #a06820;
+  --bg-base: #f5efe6;
+  --header-bg: rgba(255, 251, 245, 0.82);
+  --chip-bg: rgba(255, 251, 245, 0.78);
+  --chip-line: rgba(169, 120, 50, 0.18);
+  --link-bg-hover: rgba(255, 251, 245, 0.92);
+
+  /* ── 光晕层 ── */
+  --hero-a: rgba(201, 136, 58, 0.28);
+  --hero-b: rgba(184, 112, 80, 0.16);
+
+  /* ── shadcn 兼容 ── */
+  --background: oklch(0.97 0.01 85);
+  --foreground: oklch(0.22 0.02 50);
+  --card: oklch(0.97 0.01 85);
+  --card-foreground: oklch(0.22 0.02 50);
+  --popover: oklch(0.97 0.01 85);
+  --popover-foreground: oklch(0.22 0.02 50);
+  --primary: #c17a2e;
+  --primary-foreground: #fffbf5;
+  --secondary: #e8ddd0;
+  --secondary-foreground: #2a2420;
+  --muted: #e8ddd0;
+  --muted-foreground: oklch(0.55 0.02 60);
+  --accent: #f0e6d6;
+  --accent-foreground: #2a2420;
+  --destructive: oklch(0.55 0.18 25);
+  --destructive-foreground: oklch(0.97 0.01 85);
+  --border: oklch(0.88 0.01 80);
+  --input: oklch(0.88 0.01 80);
+  --ring: #c17a2e;
+  --chart-1: oklch(0.6 0.15 45);
+  --chart-2: oklch(0.55 0.1 60);
+  --chart-3: oklch(0.45 0.08 50);
+  --chart-4: oklch(0.75 0.12 80);
+  --chart-5: oklch(0.7 0.1 70);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.96 0.01 85);
+  --sidebar-foreground: oklch(0.22 0.02 50);
+  --sidebar-primary: oklch(0.22 0.02 50);
+  --sidebar-primary-foreground: oklch(0.97 0.01 85);
+  --sidebar-accent: oklch(0.94 0.01 85);
+  --sidebar-accent-foreground: oklch(0.22 0.02 50);
+  --sidebar-border: oklch(0.88 0.01 80);
+  --sidebar-ring: oklch(0.78 0.04 70);
+}
+
+.dark {
+  /* ── 意象层 · 夜烛 ── */
+  --sea-ink: #e8ddd0; /* 暖白 — 被烛光照亮的文字 */
+  --sea-ink-soft: #a89a8a; /* 暗羊皮 — 隐于夜色 */
+  --lagoon: #e8a855; /* 亮琥珀 — 烛光跳动 */
+  --lagoon-deep: #f5c574; /* 浅琥珀 —  Hover 更暖 */
+  --palm: #e08a5e; /* 暖橙 — 余温 */
+  --sand: #1a1512; /* 深褐 — 夜色之底 */
+  --foam: #13100e; /* 烟褐 — 幽暗深处 */
+
+  /* ── 材质层 · 夜 ── */
+  --surface: rgba(30, 25, 20, 0.78);
+  --surface-strong: rgba(25, 20, 16, 0.92);
+  --line: rgba(232, 213, 190, 0.14);
+  --inset-glint: rgba(255, 235, 210, 0.1);
+  --kicker: #f5d69a; /* 暖金 — 夜中标签 */
+  --bg-base: #0f0c0a; /* 烟黑 — 最深 */
+  --header-bg: rgba(15, 12, 10, 0.85);
+  --chip-bg: rgba(30, 25, 20, 0.88);
+  --chip-line: rgba(232, 213, 190, 0.2);
+  --link-bg-hover: rgba(40, 32, 26, 0.8);
+
+  /* ── 光晕层 · 夜 ── */
+  --hero-a: rgba(232, 168, 85, 0.18);
+  --hero-b: rgba(224, 138, 94, 0.1);
+
+  /* ── shadcn 兼容 · 夜 ── */
+  --background: oklch(0.14 0.02 50);
+  --foreground: oklch(0.95 0.01 85);
+  --card: oklch(0.14 0.02 50);
+  --card-foreground: oklch(0.95 0.01 85);
+  --popover: oklch(0.14 0.02 50);
+  --popover-foreground: oklch(0.95 0.01 85);
+  --primary: #e8a855;
+  --primary-foreground: #1a1512;
+  --secondary: #2a2420;
+  --secondary-foreground: #e8ddd0;
+  --muted: #2a2420;
+  --muted-foreground: oklch(0.7 0.02 70);
+  --accent: #3a322c;
+  --accent-foreground: #e8ddd0;
+  --destructive: oklch(0.4 0.14 25);
+  --destructive-foreground: oklch(0.95 0.01 85);
+  --border: oklch(0.24 0.02 50);
+  --input: oklch(0.24 0.02 50);
+  --ring: #e8a855;
+  --chart-1: oklch(0.55 0.18 45);
+  --chart-2: oklch(0.65 0.14 60);
+  --chart-3: oklch(0.75 0.12 70);
+  --chart-4: oklch(0.6 0.2 80);
+  --chart-5: oklch(0.6 0.18 25);
+  --sidebar: oklch(0.2 0.02 50);
+  --sidebar-foreground: oklch(0.95 0.01 85);
+  --sidebar-primary: oklch(0.55 0.18 45);
+  --sidebar-primary-foreground: oklch(0.95 0.01 85);
+  --sidebar-accent: oklch(0.24 0.02 50);
+  --sidebar-accent-foreground: oklch(0.95 0.01 85);
+  --sidebar-border: oklch(0.24 0.02 50);
+  --sidebar-ring: oklch(0.5 0.04 60);
+}
+
+@theme inline {
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+
+  /* ── 微明色盘 · @theme 映射（自动生成语义工具类） ── */
+  /* 意象层 */
+  --color-sea-ink: var(--sea-ink);
+  --color-sea-ink-soft: var(--sea-ink-soft);
+  --color-lagoon: var(--lagoon);
+  --color-lagoon-deep: var(--lagoon-deep);
+  --color-palm: var(--palm);
+  --color-sand: var(--sand);
+  --color-foam: var(--foam);
+
+  /* 材质层 */
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-line: var(--line);
+  --color-bg-base: var(--bg-base);
+  --color-header-bg: var(--header-bg);
+  --color-chip-bg: var(--chip-bg);
+  --color-chip-line: var(--chip-line);
+  --color-kicker: var(--kicker);
+  --color-link-bg-hover: var(--link-bg-hover);
+
+  /* 光晕层 */
+  --color-hero-a: var(--hero-a);
+  --color-hero-b: var(--hero-b);
+
+  /* shadcn 兼容 */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* 圆角 */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* 侧边栏 */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* ── 排版工具类（全局约定，非组件样式） ── */
+.display-title {
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+/* ─── 代码高亮 · 微明主题（覆盖 highlight.js 默认） ─────── */
+.hljs {
+  color: #1e293b;
+  background: transparent;
+}
+.hljs-comment,
+.hljs-quote {
+  color: #94a3b8;
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-name,
+.hljs-tag {
+  color: #7c3aed;
+}
+.hljs-string,
+.hljs-title,
+.hljs-section,
+.hljs-attribute,
+.hljs-literal,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-addition {
+  color: #059669;
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-meta,
+.hljs-selector,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: #d97706;
+}
+.hljs-function .hljs-title,
+.hljs-title.function_ {
+  color: #2563eb;
+}
+.hljs-variable,
+.hljs-params {
+  color: #e11d48;
+}
+.hljs-attr,
+.hljs-property {
+  color: #0ea5e9;
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
+}
+.hljs-deletion {
+  color: #b91c1c;
+}
+
+/* Mermaid 容器居中 */
+.prose :where(.mermaid) {
+  display: flex;
+  justify-content: center;
+  margin-block: 1rem;
+}
+.prose :where(.mermaid svg) {
+  max-width: 100%;
+  height: auto;
+}

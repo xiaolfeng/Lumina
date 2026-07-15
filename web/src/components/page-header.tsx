@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { staggerItemLeft } from '#/lib/motion'
+import { staggerItemLeft } from '@lumina/components/motion'
 
 interface PageHeaderProps {
   title: string

@@ -1,14 +1,14 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { ArrowLeft, BookOpen, Plus, ExternalLink } from 'lucide-react'
-import { Button } from '#/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#/components/ui/card'
-import { Badge } from '#/components/ui/badge'
+import { Button } from '@lumina/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@lumina/components/ui/card'
+import { Badge } from '@lumina/components/ui/badge'
 import { PageHeader } from '#/components/page-header'
 import { useRepoWikiConfigByProjectId } from '#/hooks/useRepoWiki'
 import { AnalyzeButton, UpdateButton, VersionList } from '#/components/repowiki/version-list'
 import { VersionSwitcher } from '#/components/repowiki/version-switcher'
-import { staggerContainer, staggerItem } from '#/lib/motion'
+import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { buildWikiReaderUrl } from '#/lib/utils'
 
 export const Route = createFileRoute('/console/project/$projectId/repowiki/')({

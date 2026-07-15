@@ -4,7 +4,7 @@ import { EditorView } from '@codemirror/view'
 import { githubLight } from '@uiw/codemirror-theme-github'
 import { Code2 } from 'lucide-react'
 
-import { Label } from '#/components/ui/label'
+import { Label } from '@lumina/components/ui/label'
 
 import { QuestionShell } from './question-shell'
 import type { QuestionComponentProps } from './question-shell'

@@ -1,9 +1,9 @@
 import { ArrowLeft, RotateCw } from "lucide-react";
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Button } from "#/components/ui/button";
-import { ScrollArea } from "#/components/ui/scroll-area";
-import { ease } from "#/lib/motion";
+import { Button } from "@lumina/components/ui/button";
+import { ScrollArea } from "@lumina/components/ui/scroll-area";
+import { ease } from "@lumina/components/motion";
 
 import { Markdown, proseArticle, ShadowHtml } from "./primitives";
 import { MotionDemoPanel } from "./motion-demo-panel";

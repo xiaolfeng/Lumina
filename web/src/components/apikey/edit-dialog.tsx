@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -7,9 +7,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '#/components/ui/dialog'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
+} from '@lumina/components/ui/dialog'
+import { Input } from '@lumina/components/ui/input'
+import { Label } from '@lumina/components/ui/label'
 import { useUpdateApikey } from '#/hooks/useApikey'
 import type { ApikeyItem } from '#/lib/models/response/apikey'
 

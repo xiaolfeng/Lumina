@@ -1,6 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table'
-import { Badge } from '#/components/ui/badge'
-import { Button } from '#/components/ui/button'
+import { Badge } from '@lumina/components/ui/badge'
+import { Button } from '@lumina/components/ui/button'
 import { Trash2 } from 'lucide-react'
 import type { SessionItem } from '#/lib/models/response/qa-admin'
 

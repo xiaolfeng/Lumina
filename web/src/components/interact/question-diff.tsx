@@ -2,7 +2,7 @@ import { FileText } from 'lucide-react'
 import { useState } from 'react'
 import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued'
 
-import { Textarea } from '#/components/ui/textarea'
+import { Textarea } from '@lumina/components/ui/textarea'
 
 import { DecisionButtons } from './decision-buttons'
 import { QuestionShell } from './question-shell'

@@ -10,7 +10,11 @@
     "target": "ES2022",
     "jsx": "react-jsx",
     "module": "ESNext",
-    "paths": { "#/*": ["./src/*"], "@/*": ["./src/*"] },
+    "paths": {
+      "#/*": ["./src/*"],
+      "@/*": ["./src/*"],
+      "@lumina/components/*": ["../components/src/*"]
+    },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
     "moduleResolution": "bundler",

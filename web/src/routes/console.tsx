@@ -5,17 +5,17 @@ import {
   SidebarProvider,
   SidebarInset,
   SidebarTrigger,
-} from '#/components/ui/sidebar'
+} from '@lumina/components/ui/sidebar'
 import { AppSidebar } from '#/components/app-sidebar'
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
-} from '#/components/ui/breadcrumb'
-import { Toaster } from '#/components/ui/sonner'
+} from '@lumina/components/ui/breadcrumb'
+import { Toaster } from '@lumina/components/ui/sonner'
 import Cookies from 'js-cookie'
-import { ease } from '#/lib/motion'
+import { ease } from '@lumina/components/motion'
 import { getSafeRedirect } from '#/lib/apis/client'
 
 export const Route = createFileRoute('/console')({

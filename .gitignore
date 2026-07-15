@@ -2,6 +2,17 @@
 .vscode/
 .idea/
 
+### Node ###
+node_modules/
+**/node_modules/
+*.tsbuildinfo
+.nitro/
+.tanstack/
+.wrangler/
+.output/
+.vinxi/
+__unconfig__
+
 ### System ###
 .DS_Store
 Thumbs.db

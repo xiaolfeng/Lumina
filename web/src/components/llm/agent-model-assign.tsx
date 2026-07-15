@@ -5,7 +5,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '#/components/ui/select'
+} from '@lumina/components/ui/select'
 import {
   useAgentModels,
   useUpdateAgentModel,

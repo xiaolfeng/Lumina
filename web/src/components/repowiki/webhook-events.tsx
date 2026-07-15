@@ -6,10 +6,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '#/components/ui/table'
-import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
-import { Badge } from '#/components/ui/badge'
-import { Button } from '#/components/ui/button'
+} from '@lumina/components/ui/table'
+import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
+import { Badge } from '@lumina/components/ui/badge'
+import { Button } from '@lumina/components/ui/button'
 import { useWebhookEvents } from '#/hooks/useWebhook'
 import { SkeletonTable } from '#/components/skeleton-table'
 import { ChevronLeft, ChevronRight } from 'lucide-react'

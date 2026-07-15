@@ -7,7 +7,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '#/components/ui/alert-dialog'
+} from '@lumina/components/ui/alert-dialog'
 
 interface ConfirmDeleteDialogProps {
   open: boolean

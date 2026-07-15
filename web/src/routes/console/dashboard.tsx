@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
-import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
-import { Button } from '#/components/ui/button'
-import { Skeleton } from '#/components/ui/skeleton'
+import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
+import { Button } from '@lumina/components/ui/button'
+import { Skeleton } from '@lumina/components/ui/skeleton'
 import { useApikeyList } from '#/hooks/useApikey'
 import { KeyRound, ShieldCheck, Clock, Plus, Sparkles } from 'lucide-react'
-import { staggerContainer, staggerItem } from '#/lib/motion'
+import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { PageHeader } from '#/components/page-header'
 
 export const Route = createFileRoute('/console/dashboard')({

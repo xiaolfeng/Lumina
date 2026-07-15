@@ -1,9 +1,9 @@
 import { Pencil } from 'lucide-react'
 import { useState } from 'react'
 
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '#/components/ui/radio-group'
+import { Input } from '@lumina/components/ui/input'
+import { Label } from '@lumina/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@lumina/components/ui/radio-group'
 import { SupplementLoadingBanner } from './supplement-loading-banner'
 
 import { OptionDetailLabel } from './option-detail-label'

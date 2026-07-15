@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Send, SkipForward } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
+import { Button } from '@lumina/components/ui/button'
 import { Markdown, proseQuestion, proseHint } from './primitives'
 import { SupplementRequestDialog } from './supplement-dialog'
 import type { Question } from './types'
