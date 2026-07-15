@@ -57,6 +57,13 @@ function WikiHomePage() {
         </p>
       </div>
     )
+  } else if (!loadingManifest && !manifestError && homePath === '') {
+    body = (
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <p className="text-lg font-medium">暂无首页内容</p>
+        <p className="text-sm mt-1">Wiki 文档可能尚未生成</p>
+      </div>
+    )
   } else if (loadingPage) {
     body = (
       <div className="flex items-center justify-center py-12">

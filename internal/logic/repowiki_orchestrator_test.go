@@ -42,17 +42,17 @@ func newTestOrchestrator(t *testing.T, versionID int64, projectName, language st
 
 func TestFindMissingEntries(t *testing.T) {
 	outline := []WikiEntry{
-		{Title: "Overview", Path: "content/overview.md"},
-		{Title: "Architecture", Path: "content/architecture.md"},
-		{Title: "Modules", Path: "content/modules.md"},
+		{Title: "Overview", Path: "overview.md"},
+		{Title: "Architecture", Path: "architecture.md"},
+		{Title: "Modules", Path: "modules.md"},
 		{Title: "Empty Path", Path: ""},
 	}
 
 	t.Run("matches missing_file/empty_page/orphan_file to outline", func(t *testing.T) {
 		errors := []ValidationError{
-			{Type: "missing_file", Path: "content/overview.md", Message: "missing"},
-			{Type: "empty_page", Path: "content/architecture.md", Message: "empty"},
-			{Type: "orphan_file", Path: "content/modules.md", Message: "orphan"},
+			{Type: "missing_file", Path: "overview.md", Message: "missing"},
+			{Type: "empty_page", Path: "architecture.md", Message: "empty"},
+			{Type: "orphan_file", Path: "modules.md", Message: "orphan"},
 		}
 		got := findMissingEntries(errors, outline)
 		if len(got) != 3 {
@@ -62,7 +62,7 @@ func TestFindMissingEntries(t *testing.T) {
 		for _, e := range got {
 			gotPaths[e.Path] = true
 		}
-		for _, want := range []string{"content/overview.md", "content/architecture.md", "content/modules.md"} {
+		for _, want := range []string{"overview.md", "architecture.md", "modules.md"} {
 			if !gotPaths[want] {
 				t.Errorf("expected missing entry with path %q", want)
 			}
@@ -71,7 +71,7 @@ func TestFindMissingEntries(t *testing.T) {
 
 	t.Run("non-matching paths return nil", func(t *testing.T) {
 		errors := []ValidationError{
-			{Type: "missing_file", Path: "content/nonexistent.md", Message: "no match"},
+			{Type: "missing_file", Path: "nonexistent.md", Message: "no match"},
 			{Type: "empty_page", Path: "totally/different.md", Message: "no match"},
 		}
 		got := findMissingEntries(errors, outline)
@@ -82,14 +82,14 @@ func TestFindMissingEntries(t *testing.T) {
 
 	t.Run("missing_metadata errors are skipped", func(t *testing.T) {
 		errors := []ValidationError{
-			{Type: "missing_metadata", Path: "content/overview.md", Message: "metadata issue"},
-			{Type: "missing_file", Path: "content/architecture.md", Message: "real missing"},
+			{Type: "missing_metadata", Path: "overview.md", Message: "metadata issue"},
+			{Type: "missing_file", Path: "architecture.md", Message: "real missing"},
 		}
 		got := findMissingEntries(errors, outline)
 		if len(got) != 1 {
 			t.Fatalf("expected 1 missing entry (missing_metadata skipped), got %d", len(got))
 		}
-		if got[0].Path != "content/architecture.md" {
+		if got[0].Path != "architecture.md" {
 			t.Errorf("expected architecture.md, got %q", got[0].Path)
 		}
 	})
@@ -107,8 +107,8 @@ func TestFindMissingEntries(t *testing.T) {
 
 	t.Run("only missing_metadata errors return nil", func(t *testing.T) {
 		errors := []ValidationError{
-			{Type: "missing_metadata", Path: "content/overview.md", Message: "metadata"},
-			{Type: "missing_metadata", Path: "content/architecture.md", Message: "metadata"},
+			{Type: "missing_metadata", Path: "overview.md", Message: "metadata"},
+			{Type: "missing_metadata", Path: "architecture.md", Message: "metadata"},
 		}
 		got := findMissingEntries(errors, outline)
 		if got != nil {
@@ -182,9 +182,12 @@ func TestGenerateManifest(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	outline := []WikiEntry{
-		{Title: "概览", Path: "content/overview.md", Description: "项目概览"},
-		{Title: "架构", Path: "content/architecture.md", Description: "架构设计"},
-		{Title: "模块", Path: "content/modules.md", Description: "模块说明"},
+		{Title: "概览", Path: "overview.md", Description: "项目概览"},
+		{Title: "架构", Children: []WikiEntry{
+			{Title: "架构设计", Path: "architecture.md", Description: "架构设计"},
+			{Title: "模块说明", Path: "modules.md", Description: "模块说明"},
+		}},
+		{Title: "参考", Path: "reference.md", Description: "参考资料"},
 	}
 
 	if xErr := o.generateManifest(outline); xErr != nil {
@@ -208,24 +211,28 @@ func TestGenerateManifest(t *testing.T) {
 	if m.Language != "zh" {
 		t.Errorf("expected language %q, got %q", "zh", m.Language)
 	}
-	if m.Home != "content/overview.md" {
-		t.Errorf("expected home %q (outline[0].Path), got %q", "content/overview.md", m.Home)
+	if m.Home != "overview.md" {
+		t.Errorf("expected home %q (first top-level leaf), got %q", "overview.md", m.Home)
 	}
 	if len(m.Navigation) != 3 {
-		t.Fatalf("expected 3 nav items, got %d", len(m.Navigation))
+		t.Fatalf("expected 3 top-level nav items, got %d", len(m.Navigation))
 	}
-	for i, entry := range outline {
-		nav := m.Navigation[i]
-		if nav.Title != entry.Title {
-			t.Errorf("nav[%d].title = %q, want %q", i, nav.Title, entry.Title)
-		}
-		if nav.Path != entry.Path {
-			t.Errorf("nav[%d].path = %q, want %q", i, nav.Path, entry.Path)
-		}
+	if m.Navigation[0].Title != "概览" || m.Navigation[0].Path != "overview.md" {
+		t.Errorf("nav[0] = (%q, %q), want (\"概览\", \"overview.md\")", m.Navigation[0].Title, m.Navigation[0].Path)
+	}
+	if m.Navigation[1].Title != "架构" || m.Navigation[1].Path != "" || len(m.Navigation[1].Children) != 2 {
+		t.Errorf("nav[1] should be directory node with 2 children, got title=%q path=%q children=%d",
+			m.Navigation[1].Title, m.Navigation[1].Path, len(m.Navigation[1].Children))
+	}
+	if m.Navigation[1].Children[0].Path != "architecture.md" || m.Navigation[1].Children[1].Path != "modules.md" {
+		t.Errorf("nav[1].children paths mismatch, got %v", m.Navigation[1].Children)
+	}
+	if m.Navigation[2].Title != "参考" || m.Navigation[2].Path != "reference.md" {
+		t.Errorf("nav[2] = (%q, %q), want (\"参考\", \"reference.md\")", m.Navigation[2].Title, m.Navigation[2].Path)
 	}
 }
 
-// TestGenerateManifest_EmptyOutline 验证空 outline 时 home 回退为 index.md
+// TestGenerateManifest_EmptyOutline 验证空 outline 时 home 为空字符串
 func TestGenerateManifest_EmptyOutline(t *testing.T) {
 	o, tmpDir := newTestOrchestrator(t, 2003, "empty-project", "en")
 	defer os.RemoveAll(tmpDir)
@@ -244,12 +251,186 @@ func TestGenerateManifest_EmptyOutline(t *testing.T) {
 	if err := json.Unmarshal(data, &m); err != nil {
 		t.Fatalf("unmarshal manifest failed: %v", err)
 	}
-	if m.Home != "index.md" {
-		t.Errorf("expected home fallback %q, got %q", "index.md", m.Home)
+	if m.Home != "" {
+		t.Errorf("expected home fallback %q, got %q", "", m.Home)
 	}
 	if len(m.Navigation) != 0 {
 		t.Errorf("expected empty navigation, got %d items", len(m.Navigation))
 	}
+}
+
+// TestGenerateManifest_DeepTree 验证 3 层嵌套树结构保留 nesting，且 home 取最浅首个叶子
+func TestGenerateManifest_DeepTree(t *testing.T) {
+	o, tmpDir := newTestOrchestrator(t, 2004, "deep-project", "en")
+	defer os.RemoveAll(tmpDir)
+
+	outline := []WikiEntry{
+		{Title: "Guide", Path: "guide.md", Description: "Top-level guide"},
+		{Title: "Section A", Children: []WikiEntry{
+			{Title: "Subsection A1", Children: []WikiEntry{
+				{Title: "Deep Leaf", Path: "deep/leaf.md", Description: "Deep leaf"},
+			}},
+			{Title: "Leaf A2", Path: "a2.md", Description: "A2 leaf"},
+		}},
+		{Title: "Section B", Path: "b.md", Description: "Section B"},
+	}
+
+	if xErr := o.generateManifest(outline); xErr != nil {
+		t.Fatalf("generateManifest failed: %v", xErr)
+	}
+
+	manifestPath := o.storage.GetManifestPath(o.versionID)
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("read manifest failed: %v", err)
+	}
+
+	var m manifestData
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("unmarshal manifest failed: %v", err)
+	}
+
+	if m.Home != "guide.md" {
+		t.Errorf("expected home %q (shallowest first leaf), got %q", "guide.md", m.Home)
+	}
+	if len(m.Navigation) != 3 {
+		t.Fatalf("expected 3 top-level nav items, got %d", len(m.Navigation))
+	}
+	if len(m.Navigation[1].Children) != 2 {
+		t.Errorf("expected section A to have 2 children, got %d", len(m.Navigation[1].Children))
+	}
+	if len(m.Navigation[1].Children[0].Children) != 1 {
+		t.Errorf("expected subsection A1 to have 1 child, got %d", len(m.Navigation[1].Children[0].Children))
+	}
+	deep := m.Navigation[1].Children[0].Children[0]
+	if deep.Path != "deep/leaf.md" {
+		t.Errorf("expected deep leaf path %q, got %q", "deep/leaf.md", deep.Path)
+	}
+}
+
+// TestGenerateManifest_NoTopLevelLeaf 验证顶层无叶子时 home 取 DFS 首个叶子
+func TestGenerateManifest_NoTopLevelLeaf(t *testing.T) {
+	o, tmpDir := newTestOrchestrator(t, 2005, "no-top-leaf-project", "en")
+	defer os.RemoveAll(tmpDir)
+
+	outline := []WikiEntry{
+		{Title: "Section A", Children: []WikiEntry{
+			{Title: "Leaf A1", Path: "a1.md", Description: "A1"},
+			{Title: "Leaf A2", Path: "a2.md", Description: "A2"},
+		}},
+		{Title: "Section B", Children: []WikiEntry{
+			{Title: "Leaf B1", Path: "b1.md", Description: "B1"},
+		}},
+	}
+
+	if xErr := o.generateManifest(outline); xErr != nil {
+		t.Fatalf("generateManifest failed: %v", xErr)
+	}
+
+	manifestPath := o.storage.GetManifestPath(o.versionID)
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("read manifest failed: %v", err)
+	}
+
+	var m manifestData
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("unmarshal manifest failed: %v", err)
+	}
+
+	if m.Home != "a1.md" {
+		t.Errorf("expected home %q (DFS first leaf in children), got %q", "a1.md", m.Home)
+	}
+	if len(m.Navigation) != 2 {
+		t.Fatalf("expected 2 top-level nav items, got %d", len(m.Navigation))
+	}
+	if len(m.Navigation[0].Children) != 2 || len(m.Navigation[1].Children) != 1 {
+		t.Errorf("expected nested children preserved, got nav[0].children=%d nav[1].children=%d",
+			len(m.Navigation[0].Children), len(m.Navigation[1].Children))
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// TestFlattenOutlineLeaves
+// ──────────────────────────────────────────────────────────────────────
+
+func TestFlattenOutlineLeaves(t *testing.T) {
+	outline := []WikiEntry{
+		{Title: "Root", Children: []WikiEntry{
+			{Title: "Branch A", Children: []WikiEntry{
+				{Title: "Leaf A1", Path: "a1.md", ExploreRefs: []string{"ref1"}, Complexity: "high"},
+			}},
+			{Title: "Leaf A2", Path: "a2.md", ExploreRefs: []string{"ref2"}, Complexity: "medium"},
+		}},
+		{Title: "Leaf B", Path: "b.md", ExploreRefs: []string{"ref3"}, Complexity: "low"},
+		{Title: "Empty Directory", Children: []WikiEntry{}},
+	}
+
+	leaves := flattenOutlineLeaves(outline)
+	if len(leaves) != 3 {
+		t.Fatalf("expected 3 leaves, got %d", len(leaves))
+	}
+
+	expectedPaths := []string{"a1.md", "a2.md", "b.md"}
+	for i, leaf := range leaves {
+		if leaf.Path != expectedPaths[i] {
+			t.Errorf("leaves[%d].Path = %q, want %q", i, leaf.Path, expectedPaths[i])
+		}
+	}
+	if leaves[0].Complexity != "high" || leaves[0].ExploreRefs[0] != "ref1" {
+		t.Errorf("leaf fields not preserved, got complexity=%q refs=%v", leaves[0].Complexity, leaves[0].ExploreRefs)
+	}
+	for _, leaf := range leaves {
+		if len(leaf.Children) > 0 {
+			t.Errorf("leaf %q should not have children", leaf.Path)
+		}
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// TestFindFirstLeafPath
+// ──────────────────────────────────────────────────────────────────────
+
+func TestFindFirstLeafPath(t *testing.T) {
+	t.Run("top-level leaf exists", func(t *testing.T) {
+		outline := []WikiEntry{
+			{Title: "A", Path: "a.md"},
+			{Title: "B", Path: "b.md"},
+		}
+		if got := findFirstLeafPath(outline); got != "a.md" {
+			t.Errorf("findFirstLeafPath = %q, want %q", got, "a.md")
+		}
+	})
+
+	t.Run("top-level all directories", func(t *testing.T) {
+		outline := []WikiEntry{
+			{Title: "A", Children: []WikiEntry{
+				{Title: "B", Path: "b.md"},
+			}},
+		}
+		if got := findFirstLeafPath(outline); got != "b.md" {
+			t.Errorf("findFirstLeafPath = %q, want %q", got, "b.md")
+		}
+	})
+
+	t.Run("empty tree", func(t *testing.T) {
+		if got := findFirstLeafPath(nil); got != "" {
+			t.Errorf("findFirstLeafPath = %q, want %q", got, "")
+		}
+		if got := findFirstLeafPath([]WikiEntry{}); got != "" {
+			t.Errorf("findFirstLeafPath = %q, want %q", got, "")
+		}
+	})
+
+	t.Run("skips empty directory nodes", func(t *testing.T) {
+		outline := []WikiEntry{
+			{Title: "Empty Dir", Children: []WikiEntry{}},
+			{Title: "First Leaf", Path: "first.md"},
+		}
+		if got := findFirstLeafPath(outline); got != "first.md" {
+			t.Errorf("findFirstLeafPath = %q, want %q", got, "first.md")
+		}
+	})
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -269,8 +450,8 @@ func TestExecuteFlowOrder(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	outline := []WikiEntry{
-		{Title: "首页", Path: "content/index.md"},
-		{Title: "指南", Path: "content/guide.md"},
+		{Title: "首页", Path: "index.md"},
+		{Title: "指南", Path: "guide.md"},
 	}
 
 	// 模拟 Execute 中 generateManifest 调用（先于 runValidator）
@@ -289,8 +470,8 @@ func TestExecuteFlowOrder(t *testing.T) {
 	if xErr := o.storage.ReadJSON(manifestPath, &m); xErr != nil {
 		t.Fatalf("ReadJSON manifest failed: %v", xErr)
 	}
-	if m.Home != "content/index.md" {
-		t.Errorf("expected home %q, got %q", "content/index.md", m.Home)
+	if m.Home != "index.md" {
+		t.Errorf("expected home %q, got %q", "index.md", m.Home)
 	}
 	if len(m.Navigation) != 2 {
 		t.Errorf("expected 2 nav items, got %d", len(m.Navigation))

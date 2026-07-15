@@ -2,11 +2,12 @@ package logic
 
 // WikiEntry Architect Agent 输出的 Wiki 目录条目
 type WikiEntry struct {
-	Title       string   `json:"title"`         // 页面标题
-	Path        string   `json:"path"`          // 相对 wiki 根的文件路径（如 "content/项目概览.md"）
-	Description string   `json:"description"`   // 页面内容简述
-	ExploreRefs []string `json:"explore_refs"`  // 关联的 Explore 产出文件路径
-	Complexity  string   `json:"complexity"`    // 复杂度："low"|"medium"|"high"（决定 Writer 分配策略）
+	Title       string      `json:"title"`         // 页面标题
+	Path        string      `json:"path"`          // 相对 wiki 根的文件路径（如 "overview.md"、"modules/auth.md"）
+	Description string      `json:"description"`   // 页面内容简述
+	ExploreRefs []string    `json:"explore_refs"`  // 关联的 Explore 产出文件路径
+	Complexity  string      `json:"complexity"`    // 复杂度："low"|"medium"|"high"（决定 Writer 分配策略）
+	Children    []WikiEntry `json:"children,omitempty"` // 子目录条目（目录节点才有，叶子节点为空或 nil）
 }
 
 // ValidationError Validator Agent 输出的校验错误项

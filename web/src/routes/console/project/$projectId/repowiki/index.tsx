@@ -1,15 +1,35 @@
+import { useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { motion } from 'motion/react'
-import { ArrowLeft, BookOpen, Plus, ExternalLink } from 'lucide-react'
+import {
+	ArrowLeft,
+	BookOpen,
+	Plus,
+	ExternalLink,
+	Copy,
+	Check,
+	GitBranch,
+	Globe,
+	KeyRound,
+	Lock,
+	Clock,
+	FileText,
+	Webhook,
+	Settings2,
+} from 'lucide-react'
 import { Button } from '@lumina/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@lumina/components/ui/card'
-import { Badge } from '@lumina/components/ui/badge'
+import { Card, CardContent } from '@lumina/components/ui/card'
+import { Separator } from '@lumina/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@lumina/components/ui/tabs'
 import { PageHeader } from '#/components/page-header'
+import { StatusBadge } from '#/components/repowiki/status-badge'
 import { useRepoWikiConfigByProjectId } from '#/hooks/useRepoWiki'
 import { AnalyzeButton, UpdateButton, VersionList } from '#/components/repowiki/version-list'
-import { VersionSwitcher } from '#/components/repowiki/version-switcher'
+import { WebhookTab } from '#/components/repowiki/webhook-tab'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { buildWikiReaderUrl } from '#/lib/utils'
+import { toast } from 'sonner'
+import type { RepoWikiConfigItem } from '#/lib/models/response/repowiki'
 
 export const Route = createFileRoute('/console/project/$projectId/repowiki/')({
 	component: RepoWikiDetailPage,
@@ -75,105 +95,230 @@ function RepoWikiDetailPage() {
 		)
 	}
 
-	// 已有配置 → 展示详情（当前为静态占位，后续接入真实数据）
+	const hasCompletedVersion = config.latest_version?.status === 'completed'
+
+	// 已有配置 → 概览卡 + Tabs
 	return (
-		<motion.div className="space-y-4" initial="hidden" animate="visible" variants={staggerContainer}>
-			<PageHeader
-				title={`Wiki 管理 — ${config.name}`}
-				description={config.repo_url}
-				action={
-					<Button variant="outline" onClick={() => navigate({ to: '/console/project' })}>
-						<ArrowLeft className="mr-2 size-4" />
-						返回项目
-					</Button>
-				}
-			/>
-
-			{/* 配置信息卡 */}
+		<motion.div className="space-y-5" initial="hidden" animate="visible" variants={staggerContainer}>
+			{/* PageHeader：所有操作按钮集中排列 */}
 			<motion.div variants={staggerItem}>
-				<Card className="border-border bg-card">
-					<CardHeader>
-						<CardTitle>配置信息</CardTitle>
-						<CardDescription>仓库基本配置与状态概览</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-							<InfoField label="仓库名称" value={config.name} />
-							<InfoField label="仓库地址" value={config.repo_url} mono />
-							<InfoField label="默认分支" value={config.default_branch} mono />
-							<InfoField label="默认语言" value={config.default_language} />
-							<InfoField label="状态" value={
-								<Badge variant="outline">{config.status}</Badge>
-							} />
-							<InfoField label="SSH 密钥" value={config.ssh_key_id ? '已关联' : '未使用'} />
-							<InfoField label="Wiki 密码" value={config.has_password ? '已设置' : '未设置'} />
-							<InfoField
-								label="最后访问"
-								value={config.last_accessed_at
-									? new Date(config.last_accessed_at).toLocaleString('zh-CN')
-									: '-'}
-							/>
-							<InfoField
-								label="创建时间"
-								value={new Date(config.created_at).toLocaleDateString('zh-CN')}
-							/>
+				<PageHeader
+					title={`Wiki 管理 — ${config.name}`}
+					action={
+						<div className="flex flex-wrap items-center gap-2">
+							<AnalyzeButton configId={config.id} />
+							<UpdateButton configId={config.id} />
+							{hasCompletedVersion && (
+								<Button variant="outline" asChild className="gap-2">
+									<a
+										href={buildWikiReaderUrl(config.id)}
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										<ExternalLink className="size-4" />
+										查看 Wiki
+									</a>
+								</Button>
+							)}
+							<Button variant="ghost" onClick={() => navigate({ to: '/console/project' })}>
+								<ArrowLeft className="mr-2 size-4" />
+								返回项目
+							</Button>
 						</div>
-					</CardContent>
-				</Card>
+					}
+				/>
 			</motion.div>
 
-			{/* 操作按钮区 */}
-			<motion.div variants={staggerItem} className="flex flex-wrap gap-3">
-				<AnalyzeButton configId={config.id} />
-				<UpdateButton configId={config.id} />
-		{config.latest_version?.status === 'completed' && (
-			<Button variant="outline" asChild>
-				<a href={buildWikiReaderUrl(config.id)} target="_blank" rel="noopener noreferrer">
-					<ExternalLink className="mr-2 size-4" />
-					查看 Wiki
-				</a>
-			</Button>
-		)}
-			</motion.div>
-
-			{/* 选中版本切换 */}
+			{/* 扁平概览条：无 Card 包裹，仓库地址 + 状态 + 关键指标一行展示 */}
 			<motion.div variants={staggerItem}>
-				<VersionSwitcher configId={config.id} selectedVersionId={config.selected_version_id} />
+				<OverviewBar config={config} />
 			</motion.div>
 
-			{/* 版本列表 */}
+			{/* Tabs：版本管理 / Webhook / 配置详情 */}
 			<motion.div variants={staggerItem}>
-				<Card className="border-border bg-card">
-					<CardHeader>
-						<CardTitle>版本历史</CardTitle>
-						<CardDescription>Wiki 分析版本记录</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<VersionList configId={config.id} />
-					</CardContent>
-				</Card>
+				<Tabs defaultValue="versions" className="gap-3">
+					<TabsList>
+						<TabsTrigger value="versions" className="gap-1.5">
+							<FileText className="size-3.5" />
+							版本管理
+						</TabsTrigger>
+						<TabsTrigger value="webhook" className="gap-1.5">
+							<Webhook className="size-3.5" />
+							Webhook
+						</TabsTrigger>
+						<TabsTrigger value="config" className="gap-1.5">
+							<Settings2 className="size-3.5" />
+							配置详情
+						</TabsTrigger>
+					</TabsList>
+
+					<TabsContent value="versions" className="mt-0">
+						<div className="rounded-lg border bg-card p-4">
+							<VersionList configId={config.id} selectedVersionId={config.selected_version_id} />
+						</div>
+					</TabsContent>
+
+					<TabsContent value="webhook" className="mt-0">
+						<div className="rounded-lg border bg-card p-4">
+							<WebhookTab configId={config.id} />
+						</div>
+					</TabsContent>
+
+					<TabsContent value="config" className="mt-0">
+						<div className="rounded-lg border bg-card p-4">
+							<ConfigDetails config={config} />
+						</div>
+					</TabsContent>
+				</Tabs>
 			</motion.div>
 		</motion.div>
 	)
 }
 
-// ── 内部组件：信息字段展示 ──
+// ── 扁平概览条：仓库地址 + 状态 + 关键指标（无 Card 包裹） ──
 
-function InfoField({
-	label,
-	value,
-	mono,
-}: {
-	label: string
-	value: React.ReactNode
-	mono?: boolean
-}) {
+function OverviewBar({ config }: { config: RepoWikiConfigItem }) {
+	const [copied, setCopied] = useState(false)
+
+	const handleCopyUrl = async () => {
+		try {
+			await navigator.clipboard.writeText(config.repo_url)
+			setCopied(true)
+			setTimeout(() => setCopied(false), 2000)
+			toast.success('仓库地址已复制')
+		} catch {
+			toast.error('复制失败')
+		}
+	}
+
+	const lastAccessed = config.last_accessed_at
+		? new Date(config.last_accessed_at).toLocaleString('zh-CN')
+		: null
+
 	return (
-		<div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-			<p className="mb-1 text-xs font-medium text-muted-foreground">{label}</p>
-			<p className={mono ? 'font-mono text-xs break-all' : 'text-sm font-medium'}>
-				{value ?? '-'}
-			</p>
+		<div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+			{/* 仓库地址（mono + 复制） */}
+			<div className="flex items-center gap-1 min-w-0 max-w-full">
+				<code className="truncate rounded border bg-muted px-2 py-0.5 font-mono text-xs text-foreground">
+					{config.repo_url}
+				</code>
+				<Button
+					variant="ghost"
+					size="icon"
+					onClick={handleCopyUrl}
+					aria-label="复制仓库地址"
+					className="size-7 shrink-0"
+				>
+					{copied ? (
+						<Check className="size-3.5 text-emerald-500" />
+					) : (
+						<Copy className="size-3.5" />
+					)}
+				</Button>
+			</div>
+
+			<Separator orientation="vertical" className="h-4 shrink-0" />
+
+			<StatusBadge status={config.status} />
+
+			{config.selected_version_id && (
+				<span className="flex items-center gap-1 text-xs text-muted-foreground">
+					当前选中
+					<code className="font-mono text-foreground">#{config.selected_version_id}</code>
+				</span>
+			)}
+
+			{config.latest_version && config.latest_version.duration_ms > 0 && (
+				<span className="flex items-center gap-1 text-xs text-muted-foreground">
+					<Clock className="size-3" />
+					{(config.latest_version.duration_ms / 1000).toFixed(1)}s
+				</span>
+			)}
+
+			{lastAccessed && (
+				<span className="text-xs text-muted-foreground">最后访问 {lastAccessed}</span>
+			)}
 		</div>
+	)
+}
+
+// ── 配置详情：Definition List 风格（无边框） ──
+
+function ConfigDetails({ config }: { config: RepoWikiConfigItem }) {
+	const items: Array<{ label: string; value: React.ReactNode; mono?: boolean; icon?: React.ReactNode }> = [
+		{
+			label: '仓库名称',
+			value: config.name,
+			icon: <BookOpen className="size-4 text-muted-foreground" />,
+		},
+		{
+			label: '仓库地址',
+			value: config.repo_url,
+			mono: true,
+			icon: <Globe className="size-4 text-muted-foreground" />,
+		},
+		{
+			label: '默认分支',
+			value: config.default_branch,
+			mono: true,
+			icon: <GitBranch className="size-4 text-muted-foreground" />,
+		},
+		{
+			label: '默认语言',
+			value: config.default_language,
+			icon: <Globe className="size-4 text-muted-foreground" />,
+		},
+		{
+			label: 'SSH 密钥',
+			value: config.ssh_key_id ? '已关联' : '未使用',
+			icon: <KeyRound className="size-4 text-muted-foreground" />,
+		},
+		{
+			label: 'Wiki 密码',
+			value: config.has_password ? '已设置' : '未设置',
+			icon: <Lock className="size-4 text-muted-foreground" />,
+		},
+		{
+			label: '当前状态',
+			value: <StatusBadge status={config.status} />,
+		},
+		{
+			label: '选中版本',
+			value: config.selected_version_id ? (
+				<code className="font-mono text-xs">#{config.selected_version_id}</code>
+			) : (
+				'未选择'
+			),
+		},
+		{
+			label: '最后访问',
+			value: config.last_accessed_at
+				? new Date(config.last_accessed_at).toLocaleString('zh-CN')
+				: '—',
+		},
+		{
+			label: '创建时间',
+			value: new Date(config.created_at).toLocaleString('zh-CN'),
+		},
+	]
+
+	return (
+		<dl className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+			{items.map((item) => (
+				<div key={item.label} className="flex items-start justify-between gap-3 py-1.5">
+					<dt className="flex items-center gap-2 shrink-0 text-sm text-muted-foreground">
+						{item.icon}
+						{item.label}
+					</dt>
+					<dd
+						className={`text-right text-sm font-medium ${
+							item.mono ? 'font-mono text-xs break-all' : 'text-foreground'
+						}`}
+					>
+						{item.value ?? '—'}
+					</dd>
+				</div>
+			))}
+		</dl>
 	)
 }

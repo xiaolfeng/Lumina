@@ -94,13 +94,14 @@ export function WikiSidebar({
 
   // 渲染单个导航项（递归）
   const renderNavItem = (entry: WikiNavItem, depth: number = 0) => {
-    const isExpanded = expandedDirs.has(entry.path)
+    const dirKey = entry.path || entry.title
+    const isExpanded = expandedDirs.has(dirKey)
     const isDirectory =
       entry.children !== undefined && entry.children.length > 0
     const isActive = !isDirectory && entry.path === currentPagePath
 
     return (
-      <SidebarMenuItem key={entry.path}>
+      <SidebarMenuItem key={dirKey}>
         <motion.div variants={sidebarItem}>
           {isDirectory ? (
             /* ── 目录项：展开/折叠按钮 + 目录名链接 ── */
@@ -112,7 +113,7 @@ export function WikiSidebar({
               }
               onClick={(e) => {
                 e.preventDefault()
-                toggleDir(entry.path)
+                toggleDir(dirKey)
               }}
             >
               <span
@@ -120,7 +121,7 @@ export function WikiSidebar({
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  toggleDir(entry.path)
+                  toggleDir(dirKey)
                 }}
               >
                 {isExpanded ? (
@@ -129,19 +130,12 @@ export function WikiSidebar({
                   <ChevronRight className="size-3" />
                 )}
               </span>
-              <Link
-                to="/wiki/$wikiId/$"
-                params={{ wikiId, _splat: entry.path }}
-                className="flex flex-1 items-center gap-2"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {isExpanded ? (
-                  <FolderOpen className="size-4 text-lagoon" />
-                ) : (
-                  <FolderClosed className="size-4 text-muted-foreground" />
-                )}
-                <span className="truncate">{entry.title}</span>
-              </Link>
+              {isExpanded ? (
+                <FolderOpen className="size-4 text-lagoon" />
+              ) : (
+                <FolderClosed className="size-4 text-muted-foreground" />
+              )}
+              <span className="truncate">{entry.title}</span>
             </SidebarMenuButton>
           ) : (
             /* ── 文件项：页面链接 ── */

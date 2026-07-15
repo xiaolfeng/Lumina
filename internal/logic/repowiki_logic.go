@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"path/filepath"
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
@@ -649,13 +648,6 @@ func (l *RepoWikiLogic) QueryWiki(ctx context.Context, wikiID int64, query strin
 	// 尝试读取 manifest
 	manifestPath := l.svc.storage.GetManifestPath(version.ID.Int64())
 	if content, xErr := l.svc.storage.ReadMarkdown(manifestPath); xErr == nil {
-		return content, nil
-	}
-
-	// manifest 不存在，尝试读取首页 index.md
-	wikiPath := l.svc.storage.GetWikiPath(version.ID.Int64())
-	indexPath := filepath.Join(wikiPath, "index.md")
-	if content, xErr := l.svc.storage.ReadMarkdown(indexPath); xErr == nil {
 		return content, nil
 	}
 

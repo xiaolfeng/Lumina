@@ -491,14 +491,14 @@ func (o *SubAgentOrchestrator) loadExploreOutputs(exploreFiles map[string]string
 // 让 Writer 明确知道哪些页面需要修复。
 //
 // 缺失/空文件记录为警告（不硬性中断），由 Validator 阶段触发重试。
-func (o *SubAgentOrchestrator) runWritersConcurrent(ctx context.Context, outline []WikiEntry, exploreOutputs map[string]string, validationErrors []ValidationError) *xError.Error {
-	if len(outline) == 0 {
+func (o *SubAgentOrchestrator) runWritersConcurrent(ctx context.Context, leaves []WikiEntry, exploreOutputs map[string]string, validationErrors []ValidationError) *xError.Error {
+	if len(leaves) == 0 {
 		return xError.NewError(ctx, xError.ServerInternalError,
-			xError.ErrMessage("Writer 阶段 outline 为空，无法撰写"), false, nil)
+			xError.ErrMessage("Writer 阶段 leaves 为空，无法撰写"), false, nil)
 	}
 
 	isRetry := validationErrors != nil
-	groups := splitWriterGroups(outline)
+	groups := splitWriterGroups(leaves)
 	wikiDir := o.storage.GetWikiPath(o.versionID)
 
 	// 预创建 Wiki 目录，确保 Validator 即使在 Writer 全部失败时也能正常扫描
@@ -509,7 +509,7 @@ func (o *SubAgentOrchestrator) runWritersConcurrent(ctx context.Context, outline
 
 	o.log.Info(ctx, "文档撰写阶段开始",
 		slog.Int64("version_id", o.versionID),
-		slog.Int("entry_count", len(outline)),
+		slog.Int("entry_count", len(leaves)),
 		slog.Int("writer_group_count", len(groups)),
 		slog.Bool("is_retry", isRetry))
 
@@ -667,22 +667,15 @@ type manifestData struct {
 
 // generateManifest 生成 Wiki 导航清单（meta/repowiki-metadata.json）
 //
-// 将 outline 转换为扁平导航项列表，写入 manifest 路径。
-// home 取 outline[0].Path（非空时），否则回退 "index.md"。
+// 将 outline 递归转换为树形导航项列表，写入 manifest 路径。
+// home 取树的首个叶子节点 path。
 func (o *SubAgentOrchestrator) generateManifest(outline []WikiEntry) *xError.Error {
 	nav := make([]manifestNavItem, 0, len(outline))
 	for _, entry := range outline {
-		nav = append(nav, manifestNavItem{
-			Title:    entry.Title,
-			Path:     entry.Path,
-			Children: nil,
-		})
+		nav = append(nav, o.wikiEntryToNavItem(entry))
 	}
 
-	home := "index.md"
-	if len(outline) > 0 && outline[0].Path != "" {
-		home = outline[0].Path
-	}
+	home := findFirstLeafPath(outline)
 
 	manifest := manifestData{
 		Navigation:  nav,
@@ -700,6 +693,52 @@ func (o *SubAgentOrchestrator) generateManifest(outline []WikiEntry) *xError.Err
 		slog.String("path", manifestPath),
 		slog.Int("nav_count", len(nav)))
 	return nil
+}
+
+// wikiEntryToNavItem 递归将 WikiEntry 转换为 manifest 导航项（保留子树）
+func (o *SubAgentOrchestrator) wikiEntryToNavItem(entry WikiEntry) manifestNavItem {
+	item := manifestNavItem{
+		Title: entry.Title,
+		Path:  entry.Path,
+	}
+	if len(entry.Children) > 0 {
+		item.Children = make([]manifestNavItem, 0, len(entry.Children))
+		for _, child := range entry.Children {
+			item.Children = append(item.Children, o.wikiEntryToNavItem(child))
+		}
+	}
+	return item
+}
+
+// findFirstLeafPath 自顶向下扫描树，返回首个叶子的 path
+func findFirstLeafPath(outline []WikiEntry) string {
+	for _, entry := range outline {
+		if len(entry.Children) == 0 && entry.Path != "" {
+			return entry.Path
+		}
+	}
+	for _, entry := range outline {
+		if len(entry.Children) > 0 {
+			if path := findFirstLeafPathDFS(entry.Children); path != "" {
+				return path
+			}
+		}
+	}
+	return ""
+}
+
+func findFirstLeafPathDFS(entries []WikiEntry) string {
+	for _, entry := range entries {
+		if len(entry.Children) == 0 && entry.Path != "" {
+			return entry.Path
+		}
+		if len(entry.Children) > 0 {
+			if path := findFirstLeafPathDFS(entry.Children); path != "" {
+				return path
+			}
+		}
+	}
+	return ""
 }
 
 // collectRelevantExplores 收集 entries 引用的 Explore 产出内容
@@ -932,12 +971,12 @@ func (o *SubAgentOrchestrator) Execute(ctx context.Context, progressCallback fun
 	// ── 阶段 4: 文档撰写 ──
 	notify(bConst.RepoWikiStageWriting)
 	wikiDir := o.storage.GetWikiPath(o.versionID)
-	if wErr := o.runWritersConcurrent(ctx, outline, exploreOutputs, nil); wErr != nil {
+	if wErr := o.runWritersConcurrent(ctx, flattenOutlineLeaves(outline), exploreOutputs, nil); wErr != nil {
 		return wErr
 	}
 
 	// 程序化校验 Writer 产出：缺失/空文件最多重试 1 次（普通 prompt）
-	missing := o.verifyWriterOutputs(outline, wikiDir)
+	missing := o.verifyWriterOutputs(flattenOutlineLeaves(outline), wikiDir)
 	if len(missing) > 0 {
 		o.log.Warn(ctx, "Writer 产出存在缺失/空文件，重试一次",
 			slog.Int("missing_count", len(missing)))
@@ -945,7 +984,7 @@ func (o *SubAgentOrchestrator) Execute(ctx context.Context, progressCallback fun
 			o.log.Warn(ctx, "缺失条目重试失败（继续校验）",
 				slog.String("err", wErr.Error()))
 		}
-		missing = o.verifyWriterOutputs(outline, wikiDir)
+		missing = o.verifyWriterOutputs(flattenOutlineLeaves(outline), wikiDir)
 		if len(missing) > 0 {
 			o.log.Warn(ctx, "Writer 产出仍有缺失/空文件（继续生成 manifest 并校验）",
 				slog.Int("missing_count", len(missing)))
@@ -960,14 +999,14 @@ func (o *SubAgentOrchestrator) Execute(ctx context.Context, progressCallback fun
 
 	// ── 阶段 5: 文档校验（含重试循环） ──
 	notify(bConst.RepoWikiStageValidating)
-	valid, errors, vErr := o.runValidator(ctx, outline, archRawJSON)
+	valid, errors, vErr := o.runValidator(ctx, flattenOutlineLeaves(outline), archRawJSON)
 	if vErr != nil {
 		return vErr
 	}
 
 	// Validator 失败重试循环
 	for retry := 0; retry < bConst.RepoWikiWriterMaxRetry && !valid; retry++ {
-		missingEntries := findMissingEntries(errors, outline)
+		missingEntries := findMissingEntries(errors, flattenOutlineLeaves(outline))
 		if len(missingEntries) == 0 {
 			// 无法定位缺失条目，无法重驱动，直接终止
 			o.log.Warn(ctx, "Validator 失败但无法定位缺失条目，终止重试",
@@ -987,7 +1026,7 @@ func (o *SubAgentOrchestrator) Execute(ctx context.Context, progressCallback fun
 		}
 
 		// 重新校验
-		valid, errors, vErr = o.runValidator(ctx, outline, archRawJSON)
+		valid, errors, vErr = o.runValidator(ctx, flattenOutlineLeaves(outline), archRawJSON)
 		if vErr != nil {
 			return vErr
 		}
@@ -1116,6 +1155,24 @@ func sanitizeScopeForFilename(scope string) string {
 	return s
 }
 
+// flattenOutlineLeaves DFS 遍历 Wiki 目录树，收集所有叶子节点（无 Children 且 Path 非空）
+func flattenOutlineLeaves(outline []WikiEntry) []WikiEntry {
+	var leaves []WikiEntry
+	var dfs func(entries []WikiEntry)
+	dfs = func(entries []WikiEntry) {
+		for _, e := range entries {
+			if len(e.Children) == 0 && e.Path != "" {
+				leaves = append(leaves, e)
+			}
+			if len(e.Children) > 0 {
+				dfs(e.Children)
+			}
+		}
+	}
+	dfs(outline)
+	return leaves
+}
+
 // splitWriterGroups 按 Complexity 将 outline 条目拆分为 Writer 分配组
 //
 // 分配策略:
@@ -1182,7 +1239,7 @@ func findMissingEntries(errors []ValidationError, outline []WikiEntry) []WikiEnt
 
 // buildArchitectRetryHint 构建 Architect 重试时追加到 user prompt 末尾的格式提醒
 func buildArchitectRetryHint(attempt int) string {
-	return fmt.Sprintf("\n\n---\n⚠️ 重要提醒（第 %d 次重试）：你上一次的输出无法解析为有效 JSON。\n请确保你**仅**输出纯 JSON 数组，不要包含 markdown 代码块（```）、解释性文字或任何其他内容。\nJSON 必须以 '[' 开头、']' 结尾，每个元素是包含 title/path/description/explore_refs/complexity 字段的对象。", attempt)
+	return fmt.Sprintf("\n\n---\n⚠️ 重要提醒（第 %d 次重试）：你上一次的输出无法解析为有效 JSON。\n请确保你**仅**输出纯 JSON 数组，不要包含 markdown 代码块（```）、解释性文字或任何其他内容。\nJSON 必须以 '[' 开头、']' 结尾，每个元素是包含 title/path/description/explore_refs/complexity/children 字段的对象。children 为子目录条目数组（可嵌套），path 不带 content/ 前缀。", attempt)
 }
 
 // ──────────────────────────────────────────────────────────────────────

@@ -21,9 +21,25 @@ import {
 import { SkeletonTable } from '#/components/skeleton-table'
 import { StatusBadge } from '#/components/repowiki/status-badge'
 import { DataTablePagination } from '#/components/data-table-pagination'
-import { useRepoWikiVersions, useRepoWikiAnalyze, useRepoWikiUpdate, ACTIVE_STATUSES } from '#/hooks/useRepoWiki'
+import {
+	useRepoWikiVersions,
+	useRepoWikiAnalyze,
+	useRepoWikiUpdate,
+	useUpdateSelectedVersion,
+	ACTIVE_STATUSES,
+} from '#/hooks/useRepoWiki'
 import { buildWikiReaderUrl } from '#/lib/utils'
-import { Play, RefreshCw, ChevronDown, ChevronRight, Clock, Loader2, ExternalLink } from 'lucide-react'
+import {
+	Play,
+	RefreshCw,
+	ChevronDown,
+	ChevronRight,
+	Clock,
+	Loader2,
+	ExternalLink,
+	Check,
+} from 'lucide-react'
+import { toast } from 'sonner'
 
 // ── 阶段配置 ──
 
@@ -41,7 +57,7 @@ const STAGE_ORDER = ['scan', 'pass1', 'pass2', 'pass3', 'pass4', 'assemble']
 // ── 阶段进度指示器 ──
 
 function StageProgress({ currentStage, durationMs }: { currentStage?: string; durationMs?: number }) {
-	if (!currentStage && !durationMs) return null
+	if (!currentStage && !durationMs) return <span className="text-xs text-muted-foreground">—</span>
 
 	const currentIndex = currentStage ? STAGE_ORDER.indexOf(currentStage) : -1
 	const totalStages = STAGE_ORDER.length
@@ -116,7 +132,7 @@ export function AnalyzeButton({ configId }: { configId: string }) {
 			<Button
 				onClick={() => setDialogOpen(true)}
 				disabled={analyzeMutation.isPending}
-				className="gap-2"
+				className="gap-2 bg-lagoon text-foam hover:bg-lagoon-deep"
 			>
 				<Play className="size-4" />
 				开始分析
@@ -199,16 +215,19 @@ export function UpdateButton({ configId }: { configId: string }) {
 	)
 }
 
-// ── 版本列表主组件 ──
+// ── 版本列表主组件（含选中版本切换） ──
 
 interface VersionListProps {
 	configId: string
+	/** 当前选中的版本 ID（用于对外服务） */
+	selectedVersionId?: string
 }
 
-export function VersionList({ configId }: VersionListProps) {
+export function VersionList({ configId, selectedVersionId }: VersionListProps) {
 	const [page, setPage] = useState(1)
 	const [pageSize, setPageSize] = useState(20)
 	const { data, isLoading, isError, error } = useRepoWikiVersions(configId, page, pageSize)
+	const updateSelectedMutation = useUpdateSelectedVersion()
 
 	if (isLoading) return <SkeletonTable rows={5} />
 
@@ -234,13 +253,24 @@ export function VersionList({ configId }: VersionListProps) {
 		)
 	}
 
+	const handleSwitchVersion = (versionId: string) => {
+		if (versionId === selectedVersionId) return
+		updateSelectedMutation.mutate(
+			{ configId, versionId },
+			{
+				onError: (err: Error) => toast.error(err.message || '切换版本失败'),
+			},
+		)
+	}
+
 	return (
 		<div className="space-y-4">
-			<div className="rounded-lg border bg-card overflow-hidden">
+			<div className="rounded-lg border overflow-hidden">
 				<Table>
 					<TableHeader>
 						<TableRow className="bg-muted/50 hover:bg-muted/50">
-							<TableHead className="w-[80px]">版本号</TableHead>
+							<TableHead className="w-[60px]">选中</TableHead>
+							<TableHead className="w-[110px]">版本号</TableHead>
 							<TableHead className="w-[120px]">提交哈希</TableHead>
 							<TableHead className="w-[110px]">状态</TableHead>
 							<TableHead className="min-w-[280px]">进度</TableHead>
@@ -253,19 +283,46 @@ export function VersionList({ configId }: VersionListProps) {
 							const isActive = ACTIVE_STATUSES.includes(
 								version.status as (typeof ACTIVE_STATUSES)[number],
 							)
+							const isCompleted = version.status === 'completed'
+							const isSelected = version.id === selectedVersionId
+							const isSwitchingThisRow =
+								updateSelectedMutation.isPending &&
+								updateSelectedMutation.variables.versionId === version.id
 
 							return (
 								<TableRow
 									key={version.id}
 									className={`group transition-colors ${
-										isActive
+										isSelected
 											? 'bg-lagoon/5 hover:bg-lagoon/10 border-l-2 border-l-lagoon'
-											: ''
+											: isActive
+												? 'bg-blue-50/30 hover:bg-blue-50/50 dark:bg-blue-950/10 dark:hover:bg-blue-950/20'
+												: ''
 									}`}
 								>
-								<TableCell className="font-mono text-sm font-medium">
-									{version.id}
-								</TableCell>
+									<TableCell>
+										{isCompleted ? (
+											<button
+												type="button"
+												onClick={() => handleSwitchVersion(version.id)}
+												disabled={isSwitchingThisRow || isSelected}
+												aria-label={`将版本 ${version.id} 设为当前选中`}
+												className="flex size-5 items-center justify-center rounded-full border-2 transition-colors cursor-pointer disabled:cursor-default disabled:opacity-100"
+												style={{
+													borderColor: isSelected ? 'var(--color-lagoon)' : 'var(--color-border)',
+													backgroundColor: isSelected ? 'var(--color-lagoon)' : 'transparent',
+												}}
+											>
+												{isSelected && <Check className="size-3 text-foam" />}
+												{isSwitchingThisRow && (
+													<Loader2 className="size-3 animate-spin text-muted-foreground" />
+												)}
+											</button>
+										) : (
+											<span className="inline-block size-5 rounded-full border-2 border-dashed border-muted-foreground/20" aria-hidden />
+										)}
+									</TableCell>
+									<TableCell className="font-mono text-sm font-medium">{version.id}</TableCell>
 									<TableCell>
 										<code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
 											{version.commit_hash.slice(0, 7)}
@@ -288,16 +345,20 @@ export function VersionList({ configId }: VersionListProps) {
 									<TableCell className="text-sm text-muted-foreground">
 										{new Date(version.created_at).toLocaleString()}
 									</TableCell>
-								<TableCell className="text-right">
-									{version.status === 'completed' && (
-										<Button variant="ghost" size="sm" asChild>
-											<a href={buildWikiReaderUrl(configId)} target="_blank" rel="noopener noreferrer">
-												<ExternalLink className="size-3.5" />
-												查看 Wiki
-											</a>
-										</Button>
-									)}
-								</TableCell>
+									<TableCell className="text-right">
+										{isCompleted && (
+											<Button variant="ghost" size="sm" asChild>
+												<a
+													href={buildWikiReaderUrl(configId)}
+													target="_blank"
+													rel="noopener noreferrer"
+												>
+													<ExternalLink className="size-3.5" />
+													查看
+												</a>
+											</Button>
+										)}
+									</TableCell>
 								</TableRow>
 							)
 						})}

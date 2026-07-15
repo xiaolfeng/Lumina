@@ -31,14 +31,44 @@
 
 ### JSON Schema
 
+顶层是一个 JSON 数组，每个元素是 Wiki 目录条目。条目可以包含嵌套的 `children` 数组形成树结构，叶子节点是实际的 Wiki 页面（没有 `children`），目录节点负责组织页面（有 `children`）。
+
 ```json
 [
   {
-    "title": "页面标题（中文，简洁明了）",
-    "path": "相对 Wiki 根的文件路径（英文命名，如 content/overview.md）",
-    "description": "页面内容的简要描述（1-2 句话）",
-    "explore_refs": ["关联的 Explore scope 标识"],
-    "complexity": "low|medium|high"
+    "title": "概览",
+    "path": "overview.md",
+    "description": "项目整体介绍、核心概念和快速入口",
+    "explore_refs": ["project_overview"],
+    "complexity": "low"
+  },
+  {
+    "title": "模块",
+    "path": "modules",
+    "description": "业务模块文档",
+    "children": [
+      {
+        "title": "认证模块",
+        "path": "modules/auth.md",
+        "description": "认证与授权实现",
+        "explore_refs": ["internal_auth"],
+        "complexity": "medium"
+      },
+      {
+        "title": "API 接口",
+        "path": "modules/api",
+        "description": "REST API 相关文档",
+        "children": [
+          {
+            "title": "端点列表",
+            "path": "modules/api/endpoints.md",
+            "description": "所有 REST 端点说明",
+            "explore_refs": ["internal_handler"],
+            "complexity": "high"
+          }
+        ]
+      }
+    ]
   }
 ]
 ```
@@ -48,10 +78,11 @@
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `title` | string | 页面标题，使用项目文档语言 |
-| `path` | string | 相对 Wiki 根的文件路径，**必须**使用有意义的英文命名，目录层级不超过 3 层 |
+| `path` | string | 相对 Wiki 根的文件路径，**不带 `content` 目录前缀**，如 `overview.md`、`modules/auth.md` |
 | `description` | string | 页面内容简述，帮助 Writer 理解写作方向 |
 | `explore_refs` | string[] | 关联的 Explore scope 标识，**必须**逐字从 user prompt 的 scope 列表中选取 |
 | `complexity` | string | 复杂度：`low`（简单页面）/ `medium`（标准页面）/ `high`（复杂模块需拆分） |
+| `children` | object[] | 子节点数组；存在时为目录节点，不存在时为叶子节点 |
 
 ---
 
@@ -59,9 +90,11 @@
 
 - 目录结构应有清晰的层级，体现项目的架构层次
 - `complexity` 为 `high` 的模块应考虑拆分为多个独立页面
-- **必须**包含一个入门/概览页面作为起始页（path 如 `content/overview.md`）
+- **概览页必须是数组第一个顶层条目且为叶子节点（无 `children`）**，作为读者入口
 - 每个页面条目的 `explore_refs` 至少关联 1 个 scope，最多 3 个
 - Writer 将严格按 `explore_refs` 检索参考资料，引用错误将导致 Writer 拿不到素材
+- 树深度建议不超过 3 层，避免过度嵌套导致导航困难
+- 目录节点（含 `children`）的 `path` 应设为**目录前缀**（如 `modules`、`api/endpoints`），使前端侧边栏的展开状态 key 与初始展开逻辑（按路径前缀）自然对齐；`path` 可空但**强烈建议非空**
 
 ---
 
@@ -69,8 +102,10 @@
 
 - **输出必须是纯 JSON 数组**——以 `[` 开头、`]` 结尾，中间不能有其他内容
 - **`explore_refs` 中每个元素必须逐字复制 user prompt 中 "可用的 Explore scope 列表" 里列出的 scope 字符串**
-- **`path` 使用有意义的英文命名**（如 `content/overview.md`、`api/endpoints.md`）
-- **覆盖项目的所有关键模块**——如果有 5 个核心模块，大纲应至少包含 5 个对应页面
+- **`path` 使用有意义的英文命名且不带 `content` 目录前缀**（如 `overview.md`、`modules/auth.md`、`api/endpoints`）
+- **覆盖项目的所有关键模块**——如果有 5 个核心模块，大纲应至少包含 5 个对应页面或目录
+- **优先使用树结构**：目录用 `children` 嵌套，叶子节点用 `path` 指向具体 `.md` 文件
+- **概览页必须是数组第一个顶层条目且为叶子节点（无 `children`）**
 
 ## MUST NOT DO
 
@@ -80,10 +115,14 @@
 - **不要对 scope 做语义化改写**——如把 `internal_logic` 改成 `logic`
 - **不要自行编造未在 scope 列表中出现的 scope**
 - **不要在 JSON 中添加注释**（如 `// 这是注释`）
+- **不要为页面路径添加 `content` 目录前缀**——根目录下的概览页应使用 `overview.md` 而非带目录前缀的形式
+- **不要将概览页放在非第一个位置或作为目录节点**
 
 ## CRITICAL
 
 - **JSON 格式错误会导致系统解析失败**。如果你的输出不是纯 JSON 数组，系统将要求你重试。
+- **输出必须是嵌套树结构**，目录节点用 `children` 数组，叶子节点必须包含 `path`。
 - **`explore_refs` 引用错误会导致 Writer 拿不到参考资料**。必须逐字复制 scope 列表中的字符串。
 - 正确示例：若可用 scope 列表为 `["internal_logic", "internal_handler"]`，则 `"explore_refs": ["internal_logic"]` 合法，`"explore_refs": ["explore-logic"]` **非法**。
+- 正确示例：概览页必须是数组第一个顶层叶子节点，如 `{"title": "概览", "path": "overview.md", ...}`（无 `children`）。
 - **记住：输出纯 JSON，以 `[` 开头，以 `]` 结尾，不要有任何其他内容。**
