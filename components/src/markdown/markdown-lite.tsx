@@ -3,13 +3,15 @@ import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
+import rehypeSlug from 'rehype-slug'
 
 /**
- * 轻量 Markdown 渲染组件（不含 mermaid / highlight / katex）。
+ * 轻量 Markdown 渲染组件（不含 mermaid）。
  *
  * 封装 react-markdown + 常用插件：
  * - remark-gfm：表格、删除线、任务列表、自动链接
  * - remark-math：数学公式语法解析（仅 AST 层）
+ * - rehype-slug：标题 id 生成（静态，~3KB，保证 TOC scrollspy 能及时拿到锚点）
  *
  * rehype-highlight（代码高亮，拖入 highlight.js ~2.7MB）和
  * rehype-katex（公式渲染，拖入 katex ~280KB）通过动态 import
@@ -23,7 +25,8 @@ interface MarkdownLiteProps extends Omit<ComponentPropsWithoutRef<typeof ReactMa
 }
 
 export function MarkdownLite({ children, className, ...rest }: MarkdownLiteProps) {
-  const [rehypePlugins, setRehypePlugins] = useState<any[]>([])
+  // rehype-slug 静态加载：必须同步可用，否则标题无 id，TOC scrollspy 失效
+  const [rehypePlugins, setRehypePlugins] = useState<any[]>([rehypeSlug])
 
   useEffect(() => {
     let cancelled = false
@@ -32,7 +35,7 @@ export function MarkdownLite({ children, className, ...rest }: MarkdownLiteProps
       import('rehype-katex'),
     ]).then(([hl, katex]) => {
       if (!cancelled) {
-        setRehypePlugins([hl.default, katex.default])
+        setRehypePlugins([rehypeSlug, hl.default, katex.default])
       }
     })
     return () => {

@@ -57,6 +57,36 @@ export const sidebarItem: Variants = {
   },
 }
 
+/**
+ * Sidebar 整块淡入 — 用于频繁重渲的侧边栏（如 Wiki Reader）。
+ * 不做逐项交错，避免每次路由切换重放序列动画。
+ */
+export const sidebarBlockFade: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 0.25, ease },
+  },
+}
+
+/**
+ * Main 区域滑入 — 右侧内容切换时从右向左滑入。
+ * 配合 AnimatePresence mode="wait" 使用。
+ */
+export const mainSlideIn: Variants = {
+  hidden: { opacity: 0, x: 16 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.3, ease },
+  },
+  exit: {
+    opacity: 0,
+    x: -8,
+    transition: { duration: 0.15, ease },
+  },
+}
+
 /* ─── Landing 页面动画变体 ─────────────────────────────── */
 
 /** 向上淡入 — 标题、描述、按钮等通用入场 */

@@ -2,6 +2,7 @@ import type { ComponentPropsWithoutRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
+import rehypeSlug from 'rehype-slug'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeKatex from 'rehype-katex'
 import rehypeMermaid from 'rehype-mermaid'
@@ -17,6 +18,7 @@ import rehypeMermaid from 'rehype-mermaid'
  */
 const remarkPlugins = [remarkGfm, remarkMath]
 const rehypePlugins = [
+  rehypeSlug,
   rehypeHighlight,
   rehypeKatex,
   [rehypeMermaid, { strategy: 'inline-svg' as const }],

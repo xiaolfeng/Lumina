@@ -1,95 +1,49 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { PasswordGate } from '#/components/password-gate'
-import { WikiLayout } from '#/components/wiki-layout'
 import { wikiReaderApi } from '#/lib/api-client'
 
 export const Route = createFileRoute('/wiki/$wikiId/')({
-  component: WikiHomePage,
+  component: WikiIndexRedirect,
 })
 
-function WikiHomePage() {
+/**
+ * 根路由 → 重定向到 manifest.home 对应的 splat 路由。
+ *
+ * 不在此处渲染页面内容，确保所有页面渲染统一走 splat 路由（$.tsx），
+ * 避免"根路由空 path"与"splat 路由有 path"两种状态导致 motion 动画全量重载。
+ */
+function WikiIndexRedirect() {
   const { wikiId } = Route.useParams()
+  const navigate = useNavigate()
 
-  // 获取 manifest 确定 home 路径
-  const {
-    data: manifest,
-    isLoading: loadingManifest,
-    error: manifestError,
-  } = useQuery({
+  const { data: manifest } = useQuery({
     queryKey: ['wiki-manifest', wikiId],
     queryFn: () => wikiReaderApi.getManifest(wikiId),
     retry: 1,
     staleTime: 5 * 60 * 1000,
   })
 
-  // 用 manifest.home 获取首页内容
-  const homePath = manifest?.home ?? ''
-  const {
-    data: pageData,
-    isLoading: loadingPage,
-    error: pageError,
-  } = useQuery({
-    queryKey: ['wiki-page', wikiId, homePath],
-    queryFn: () => wikiReaderApi.getPage(wikiId, homePath),
-    enabled: !!homePath,
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-  })
-
-  let body: React.ReactNode = null
-  if (loadingManifest) {
-    body = (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-lagoon" />
-        <span className="ml-2 text-sea-ink-soft">加载中...</span>
-      </div>
-    )
-  } else if (manifestError) {
-    body = (
-      <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">
-        <AlertCircle className="h-5 w-5 flex-shrink-0" />
-        <p>
-          {manifestError instanceof Error
-            ? manifestError.message
-            : '加载导航失败'}
-        </p>
-      </div>
-    )
-  } else if (!loadingManifest && !manifestError && homePath === '') {
-    body = (
-      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-        <p className="text-lg font-medium">暂无首页内容</p>
-        <p className="text-sm mt-1">Wiki 文档可能尚未生成</p>
-      </div>
-    )
-  } else if (loadingPage) {
-    body = (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-lagoon" />
-        <span className="ml-2 text-sea-ink-soft">加载首页...</span>
-      </div>
-    )
-  } else if (pageError) {
-    body = (
-      <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">
-        <AlertCircle className="h-5 w-5 flex-shrink-0" />
-        <p>{pageError instanceof Error ? pageError.message : '加载失败'}</p>
-      </div>
-    )
-  }
+  useEffect(() => {
+    if (manifest?.home) {
+      navigate({
+        to: '/wiki/$wikiId/$',
+        params: { wikiId, _splat: manifest.home },
+        replace: true,
+      })
+    }
+  }, [manifest, wikiId, navigate])
 
   return (
     <PasswordGate wikiId={wikiId}>
-      <WikiLayout
-        wikiId={wikiId}
-        currentPagePath=""
-        content={pageData?.content || ''}
-        title={pageData?.title || 'Wiki 首页'}
-      >
-        {body}
-      </WikiLayout>
+      <div className="flex min-h-svh items-center justify-center">
+        <div className="flex items-center gap-2 text-sm text-sea-ink-soft">
+          <Loader2 className="size-4 animate-spin text-lagoon" />
+          <span>正在跳转...</span>
+        </div>
+      </div>
     </PasswordGate>
   )
 }
