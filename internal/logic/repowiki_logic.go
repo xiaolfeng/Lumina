@@ -29,6 +29,7 @@ import (
 	"github.com/bamboo-services/bamboo-messages/bamboo"
 
 	apiRepowiki "github.com/xiaolfeng/Lumina/api/repowiki"
+	project_dto "github.com/xiaolfeng/Lumina/api/project"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
@@ -50,6 +51,7 @@ type repowikiRepo struct {
 	version      *repository.WikiVersionRepo    // 版本 CRUD + 状态缓存
 	webhookEvent *repository.WebhookEventRepo   // Webhook 事件审计日志（仅追加）
 	sshKey       *repository.SshKeyRepo         // SSH 密钥查询（克隆时读取明文私钥）
+	project      *repository.ProjectRepo        // 项目查询（批量解析名称）
 }
 
 // repowikiSvc RepoWiki 模块依赖的共享服务集合
@@ -110,6 +112,7 @@ func NewRepoWikiLogic(ctx context.Context) *RepoWikiLogic {
 			version:      repository.NewWikiVersionRepo(db, rdb),
 			webhookEvent: repository.NewWebhookEventRepo(db, rdb),
 			sshKey:       repository.NewSshKeyRepo(db, rdb),
+			project:      repository.NewProjectRepo(db, rdb),
 		},
 		svc: repowikiSvc{
 			git:       service.NewGitCloneService(),
@@ -213,7 +216,6 @@ func (l *RepoWikiLogic) CreateConfig(ctx context.Context, req *apiRepowiki.Creat
 	config := &entity.RepoWikiConfig{
 		BaseEntity:       xModels.BaseEntity{ID: configID},
 		ProjectID:        xSnowflake.SnowflakeID(req.ProjectID),
-		Name:             req.Name,
 		GitURL:           req.RepoURL,
 		DefaultBranch:    branch,
 		DefaultLanguage:  language,
@@ -230,24 +232,6 @@ func (l *RepoWikiLogic) CreateConfig(ctx context.Context, req *apiRepowiki.Creat
 	if xErr != nil {
 		return nil, xErr
 	}
-
-	// 持久化成功后，通过 xAsync 异步触发首次仓库分析（不阻塞 HTTP 响应）
-	// 失败仅记录日志，不影响配置创建结果（用户可后续手动 Analyze）
-	xAsync.Async(ctx, func(asyncCtx context.Context) {
-		l.log.Info(asyncCtx, "CreateConfig - 自动触发首次分析",
-			slog.Int64("configID", created.ID.Int64()))
-		if _, xErr := l.AnalyzeRepo(asyncCtx, created.ID, &apiRepowiki.AnalyzeRequest{
-			Branch:   created.DefaultBranch,
-			Language: created.DefaultLanguage,
-		}); xErr != nil {
-			l.log.Warn(asyncCtx, "CreateConfig - 自动触发首次分析失败（不影响配置创建）",
-				slog.Int64("configID", created.ID.Int64()),
-				slog.String("err", xErr.Error()))
-		}
-	},
-		xAsync.WithName("RepoWiki-CreateConfig-InitialAnalyze"),
-		xAsync.WithLogger(l.log),
-	)
 
 	return created, nil
 }
@@ -301,6 +285,116 @@ func (l *RepoWikiLogic) ListConfigs(ctx context.Context, page, size int) ([]*ent
 	// 分页参数规范化
 	pageReq := xModels.PageRequest{Page: int64(page), Size: int64(size)}.Normalize()
 	return l.repo.config.List(ctx, int(pageReq.Page), int(pageReq.Size))
+}
+
+// GetConfigResponse 将单个配置 + 关联项目 + 最近版本组装为响应 DTO
+//
+// 内部解析 Project（按 config.ProjectID 查询）和 latestVersion（按 config.ID 查询），
+// Project 查不到时 ProjectInfo 留 nil（不报错）。供 Handler 层直接调用。
+func (l *RepoWikiLogic) GetConfigResponse(ctx context.Context, config *entity.RepoWikiConfig) *apiRepowiki.ConfigResponse {
+	var projectEntity *entity.Project
+	if p, pErr := l.repo.project.GetByID(ctx, config.ProjectID); pErr == nil {
+		projectEntity = p
+	}
+	var latestVersion *entity.WikiVersion
+	if v, vErr := l.repo.version.GetLatestByConfigID(ctx, config.ID); vErr == nil {
+		latestVersion = v
+	}
+	return configToResponse(config, projectEntity, latestVersion)
+}
+
+// GetConfigResponses 批量将配置列表组装为响应 DTO（批量项目查询，避免 N+1）
+//
+// 收集所有 config.ProjectID 去重后批量查询项目，逐个组装。
+// 空 configs 返回空 slice。
+func (l *RepoWikiLogic) GetConfigResponses(ctx context.Context, configs []*entity.RepoWikiConfig) []apiRepowiki.ConfigResponse {
+	if len(configs) == 0 {
+		return []apiRepowiki.ConfigResponse{}
+	}
+	projectIDSet := make(map[xSnowflake.SnowflakeID]struct{})
+	for _, c := range configs {
+		projectIDSet[c.ProjectID] = struct{}{}
+	}
+	projectIDs := make([]xSnowflake.SnowflakeID, 0, len(projectIDSet))
+	for id := range projectIDSet {
+		projectIDs = append(projectIDs, id)
+	}
+	projects, pErr := l.repo.project.GetByIDs(ctx, projectIDs)
+	if pErr != nil {
+		l.log.Warn(ctx, "GetConfigResponses - 批量查询项目失败，项目信息将为空",
+			slog.String("err", pErr.Error()))
+	}
+	projectMap := make(map[xSnowflake.SnowflakeID]*entity.Project)
+	for _, p := range projects {
+		projectMap[p.ID] = p
+	}
+	results := make([]apiRepowiki.ConfigResponse, 0, len(configs))
+	for _, c := range configs {
+		var lv *entity.WikiVersion
+		if v, vErr := l.repo.version.GetLatestByConfigID(ctx, c.ID); vErr == nil {
+			lv = v
+		}
+		results = append(results, *configToResponse(c, projectMap[c.ProjectID], lv))
+	}
+	return results
+}
+
+// configToResponse 将 RepoWikiConfig 实体转为响应 DTO（logic 包内迁移自 handler）
+//
+// project 为 nil 时 ConfigResponse.ProjectInfo 留空（omitempty）。
+// latestVersion 为 nil 时 ConfigResponse.LatestVersion 留空（omitempty）。
+func configToResponse(config *entity.RepoWikiConfig, project *entity.Project, latestVersion *entity.WikiVersion) *apiRepowiki.ConfigResponse {
+	resp := &apiRepowiki.ConfigResponse{
+		ID:                config.ID,
+		ProjectID:         config.ProjectID,
+		RepoURL:           config.GitURL,
+		CustomPrompt:      config.CustomPrompt,
+		DefaultBranch:     config.DefaultBranch,
+		DefaultLanguage:   config.DefaultLanguage,
+		Status:            config.Status,
+		SSHKeyID:          config.SSHKeyID,
+		HasPassword:       config.WikiPasswordHash != "",
+		SelectedVersionID: config.SelectedVersionID,
+		LastAccessedAt:    config.LastAccessedAt,
+		CreatedAt:         config.CreatedAt,
+		UpdatedAt:         config.UpdatedAt,
+	}
+	if project != nil {
+		resp.ProjectInfo = &project_dto.ProjectResponse{
+			ID:          project.ID,
+			Name:        project.Name,
+			AliasName:   project.AliasName,
+			MatchPath:   project.MatchPath,
+			Description: project.Description,
+			CreatedAt:   project.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:   project.UpdatedAt.Format(time.RFC3339),
+		}
+	}
+	if latestVersion != nil {
+		resp.LatestVersion = versionToStatusResponse(latestVersion)
+	}
+	return resp
+}
+
+// versionToStatusResponse 将 WikiVersion 实体转为版本状态响应 DTO
+func versionToStatusResponse(version *entity.WikiVersion) *apiRepowiki.VersionStatusResponse {
+	return &apiRepowiki.VersionStatusResponse{
+		ID:              version.ID,
+		ConfigID:        version.ConfigID,
+		CommitHash:      version.CommitHash,
+		Branch:          version.Branch,
+		Language:        version.Language,
+		Status:          version.Status,
+		CurrentStage:    version.CurrentStage,
+		ProgressPercent: 0,
+		ErrorMsg:        version.ErrorMsg,
+		FileCount:       version.FileCount,
+		TokenCount:      version.TokenCount,
+		DurationMs:      version.DurationMs,
+		StartedAt:       version.StartedAt,
+		CompletedAt:     version.CompletedAt,
+		CreatedAt:       version.CreatedAt,
+	}
 }
 
 // UpdateConfig 更新配置（仅更新提供的字段，指针 nil = 不更新）
@@ -362,6 +456,11 @@ func (l *RepoWikiLogic) UpdateConfig(ctx context.Context, id xSnowflake.Snowflak
 			}
 			config.WikiPasswordHash = hash
 		}
+	}
+
+	// 项目级自定义提示词更新（nil = 不更新，空字符串 = 清除）
+	if req.CustomPrompt != nil {
+		config.CustomPrompt = *req.CustomPrompt
 	}
 
 	return l.repo.config.Update(ctx, config)
@@ -499,7 +598,20 @@ func (l *RepoWikiLogic) AnalyzeRepo(ctx context.Context, configID xSnowflake.Sno
 	// Step 6: 批量解析 5 角色 LLM 配置并构建 SubAgentOrchestrator
 	// 复用 config 级克隆目录作为 Agent 仓库作用域（与 Pipeline Step 1 一致）
 	repoPath := l.svc.storage.GetRepoPath(config.ID.Int64())
-	orchestrator, proto, model, xErr := l.resolveOrchestrator(ctx, created.ID.Int64(), repoPath, config.Name, created.Language)
+
+	// projectName 从 Project 实体解析（config.Name 已删除）
+	projectEntity, pErr := l.repo.project.GetByID(ctx, config.ProjectID)
+	if pErr != nil {
+		<-l.semaphore
+		created.Status = bConst.RepoWikiStatusFailed
+		created.ErrorMsg = pErr.Error()
+		_ = l.repo.version.Update(ctx, created)
+		config.Status = bConst.RepoWikiStatusFailed
+		_ = l.repo.config.Update(ctx, config)
+		return nil, pErr
+	}
+
+	orchestrator, proto, model, xErr := l.resolveOrchestrator(ctx, created.ID.Int64(), repoPath, projectEntity.Name, created.Language, config.CustomPrompt, req.ExtraPrompt)
 	if xErr != nil {
 		// 角色配置不完整：标记版本 failed + 释放信号量（保留版本记录供用户排查）
 		created.Status = bConst.RepoWikiStatusFailed
@@ -544,7 +656,7 @@ func (l *RepoWikiLogic) AnalyzeRepo(ctx context.Context, configID xSnowflake.Sno
 //   - ctx:       上下文
 //   - versionID: Wiki 版本 ID（定位 versions/{vid}/ 下各子目录）
 //   - repoPath:  仓库根目录绝对路径（Agent 工具作用域根）
-func (l *RepoWikiLogic) resolveOrchestrator(ctx context.Context, versionID int64, repoPath, projectName, language string) (orchestrator *SubAgentOrchestrator, providerName string, modelName string, xErr *xError.Error) {
+func (l *RepoWikiLogic) resolveOrchestrator(ctx context.Context, versionID int64, repoPath, projectName, language, customPrompt, extraPrompt string) (orchestrator *SubAgentOrchestrator, providerName string, modelName string, xErr *xError.Error) {
 	// 检查 LlmResolver 就绪状态
 	if l.llmResolver == nil {
 		return nil, "", "", xError.NewError(ctx, xError.BusinessError,
@@ -589,7 +701,7 @@ func (l *RepoWikiLogic) resolveOrchestrator(ctx context.Context, versionID int64
 
 	// providerName/modelName 取自 coordinator 角色
 	coordCfg := resolved[bConst.AgentRoleRepoWikiCoordinator]
-	o := NewSubAgentOrchestrator(roleClients, roleModels, l.svc.storage, l.log, versionID, repoPath, projectName, language)
+	o := NewSubAgentOrchestrator(roleClients, roleModels, l.svc.storage, l.log, versionID, repoPath, projectName, language, customPrompt, extraPrompt)
 
 	return o, coordCfg.Protocol, coordCfg.ModelName, nil
 }

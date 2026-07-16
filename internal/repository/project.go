@@ -249,7 +249,7 @@ func (r *ProjectRepo) FindByAliasName(ctx context.Context, alias string) (*entit
 
 // FindByMatchPath 根据路径匹配查询项目
 //
-// 使用 PostgreSQL JSON 展开匹配：检查 MatchPath 数组中是否有任一元素是
+// 使用 PostgreSQL JSON 展开：检查 MatchPath 数组中是否有任一元素是
 // 查询路径的前缀（即项目路径是查询路径的父目录或匹配路径）。
 // 例如：MatchPath=["/home/user/Lumina"] 可以匹配 "/home/user/Lumina/src/main.go"
 //
@@ -274,4 +274,27 @@ func (r *ProjectRepo) FindByMatchPath(ctx context.Context, path string) (*entity
 	}
 
 	return &project, nil
+}
+
+// GetByIDs 批量查询项目（WHERE id IN）
+//
+// 用于 ListCompletedWikis / GetConfigResponses 等需要按 ConfigID 集合
+// 解析项目名称的场景，避免 N+1 逐条查询。
+//
+// 参数:
+//   - ctx: 上下文对象
+//   - ids: 项目雪花 ID 切片（空切片安全，返回空切片）
+//
+// 返回值:
+//   - []*entity.Project: 查询到的项目实体切片
+//   - *xError.Error:      查询过程中的错误
+func (r *ProjectRepo) GetByIDs(ctx context.Context, ids []xSnowflake.SnowflakeID) ([]*entity.Project, *xError.Error) {
+	if len(ids) == 0 {
+		return []*entity.Project{}, nil
+	}
+	var projects []*entity.Project
+	if err := r.db.WithContext(ctx).Where("id IN ?", ids).Find(&projects).Error; err != nil {
+		return nil, xError.NewError(ctx, xError.ServerInternalError, xError.ErrMessage("批量查询项目失败"), false, err)
+	}
+	return projects, nil
 }

@@ -359,11 +359,29 @@ func (l *RepoWikiLogic) ListCompletedWikis(ctx context.Context, page, size int) 
 		configIDSet[v.ConfigID] = struct{}{}
 	}
 
-	// 批量查询配置名称
-	configNameMap := make(map[xSnowflake.SnowflakeID]string)
+	// 收集唯一 ConfigID 并逐个查询配置（获取 ProjectID）
+	configIDToProjectID := make(map[xSnowflake.SnowflakeID]xSnowflake.SnowflakeID)
 	for configID := range configIDSet {
 		if config, xErr := l.repo.config.GetByID(ctx, configID); xErr == nil {
-			configNameMap[configID] = config.Name
+			configIDToProjectID[configID] = config.ProjectID
+		}
+	}
+
+	// 收集唯一 ProjectID 并批量查询项目名称
+	projectIDSet := make(map[xSnowflake.SnowflakeID]struct{})
+	for _, pid := range configIDToProjectID {
+		projectIDSet[pid] = struct{}{}
+	}
+	projectIDs := make([]xSnowflake.SnowflakeID, 0, len(projectIDSet))
+	for id := range projectIDSet {
+		projectIDs = append(projectIDs, id)
+	}
+	projectIDToName := make(map[xSnowflake.SnowflakeID]string)
+	if len(projectIDs) > 0 {
+		if projects, pErr := l.repo.project.GetByIDs(ctx, projectIDs); pErr == nil {
+			for _, p := range projects {
+				projectIDToName[p.ID] = p.Name
+			}
 		}
 	}
 
@@ -373,7 +391,7 @@ func (l *RepoWikiLogic) ListCompletedWikis(ctx context.Context, page, size int) 
 		summaries = append(summaries, &WikiVersionSummary{
 			VersionID:   v.ID,
 			ConfigID:    v.ConfigID,
-			ConfigName:  configNameMap[v.ConfigID],
+			ConfigName:  projectIDToName[configIDToProjectID[v.ConfigID]],
 			Branch:      v.Branch,
 			Language:    v.Language,
 			CommitHash:  v.CommitHash,

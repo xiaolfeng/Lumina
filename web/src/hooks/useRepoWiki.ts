@@ -6,6 +6,7 @@ import {
 	getConfigByProjectId,
 	createRepoWikiConfig,
 	deleteRepoWikiConfig as deleteRepoWikiConfigApi,
+	updateRepoWikiConfig as updateRepoWikiConfigApi,
 	analyzeRepoWiki,
 	updateRepoWiki as updateRepoWikiApi,
 	getRepoWikiVersionList,
@@ -14,6 +15,7 @@ import {
 import type {
 	CreateRepoWikiConfigRequest,
 	RepoWikiConfigListParams,
+	UpdateRepoWikiConfigRequest,
 } from '#/lib/models/request/repowiki'
 
 // ── 版本状态常量 ──
@@ -82,12 +84,27 @@ export function useDeleteRepoWikiConfig() {
 	})
 }
 
+// ── 更新配置 ──
+
+export function useUpdateRepoWikiConfig() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: ({ id, data }: { id: string; data: UpdateRepoWikiConfigRequest }) =>
+			updateRepoWikiConfigApi(id, data),
+		onSuccess: () => {
+			toast.success('配置已更新')
+			queryClient.invalidateQueries({ queryKey: ['repowiki'] })
+		},
+		onError: (error: Error) => toast.error(error.message || '更新失败'),
+	})
+}
+
 // ── 触发分析（绑定到特定 config） ──
 
 export function useRepoWikiAnalyze(configId: string) {
 	const queryClient = useQueryClient()
 	return useMutation({
-		mutationFn: (data?: Record<string, unknown>) => analyzeRepoWiki(configId, data),
+		mutationFn: (data?: { extra_prompt?: string }) => analyzeRepoWiki(configId, data),
 		onSuccess: () => {
 			toast.success('分析任务已启动')
 			queryClient.invalidateQueries({ queryKey: ['repowiki', 'versions', 'list', configId] })
@@ -103,7 +120,7 @@ export function useRepoWikiAnalyze(configId: string) {
 export function useRepoWikiUpdate(configId: string) {
 	const queryClient = useQueryClient()
 	return useMutation({
-		mutationFn: () => updateRepoWikiApi(configId),
+		mutationFn: (data?: { extra_prompt?: string }) => updateRepoWikiApi(configId, data),
 		onSuccess: () => {
 			toast.success('增量更新已启动')
 			queryClient.invalidateQueries({ queryKey: ['repowiki', 'versions', 'list', configId] })

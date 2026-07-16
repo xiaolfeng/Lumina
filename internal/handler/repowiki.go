@@ -45,7 +45,7 @@ func (h *RepoWikiHandler) CreateConfig(ctx *gin.Context) {
 		return
 	}
 
-	xResult.SuccessHasData(ctx, "创建成功", configToResponse(config, nil))
+	xResult.SuccessHasData(ctx, "创建成功", h.service.repoWikiLogic.GetConfigResponse(ctx.Request.Context(), config))
 }
 
 // ListConfigs 获取 RepoWiki 配置列表
@@ -74,10 +74,7 @@ func (h *RepoWikiHandler) ListConfigs(ctx *gin.Context) {
 		return
 	}
 
-	items := make([]apiRepowiki.ConfigResponse, 0, len(configs))
-	for _, c := range configs {
-		items = append(items, *configToResponse(c, nil))
-	}
+	items := h.service.repoWikiLogic.GetConfigResponses(ctx.Request.Context(), configs)
 
 	xResult.SuccessHasData(ctx, "获取成功", apiRepowiki.ConfigListResponse{
 		Total: total,
@@ -113,7 +110,7 @@ func (h *RepoWikiHandler) GetConfig(ctx *gin.Context) {
 		return
 	}
 
-	xResult.SuccessHasData(ctx, "获取成功", configToResponse(config, nil))
+	xResult.SuccessHasData(ctx, "获取成功", h.service.repoWikiLogic.GetConfigResponse(ctx.Request.Context(), config))
 }
 
 // GetConfigByProjectID 按项目 ID 查询 RepoWiki 配置
@@ -147,7 +144,7 @@ func (h *RepoWikiHandler) GetConfigByProjectID(ctx *gin.Context) {
 		return
 	}
 
-	xResult.SuccessHasData(ctx, "获取成功", configToResponse(config, nil))
+	xResult.SuccessHasData(ctx, "获取成功", h.service.repoWikiLogic.GetConfigResponse(ctx.Request.Context(), config))
 }
 
 // UpdateConfig 更新 RepoWiki 配置
@@ -449,33 +446,6 @@ func (h *RepoWikiHandler) ListVersions(ctx *gin.Context) {
 // ──────────────────────────────────────────────────────────────────────
 // Entity → DTO 转换辅助函数
 // ──────────────────────────────────────────────────────────────────────
-
-// configToResponse 将 RepoWikiConfig 实体转为响应 DTO
-//
-// latestVersion 为 nil 时 ConfigResponse.LatestVersion 留空（omitempty）。
-func configToResponse(config *entity.RepoWikiConfig, latestVersion *entity.WikiVersion) *apiRepowiki.ConfigResponse {
-	resp := &apiRepowiki.ConfigResponse{
-		ID:                config.ID,
-		ProjectID:         config.ProjectID,
-		Name:              config.Name,
-		RepoURL:           config.GitURL,
-		DefaultBranch:     config.DefaultBranch,
-		DefaultLanguage:   config.DefaultLanguage,
-		Status:            config.Status,
-		SSHKeyID:          config.SSHKeyID,
-		HasPassword:       config.WikiPasswordHash != "",
-		SelectedVersionID: config.SelectedVersionID,
-		LastAccessedAt:    config.LastAccessedAt,
-		CreatedAt:         config.CreatedAt,
-		UpdatedAt:         config.UpdatedAt,
-	}
-
-	if latestVersion != nil {
-		resp.LatestVersion = versionToStatusResponse(latestVersion)
-	}
-
-	return resp
-}
 
 // versionToStatusResponse 将 WikiVersion 实体转为版本状态响应 DTO
 func versionToStatusResponse(version *entity.WikiVersion) *apiRepowiki.VersionStatusResponse {

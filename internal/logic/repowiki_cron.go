@@ -101,7 +101,18 @@ func (l *RepoWikiLogic) retryTaskAsync(ctx context.Context, config *entity.RepoW
 	// 解析 5 角色 LLM 配置并构建 SubAgentOrchestrator（失败则释放信号量，不消耗 retry_count——因为递增已在上面完成，
 	// 但 LLM 未配置属于环境问题，递增的 retry_count 会在下轮 cron 重新尝试）
 	repoPath := l.svc.storage.GetRepoPath(config.ID.Int64())
-	orchestrator, proto, model, xErr := l.resolveOrchestrator(ctx, task.ID.Int64(), repoPath, config.Name, task.Language)
+
+	// projectName 从 Project 实体解析（config.Name 已删除）
+	projectEntity, pErr := l.repo.project.GetByID(ctx, config.ProjectID)
+	if pErr != nil {
+		<-l.semaphore
+		l.log.Warn(ctx, "retryTaskAsync - 项目查询失败",
+			slog.Int64("versionID", task.ID.Int64()),
+			slog.String("err", pErr.Error()))
+		return
+	}
+
+	orchestrator, proto, model, xErr := l.resolveOrchestrator(ctx, task.ID.Int64(), repoPath, projectEntity.Name, task.Language, config.CustomPrompt, "")
 	if xErr != nil {
 		<-l.semaphore
 		l.log.Warn(ctx, "retryTaskAsync - LLM 解析失败",

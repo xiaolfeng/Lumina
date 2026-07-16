@@ -4,12 +4,12 @@ import (
 	"time"
 
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
+	"github.com/xiaolfeng/Lumina/api/project"
 )
 
 // CreateConfigRequest 创建 RepoWiki 配置请求
 type CreateConfigRequest struct {
 	RepoURL         string                  `json:"repo_url" label:"Git仓库地址" binding:"required"`  // Git仓库地址
-	Name            string                  `json:"name" label:"配置名称" binding:"required"`         // 配置名称
 	ProjectID       xSnowflake.SnowflakeID  `json:"project_id" label:"关联项目ID" binding:"required"` // 关联项目ID（必选）
 	DefaultBranch   string                  `json:"default_branch" label:"默认分支"`                  // 默认分支（默认 main）
 	DefaultLanguage string                  `json:"default_language" label:"默认Wiki语言"`            // 默认Wiki语言（默认 zh）
@@ -20,11 +20,11 @@ type CreateConfigRequest struct {
 // UpdateConfigRequest 更新 RepoWiki 配置请求（全部 optional）
 type UpdateConfigRequest struct {
 	RepoURL         *string                 `json:"repo_url,omitempty"`         // Git仓库地址
-	Name            *string                 `json:"name,omitempty"`             // 配置名称
 	DefaultBranch   *string                 `json:"default_branch,omitempty"`   // 默认分支
 	DefaultLanguage *string                 `json:"default_language,omitempty"` // 默认Wiki语言
 	SSHKeyID        *xSnowflake.SnowflakeID `json:"ssh_key_id,omitempty"`       // 关联SSH密钥ID（传 0 或 nil 清除关联）
 	WikiPassword    *string                 `json:"wiki_password,omitempty"`    // Wiki访问密码（传空字符串清除）
+	CustomPrompt    *string                 `json:"custom_prompt,omitempty" binding:"omitempty,max=10000"` // 项目级自定义提示词（最长 10000 字符）
 }
 
 // ConfigListResponse RepoWiki 配置列表响应（分页）
@@ -37,8 +37,9 @@ type ConfigListResponse struct {
 type ConfigResponse struct {
 	ID                xSnowflake.SnowflakeID  `json:"id"`                            // 配置ID
 	ProjectID         xSnowflake.SnowflakeID  `json:"project_id"`                    // 关联项目ID
+	ProjectInfo       *project.ProjectResponse `json:"project,omitempty"`            // 关联项目信息
 	RepoURL           string                  `json:"repo_url"`                      // Git仓库地址
-	Name              string                  `json:"name"`                          // 配置名称
+	CustomPrompt      string                  `json:"custom_prompt,omitempty"`       // 项目级自定义提示词
 	DefaultBranch     string                  `json:"default_branch"`                // 默认分支
 	DefaultLanguage   string                  `json:"default_language"`              // 默认Wiki语言
 	Status            string                  `json:"status"`                        // 当前分析状态

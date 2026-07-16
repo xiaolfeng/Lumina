@@ -4,7 +4,6 @@ export interface RepoWikiConfigListParams {
 }
 
 export interface CreateRepoWikiConfigRequest {
-	name: string
 	repo_url: string
 	default_branch?: string
 	default_language?: string
@@ -14,15 +13,16 @@ export interface CreateRepoWikiConfigRequest {
 }
 
 export interface UpdateRepoWikiConfigRequest {
-	name?: string
 	repo_url?: string
 	default_branch?: string
 	default_language?: string
 	ssh_key_id?: string
 	wiki_password?: string
+	custom_prompt?: string
 }
 
 export interface AnalyzeRepoWikiRequest {
 	language?: string
 	branch?: string
+	extra_prompt?: string
 }

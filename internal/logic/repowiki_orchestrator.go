@@ -90,6 +90,8 @@ type SubAgentOrchestrator struct {
 	repoPath     string                         // 仓库根目录绝对路径
 	projectName  string                         // 项目名称（写入 manifest 的 project_name 字段）
 	language     string                         // Wiki 语言（写入 manifest 的 language 字段）
+	customPrompt string                         // 项目级自定义提示词（L2，注入 Coordinator user prompt）
+	extraPrompt  string                         // 本次分析额外提示词（L3，注入 Coordinator user prompt）
 }
 
 // NewSubAgentOrchestrator 创建 SubAgentOrchestrator 实例
@@ -110,16 +112,20 @@ func NewSubAgentOrchestrator(
 	repoPath string,
 	projectName string,
 	language string,
+	customPrompt string,
+	extraPrompt string,
 ) *SubAgentOrchestrator {
 	return &SubAgentOrchestrator{
-		roleClients: roleClients,
-		roleModels:  roleModels,
-		storage:     storage,
-		log:         log,
-		versionID:   versionID,
-		repoPath:    repoPath,
-		projectName: projectName,
-		language:    language,
+		roleClients:  roleClients,
+		roleModels:   roleModels,
+		storage:      storage,
+		log:          log,
+		versionID:    versionID,
+		repoPath:     repoPath,
+		projectName:  projectName,
+		language:     language,
+		customPrompt: customPrompt,
+		extraPrompt:  extraPrompt,
 	}
 }
 
@@ -192,7 +198,7 @@ func (o *SubAgentOrchestrator) runOverview(ctx context.Context) (string, *xError
 		slog.Int64("version_id", o.versionID))
 	start := time.Now()
 
-	userInput := BuildOverviewUserPrompt(o.repoPath)
+	userInput := BuildOverviewUserPrompt(o.repoPath, o.customPrompt, o.extraPrompt)
 	result, runErr := ag.Run(ctx, userInput)
 	o.saveSessionArtifact(ctx, bConst.AgentRoleRepoWikiCoordinator, bConst.AgentRoleRepoWikiCoordinator, userInput, result, runErr, start, 0)
 	if runErr != nil {

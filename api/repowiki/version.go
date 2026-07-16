@@ -8,8 +8,9 @@ import (
 
 // AnalyzeRequest 触发分析请求
 type AnalyzeRequest struct {
-	Language string `json:"language,omitempty"` // Wiki语言（默认使用配置的 default_language）
-	Branch   string `json:"branch,omitempty"`   // 分析分支（默认使用配置的 default_branch）
+	Language    string `json:"language,omitempty"`     // Wiki语言（默认使用配置的 default_language）
+	Branch      string `json:"branch,omitempty"`       // 分析分支（默认使用配置的 default_branch）
+	ExtraPrompt string `json:"extra_prompt,omitempty" binding:"omitempty,max=5000"` // 本次分析额外提示词（最长 5000 字符）
 }
 
 // AnalyzeResponse 触发分析响应

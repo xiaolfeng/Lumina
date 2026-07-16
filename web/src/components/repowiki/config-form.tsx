@@ -21,7 +21,6 @@ interface ConfigFormProps {
 }
 
 export function ConfigForm({ onSubmit, isPending, onCancel, projectId }: ConfigFormProps) {
-	const [name, setName] = useState('')
 	const [repoUrl, setRepoUrl] = useState('')
 	const [defaultBranch, setDefaultBranch] = useState('main')
 	const [defaultLanguage, setDefaultLanguage] = useState('zh')
@@ -33,10 +32,9 @@ export function ConfigForm({ onSubmit, isPending, onCancel, projectId }: ConfigF
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
-		if (!name.trim() || !repoUrl.trim()) return
+		if (!repoUrl.trim()) return
 
 		onSubmit({
-			name: name.trim(),
 			repo_url: repoUrl.trim(),
 			default_branch: defaultBranch.trim() || undefined,
 			default_language: defaultLanguage.trim() || undefined,
@@ -48,18 +46,6 @@ export function ConfigForm({ onSubmit, isPending, onCancel, projectId }: ConfigF
 
 	return (
 		<form onSubmit={handleSubmit} className="grid gap-4 py-4">
-			{/* 仓库名称 */}
-			<div className="grid gap-2">
-				<Label htmlFor="rw-name">仓库名称 *</Label>
-				<Input
-					id="rw-name"
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					placeholder="输入仓库名称"
-					disabled={isPending}
-				/>
-			</div>
-
 			{/* 仓库地址 */}
 			<div className="grid gap-2">
 				<Label htmlFor="rw-url">仓库地址 *</Label>
@@ -143,7 +129,7 @@ export function ConfigForm({ onSubmit, isPending, onCancel, projectId }: ConfigF
 				)}
 				<Button
 					type="submit"
-					disabled={!name.trim() || !repoUrl.trim() || isPending}
+					disabled={!repoUrl.trim() || isPending}
 					className="bg-lagoon text-foam hover:bg-lagoon-deep"
 				>
 					{isPending ? '提交中...' : '创建配置'}

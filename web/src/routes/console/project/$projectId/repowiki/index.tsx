@@ -16,6 +16,9 @@ import {
 	FileText,
 	Webhook,
 	Settings2,
+	Settings,
+	RefreshCw,
+	Play,
 } from 'lucide-react'
 import { Button } from '@lumina/components/ui/button'
 import { Card, CardContent } from '@lumina/components/ui/card'
@@ -24,8 +27,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@lumina/components/ui/
 import { PageHeader } from '#/components/page-header'
 import { StatusBadge } from '#/components/repowiki/status-badge'
 import { useRepoWikiConfigByProjectId } from '#/hooks/useRepoWiki'
-import { AnalyzeButton, UpdateButton, VersionList } from '#/components/repowiki/version-list'
+import { VersionList } from '#/components/repowiki/version-list'
 import { WebhookTab } from '#/components/repowiki/webhook-tab'
+import { AnalyzeDialog } from '#/components/repowiki/analyze-dialog'
+import { SettingsSheet } from '#/components/repowiki/settings-sheet'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { buildWikiReaderUrl } from '#/lib/utils'
 import { toast } from 'sonner'
@@ -38,6 +43,7 @@ export const Route = createFileRoute('/console/project/$projectId/repowiki/')({
 function RepoWikiDetailPage() {
 	const { projectId } = Route.useParams()
 	const navigate = useNavigate()
+	const [settingsOpen, setSettingsOpen] = useState(false)
 
 	const { data, isLoading } = useRepoWikiConfigByProjectId(projectId)
 
@@ -103,11 +109,32 @@ function RepoWikiDetailPage() {
 			{/* PageHeader：所有操作按钮集中排列 */}
 			<motion.div variants={staggerItem}>
 				<PageHeader
-					title={`Wiki 管理 — ${config.name}`}
+					title={`Wiki 管理 — ${config.project?.name ?? config.repo_url}`}
 					action={
 						<div className="flex flex-wrap items-center gap-2">
-							<AnalyzeButton configId={config.id} />
-							<UpdateButton configId={config.id} />
+							{hasCompletedVersion ? (
+								<AnalyzeDialog
+									configId={config.id}
+									mode="update"
+									trigger={
+										<Button variant="outline" className="gap-2">
+											<RefreshCw className="size-4" />
+											增量更新
+										</Button>
+									}
+								/>
+							) : (
+								<AnalyzeDialog
+									configId={config.id}
+									mode="analyze"
+									trigger={
+										<Button className="gap-2">
+											<Play className="size-4" />
+											开始分析
+										</Button>
+									}
+								/>
+							)}
 							{hasCompletedVersion && (
 								<Button variant="outline" asChild className="gap-2">
 									<a
@@ -120,6 +147,10 @@ function RepoWikiDetailPage() {
 									</a>
 								</Button>
 							)}
+							<Button variant="ghost" onClick={() => setSettingsOpen(true)} className="gap-2">
+								<Settings className="size-4" />
+								设置
+							</Button>
 							<Button variant="ghost" onClick={() => navigate({ to: '/console/project' })}>
 								<ArrowLeft className="mr-2 size-4" />
 								返回项目
@@ -171,6 +202,8 @@ function RepoWikiDetailPage() {
 					</TabsContent>
 				</Tabs>
 			</motion.div>
+
+			<SettingsSheet configId={config.id} config={config} open={settingsOpen} onOpenChange={setSettingsOpen} />
 		</motion.div>
 	)
 }
@@ -248,7 +281,7 @@ function ConfigDetails({ config }: { config: RepoWikiConfigItem }) {
 	const items: Array<{ label: string; value: React.ReactNode; mono?: boolean; icon?: React.ReactNode }> = [
 		{
 			label: '仓库名称',
-			value: config.name,
+			value: config.project?.name ?? '-',
 			icon: <BookOpen className="size-4 text-muted-foreground" />,
 		},
 		{

@@ -1,13 +1,16 @@
+import type { ProjectItem } from './project'
+
 export interface RepoWikiConfigItem {
 	id: string
-	name: string
 	project_id: string
+	project?: ProjectItem
 	repo_url: string
 	default_branch: string
 	default_language: string
 	status: string
 	ssh_key_id?: string
 	has_password: boolean
+	custom_prompt?: string
 	selected_version_id?: string
 	last_accessed_at?: string
 	latest_version?: RepoWikiVersionItem

@@ -17,14 +17,31 @@ import (
 
 // BuildOverviewUserPrompt 构建概要阶段的 user prompt。
 //
+// 三层提示词模型：
+//   - L1 系统级 prompt（coordinator.md 资源文件，不可改）
+//   - L2 项目级 customPrompt（存 RepoWikiConfig.CustomPrompt，随项目走）
+//   - L3 单次级 extraPrompt（存 AnalyzeRequest.ExtraPrompt，临时偏向）
+//
+// L2 / L3 均为空时返回值与旧版完全一致（不含任何 ## 节）。
+//
 // 参数说明:
-//   - repoPath: 仓库根目录路径
-func BuildOverviewUserPrompt(repoPath string) string {
-	return fmt.Sprintf(`请对项目进行核心概要分析。
-
-仓库路径: %s
-
-请使用 file_read、file_search 和 list_dir 工具了解项目结构，重点阅读 README、项目清单文件、入口文件等，输出项目概览。`, repoPath)
+//   - repoPath:     仓库根目录路径
+//   - customPrompt: 项目级自定义提示词（L2，空字符串跳过）
+//   - extraPrompt:  本次分析额外提示词（L3，空字符串跳过）
+func BuildOverviewUserPrompt(repoPath, customPrompt, extraPrompt string) string {
+	var sb strings.Builder
+	sb.WriteString("请对项目进行核心概要分析。\n\n仓库路径: ")
+	sb.WriteString(repoPath)
+	sb.WriteString("\n\n请使用 file_read、file_search 和 list_dir 工具了解项目结构，重点阅读 README、项目清单文件、入口文件等，输出项目概览。")
+	if strings.TrimSpace(customPrompt) != "" {
+		sb.WriteString("\n\n## 项目级自定义提示词\n\n")
+		sb.WriteString(strings.TrimSpace(customPrompt))
+	}
+	if strings.TrimSpace(extraPrompt) != "" {
+		sb.WriteString("\n\n## 本次分析额外提示词\n\n")
+		sb.WriteString(strings.TrimSpace(extraPrompt))
+	}
+	return sb.String()
 }
 
 // BuildExploreUserPrompt 构建代码探索阶段的 user prompt。

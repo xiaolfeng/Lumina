@@ -70,6 +70,16 @@ func (r *reg) databaseInit(ctx context.Context) (any, error) {
 		return nil, fmt.Errorf("数据库表自动迁移失败: %w", err)
 	}
 
+	// RepoWikiConfig.Name 字段已删除，旧 DB 的 name 列为 NOT NULL 约束，
+	// 需条件式 DROP NOT NULL（fresh DB 列不存在时由 EXCEPTION 捕获，不报错）。
+	prefix := xEnv.GetEnvString(xEnv.DatabasePrefix, "lum_")
+	db.Exec(fmt.Sprintf(`DO $$
+BEGIN
+  ALTER TABLE %srepo_wiki_config ALTER COLUMN name DROP NOT NULL;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;`, prefix))
+
 	log.Info(ctx, "数据库连接成功")
 	return db, nil
 }

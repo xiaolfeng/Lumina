@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
@@ -484,4 +485,59 @@ func TestExecuteFlowOrder(t *testing.T) {
 	if len(missing) != 2 {
 		t.Errorf("expected 2 missing entries (no files written), got %d", len(missing))
 	}
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// TestBuildOverviewUserPrompt
+// ──────────────────────────────────────────────────────────────────────
+
+func TestBuildOverviewUserPrompt(t *testing.T) {
+	t.Run("both_non_empty", func(t *testing.T) {
+		result := BuildOverviewUserPrompt("/repo", "关注鉴权", "重点看 JWT")
+		if !strings.Contains(result, "## 项目级自定义提示词\n\n关注鉴权") {
+			t.Errorf("expected result to contain custom prompt section, got:\n%s", result)
+		}
+		if !strings.Contains(result, "## 本次分析额外提示词\n\n重点看 JWT") {
+			t.Errorf("expected result to contain extra prompt section, got:\n%s", result)
+		}
+		if !strings.Contains(result, "/repo") {
+			t.Errorf("expected result to contain repo path /repo, got:\n%s", result)
+		}
+	})
+
+	t.Run("custom_prompt_empty", func(t *testing.T) {
+		result := BuildOverviewUserPrompt("/repo", "", "重点看 JWT")
+		if strings.Contains(result, "## 项目级自定义提示词") {
+			t.Errorf("expected result NOT to contain custom prompt section, got:\n%s", result)
+		}
+		if !strings.Contains(result, "## 本次分析额外提示词\n\n重点看 JWT") {
+			t.Errorf("expected result to contain extra prompt section, got:\n%s", result)
+		}
+	})
+
+	t.Run("extra_prompt_empty", func(t *testing.T) {
+		result := BuildOverviewUserPrompt("/repo", "关注鉴权", "")
+		if !strings.Contains(result, "## 项目级自定义提示词\n\n关注鉴权") {
+			t.Errorf("expected result to contain custom prompt section, got:\n%s", result)
+		}
+		if strings.Contains(result, "## 本次分析额外提示词") {
+			t.Errorf("expected result NOT to contain extra prompt section, got:\n%s", result)
+		}
+	})
+
+	t.Run("both_empty", func(t *testing.T) {
+		result := BuildOverviewUserPrompt("/repo", "", "")
+		if strings.Contains(result, "## 项目级自定义提示词") {
+			t.Errorf("expected result NOT to contain custom prompt section, got:\n%s", result)
+		}
+		if strings.Contains(result, "## 本次分析额外提示词") {
+			t.Errorf("expected result NOT to contain extra prompt section, got:\n%s", result)
+		}
+		if !strings.Contains(result, "/repo") {
+			t.Errorf("expected result to contain repo path /repo, got:\n%s", result)
+		}
+		if !strings.Contains(result, "请对项目进行核心概要分析") {
+			t.Errorf("expected result to contain base overview instruction, got:\n%s", result)
+		}
+	})
 }

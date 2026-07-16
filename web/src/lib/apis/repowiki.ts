@@ -4,6 +4,7 @@ import type {
 	RepoWikiConfigListParams,
 	CreateRepoWikiConfigRequest,
 	UpdateRepoWikiConfigRequest,
+	AnalyzeRepoWikiRequest,
 } from '../models/request/repowiki'
 import type {
 	RepoWikiConfigItem,
@@ -40,13 +41,16 @@ export function deleteRepoWikiConfig(id: string): Promise<BaseResponse> {
 
 export function analyzeRepoWiki(
 	id: string,
-	data?: Record<string, unknown>,
+	data?: AnalyzeRepoWikiRequest,
 ): Promise<BaseResponse> {
 	return apiClient.post(`/api/v1/repowiki/configs/${id}/analyze`, data ?? {})
 }
 
-export function updateRepoWiki(id: string): Promise<BaseResponse> {
-	return apiClient.put(`/api/v1/repowiki/configs/${id}/update`)
+export function updateRepoWiki(
+	id: string,
+	data?: { extra_prompt?: string },
+): Promise<BaseResponse> {
+	return apiClient.put(`/api/v1/repowiki/configs/${id}/update`, data)
 }
 
 export function getRepoWikiVersionList(

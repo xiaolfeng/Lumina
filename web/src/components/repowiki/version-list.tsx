@@ -172,7 +172,7 @@ export function UpdateButton({ configId }: { configId: string }) {
 	const updateMutation = useRepoWikiUpdate(configId)
 
 	const handleConfirm = () => {
-		updateMutation.mutate()
+		updateMutation.mutate(undefined)
 		setDialogOpen(false)
 	}
 
