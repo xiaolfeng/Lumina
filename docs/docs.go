@@ -6462,6 +6462,11 @@ const docTemplate = `{
                     "description": "分析分支（默认使用配置的 default_branch）",
                     "type": "string"
                 },
+                "extra_prompt": {
+                    "description": "本次分析额外提示词（最长 5000 字符）",
+                    "type": "string",
+                    "maxLength": 5000
+                },
                 "language": {
                     "description": "Wiki语言（默认使用配置的 default_language）",
                     "type": "string"
@@ -6504,6 +6509,10 @@ const docTemplate = `{
                     "description": "创建时间",
                     "type": "string"
                 },
+                "custom_prompt": {
+                    "description": "项目级自定义提示词",
+                    "type": "string"
+                },
                 "default_branch": {
                     "description": "默认分支",
                     "type": "string"
@@ -6532,9 +6541,13 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "name": {
-                    "description": "配置名称",
-                    "type": "string"
+                "project": {
+                    "description": "关联项目信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/project.ProjectResponse"
+                        }
+                    ]
                 },
                 "project_id": {
                     "description": "关联项目ID",
@@ -6565,7 +6578,6 @@ const docTemplate = `{
         "repowiki.CreateConfigRequest": {
             "type": "object",
             "required": [
-                "name",
                 "project_id",
                 "repo_url"
             ],
@@ -6576,10 +6588,6 @@ const docTemplate = `{
                 },
                 "default_language": {
                     "description": "默认Wiki语言（默认 zh）",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "配置名称",
                     "type": "string"
                 },
                 "project_id": {
@@ -6620,16 +6628,17 @@ const docTemplate = `{
         "repowiki.UpdateConfigRequest": {
             "type": "object",
             "properties": {
+                "custom_prompt": {
+                    "description": "项目级自定义提示词（最长 10000 字符）",
+                    "type": "string",
+                    "maxLength": 10000
+                },
                 "default_branch": {
                     "description": "默认分支",
                     "type": "string"
                 },
                 "default_language": {
                     "description": "默认Wiki语言",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "配置名称",
                     "type": "string"
                 },
                 "repo_url": {

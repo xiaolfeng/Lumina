@@ -19,21 +19,31 @@ import {
 	Settings,
 	RefreshCw,
 	Play,
+	Trash2,
+	Loader2,
 } from 'lucide-react'
 import { Button } from '@lumina/components/ui/button'
 import { Card, CardContent } from '@lumina/components/ui/card'
+import { Input } from '@lumina/components/ui/input'
+import { Label } from '@lumina/components/ui/label'
+import { Textarea } from '@lumina/components/ui/textarea'
 import { Separator } from '@lumina/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@lumina/components/ui/tabs'
 import { PageHeader } from '#/components/page-header'
 import { StatusBadge } from '#/components/repowiki/status-badge'
-import { useRepoWikiConfigByProjectId } from '#/hooks/useRepoWiki'
+import {
+	useRepoWikiConfigByProjectId,
+	useUpdateRepoWikiConfig,
+	useDeleteRepoWikiConfig,
+} from '#/hooks/useRepoWiki'
 import { VersionList } from '#/components/repowiki/version-list'
 import { WebhookTab } from '#/components/repowiki/webhook-tab'
 import { AnalyzeDialog } from '#/components/repowiki/analyze-dialog'
-import { SettingsSheet } from '#/components/repowiki/settings-sheet'
+import { ConfirmDeleteDialog } from '#/components/confirm-delete-dialog'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { buildWikiReaderUrl } from '#/lib/utils'
 import { toast } from 'sonner'
+import type { UpdateRepoWikiConfigRequest } from '#/lib/models/request/repowiki'
 import type { RepoWikiConfigItem } from '#/lib/models/response/repowiki'
 
 export const Route = createFileRoute('/console/project/$projectId/repowiki/')({
@@ -43,7 +53,6 @@ export const Route = createFileRoute('/console/project/$projectId/repowiki/')({
 function RepoWikiDetailPage() {
 	const { projectId } = Route.useParams()
 	const navigate = useNavigate()
-	const [settingsOpen, setSettingsOpen] = useState(false)
 
 	const { data, isLoading } = useRepoWikiConfigByProjectId(projectId)
 
@@ -106,7 +115,7 @@ function RepoWikiDetailPage() {
 	// 已有配置 → 概览卡 + Tabs
 	return (
 		<motion.div className="space-y-5" initial="hidden" animate="visible" variants={staggerContainer}>
-			{/* PageHeader：所有操作按钮集中排列 */}
+			{/* PageHeader：操作按钮精简为 分析/查看Wiki/返回 */}
 			<motion.div variants={staggerItem}>
 				<PageHeader
 					title={`Wiki 管理 — ${config.project?.name ?? config.repo_url}`}
@@ -147,10 +156,6 @@ function RepoWikiDetailPage() {
 									</a>
 								</Button>
 							)}
-							<Button variant="ghost" onClick={() => setSettingsOpen(true)} className="gap-2">
-								<Settings className="size-4" />
-								设置
-							</Button>
 							<Button variant="ghost" onClick={() => navigate({ to: '/console/project' })}>
 								<ArrowLeft className="mr-2 size-4" />
 								返回项目
@@ -165,7 +170,7 @@ function RepoWikiDetailPage() {
 				<OverviewBar config={config} />
 			</motion.div>
 
-			{/* Tabs：版本管理 / Webhook / 配置详情 */}
+			{/* Tabs：版本管理 / Webhook / 配置详情（只读）/ 设置（可编辑） */}
 			<motion.div variants={staggerItem}>
 				<Tabs defaultValue="versions" className="gap-3">
 					<TabsList>
@@ -180,6 +185,10 @@ function RepoWikiDetailPage() {
 						<TabsTrigger value="config" className="gap-1.5">
 							<Settings2 className="size-3.5" />
 							配置详情
+						</TabsTrigger>
+						<TabsTrigger value="settings" className="gap-1.5">
+							<Settings className="size-3.5" />
+							设置
 						</TabsTrigger>
 					</TabsList>
 
@@ -200,10 +209,14 @@ function RepoWikiDetailPage() {
 							<ConfigDetails config={config} />
 						</div>
 					</TabsContent>
+
+					<TabsContent value="settings" className="mt-0">
+						<div className="rounded-lg border bg-card p-4">
+							<SettingsTab config={config} />
+						</div>
+					</TabsContent>
 				</Tabs>
 			</motion.div>
-
-			<SettingsSheet configId={config.id} config={config} open={settingsOpen} onOpenChange={setSettingsOpen} />
 		</motion.div>
 	)
 }
@@ -275,7 +288,7 @@ function OverviewBar({ config }: { config: RepoWikiConfigItem }) {
 	)
 }
 
-// ── 配置详情：Definition List 风格（无边框） ──
+// ── 配置详情：只读 Definition List（无边框） ──
 
 function ConfigDetails({ config }: { config: RepoWikiConfigItem }) {
 	const items: Array<{ label: string; value: React.ReactNode; mono?: boolean; icon?: React.ReactNode }> = [
@@ -310,6 +323,16 @@ function ConfigDetails({ config }: { config: RepoWikiConfigItem }) {
 			label: 'Wiki 密码',
 			value: config.has_password ? '已设置' : '未设置',
 			icon: <Lock className="size-4 text-muted-foreground" />,
+		},
+		{
+			label: '自定义提示词',
+			value: config.custom_prompt ? (
+				<span className="line-clamp-2 max-w-xs text-right text-xs text-muted-foreground">
+					{config.custom_prompt}
+				</span>
+			) : (
+				'未设置'
+			),
 		},
 		{
 			label: '当前状态',
@@ -353,5 +376,211 @@ function ConfigDetails({ config }: { config: RepoWikiConfigItem }) {
 				</div>
 			))}
 		</dl>
+	)
+}
+
+// ── 设置 Tab：可编辑表单 + 密码清除 + 危险操作 ──
+
+function SettingsTab({ config }: { config: RepoWikiConfigItem }) {
+	const navigate = useNavigate()
+	const [repoUrl, setRepoUrl] = useState(config.repo_url)
+	const [defaultBranch, setDefaultBranch] = useState(config.default_branch)
+	const [defaultLanguage, setDefaultLanguage] = useState(config.default_language)
+	const [wikiPassword, setWikiPassword] = useState('')
+	const [removePassword, setRemovePassword] = useState(false)
+	const [customPrompt, setCustomPrompt] = useState(config.custom_prompt ?? '')
+	const [deleteOpen, setDeleteOpen] = useState(false)
+
+	const updateMutation = useUpdateRepoWikiConfig()
+	const deleteMutation = useDeleteRepoWikiConfig()
+	const isPending = updateMutation.isPending
+
+	const handleSave = () => {
+		const data: UpdateRepoWikiConfigRequest = {
+			repo_url: repoUrl.trim() || undefined,
+			default_branch: defaultBranch.trim() || undefined,
+			default_language: defaultLanguage.trim() || undefined,
+			custom_prompt: customPrompt.trim(),
+		}
+
+		// 密码三态处理：
+		//   removePassword === true → 传空字符串，后端清除密码
+		//   密码框有值             → 传新密码
+		//   密码框为空且不勾选      → undefined，后端不修改
+		if (removePassword) {
+			data.wiki_password = ''
+		} else if (wikiPassword.trim()) {
+			data.wiki_password = wikiPassword.trim()
+		}
+
+		updateMutation.mutate(
+			{ id: config.id, data },
+			{
+				onSuccess: () => {
+					setWikiPassword('')
+					setRemovePassword(false)
+				},
+			},
+		)
+	}
+
+	const handleDelete = () => {
+		deleteMutation.mutate(config.id, {
+			onSuccess: () => {
+				setDeleteOpen(false)
+				navigate({ to: '/console/project' })
+			},
+		})
+	}
+
+	return (
+		<div className="space-y-6">
+			{/* 基础配置区 */}
+			<div className="grid gap-4">
+				<h3 className="text-sm font-semibold text-foreground">基础配置</h3>
+
+				<div className="grid gap-2">
+					<Label htmlFor="cfg-repo-url">仓库地址</Label>
+					<Input
+						id="cfg-repo-url"
+						value={repoUrl}
+						onChange={(e) => setRepoUrl(e.target.value)}
+						placeholder="https://github.com/owner/repo.git"
+						disabled={isPending}
+					/>
+				</div>
+
+				<div className="grid grid-cols-2 gap-4">
+					<div className="grid gap-2">
+						<Label htmlFor="cfg-branch">默认分支</Label>
+						<Input
+							id="cfg-branch"
+							value={defaultBranch}
+							onChange={(e) => setDefaultBranch(e.target.value)}
+							placeholder="main"
+							disabled={isPending}
+						/>
+					</div>
+					<div className="grid gap-2">
+						<Label htmlFor="cfg-lang">默认语言</Label>
+						<Input
+							id="cfg-lang"
+							value={defaultLanguage}
+							onChange={(e) => setDefaultLanguage(e.target.value)}
+							placeholder="zh"
+							disabled={isPending}
+						/>
+					</div>
+				</div>
+
+				{/* Wiki 密码：三态交互（不修改 / 替换 / 移除） */}
+				<div className="grid gap-2">
+					<div className="flex items-center justify-between">
+						<Label htmlFor="cfg-password">Wiki 密码</Label>
+						{config.has_password && !removePassword && (
+							<button
+								type="button"
+								className="text-xs text-destructive hover:underline"
+								onClick={() => setRemovePassword(true)}
+								disabled={isPending}
+							>
+								移除密码
+							</button>
+						)}
+					</div>
+					{removePassword ? (
+						<div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+							<Lock className="size-4 shrink-0 text-destructive" />
+							<span className="flex-1 text-sm text-destructive">密码将被移除</span>
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="h-7"
+								onClick={() => setRemovePassword(false)}
+								disabled={isPending}
+							>
+								取消
+							</Button>
+						</div>
+					) : (
+						<>
+							<Input
+								id="cfg-password"
+								type="password"
+								value={wikiPassword}
+								onChange={(e) => setWikiPassword(e.target.value)}
+								placeholder={
+									config.has_password ? '输入新密码以替换当前密码' : '设置访问密码（可选）'
+								}
+								disabled={isPending}
+							/>
+							<p className="text-xs text-muted-foreground">
+								{config.has_password
+									? '当前已设置密码，输入新密码可替换'
+									: '留空表示不设置密码'}
+							</p>
+						</>
+					)}
+				</div>
+
+				{/* 自定义提示词 */}
+				<div className="grid gap-2">
+					<Label htmlFor="cfg-prompt">自定义提示词（项目级）</Label>
+					<Textarea
+						id="cfg-prompt"
+						value={customPrompt}
+						onChange={(e) => setCustomPrompt(e.target.value)}
+						placeholder="为所有分析阶段添加全局自定义指示..."
+						rows={4}
+						disabled={isPending}
+					/>
+					<p className="text-xs text-muted-foreground">
+						此提示词会持久化并应用于每次分析
+					</p>
+				</div>
+
+				<div className="flex justify-end pt-1">
+					<Button
+						type="button"
+						onClick={handleSave}
+						disabled={isPending || !repoUrl.trim()}
+						className="bg-lagoon text-foam hover:bg-lagoon-deep"
+					>
+						{isPending ? (
+							<>
+								<Loader2 className="mr-2 size-4 animate-spin" />
+								保存中...
+							</>
+						) : (
+							'保存配置'
+						)}
+					</Button>
+				</div>
+			</div>
+
+			<Separator />
+
+			{/* 危险操作区 */}
+			<div className="space-y-3">
+				<h3 className="text-sm font-semibold text-destructive">危险操作</h3>
+				<Button variant="destructive" onClick={() => setDeleteOpen(true)} className="gap-2">
+					<Trash2 className="size-4" />
+					删除此 Wiki 配置
+				</Button>
+				<p className="text-xs text-muted-foreground">
+					删除后配置及其所有版本数据将永久清除，不可恢复
+				</p>
+			</div>
+
+			<ConfirmDeleteDialog
+				open={deleteOpen}
+				onOpenChange={setDeleteOpen}
+				title="删除配置"
+				description="确定要删除此 Wiki 配置吗？此操作不可恢复，关联的版本数据也将被清除。"
+				onConfirm={handleDelete}
+				isPending={deleteMutation.isPending}
+			/>
+		</div>
 	)
 }

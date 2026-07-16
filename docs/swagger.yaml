@@ -993,6 +993,10 @@ definitions:
       branch:
         description: 分析分支（默认使用配置的 default_branch）
         type: string
+      extra_prompt:
+        description: 本次分析额外提示词（最长 5000 字符）
+        maxLength: 5000
+        type: string
       language:
         description: Wiki语言（默认使用配置的 default_language）
         type: string
@@ -1022,6 +1026,9 @@ definitions:
       created_at:
         description: 创建时间
         type: string
+      custom_prompt:
+        description: 项目级自定义提示词
+        type: string
       default_branch:
         description: 默认分支
         type: string
@@ -1041,9 +1048,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/repowiki.VersionStatusResponse'
         description: 最近版本状态
-      name:
-        description: 配置名称
-        type: string
+      project:
+        allOf:
+        - $ref: '#/definitions/project.ProjectResponse'
+        description: 关联项目信息
       project_id:
         description: 关联项目ID
         type: integer
@@ -1071,9 +1079,6 @@ definitions:
       default_language:
         description: 默认Wiki语言（默认 zh）
         type: string
-      name:
-        description: 配置名称
-        type: string
       project_id:
         description: 关联项目ID（必选）
         type: integer
@@ -1087,7 +1092,6 @@ definitions:
         description: Wiki访问密码（可选保护）
         type: string
     required:
-    - name
     - project_id
     - repo_url
     type: object
@@ -1105,14 +1109,15 @@ definitions:
     type: object
   repowiki.UpdateConfigRequest:
     properties:
+      custom_prompt:
+        description: 项目级自定义提示词（最长 10000 字符）
+        maxLength: 10000
+        type: string
       default_branch:
         description: 默认分支
         type: string
       default_language:
         description: 默认Wiki语言
-        type: string
-      name:
-        description: 配置名称
         type: string
       repo_url:
         description: Git仓库地址
