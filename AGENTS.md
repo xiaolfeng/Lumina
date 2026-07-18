@@ -152,7 +152,7 @@
 | 填充默认数据 | `internal/app/startup/prepare/` | 必须保证幂等性 |
 | 调整配置/环境变量 | `.env.example`、`internal/app/startup/*.go` | 始终在 `xEnv.GetEnv*` 中提供默认值 |
 | 编写 Swagger 文档 | `internal/handler/*.go` 的 godoc + `make swag` | 使用 `swaggo/swag` 注解 |
-| 新增请求/响应 DTO | `api/<domain>/` | 按业务域保持子包结构 |
+| 新增请求/响应 DTO | `api/<domain>/` | 按业务域保持子包结构；按操作类型拆分文件（create.go/update.go/detail.go/list.go 等），同一操作的相关 request+response 放在同一文件 |
 | 新增中间件 | `internal/app/middleware/` | 返回 `gin.HandlerFunc` |
 | 查看 RepoWiki 设计 | `docs/wiki/repowiki/` | 模块概述、详细设计、MCP 工具、Webhook 设计、多 Agent 设计 |
 | 查看 Memory 设计 | `docs/wiki/memory/` | 模块概述、详细设计、MCP 工具定义 |
