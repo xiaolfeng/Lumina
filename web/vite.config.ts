@@ -28,6 +28,10 @@ const config = defineConfig({
     viteReact(),
   ],
   build: {
+    // 构建产物统一输出到 resources/web/dist，由根级 resources/embed.go 通过 go:embed 嵌入。
+    // outDir 位于 web/ 之外，必须显式 emptyOutDir 以允许 Vite 清空目标目录。
+    outDir: '../resources/web/dist',
+    emptyOutDir: true,
     // mermaid 通过 rehype-mermaid 拖入完整 mermaid 库（~2.8MB），
     // 已通过 React.lazy 按需加载，仅在内容含 ```mermaid 时才下载。
     chunkSizeWarningLimit: 2900,

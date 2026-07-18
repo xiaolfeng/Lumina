@@ -259,7 +259,7 @@ web/
 - **动画库**：使用 `motion`（Framer Motion 的轻量版）实现动画；缓动函数和变体统一定义在 `lib/motion.ts`。
 - **主题配色**：微明色盘（烛光暖褐系），亮/暗模式通过 `:root` / `.dark` CSS 变量切换；shadcn/ui 变量已兼容主题。
 - **Toast 通知**：使用 `sonner`（shadcn/ui 集成），在 `console.tsx` 布局中挂载 `<Toaster />`。
-- **前端嵌入**：构建产物输出到 `web/dist`，通过 `go:embed` 嵌入 Go 二进制实现单文件部署。
+- **前端嵌入**：构建产物输出到 `resources/web/dist`（由 `web/vite.config.ts` 的 `build.outDir` 指定），通过 `go:embed` 嵌入 Go 二进制实现单文件部署。
 - **代码拆分**：`vite.config.ts` 配置了 Vite 代码拆分策略，Mermaid 等大型库懒加载以减小首屏体积。
 - **Q&A 实时通信**：Interact 页面通过 WebSocket 与后端通信，`useQaWebSocket` 管理连接状态和消息分发，支持断线重连和会话恢复。
 - **Q&A 管理端**：Console Q&A 页面通过 REST API 管理会话，使用 `useQaAdmin` Hook。

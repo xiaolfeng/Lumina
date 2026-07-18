@@ -23,20 +23,20 @@
 
 ```text
 ./
-├── main.go                     # 入口；嵌入双前端 dist → xMain.Runner + Cron Runner
-├── embed_frontend.go           # go:embed 声明（web/dist → frontendDist）
-├── embed_frontend_wiki.go      # go:embed 声明（web-wiki/dist → wikiFrontendDist）
+├── main.go                     # 入口；引用 resources.FrontendDist/WikiFrontendDist → xMain.Runner + Cron Runner
 ├── go.mod                      # Go 1.25.0；依赖 bamboo-base-go 模块
 ├── Makefile                    # 开发/测试/格式化/一键构建命令
 ├── .env.example                # 必需的环境变量模板
-├── resources/                  # 项目级内嵌资源（prompts、模板等）
-│   ├── embed.go                # go:embed 暴露 PromptFiles
-│   └── prompts/                # RepoWiki 5 角色 system prompt 文件
-│       ├── coordinator.md      # Coordinator 角色 prompt
-│       ├── explore.md          # Explore 角色 prompt
-│       ├── architect.md        # Architect 角色 prompt
-│       ├── write.md            # Writer 角色 prompt
-│       └── validator.md        # Validator 角色 prompt
+├── resources/                  # 项目级内嵌资源（prompts、前端构建产物等）
+│   ├── embed.go                # go:embed 暴露 PromptFiles / FrontendDist / WikiFrontendDist
+│   ├── prompts/                # RepoWiki 5 角色 system prompt 文件
+│   │   ├── coordinator.md      # Coordinator 角色 prompt
+│   │   ├── explore.md          # Explore 角色 prompt
+│   │   ├── architect.md        # Architect 角色 prompt
+│   │   ├── write.md            # Writer 角色 prompt
+│   │   └── validator.md         # Validator 角色 prompt
+│   ├── web/dist                  # 控制台前端构建产物（pnpm build 产出，go:embed 嵌入）
+│   └── web-wiki/dist             # Wiki Reader 前端构建产物（pnpm build 产出，go:embed 嵌入）
 ├── components/                 # @lumina/components 共享组件包（shadcn ui + markdown 原语 + motion + 主题 CSS）
 ├── api/                        # 请求/响应 DTO（按业务域分包）
 │   ├── auth/                   # 认证模块 DTO
@@ -176,8 +176,8 @@
 | 符号 | 类型 | 位置 | 作用 |
 |---|---|---|---|
 | `main` | 函数 | `main.go` | 嵌入双前端资源 → 注册启动节点 → 运行应用 + Cron Runner |
-| `frontendDist` | 变量 | `embed_frontend.go` | `go:embed all:web/dist` 嵌入控制台前端构建产物 |
-| `wikiFrontendDist` | 变量 | `embed_frontend_wiki.go` | `go:embed all:web-wiki/dist` 嵌入 Wiki Reader 前端构建产物 |
+| `frontendDist` | 变量 | `resources/embed.go` | `go:embed all:web/dist` 嵌入控制台前端构建产物（导出为 `resources.FrontendDist`） |
+| `wikiFrontendDist` | 变量 | `resources/embed.go` | `go:embed all:web-wiki/dist` 嵌入 Wiki Reader 前端构建产物（导出为 `resources.WikiFrontendDist`） |
 | `PromptFiles` | 变量 | `resources/embed.go` | `go:embed prompts/*.md` 内嵌 RepoWiki 5 角色 prompt |
 | `Init` | 函数 | `internal/app/startup/startup.go` | 启动节点列表工厂（DB → Redis → RepoWiki → MCP → Prepare） |
 | `NewCronRunner` | 函数 | `internal/app/startup/startup_cron.go` | Cron Runner 工厂（RepoWiki 定时清理，传入 `xMain.Runner`） |
@@ -327,7 +327,7 @@ Wiki Reader 前端（web-wiki/）──REST API───▶ 后端（/wiki/* + W
 - **Swagger 注册**：仅在 `XLF_DEBUG=true` 时注册 Swagger UI。
 - **WebSocket 实时推送**：Q&A 模块使用 WebSocket 进行实时问题推送（非 SSE）。
 - **模块独立性**：四个核心模块（RepoWiki、Memory、Q&A、Pin）互不调用，Agent 通过 MCP 自行编排。
-- **双前端嵌入部署**：通过 `go:embed` 将 `web/dist` 和 `web-wiki/dist` 分别嵌入 Go 二进制，构建命令 `make generate` 完成前端打包 → Swagger → Go 编译全流程。
+- **双前端嵌入部署**：通过 `go:embed` 将 `resources/web/dist` 和 `resources/web-wiki/dist` 分别嵌入 Go 二进制，构建命令 `make generate` 完成前端打包 → Swagger → Go 编译全流程。
 - **MCP 路由注册**：MCP 端点必须在 `engine.Use()` 之前注册以绕开 `ResponseMiddleware`。
 - **共享组件包**：shadcn ui 组件、Markdown 渲染原语、motion 动画变体、微明主题 CSS 统一在 `@lumina/components` workspace 包管理，被 `web` 和 `web-wiki` 共同消费。
 - **资源内嵌**：RepoWiki 5 角色 system prompt 通过 `go:embed` 内嵌在 `resources/prompts/`，由 `service/prompt_loader.go` 读取；禁止在 logic 中硬编码 prompt 文本。
@@ -360,7 +360,7 @@ Wiki Reader 前端（web-wiki/）──REST API───▶ 后端（/wiki/* + W
 - **双通道暴露**：每个模块同时提供 REST API 和 MCP Tool。
 - **MCP 编排**：Lumina 不做跨模块编排，由 Agent 端自行决定调用顺序和组合。
 - **泛型 Handler 构造**：`NewHandler[T]` 统一注入所有 logic 实例（12 个 Logic）。
-- **双前端嵌入**：`embed_frontend.go` + `embed_frontend_wiki.go` + `route_frontend.go` 实现双 SPA fallback，单二进制部署。
+- **双前端嵌入**：`resources/embed.go` 统一管理 `FrontendDist` + `WikiFrontendDist`，配合 `route_frontend.go` 实现双 SPA fallback，单二进制部署。
 - **API Key 安全**：`lumi_` 前缀 + base64 RawURL 编码 + bcrypt 哈希，仅创建/重置时返回完整密钥。
 - **API Key 认证中间件**：`middleware.ApikeyAuth` 专门用于 MCP 端点认证，与 `middleware.Auth`（Bearer Token）分离。
 - **Wiki Auth 中间件**：`middleware.WikiAuth` 处理 Wiki Reader 的密码 Token / Cookie 会话认证，与控制台认证分离。
@@ -445,7 +445,7 @@ pnpm format       # Prettier 格式化 + ESLint 自动修复
 
 ## 备注
 
-- 双前端通过 `go:embed` 嵌入 Go 二进制，构建顺序：先 `pnpm build`（产出 `web/dist` + `web-wiki/dist`），再 `go build`。使用 `make generate` 一键完成。
+- 双前端通过 `go:embed` 嵌入 Go 二进制，构建顺序：先 `pnpm build`（产出 `resources/web/dist` + `resources/web-wiki/dist`），再 `go build`。使用 `make generate` 一键完成。
 - 前端独立开发时使用 `make dev-frontend`（控制台 Vite dev server 端口 3000）和 `cd web-wiki && pnpm dev`（Wiki Reader 端口 3001），但生产部署时前后端合一。
 - 尚未配置 CI 工作流（`.github/workflows` 不存在）。
 - `make test` 命令存在，已有测试用例覆盖 project、llm_model、llm_provider、ssh_key_gen、webhook_parser、webhook_signer、wiki_auth_token、wiki_storage、git_service、file_scanner、dependency_extractor、repowiki_orchestrator 等模块。

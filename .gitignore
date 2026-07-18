@@ -41,6 +41,10 @@ go.work.sum
 build/
 lumina
 
+### Frontend Build ###
+resources/web/dist/
+resources/web-wiki/dist/
+
 ### Lumina ###
 .lumina/
 
