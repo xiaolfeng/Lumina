@@ -49,6 +49,11 @@ const config = defineConfig({
               test: /node_modules[/](react-markdown|remark-|rehype-|unified|micromark|highlight\.js)/,
               priority: 12,
             },
+            {
+              name: 'vendor-orama',
+              test: /node_modules[/]@orama/,
+              priority: 18,
+            },
           ],
         },
       },

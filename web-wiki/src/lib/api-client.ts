@@ -29,6 +29,19 @@ export interface PageResponse {
   path: string
   content: string
   title?: string
+  description?: string
+  icon?: string
+  last_updated?: number
+  prev?: NavRef
+  next?: NavRef
+  breadcrumb?: NavRef[]
+}
+
+/** Wiki 导航引用（用于 prev/next/breadcrumb） */
+export interface NavRef {
+  title: string
+  path: string
+  icon?: string
 }
 
 /** getManifest 接口响应数据（与后端 WikiManifestResponse 对齐） */
@@ -36,6 +49,16 @@ export interface WikiNavItem {
   title: string
   path: string
   children?: WikiNavItem[]
+  description?: string
+  icon?: string
+  separator?: string
+  default_open?: boolean
+}
+
+export interface WikiMeta {
+  title: string
+  description?: string
+  icon?: string
 }
 
 export interface ManifestResponse {
@@ -43,6 +66,7 @@ export interface ManifestResponse {
   home: string
   language: string
   project_name: string
+  meta?: WikiMeta
 }
 
 // ── Axios 实例 ──

@@ -11,6 +11,9 @@ import {
 	updateRepoWiki as updateRepoWikiApi,
 	getRepoWikiVersionList,
 	updateSelectedVersion,
+	cleanFailedVersions,
+	keepLatestVersions,
+	cleanRepoWikiGitCache,
 } from '#/lib/apis/repowiki'
 import type {
 	CreateRepoWikiConfigRequest,
@@ -81,6 +84,63 @@ export function useDeleteRepoWikiConfig() {
 		onError: (error: Error) => {
 			toast.error(error.message || '删除失败')
 		},
+	})
+}
+
+// ── 清理失败版本 ──
+
+export function useCleanFailedVersions() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: ({ configId }: { configId: string; projectId: string }) =>
+			cleanFailedVersions(configId),
+		onSuccess: (data, { configId, projectId }) => {
+			toast.success(`已清理 ${data.data?.cleaned ?? 0} 个失败版本`)
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'versions', 'list', configId] })
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'by-project', projectId] })
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'detail', configId] })
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
+		},
+		onError: (error: Error) => toast.error(error.message || '清理失败'),
+	})
+}
+
+// ── 只保留最新版本 ──
+
+export function useKeepLatestVersions() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: ({ configId }: { configId: string; projectId: string }) =>
+			keepLatestVersions(configId),
+		onSuccess: (data, { configId, projectId }) => {
+			const d = data.data
+			toast.success(
+				`已清理 ${d?.cleaned ?? 0} 个版本，跳过 ${d?.skipped ?? 0} 个进行中版本`,
+			)
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'versions', 'list', configId] })
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'by-project', projectId] })
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'detail', configId] })
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
+		},
+		onError: (error: Error) => toast.error(error.message || '操作失败'),
+	})
+}
+
+// ── 清理 Git 缓存 ──
+
+export function useCleanRepoWikiGitCache() {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: ({ configId }: { configId: string; projectId: string }) =>
+			cleanRepoWikiGitCache(configId),
+		onSuccess: (_, { configId, projectId }) => {
+			toast.success('Git 缓存已清理')
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'versions', 'list', configId] })
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'by-project', projectId] })
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'detail', configId] })
+			queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
+		},
+		onError: (error: Error) => toast.error(error.message || '清理失败'),
 	})
 }
 

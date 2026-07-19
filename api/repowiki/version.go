@@ -8,8 +8,8 @@ import (
 
 // AnalyzeRequest 触发分析请求
 type AnalyzeRequest struct {
-	Language    string `json:"language,omitempty"`     // Wiki语言（默认使用配置的 default_language）
-	Branch      string `json:"branch,omitempty"`       // 分析分支（默认使用配置的 default_branch）
+	Language    string `json:"language,omitempty"`                                  // Wiki语言（默认使用配置的 default_language）
+	Branch      string `json:"branch,omitempty"`                                    // 分析分支（默认使用配置的 default_branch）
 	ExtraPrompt string `json:"extra_prompt,omitempty" binding:"omitempty,max=5000"` // 本次分析额外提示词（最长 5000 字符）
 }
 
@@ -42,4 +42,16 @@ type VersionStatusResponse struct {
 type VersionListResponse struct {
 	Total int64                   `json:"total"` // 总数
 	Items []VersionStatusResponse `json:"items"` // 版本列表
+}
+
+// CleanFailedVersionsResponse 清理失败版本响应
+type CleanFailedVersionsResponse struct {
+	Cleaned int `json:"cleaned"` // 清理的版本数量
+}
+
+// KeepLatestVersionsResponse 只保留最新版本响应
+type KeepLatestVersionsResponse struct {
+	Cleaned       int                     `json:"cleaned"`                   // 清理的版本数量
+	Skipped       int                     `json:"skipped"`                   // 跳过的非终态版本数量
+	KeptVersionID *xSnowflake.SnowflakeID `json:"kept_version_id,omitempty"` // 保留的版本ID
 }

@@ -50,7 +50,7 @@ Wiki 必须处于 completed 状态才可查询；分析中或失败的版本会�
 		},
 	},
 	{
-		name: "repoWiki_list",
+		name:        "repoWiki_list",
 		description: `列出所有已完成的 Wiki 版本（分页）。返回 version_id、项目名称、分支、语言、commit hash、完成时间。Agent 可通过此工具查看有哪些 Wiki 可读，然后通过 repoWiki_query 读取具体内容。`,
 		inputSchema: map[string]any{
 			"type": "object",

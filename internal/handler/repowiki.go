@@ -3,6 +3,7 @@ package handler
 import (
 	"strconv"
 
+	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
 	"github.com/gin-gonic/gin"
@@ -225,7 +226,7 @@ func (h *RepoWikiHandler) UpdateSelectedVersion(ctx *gin.Context) {
 // DeleteConfig 删除 RepoWiki 配置
 //
 // @Summary     [管理] 删除 RepoWiki 配置
-// @Description 根据配置 ID 删除指定 RepoWiki 配置，删除后不可恢复
+// @Description 级联删除全部版本数据、Git 缓存和 Webhook 事件，有进行中分析任务时拒绝删除
 // @Tags        RepoWiki接口
 // @Produce     json
 // @Param       Authorization  header    string   true  "Bearer Access Token"
@@ -251,6 +252,110 @@ func (h *RepoWikiHandler) DeleteConfig(ctx *gin.Context) {
 	}
 
 	xResult.Success(ctx, "删除成功")
+}
+
+// CleanGitCache 清理 Git 克隆缓存
+//
+// @Summary     [管理] 清理 Git 克隆缓存
+// @Description 删除指定配置的本地 Git 克隆缓存目录，下次更新时将重新拉取。不影响已生成的 Wiki 版本数据。
+// @Tags        RepoWiki接口
+// @Produce     json
+// @Param       Authorization  header    string   true  "Bearer Access Token"
+// @Param       id             path      string   true  "配置ID"
+// @Success     200  {object}  apiCommon.BaseResponse  "清理成功"
+// @Failure     400  {object}  apiCommon.BaseResponse  "请求参数错误"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Failure     404  {object}  apiCommon.BaseResponse  "配置不存在"
+// @Router      /api/v1/repowiki/configs/{id}/cache [DELETE]
+func (h *RepoWikiHandler) CleanGitCache(ctx *gin.Context) {
+	h.log.Info(ctx, "CleanGitCache - 清理 Git 克隆缓存")
+
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xErr = h.service.repoWikiLogic.CleanGitCache(ctx.Request.Context(), id)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.Success(ctx, "清理成功")
+}
+
+// CleanFailedVersions 清理失败版本
+//
+// @Summary     [管理] 清理失败版本
+// @Description 删除指定配置下所有状态为失败的版本记录及其文件，不影响进行中或已完成的版本
+// @Tags        RepoWiki接口
+// @Produce     json
+// @Param       Authorization  header    string   true  "Bearer Access Token"
+// @Param       id             path      string   true  "配置ID"
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiRepowiki.CleanFailedVersionsResponse}  "清理完成"
+// @Failure     400  {object}  apiCommon.BaseResponse  "请求参数错误"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Failure     404  {object}  apiCommon.BaseResponse  "配置不存在"
+// @Router      /api/v1/repowiki/configs/{id}/versions/failed [DELETE]
+func (h *RepoWikiHandler) CleanFailedVersions(ctx *gin.Context) {
+	h.log.Info(ctx, "CleanFailedVersions - 清理失败版本")
+
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	n, xErr := h.service.repoWikiLogic.CleanFailedVersions(ctx.Request.Context(), id)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.SuccessHasData(ctx, "清理完成", apiRepowiki.CleanFailedVersionsResponse{Cleaned: n})
+}
+
+// KeepLatestVersion 只保留最新版本
+//
+// @Summary     [管理] 只保留最新版本
+// @Description 保留当前选中（或最近完成）的版本，删除其余已完成/已取消版本；进行中的版本会被跳过
+// @Tags        RepoWiki接口
+// @Produce     json
+// @Param       Authorization  header    string   true  "Bearer Access Token"
+// @Param       id             path      string   true  "配置ID"
+// @Param       keep           query     string   true  "保留策略（仅支持 latest）"
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiRepowiki.KeepLatestVersionsResponse}  "操作完成"
+// @Failure     400  {object}  apiCommon.BaseResponse  "请求参数错误"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Failure     404  {object}  apiCommon.BaseResponse  "配置不存在"
+// @Router      /api/v1/repowiki/configs/{id}/versions [DELETE]
+func (h *RepoWikiHandler) KeepLatestVersion(ctx *gin.Context) {
+	h.log.Info(ctx, "KeepLatestVersion - 只保留最新版本")
+
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	keep := ctx.Query("keep")
+	if keep != "latest" {
+		_ = ctx.Error(xError.NewError(ctx, xError.ValidationError, "keep 参数仅支持 latest", false, nil))
+		return
+	}
+
+	cleaned, skipped, keptVersionID, xErr := h.service.repoWikiLogic.KeepLatestVersions(ctx.Request.Context(), id)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.SuccessHasData(ctx, "操作完成", apiRepowiki.KeepLatestVersionsResponse{
+		Cleaned:       cleaned,
+		Skipped:       skipped,
+		KeptVersionID: keptVersionID,
+	})
 }
 
 // Analyze 触发仓库分析

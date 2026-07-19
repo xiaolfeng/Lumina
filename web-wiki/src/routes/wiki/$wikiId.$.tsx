@@ -2,8 +2,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { PasswordGate } from '#/components/password-gate'
-import { WikiLayout } from '#/components/wiki-layout'
+import { DocsPage } from '#/components/docs-page'
 import { wikiReaderApi } from '#/lib/api-client'
+import { buildPageTree } from '#/lib/source'
+import { Markdown } from '@lumina/components/markdown'
 
 export const Route = createFileRoute('/wiki/$wikiId/$')({
   component: WikiCatchAllPage,
@@ -14,9 +16,20 @@ function WikiCatchAllPage() {
   const pagePath = _splat || ''
 
   const {
+    data: manifest,
+    isLoading: manifestLoading,
+    error: manifestError,
+  } = useQuery({
+    queryKey: ['wiki-manifest', wikiId],
+    queryFn: () => wikiReaderApi.getManifest(wikiId),
+    retry: 1,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const {
     data: pageData,
-    isLoading,
-    error,
+    isLoading: pageLoading,
+    error: pageError,
   } = useQuery({
     queryKey: ['wiki-page', wikiId, pagePath],
     queryFn: () => wikiReaderApi.getPage(wikiId, pagePath),
@@ -24,6 +37,11 @@ function WikiCatchAllPage() {
     staleTime: 5 * 60 * 1000,
     enabled: !!pagePath,
   })
+
+  const tree = manifest ? buildPageTree(manifest) : undefined
+
+  const isLoading = manifestLoading || pageLoading
+  const error = manifestError || pageError
 
   let body: React.ReactNode = null
   if (isLoading) {
@@ -40,18 +58,15 @@ function WikiCatchAllPage() {
         <p>{error instanceof Error ? error.message : '加载失败'}</p>
       </div>
     )
+  } else if (pageData) {
+    body = <Markdown>{pageData.content}</Markdown>
   }
 
   return (
     <PasswordGate wikiId={wikiId}>
-      <WikiLayout
-        wikiId={wikiId}
-        currentPagePath={pagePath}
-        content={pageData?.content || ''}
-        title={pageData?.title || pagePath || 'Wiki 页面'}
-      >
+      <DocsPage wikiId={wikiId} tree={tree} pageData={pageData}>
         {body}
-      </WikiLayout>
+      </DocsPage>
     </PasswordGate>
   )
 }

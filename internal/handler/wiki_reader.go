@@ -73,18 +73,20 @@ func NewWikiReaderHandler(ctx context.Context) *WikiReaderHandler {
 
 // GetWikiPage 获取 Wiki 页面内容
 //
-// GET /api/v1/wiki/:id/page/*path
-//
 // 路径遍历防护双层校验：
 //  1. filepath.Clean + ".." 前缀检测 → 阻止显式上跳
 //  2. filepath.Rel 包含校验 → 确保 fullPath 在 wikiPath 目录内
 //
+// BREAKING: 仅读取 .mdx 文件，不再支持 .md 回退。page path 来自 manifest（无扩展名），
+// 磁盘文件为 {wikiPath}/{path}.mdx。页面 YAML frontmatter 中的 title/description/icon
+// 会被提取到响应 DTO；title 缺失时回退到路径 basename。
+//
 // @Summary     [公开] 获取 Wiki 页面
-// @Description 根据 Wiki ID 和页面路径读取 Markdown 内容，受密码保护的 Wiki 需携带有效的 HMAC Cookie
+// @Description 根据 Wiki ID 和页面路径读取 .mdx 页面内容（含 YAML frontmatter 解析），受密码保护的 Wiki 需携带有效的 HMAC Cookie
 // @Tags        Wiki阅读器接口
 // @Produce     json
 // @Param       id    path  string  true  "Wiki 配置 ID"
-// @Param       path  path  string  true  "页面路径（如 content/项目概览.md）"
+// @Param       path  path  string  true  "页面路径（无扩展名，如 content/项目概览）"
 // @Success     200  {object}  apiCommon.BaseResponse{data=apiRepowiki.WikiPageResponse}  "获取成功"
 // @Failure     400  {object}  apiCommon.BaseResponse  "无效的 Wiki ID 或页面路径"
 // @Failure     401  {object}  apiCommon.BaseResponse  "Wiki 需要认证（Cookie 缺失或无效）"
@@ -110,30 +112,94 @@ func (h *WikiReaderHandler) GetWikiPage(ctx *gin.Context) {
 	// 获取 Wiki 文档目录
 	wikiPath := h.storage.GetWikiPath(versionID)
 
-	// 路径遍历防护：双层校验
-	safePath, err := sanitizeWikiPath(wikiPath, pagePath)
-	if err != nil {
-		h.log.Info(ctx, fmt.Sprintf("GetWikiPage - 路径遍历拦截 [%s]", pagePath))
-		xResult.AbortError(ctx, xError.BadRequest, "无效的页面路径", false)
-		return
-	}
-
-	// 读取 Markdown 文件
-	content, xErr := h.storage.ReadMarkdown(safePath)
+	resp, xErr := buildWikiPageResponse(h.storage, wikiPath, pagePath)
 	if xErr != nil {
+		h.log.Info(ctx, fmt.Sprintf("GetWikiPage - 读取页面失败 [%s] %s", pagePath, xErr.Error()))
 		xResult.AbortError(ctx, xError.FileNotFound, "Wiki 页面不存在", false)
 		return
 	}
 
-	// 构建响应
-	resp := apiRepowiki.WikiPageResponse{
-		Title:    extractTitleFromPath(pagePath),
-		Content:  content,
-		Path:     strings.TrimPrefix(pagePath, "/"),
-		Language: bConst.RepoWikiDefaultLanguage,
+	// 读取 manifest 计算 prev/next/breadcrumb（失败不阻塞页面返回）
+	manifestPath := h.storage.GetManifestPath(versionID)
+	var manifest apiRepowiki.WikiManifestResponse
+	if xErr := h.storage.ReadJSON(manifestPath, &manifest); xErr != nil {
+		h.log.Info(ctx, fmt.Sprintf("GetWikiPage - 读取 manifest 失败，prev/next/breadcrumb 置空: %s", xErr.Error()))
+	} else {
+		currentPagePath := strings.TrimPrefix(pagePath, "/")
+		prev, next, breadcrumb := computeNav(&manifest, currentPagePath)
+		resp.Prev = prev
+		resp.Next = next
+		resp.Breadcrumb = breadcrumb
 	}
 
 	xResult.SuccessHasData(ctx, "获取成功", resp)
+}
+
+// buildWikiPageResponse 读取 .mdx 页面并构建 WikiPageResponse
+//
+// 流程：
+//  1. sanitizeWikiPath 双层路径遍历防护
+//  2. 强制 .mdx 扩展名（BREAKING：无 .md 回退）
+//  3. storage.ReadPage 解析 YAML frontmatter
+//  4. 提取 title/description/icon；title 缺失时回退到 extractTitleFromPath
+//
+// 失败时返回 *xError.Error（FileNotFound 表示文件不存在，BadRequest 表示路径非法）。
+func buildWikiPageResponse(storage *wikiService.WikiStorageService, wikiPath, pagePath string) (apiRepowiki.WikiPageResponse, *xError.Error) {
+	// 路径遍历防护：双层校验
+	safePath, err := sanitizeWikiPath(wikiPath, pagePath)
+	if err != nil {
+		return apiRepowiki.WikiPageResponse{}, xError.NewError(context.Background(), xError.BadRequest,
+			xError.ErrMessage("无效的页面路径"), false, err)
+	}
+
+	// BREAKING: 仅读取 .mdx，manifest path 无扩展名，磁盘文件为 {path}.mdx
+	if !strings.HasSuffix(safePath, ".mdx") {
+		safePath = safePath + ".mdx"
+	}
+
+	// 读取并解析 .mdx 页面（含 frontmatter）
+	page, xErr := storage.ReadPage(safePath)
+	if xErr != nil {
+		return apiRepowiki.WikiPageResponse{}, xErr
+	}
+
+	// 提取 frontmatter 元信息
+	title := frontmatterString(page.Frontmatter, "title")
+	description := frontmatterString(page.Frontmatter, "description")
+	icon := frontmatterString(page.Frontmatter, "icon")
+
+	// title 回退：frontmatter.title → extractTitleFromPath（basename 去扩展名）
+	if title == "" {
+		title = extractTitleFromPath(pagePath)
+	}
+
+	return apiRepowiki.WikiPageResponse{
+		Title:       title,
+		Content:     page.Body,
+		Path:        strings.TrimPrefix(pagePath, "/"),
+		Language:    bConst.RepoWikiDefaultLanguage,
+		Description: description,
+		Icon:        icon,
+		LastUpdated: page.ModTime.Unix(),
+	}, nil
+}
+
+// frontmatterString 从 YAML frontmatter 中安全提取字符串字段
+//
+// yaml.v3 解析到 map[string]interface{} 时，标量值类型可能为 string/bool/int/float64。
+// 此函数对非字符串值使用 fmt.Sprintf 兜底，nil 或缺失键返回空串。
+func frontmatterString(fm map[string]interface{}, key string) string {
+	if fm == nil {
+		return ""
+	}
+	v, ok := fm[key]
+	if !ok || v == nil {
+		return ""
+	}
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return fmt.Sprintf("%v", v)
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -403,4 +469,120 @@ func extractTitleFromPath(path string) string {
 	base := filepath.Base(cleaned)
 	ext := filepath.Ext(base)
 	return strings.TrimSuffix(base, ext)
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// 导航计算（prev / next / breadcrumb）
+// ──────────────────────────────────────────────────────────────────────
+
+// computeNav 根据 manifest 导航树计算当前页面的 prev/next/breadcrumb。
+//
+// 参数:
+//   - manifest: Wiki 清单（含 Navigation 树），nil 时返回全 nil
+//   - currentPagePath: 当前页面路径（无扩展名，与 manifest 中叶子 Path 字段对齐）
+//
+// 返回:
+//   - prev: DFS 叶子序列中当前页的前一个叶子（无则 nil）
+//   - next: DFS 叶子序列中当前页的后一个叶子（无则 nil）
+//   - breadcrumb: 从根到当前页的目录节点 + 当前页本身（WikiNavRef 列表）
+//
+// 规则:
+//   - DFS 遍历 manifest.Navigation，按 manifest 顺序收集叶子节点（无 children 的节点）
+//   - 跳过 Separator 节点（Separator 字段非空，Title/Path 为空）
+//   - prev/next 通过 Path 精确匹配定位当前页在叶子序列中的位置
+//   - breadcrumb: 从根遍历到当前页，收集所有目录节点（有 children 的节点）+ 当前页本身
+//   - 当前页未在叶子序列中找到时返回全 nil（不阻塞页面返回）
+func computeNav(manifest *apiRepowiki.WikiManifestResponse, currentPagePath string) (prev, next *apiRepowiki.WikiNavRef, breadcrumb []apiRepowiki.WikiNavRef) {
+	if manifest == nil || currentPagePath == "" {
+		return nil, nil, nil
+	}
+
+	// DFS 收集叶子节点（跳过 Separator）
+	var leaves []apiRepowiki.WikiNavItem
+	var walk func(items []apiRepowiki.WikiNavItem)
+	walk = func(items []apiRepowiki.WikiNavItem) {
+		for _, item := range items {
+			if item.Separator != "" {
+				continue
+			}
+			if len(item.Children) > 0 {
+				walk(item.Children)
+				continue
+			}
+			leaves = append(leaves, item)
+		}
+	}
+	walk(manifest.Navigation)
+
+	// 定位当前页在叶子序列中的位置
+	idx := -1
+	for i, leaf := range leaves {
+		if leaf.Path == currentPagePath {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return nil, nil, nil
+	}
+
+	if idx > 0 {
+		prev = navRefPtrFromItem(leaves[idx-1])
+	}
+	if idx < len(leaves)-1 {
+		next = navRefPtrFromItem(leaves[idx+1])
+	}
+	breadcrumb = findBreadcrumb(manifest.Navigation, currentPagePath)
+	return prev, next, breadcrumb
+}
+
+// findBreadcrumb 在导航树中查找从根到目标页面的路径，返回路径上的目录节点 + 当前页本身。
+//
+// 跳过 Separator 节点。目标未找到时返回 nil。
+func findBreadcrumb(items []apiRepowiki.WikiNavItem, targetPath string) []apiRepowiki.WikiNavRef {
+	var result []apiRepowiki.WikiNavRef
+	var search func(nodes []apiRepowiki.WikiNavItem, ancestors []apiRepowiki.WikiNavRef) bool
+	search = func(nodes []apiRepowiki.WikiNavItem, ancestors []apiRepowiki.WikiNavRef) bool {
+		for _, node := range nodes {
+			if node.Separator != "" {
+				continue
+			}
+			if len(node.Children) > 0 {
+				dirRef := navRefFromItem(node)
+				if search(node.Children, append(ancestors, dirRef)) {
+					return true
+				}
+				continue
+			}
+			if node.Path == targetPath {
+				result = make([]apiRepowiki.WikiNavRef, 0, len(ancestors)+1)
+				result = append(result, ancestors...)
+				result = append(result, navRefFromItem(node))
+				return true
+			}
+		}
+		return false
+	}
+	if search(items, nil) {
+		return result
+	}
+	return nil
+}
+
+// navRefFromItem 将 WikiNavItem 转换为 WikiNavRef（提取 Title/Path/Icon）
+func navRefFromItem(item apiRepowiki.WikiNavItem) apiRepowiki.WikiNavRef {
+	return apiRepowiki.WikiNavRef{
+		Title: item.Title,
+		Path:  item.Path,
+		Icon:  item.Icon,
+	}
+}
+
+// navRefPtrFromItem 将 WikiNavItem 转换为 *WikiNavRef（用于 prev/next 指针字段）
+func navRefPtrFromItem(item apiRepowiki.WikiNavItem) *apiRepowiki.WikiNavRef {
+	return &apiRepowiki.WikiNavRef{
+		Title: item.Title,
+		Path:  item.Path,
+		Icon:  item.Icon,
+	}
 }

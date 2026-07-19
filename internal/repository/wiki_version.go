@@ -11,6 +11,7 @@ import (
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	"github.com/redis/go-redis/v9"
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository/cache"
 	"gorm.io/gorm"
@@ -168,14 +169,14 @@ func (r *WikiVersionRepo) ListCompleted(ctx context.Context, page, size int) ([]
 	r.log.Info(ctx, fmt.Sprintf("ListCompleted - 分页查询已完成的 Wiki 版本 [page=%d, size=%d]", page, size))
 
 	var total int64
-	if err := r.db.WithContext(ctx).Model(&entity.WikiVersion{}).Where("status = ?", "completed").Count(&total).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&entity.WikiVersion{}).Where("status = ?", bConst.RepoWikiStatusCompleted).Count(&total).Error; err != nil {
 		return nil, 0, xError.NewError(ctx, xError.DatabaseError, "统计已完成 Wiki 版本数量失败", false, err)
 	}
 
 	var versions []*entity.WikiVersion
 	offset := (page - 1) * size
 	if err := r.db.WithContext(ctx).
-		Where("status = ?", "completed").
+		Where("status = ?", bConst.RepoWikiStatusCompleted).
 		Offset(offset).
 		Limit(size).
 		Order("completed_at DESC").
@@ -312,7 +313,13 @@ func (r *WikiVersionRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID)
 func (r *WikiVersionRepo) GetStaleTasks(ctx context.Context, timeoutSec int, maxRetry int) ([]*entity.WikiVersion, *xError.Error) {
 	r.log.Info(ctx, fmt.Sprintf("GetStaleTasks - 查询超时非终态任务 [timeoutSec=%d, maxRetry=%d]", timeoutSec, maxRetry))
 
-	nonTerminalStatuses := []string{"pending", "cloning", "scanning", "analyzing", "assembling"}
+	nonTerminalStatuses := []string{
+		bConst.RepoWikiStatusPending,
+		bConst.RepoWikiStatusCloning,
+		bConst.RepoWikiStatusScanning,
+		bConst.RepoWikiStatusAnalyzing,
+		bConst.RepoWikiStatusAssembling,
+	}
 	threshold := time.Now().Add(-time.Duration(timeoutSec) * time.Second)
 
 	var versions []*entity.WikiVersion
@@ -324,4 +331,90 @@ func (r *WikiVersionRepo) GetStaleTasks(ctx context.Context, timeoutSec int, max
 	}
 
 	return versions, nil
+}
+
+// ListAllByConfigID 按配置 ID 查询全部版本（非分页，按创建时间降序）
+//
+// 供 logic 层级联删除时遍历全部版本使用（需检查是否有非终态版本、需逐个清缓存和文件）。
+//
+// 参数:
+//   - ctx:      上下文对象
+//   - configID: 关联的配置雪花 ID
+//
+// 返回值:
+//   - []*entity.WikiVersion: 该配置下的全部版本列表
+//   - *xError.Error:          查询过程中的错误
+func (r *WikiVersionRepo) ListAllByConfigID(ctx context.Context, configID xSnowflake.SnowflakeID) ([]*entity.WikiVersion, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("ListAllByConfigID - 查询配置全部版本（非分页）[configID=%d]", configID.Int64()))
+
+	var versions []*entity.WikiVersion
+	if err := r.db.WithContext(ctx).
+		Where("config_id = ?", configID).
+		Order("created_at DESC").
+		Find(&versions).Error; err != nil {
+		r.log.Warn(ctx, err.Error())
+		return nil, xError.NewError(ctx, xError.DatabaseError, "查询配置全部版本失败", false, err)
+	}
+
+	return versions, nil
+}
+
+// DeleteByConfigID 批量删除指定配置的全部版本行
+//
+// 供 logic 层级联删除时调用。注意：此方法不清理版本状态缓存（由 logic 层逐个清），
+// 调用方应在调用前先用 ListAllByConfigID 获取版本列表并逐个清缓存。
+//
+// 参数:
+//   - ctx:      上下文对象
+//   - configID: 关联的配置雪花 ID
+//
+// 返回值:
+//   - *xError.Error: 删除过程中的错误
+func (r *WikiVersionRepo) DeleteByConfigID(ctx context.Context, configID xSnowflake.SnowflakeID) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("DeleteByConfigID - 批量删除配置版本 [configID=%d]", configID.Int64()))
+
+	if err := r.db.WithContext(ctx).Where("config_id = ?", configID).Delete(&entity.WikiVersion{}).Error; err != nil {
+		r.log.Warn(ctx, err.Error())
+		return xError.NewError(ctx, xError.DatabaseError, "批量删除 Wiki 版本失败", false, err)
+	}
+
+	return nil
+}
+
+// ListByConfigIDAndStatus 按配置 ID 和状态查询全部版本（非分页，按创建时间降序）
+//
+// 供 logic 层按状态批量清理版本使用（如清理全部 failed 版本）。
+//
+// 参数:
+//   - ctx:      上下文对象
+//   - configID: 关联的配置雪花 ID
+//   - status:   版本状态（参见 constant.RepoWikiStatus*）
+//
+// 返回值:
+//   - []*entity.WikiVersion: 符合条件的版本列表
+//   - *xError.Error:          查询过程中的错误
+func (r *WikiVersionRepo) ListByConfigIDAndStatus(ctx context.Context, configID xSnowflake.SnowflakeID, status string) ([]*entity.WikiVersion, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("ListByConfigIDAndStatus - 按配置 ID 和状态查询版本 [configID=%d, status=%s]", configID.Int64(), status))
+
+	var versions []*entity.WikiVersion
+	if err := r.db.WithContext(ctx).
+		Where("config_id = ? AND status = ?", configID, status).
+		Order("created_at DESC").
+		Find(&versions).Error; err != nil {
+		r.log.Warn(ctx, err.Error())
+		return nil, xError.NewError(ctx, xError.DatabaseError, "按状态查询版本失败", false, err)
+	}
+
+	return versions, nil
+}
+
+// DeleteVersionStatusCache 清除指定版本的状态缓存（供 logic 层级联删除时调用）
+//
+// 委托 cache 子层执行 Redis DEL，不报错（best-effort）。
+//
+// 参数:
+//   - ctx:       上下文对象
+//   - versionID: 版本雪花 ID
+func (r *WikiVersionRepo) DeleteVersionStatusCache(ctx context.Context, versionID xSnowflake.SnowflakeID) {
+	r.cache.DeleteVersionStatus(ctx, versionID.Int64())
 }

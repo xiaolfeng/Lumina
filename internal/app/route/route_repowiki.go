@@ -22,11 +22,14 @@ func (r *route) repowikiRouter(route gin.IRouter) {
 	g.PUT("/configs/:id", h.UpdateConfig)
 	g.PUT("/configs/:id/selected-version", h.UpdateSelectedVersion)
 	g.DELETE("/configs/:id", h.DeleteConfig)
+	g.DELETE("/configs/:id/cache", h.CleanGitCache)
 
 	g.POST("/configs/:id/analyze", h.Analyze)
 	g.PUT("/configs/:id/update", h.Update)
 
 	g.GET("/configs/:id/versions", h.ListVersions)
+	g.DELETE("/configs/:id/versions", h.KeepLatestVersion)
+	g.DELETE("/configs/:id/versions/failed", h.CleanFailedVersions)
 	g.GET("/versions/:id", h.GetVersionDetail)
 	g.GET("/versions/:id/status", h.GetVersionStatus)
 

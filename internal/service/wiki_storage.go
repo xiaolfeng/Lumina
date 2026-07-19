@@ -1,15 +1,18 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
+	"go.yaml.in/yaml/v3"
 )
 
 // ──────────────────────────────────────────────────────────────
@@ -209,6 +212,104 @@ func (s *WikiStorageService) ReadMarkdown(path string) (string, *xError.Error) {
 			xError.ErrMessage("读取 Markdown 文件失败 "+path), false, err)
 	}
 	return string(data), nil
+}
+
+// PageContent 表示一个 Wiki 页面解析后的结构
+//
+// 用于 ReadPage 方法返回，包含可选的 YAML frontmatter、正文内容和文件修改时间。
+// 当文件不含 frontmatter 时，Frontmatter 为 nil，Body 为文件全文。
+type PageContent struct {
+	Frontmatter map[string]interface{} // YAML frontmatter 解析结果（无 frontmatter 时为 nil）
+	Body        string                  // 正文内容（已剥离 frontmatter 块）
+	ModTime     time.Time               // 文件修改时间（来自 os.Stat）
+}
+
+// frontmatterDelimiter 是 YAML frontmatter 块的分隔符
+//
+// frontmatter 块格式：文件以 `---\n` 开头，到下一个 `---\n` 结束。
+// 仅当文件首字节即匹配该分隔符时才视为 frontmatter。
+var frontmatterDelimiter = []byte("---\n")
+
+// ReadPage 读取一个 Wiki 页面并解析其 YAML frontmatter
+//
+// 解析规则：
+//   - 文件必须以 `---\n`（精确字节）开头才视为有 frontmatter；
+//     否则 Frontmatter=nil，Body=文件全文。
+//   - frontmatter 块到下一个 `---\n` 结束；未闭合时返回全文为 Body，Frontmatter=nil（不报错）。
+//   - frontmatter 内 YAML 通过 go.yaml.in/yaml/v3 解析为 map[string]interface{}。
+//   - ModTime 来自 os.Stat 的 ModTime。
+//
+// path 为文件绝对或相对路径。
+func (s *WikiStorageService) ReadPage(path string) (PageContent, *xError.Error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return PageContent{}, xError.NewError(context.Background(), xError.FileNotFound,
+			xError.ErrMessage("读取页面文件失败 "+path), false, err)
+	}
+
+	// ModTime
+	info, err := os.Stat(path)
+	if err != nil {
+		return PageContent{}, xError.NewError(context.Background(), xError.FileNotFound,
+			xError.ErrMessage("读取页面文件状态失败 "+path), false, err)
+	}
+
+	page := PageContent{
+		ModTime: info.ModTime(),
+	}
+
+	// 仅当文件以 `---\n` 开头时才尝试解析 frontmatter
+	if bytes.HasPrefix(data, frontmatterDelimiter) {
+		// 跳过首部分隔符
+		rest := data[len(frontmatterDelimiter):]
+		// 查找闭合分隔符 `\n---\n`（frontmatter 末行后）
+		closeIdx := bytes.Index(rest, []byte("\n---\n"))
+		if closeIdx < 0 {
+			// 未闭合：返回全文为 Body，Frontmatter=nil（不报错）
+			page.Body = string(data)
+			return page, nil
+		}
+		yamlBytes := rest[:closeIdx]
+		// 闭合分隔符后剩余内容（跳过 `\n---\n`）
+		bodyStart := closeIdx + len("\n---\n")
+		page.Body = string(rest[bodyStart:])
+
+		var fm map[string]interface{}
+		if err := yaml.Unmarshal(yamlBytes, &fm); err != nil {
+			return PageContent{}, xError.NewError(context.Background(), xError.ServerInternalError,
+				xError.ErrMessage("frontmatter YAML 解析失败 "+path), false, err)
+		}
+		page.Frontmatter = fm
+		return page, nil
+	}
+
+	// 无 frontmatter
+	page.Body = string(data)
+	return page, nil
+}
+
+// ReadMetaJSON 读取指定目录下的 meta.json 并解析为 map
+//
+// 路径：{dirPath}/meta.json
+// 文件不存在时返回 nil, nil（幂等，不视为错误）。
+// 解析失败或读取失败时返回 *xError.Error。
+func (s *WikiStorageService) ReadMetaJSON(dirPath string) (map[string]interface{}, *xError.Error) {
+	metaPath := filepath.Join(dirPath, "meta.json")
+	data, err := os.ReadFile(metaPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, xError.NewError(context.Background(), xError.FileNotFound,
+			xError.ErrMessage("读取 meta.json 失败 "+metaPath), false, err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, xError.NewError(context.Background(), xError.ServerInternalError,
+			xError.ErrMessage("meta.json 反序列化失败 "+metaPath), false, err)
+	}
+	return result, nil
 }
 
 // ── 清理 ──

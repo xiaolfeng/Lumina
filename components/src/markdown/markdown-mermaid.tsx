@@ -6,6 +6,8 @@ import rehypeSlug from 'rehype-slug'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeKatex from 'rehype-katex'
 import rehypeMermaid from 'rehype-mermaid'
+import { remarkFencedBlocks } from './remark-fenced-blocks'
+import { Callout, Card, Steps, Step } from './fenced-components'
 
 /**
  * 含 Mermaid 图表支持的 Markdown 渲染组件。
@@ -16,7 +18,7 @@ import rehypeMermaid from 'rehype-mermaid'
  * 由于 rehype-mermaid 会拖入 mermaid/cytoscape（~1000KB），
  * 该组件通过 React.lazy 按需加载，仅在内容包含 mermaid 时才触发 chunk 下载。
  */
-const remarkPlugins = [remarkGfm, remarkMath]
+const remarkPlugins = [remarkGfm, remarkMath, remarkFencedBlocks]
 const rehypePlugins = [
   rehypeSlug,
   rehypeHighlight,
@@ -29,12 +31,19 @@ interface MarkdownMermaidProps extends Omit<ComponentPropsWithoutRef<typeof Reac
   className?: string
 }
 
-export default function MarkdownMermaid({ children, className, ...rest }: MarkdownMermaidProps) {
+export default function MarkdownMermaid({ children, className, components: userComponents, ...rest }: MarkdownMermaidProps) {
   return (
     <div className={className}>
       <ReactMarkdown
         remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePlugins as never}
+        components={{
+          callout: Callout,
+          card: Card,
+          steps: Steps,
+          step: Step,
+          ...(userComponents || {}),
+        } as never}
         {...rest}
       >
         {children}

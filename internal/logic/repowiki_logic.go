@@ -28,8 +28,8 @@ import (
 	xAsync "github.com/bamboo-services/bamboo-base-go/plugins/async"
 	"github.com/bamboo-services/bamboo-messages/bamboo"
 
-	apiRepowiki "github.com/xiaolfeng/Lumina/api/repowiki"
 	project_dto "github.com/xiaolfeng/Lumina/api/project"
+	apiRepowiki "github.com/xiaolfeng/Lumina/api/repowiki"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
@@ -466,13 +466,80 @@ func (l *RepoWikiLogic) UpdateConfig(ctx context.Context, id xSnowflake.Snowflak
 	return l.repo.config.Update(ctx, config)
 }
 
-// DeleteConfig 删除配置
+// DeleteConfig 删除配置（级联清理）
 //
-// 注意：仅删除数据库记录，不清理文件系统中的克隆仓库和版本数据。
-// 文件清理应由上层（Handler）在删除前显式调用 storage 清理方法。
+// 级联删除范围：config 行 + 全部 version 行 + WebhookEvent 行 + Redis 缓存 + 文件系统（version 目录 + git 缓存目录）。
+// 并发安全守卫：若存在非终态版本（pending/cloning/scanning/analyzing/assembling），拒绝删除并返回 BusinessError，
+// 因为 pipeline goroutine 用 GORM Save (upsert) 更新，强制删 DB 行后 pipeline 会重新插入行（数据复活 bug）。
 func (l *RepoWikiLogic) DeleteConfig(ctx context.Context, id xSnowflake.SnowflakeID) *xError.Error {
-	l.log.Info(ctx, fmt.Sprintf("DeleteConfig - 删除配置 [%d]", id.Int64()))
-	return l.repo.config.Delete(ctx, id)
+	l.log.Info(ctx, fmt.Sprintf("DeleteConfig - 级联删除配置 [%d]", id.Int64()))
+
+	// Step 1: 查出该 config 的全部 version
+	versions, xErr := l.repo.version.ListAllByConfigID(ctx, id)
+	if xErr != nil {
+		return xErr
+	}
+
+	// Step 2: 并发安全守卫 — 若存在非终态版本则拒绝删除
+	nonTerminalStatuses := map[string]bool{
+		bConst.RepoWikiStatusPending:    true,
+		bConst.RepoWikiStatusCloning:    true,
+		bConst.RepoWikiStatusScanning:   true,
+		bConst.RepoWikiStatusAnalyzing:  true,
+		bConst.RepoWikiStatusAssembling: true,
+	}
+	activeCount := 0
+	for _, v := range versions {
+		if nonTerminalStatuses[v.Status] {
+			activeCount++
+		}
+	}
+	if activeCount > 0 {
+		return xError.NewError(ctx, xError.BusinessError,
+			xError.ErrMessage(fmt.Sprintf("有进行中的分析任务（%d 个），请等待完成或取消后再删除", activeCount)), false, nil)
+	}
+
+	// Step 3: 级联删除（全部终态时）
+
+	// (a) 删关联 WebhookEvent 行（best-effort，失败 log warn 继续）
+	if xErr := l.repo.webhookEvent.DeleteByConfigID(ctx, id); xErr != nil {
+		l.log.Warn(ctx, "DeleteConfig - 删除 Webhook 事件失败（继续级联删除）",
+			slog.Int64("configID", id.Int64()),
+			slog.String("err", xErr.Error()))
+	}
+
+	// (b) 删全部 WikiVersion 行（DB 是事实源，失败立即返回）
+	if xErr := l.repo.version.DeleteByConfigID(ctx, id); xErr != nil {
+		return xErr
+	}
+
+	// (c) 删 RepoWikiConfig 行（已清 config redis 缓存）
+	if xErr := l.repo.config.Delete(ctx, id); xErr != nil {
+		return xErr
+	}
+
+	// (d) 逐个清版本状态缓存（best-effort）
+	for _, v := range versions {
+		l.repo.version.DeleteVersionStatusCache(ctx, v.ID)
+	}
+
+	// (e) 逐个删版本文件系统目录（best-effort）
+	for _, v := range versions {
+		if xErr := l.svc.storage.CleanVersion(v.ID.Int64()); xErr != nil {
+			l.log.Warn(ctx, "DeleteConfig - 清理版本目录失败（继续）",
+				slog.Int64("versionID", v.ID.Int64()),
+				slog.String("err", xErr.Error()))
+		}
+	}
+
+	// (f) 删 git 缓存目录（best-effort）
+	if xErr := l.svc.storage.CleanRepo(id.Int64()); xErr != nil {
+		l.log.Warn(ctx, "DeleteConfig - 清理仓库目录失败（继续）",
+			slog.Int64("configID", id.Int64()),
+			slog.String("err", xErr.Error()))
+	}
+
+	return nil
 }
 
 // UpdateSelectedVersion 切换配置当前选中的 Wiki 版本
@@ -808,6 +875,149 @@ func (l *RepoWikiLogic) VerifyWikiPassword(config *entity.RepoWikiConfig, passwo
 func (l *RepoWikiLogic) CleanVersionData(ctx context.Context, versionID xSnowflake.SnowflakeID) *xError.Error {
 	l.log.Info(ctx, fmt.Sprintf("CleanVersionData - 清理版本数据 [%d]", versionID.Int64()))
 	return l.svc.storage.CleanVersion(versionID.Int64())
+}
+
+// CleanGitCache 清理指定配置的 Git 克隆缓存
+//
+// 删除 {basePath}/repos/{configID}/ 目录，下次 analyze/update 时将重新 clone。
+// 不影响任何 version 数据和 config 记录。幂等：目录不存在时静默返回 nil。
+func (l *RepoWikiLogic) CleanGitCache(ctx context.Context, configID xSnowflake.SnowflakeID) *xError.Error {
+	l.log.Info(ctx, fmt.Sprintf("CleanGitCache - 清理 Git 克隆缓存 [%d]", configID.Int64()))
+	return l.svc.storage.CleanRepo(configID.Int64())
+}
+
+// CleanFailedVersions 清理指定配置的全部失败版本
+//
+// 删除 status=="failed" 的全部 version（DB 行 + 文件系统目录 + Redis 缓存）。
+// 空集（无 failed 版本）返回 cleaned=0，不报错。config 行不动。
+func (l *RepoWikiLogic) CleanFailedVersions(ctx context.Context, configID xSnowflake.SnowflakeID) (int, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("CleanFailedVersions - 清理失败版本 [%d]", configID.Int64()))
+
+	versions, xErr := l.repo.version.ListByConfigIDAndStatus(ctx, configID, bConst.RepoWikiStatusFailed)
+	if xErr != nil {
+		return 0, xErr
+	}
+
+	for _, v := range versions {
+		if xErr := l.repo.version.Delete(ctx, v.ID); xErr != nil {
+			return 0, xErr
+		}
+		if xErr := l.svc.storage.CleanVersion(v.ID.Int64()); xErr != nil {
+			l.log.Warn(ctx, "CleanFailedVersions - 清理版本目录失败（继续）",
+				slog.Int64("versionID", v.ID.Int64()),
+				slog.String("err", xErr.Error()))
+		}
+	}
+
+	return len(versions), nil
+}
+
+// KeepLatestVersions 只保留最新版本，删除其余终态版本
+//
+// 保留策略：
+//   - 若 SelectedVersionID 已设且对应 version 存在 → 保留它
+//   - 若 SelectedVersionID 已设但对应 version 不存在（已被删）→ 回退到最近 completed
+//   - 若 SelectedVersionID 未设 → 取最近 completed 保留，并重置 SelectedVersionID
+//   - 若连 completed 都没有 → 保留 id 最大的任意状态版本（避免全删），但不写入 SelectedVersionID
+//   - 若零版本 → 返回 cleaned=0, skipped=0, keptVersionID=nil
+//
+// 删除策略：
+//   - 非终态版本（pending/cloning/scanning/analyzing/assembling）→ 跳过并计数 skipped
+//   - 其余终态版本（completed/failed/cancelled）→ 删 DB 行 + 清缓存 + CleanVersion（best-effort）
+func (l *RepoWikiLogic) KeepLatestVersions(ctx context.Context, configID xSnowflake.SnowflakeID) (cleaned int, skipped int, keptVersionID *xSnowflake.SnowflakeID, xErr *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("KeepLatestVersions - 只保留最新版本 [configID=%d]", configID.Int64()))
+
+	// Step 1: 查 config
+	config, xErr := l.repo.config.GetByID(ctx, configID)
+	if xErr != nil {
+		return 0, 0, nil, xErr
+	}
+
+	// Step 2: 查全部 version（已按 created_at DESC 排序）
+	versions, xErr := l.repo.version.ListAllByConfigID(ctx, configID)
+	if xErr != nil {
+		return 0, 0, nil, xErr
+	}
+
+	// Step 3: 零版本 → 直接返回
+	if len(versions) == 0 {
+		return 0, 0, nil, nil
+	}
+
+	// Step 4: 确定 keepID + 是否写回 SelectedVersionID
+	versionMap := make(map[xSnowflake.SnowflakeID]*entity.WikiVersion, len(versions))
+	for _, v := range versions {
+		versionMap[v.ID] = v
+	}
+
+	nonTerminalStatuses := map[string]bool{
+		bConst.RepoWikiStatusPending:    true,
+		bConst.RepoWikiStatusCloning:    true,
+		bConst.RepoWikiStatusScanning:   true,
+		bConst.RepoWikiStatusAnalyzing:  true,
+		bConst.RepoWikiStatusAssembling: true,
+	}
+
+	var keepID xSnowflake.SnowflakeID
+	needUpdate := false
+
+	// 4a: SelectedVersionID 已设且存在 → 保留它
+	if config.SelectedVersionID != nil {
+		if _, ok := versionMap[*config.SelectedVersionID]; ok {
+			keepID = *config.SelectedVersionID
+		}
+	}
+
+	// 4b: SelectedVersionID 未设或不存在 → 回退到最近 completed
+	if keepID.IsZero() {
+		for _, v := range versions {
+			if v.Status == bConst.RepoWikiStatusCompleted {
+				keepID = v.ID
+				break
+			}
+		}
+		if !keepID.IsZero() {
+			if config.SelectedVersionID == nil || *config.SelectedVersionID != keepID {
+				needUpdate = true
+			}
+		}
+	}
+
+	// 4c: 无 completed → 保留 versions[0]（最新），不写入 SelectedVersionID
+	if keepID.IsZero() {
+		keepID = versions[0].ID
+	}
+
+	// Step 5: 遍历删除非 keepID 的终态版本
+	for _, v := range versions {
+		if v.ID == keepID {
+			continue
+		}
+		if nonTerminalStatuses[v.Status] {
+			skipped++
+			continue
+		}
+		if xErr := l.repo.version.Delete(ctx, v.ID); xErr != nil {
+			return cleaned, skipped, &keepID, xErr
+		}
+		l.repo.version.DeleteVersionStatusCache(ctx, v.ID)
+		if xErr := l.svc.storage.CleanVersion(v.ID.Int64()); xErr != nil {
+			l.log.Warn(ctx, "KeepLatestVersions - 清理版本目录失败（继续）",
+				slog.Int64("versionID", v.ID.Int64()),
+				slog.String("err", xErr.Error()))
+		}
+		cleaned++
+	}
+
+	// Step 6: 若需要写回 SelectedVersionID
+	if needUpdate {
+		config.SelectedVersionID = &keepID
+		if xErr := l.repo.config.Update(ctx, config); xErr != nil {
+			return cleaned, skipped, &keepID, xErr
+		}
+	}
+
+	return cleaned, skipped, &keepID, nil
 }
 
 // TouchLastAccessed 更新配置的最后访问时间（用于活跃度统计）

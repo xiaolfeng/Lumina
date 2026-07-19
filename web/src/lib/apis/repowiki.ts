@@ -10,6 +10,8 @@ import type {
 	RepoWikiConfigItem,
 	RepoWikiConfigListResponse,
 	RepoWikiVersionListResponse,
+	CleanFailedVersionsResponse,
+	KeepLatestVersionsResponse,
 } from '../models/response/repowiki'
 
 export function getRepoWikiConfigList(
@@ -77,4 +79,24 @@ export function updateSelectedVersion(
 	versionId: string,
 ): Promise<BaseResponse> {
 	return apiClient.put(`/api/v1/repowiki/configs/${configId}/selected-version`, { version_id: versionId })
+}
+
+export function cleanFailedVersions(
+	configId: string,
+): Promise<BaseResponse<CleanFailedVersionsResponse>> {
+	return apiClient.delete(`/api/v1/repowiki/configs/${configId}/versions/failed`)
+}
+
+export function keepLatestVersions(
+	configId: string,
+): Promise<BaseResponse<KeepLatestVersionsResponse>> {
+	return apiClient.delete(`/api/v1/repowiki/configs/${configId}/versions`, {
+		params: { keep: 'latest' },
+	})
+}
+
+export function cleanRepoWikiGitCache(
+	configId: string,
+): Promise<BaseResponse> {
+	return apiClient.delete(`/api/v1/repowiki/configs/${configId}/cache`)
 }

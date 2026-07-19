@@ -367,12 +367,11 @@ func (o *SubAgentOrchestrator) runSingleExplore(ctx context.Context, scope strin
 //
 // 构建 Architect Agent（工具：file_read），汇总概要与全部 Explore 产出构建 Wiki 目录大纲。
 // JSON 解析失败时在 prompt 追加格式提醒重试（最多 architectMaxParseRetries 次）。
-// 产出写入 versions/{vid}/architecture.json，返回 outline 与原始 JSON 文本。
-func (o *SubAgentOrchestrator) runArchitect(ctx context.Context, overviewSummary string, exploreOutputs map[string]string) ([]WikiEntry, *xError.Error) {
+// 产出写入 versions/{vid}/architecture.json（含 outline + metas），返回 ArchitectOutput。
+func (o *SubAgentOrchestrator) runArchitect(ctx context.Context, overviewSummary string, exploreOutputs map[string]string) (ArchitectOutput, *xError.Error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(bConst.RepoWikiArchitectTimeoutMin)*time.Minute)
 	defer cancel()
 
-	// 读取 Explore 产出内容，构建 []ExploreOutput
 	exploreList := o.loadExploreOutputs(exploreOutputs)
 
 	tools := []tool.Tool{
@@ -380,7 +379,7 @@ func (o *SubAgentOrchestrator) runArchitect(ctx context.Context, overviewSummary
 	}
 	ag, err := o.buildRoleAgent(bConst.AgentRoleRepoWikiArchitect, tools)
 	if err != nil {
-		return nil, xError.NewError(ctx, xError.ServerInternalError,
+		return ArchitectOutput{}, xError.NewError(ctx, xError.ServerInternalError,
 			xError.ErrMessage("构建 Architect Agent 失败: "+err.Error()), false, err)
 	}
 
@@ -390,11 +389,11 @@ func (o *SubAgentOrchestrator) runArchitect(ctx context.Context, overviewSummary
 
 	start := time.Now()
 	userInput := BuildArchitectUserPrompt(overviewSummary, exploreList)
-	var outline []WikiEntry
+	var archOut ArchitectOutput
 
 	for attempt := 0; attempt <= architectMaxParseRetries; attempt++ {
 		if ctx.Err() != nil {
-			return nil, xError.NewError(ctx, xError.ServerInternalError,
+			return ArchitectOutput{}, xError.NewError(ctx, xError.ServerInternalError,
 				xError.ErrMessage("架构规划阶段超时或被取消"), false, ctx.Err())
 		}
 
@@ -407,10 +406,10 @@ func (o *SubAgentOrchestrator) runArchitect(ctx context.Context, overviewSummary
 		o.saveSessionArtifact(ctx, bConst.AgentRoleRepoWikiArchitect, bConst.AgentRoleRepoWikiArchitect, currentInput, result, runErr, start, attempt+1)
 		if runErr != nil {
 			if ctx.Err() != nil {
-				return nil, xError.NewError(ctx, xError.ServerInternalError,
+				return ArchitectOutput{}, xError.NewError(ctx, xError.ServerInternalError,
 					xError.ErrMessage("架构规划阶段超时或被取消"), false, ctx.Err())
 			}
-			return nil, xError.NewError(ctx, xError.ServerInternalError,
+			return ArchitectOutput{}, xError.NewError(ctx, xError.ServerInternalError,
 				xError.ErrMessage(fmt.Sprintf("Architect Agent 执行失败 (第 %d 次): %s", attempt+1, runErr.Error())), false, runErr)
 		}
 
@@ -423,8 +422,8 @@ func (o *SubAgentOrchestrator) runArchitect(ctx context.Context, overviewSummary
 			continue
 		}
 
-		if uErr := json.Unmarshal(parsed, &outline); uErr != nil {
-			o.log.Warn(ctx, "Architect JSON 反序列化 WikiEntry 失败，准备重试",
+		if uErr := json.Unmarshal(parsed, &archOut); uErr != nil {
+			o.log.Warn(ctx, "Architect JSON 反序列化 ArchitectOutput 失败，准备重试",
 				slog.Int("attempt", attempt+1),
 				slog.String("err", uErr.Error()))
 			continue
@@ -433,22 +432,22 @@ func (o *SubAgentOrchestrator) runArchitect(ctx context.Context, overviewSummary
 		break
 	}
 
-	if outline == nil {
-		return nil, xError.NewError(ctx, xError.ServerInternalError,
+	if len(archOut.Outline) == 0 {
+		return ArchitectOutput{}, xError.NewError(ctx, xError.ServerInternalError,
 			xError.ErrMessage(fmt.Sprintf("Architect 输出解析失败，已重试 %d 次", architectMaxParseRetries)), false, nil)
 	}
 
-	// 持久化架构大纲
 	archPath := o.storage.GetArchitecturePath(o.versionID)
-	if writeErr := o.storage.WriteJSON(archPath, outline); writeErr != nil {
+	if writeErr := o.storage.WriteJSON(archPath, archOut); writeErr != nil {
 		o.log.Warn(ctx, "写入 architecture.json 失败（继续流程）",
 			slog.String("err", writeErr.Error()))
 	}
 
 	o.log.Info(ctx, "架构规划阶段完成",
 		slog.Int64("version_id", o.versionID),
-		slog.Int("entry_count", len(outline)))
-	return outline, nil
+		slog.Int("entry_count", len(archOut.Outline)),
+		slog.Int("meta_count", len(archOut.Metas)))
+	return archOut, nil
 }
 
 // loadExploreOutputs 读取所有 Explore 产出文件内容，构建 []ExploreOutput 供 Architect 使用
@@ -639,15 +638,15 @@ func (o *SubAgentOrchestrator) runSingleWriter(
 
 // verifyWriterOutputs 程序化校验 outline 条目对应的 Wiki 文件是否存在且非空
 //
-// 检查每个 entry.Path 对应的文件（filepath.Join(wikiDir, entry.Path)）是否存在且
-// 大小 >= writerFileMinSize（100 字节）。返回缺失/空文件的 WikiEntry 列表。
+// entry.Path 为无扩展名路径，磁盘文件为 {entry.Path}.mdx。
+// 检查文件大小 >= writerFileMinSize（100 字节）。返回缺失/空文件的 WikiEntry 列表。
 func (o *SubAgentOrchestrator) verifyWriterOutputs(outline []WikiEntry, wikiDir string) []WikiEntry {
 	var missing []WikiEntry
 	for _, entry := range outline {
 		if entry.Path == "" {
 			continue
 		}
-		fullPath := filepath.Join(wikiDir, entry.Path)
+		fullPath := filepath.Join(wikiDir, entry.Path+".mdx")
 		info, err := os.Stat(fullPath)
 		if err != nil || info.Size() < writerFileMinSize {
 			missing = append(missing, entry)
@@ -658,9 +657,20 @@ func (o *SubAgentOrchestrator) verifyWriterOutputs(outline []WikiEntry, wikiDir 
 
 // manifestNavItem manifest 导航项（本地结构体，与 api/repowiki.WikiNavItem JSON 对齐）
 type manifestNavItem struct {
-	Title    string             `json:"title"`
-	Path     string             `json:"path"`
-	Children []manifestNavItem  `json:"children,omitempty"`
+	Title       string            `json:"title"`
+	Path        string            `json:"path"`
+	Children    []manifestNavItem `json:"children,omitempty"`
+	Description string            `json:"description,omitempty"`
+	Icon        string            `json:"icon,omitempty"`
+	Separator   string            `json:"separator,omitempty"`
+	DefaultOpen bool              `json:"default_open,omitempty"`
+}
+
+// manifestMeta Wiki 顶层元信息（本地结构体，与 api/repowiki.WikiMeta JSON 对齐）
+type manifestMeta struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Icon        string `json:"icon"`
 }
 
 // manifestData Wiki 元数据清单（本地结构体，与 api/repowiki.WikiManifestResponse JSON 对齐）
@@ -669,25 +679,57 @@ type manifestData struct {
 	Home        string            `json:"home"`
 	Language    string            `json:"language"`
 	ProjectName string            `json:"project_name"`
+	Meta        manifestMeta      `json:"meta"`
+}
+
+// writeMetaFiles 将每个目录的 WikiMeta 落盘为 meta.json
+//
+// Path="" 写入 {wikiPath}/meta.json（根 meta）；其余写入 {wikiPath}/{Path}/meta.json。
+// WriteJSON 内部自动 MkdirAll。单个失败仅告警，不中断流程。
+func (o *SubAgentOrchestrator) writeMetaFiles(metas []WikiMeta) {
+	wikiPath := o.storage.GetWikiPath(o.versionID)
+	for _, m := range metas {
+		var metaPath string
+		if m.Path == "" {
+			metaPath = filepath.Join(wikiPath, "meta.json")
+		} else {
+			metaPath = filepath.Join(wikiPath, m.Path, "meta.json")
+		}
+		if writeErr := o.storage.WriteJSON(metaPath, m); writeErr != nil {
+			o.log.Warn(nil, "写入 meta.json 失败",
+				slog.String("path", metaPath),
+				slog.String("err", writeErr.Error()))
+		}
+	}
 }
 
 // generateManifest 生成 Wiki 导航清单（meta/repowiki-metadata.json）
 //
-// 将 outline 递归转换为树形导航项列表，写入 manifest 路径。
-// home 取树的首个叶子节点 path。
-func (o *SubAgentOrchestrator) generateManifest(outline []WikiEntry) *xError.Error {
-	nav := make([]manifestNavItem, 0, len(outline))
-	for _, entry := range outline {
-		nav = append(nav, o.wikiEntryToNavItem(entry))
-	}
+// 以 ArchitectOutput 为输入：outline 提供目录树结构，metas 提供每个目录的页面顺序与展示信息。
+// 叶子节点读取对应 .mdx frontmatter 填充 Title/Description/Icon；
+// 目录节点从 metas 查询 Title/Icon/DefaultOpen，并按 pages 顺序构建子导航。
+// home 取 outline 首个叶子 path。
+func (o *SubAgentOrchestrator) generateManifest(archOut ArchitectOutput) *xError.Error {
+	nav := o.buildNavFromMeta("", archOut.Metas, archOut.Outline)
+	home := findFirstLeafPath(archOut.Outline)
 
-	home := findFirstLeafPath(outline)
+	meta := manifestMeta{Title: o.projectName}
+	for _, m := range archOut.Metas {
+		if m.Path == "" {
+			if m.Title != "" {
+				meta.Title = m.Title
+			}
+			meta.Icon = m.Icon
+			break
+		}
+	}
 
 	manifest := manifestData{
 		Navigation:  nav,
 		Home:        home,
 		Language:    o.language,
 		ProjectName: o.projectName,
+		Meta:        meta,
 	}
 
 	manifestPath := o.storage.GetManifestPath(o.versionID)
@@ -701,19 +743,125 @@ func (o *SubAgentOrchestrator) generateManifest(outline []WikiEntry) *xError.Err
 	return nil
 }
 
-// wikiEntryToNavItem 递归将 WikiEntry 转换为 manifest 导航项（保留子树）
-func (o *SubAgentOrchestrator) wikiEntryToNavItem(entry WikiEntry) manifestNavItem {
-	item := manifestNavItem{
-		Title: entry.Title,
-		Path:  entry.Path,
-	}
+// wikiEntryToNavItem 递归将 WikiEntry 转换为 manifest 导航项
+//
+// 叶子节点：读取 {entry.Path}.mdx frontmatter 填充 Title/Description/Icon（缺失 icon 默认 FileText）。
+// 目录节点：从 metas 查询 Title/Icon/DefaultOpen（缺失则用 entry 值兜底，icon 默认 Folder），
+// 子导航通过 buildNavFromMeta 构建。
+func (o *SubAgentOrchestrator) wikiEntryToNavItem(entry WikiEntry, metas []WikiMeta) manifestNavItem {
 	if len(entry.Children) > 0 {
-		item.Children = make([]manifestNavItem, 0, len(entry.Children))
-		for _, child := range entry.Children {
-			item.Children = append(item.Children, o.wikiEntryToNavItem(child))
+		item := manifestNavItem{
+			Title: entry.Title,
+			Path:  entry.Path,
+			Icon:  entry.Icon,
+		}
+		if item.Icon == "" {
+			item.Icon = "Folder"
+		}
+		for _, m := range metas {
+			if m.Path == entry.Path {
+				if m.Title != "" {
+					item.Title = m.Title
+				}
+				if m.Icon != "" {
+					item.Icon = m.Icon
+				}
+				item.DefaultOpen = m.DefaultOpen
+				break
+			}
+		}
+		item.Children = o.buildNavFromMeta(entry.Path, metas, entry.Children)
+		return item
+	}
+
+	item := manifestNavItem{
+		Title:       entry.Title,
+		Path:        entry.Path,
+		Description: entry.Description,
+		Icon:        entry.Icon,
+	}
+	if item.Icon == "" {
+		item.Icon = "FileText"
+	}
+
+	pagePath := filepath.Join(o.storage.GetWikiPath(o.versionID), entry.Path+".mdx")
+	page, err := o.storage.ReadPage(pagePath)
+	if err == nil && page.Frontmatter != nil {
+		if t, ok := page.Frontmatter["title"].(string); ok && t != "" {
+			item.Title = t
+		}
+		if d, ok := page.Frontmatter["description"].(string); ok && d != "" {
+			item.Description = d
+		}
+		if ic, ok := page.Frontmatter["icon"].(string); ok && ic != "" {
+			item.Icon = ic
 		}
 	}
 	return item
+}
+
+// buildNavFromMeta 按目录 meta.json 的 pages 顺序构建子导航
+//
+// directChildren 为当前目录的直接子条目（叶子 + 子目录，无嵌套）。
+// 若目录有 meta 且 pages 非空：按 pages 顺序构建，---文本--- 生成 Separator 节点；
+// pages 元素匹配 directChildren 中 relPath==page 的条目（relPath = TrimPrefix(child.Path, folderPath+"/")）。
+// pages 未列出的 directChildren 追加到末尾（保持 outline 原序）。
+// 无 meta 或 pages 为空：回退为 directChildren 原序（非字母序）。
+func (o *SubAgentOrchestrator) buildNavFromMeta(folderPath string, metas []WikiMeta, directChildren []WikiEntry) []manifestNavItem {
+	var meta *WikiMeta
+	for i := range metas {
+		if metas[i].Path == folderPath {
+			meta = &metas[i]
+			break
+		}
+	}
+
+	if meta == nil || len(meta.Pages) == 0 {
+		items := make([]manifestNavItem, 0, len(directChildren))
+		for _, child := range directChildren {
+			items = append(items, o.wikiEntryToNavItem(child, metas))
+		}
+		return items
+	}
+
+	items := make([]manifestNavItem, 0, len(meta.Pages)+len(directChildren))
+	matched := make([]bool, len(directChildren))
+
+	for _, page := range meta.Pages {
+		if isSeparatorPage(page) {
+			sep := page[3 : len(page)-3]
+			items = append(items, manifestNavItem{Separator: sep})
+			continue
+		}
+		for i, child := range directChildren {
+			if matched[i] {
+				continue
+			}
+			relPath := child.Path
+			if folderPath != "" {
+				relPath = strings.TrimPrefix(child.Path, folderPath+"/")
+			}
+			if relPath == page {
+				matched[i] = true
+				items = append(items, o.wikiEntryToNavItem(child, metas))
+				break
+			}
+		}
+	}
+
+	for i, child := range directChildren {
+		if !matched[i] {
+			items = append(items, o.wikiEntryToNavItem(child, metas))
+		}
+	}
+	return items
+}
+
+// isSeparatorPage 判断 pages 元素是否为 ---文本--- 形式的分隔符
+func isSeparatorPage(page string) bool {
+	return len(page) > 6 &&
+		strings.HasPrefix(page, "---") &&
+		strings.HasSuffix(page, "---")
 }
 
 // findFirstLeafPath 自顶向下扫描树，返回首个叶子的 path
@@ -849,8 +997,8 @@ func (o *SubAgentOrchestrator) matchEntryExplores(refs []string, exploreFiles ma
 
 // validatorResult Validator Agent 输出的校验结果 JSON 结构
 type validatorResult struct {
-	Valid  bool             `json:"valid"`                // 校验是否通过
-	Errors []ValidationError `json:"errors"`              // 校验错误项
+	Valid  bool              `json:"valid"`  // 校验是否通过
+	Errors []ValidationError `json:"errors"` // 校验错误项
 }
 
 // runValidator 执行文档校验阶段
@@ -967,12 +1115,14 @@ func (o *SubAgentOrchestrator) Execute(ctx context.Context, progressCallback fun
 
 	// ── 阶段 3: 架构规划 ──
 	notify(bConst.RepoWikiStageArchitecting)
-	outline, err := o.runArchitect(ctx, overview, exploreOutputs)
+	archOut, err := o.runArchitect(ctx, overview, exploreOutputs)
 	if err != nil {
 		return err
 	}
+	outline := archOut.Outline
 	// 读取原始 architecture JSON 文本供 Validator 参考
 	archRawJSON := o.readArchitectureRawJSON()
+	o.writeMetaFiles(archOut.Metas)
 
 	// ── 阶段 4: 文档撰写 ──
 	notify(bConst.RepoWikiStageWriting)
@@ -998,7 +1148,7 @@ func (o *SubAgentOrchestrator) Execute(ctx context.Context, progressCallback fun
 	}
 
 	// 生成 Wiki 导航清单（manifest）
-	if mErr := o.generateManifest(outline); mErr != nil {
+	if mErr := o.generateManifest(archOut); mErr != nil {
 		o.log.Warn(ctx, "生成 manifest 失败（继续校验流程）",
 			slog.String("err", mErr.Error()))
 	}
@@ -1214,19 +1364,25 @@ func splitWriterGroups(outline []WikiEntry) [][]WikiEntry {
 
 // findMissingEntries 从 ValidationError 列表中提取需要重写的 WikiEntry。
 //
-// 匹配 ValidationError.Path 与 WikiEntry.Path（精确匹配）。
-// 错误类型为 missing_file / empty_page / orphan_file 时视为需要重写的条目。
+// 仅 missing_file / empty_page 触发 Writer 重写；missing_metadata /
+// missing_frontmatter / wrong_extension / orphan_file 属于非重写型错误，跳过。
+// 路径归一化：Validator 返回的 error.Path 可能是 .mdx 文件路径（如 overview.mdx），
+// 而 outline entry.Path 为无扩展名路径，匹配前需 TrimSuffix ".mdx"。
 // 若无法精确匹配任何条目，则返回 nil，避免无差别重写全部 outline。
 func findMissingEntries(errors []ValidationError, outline []WikiEntry) []WikiEntry {
 	pathSet := make(map[string]bool)
 	for _, e := range errors {
-		if e.Type == "missing_metadata" {
+		// 跳过非重写型错误（Writer 无法修复这些）
+		switch e.Type {
+		case "missing_metadata", "missing_frontmatter", "wrong_extension", "orphan_file":
 			continue
 		}
 		if e.Path == "" {
 			continue
 		}
-		pathSet[e.Path] = true
+		// 路径归一化：剥离 .mdx 扩展名以匹配无扩展名的 outline entry.Path
+		normalized := strings.TrimSuffix(e.Path, ".mdx")
+		pathSet[normalized] = true
 	}
 	if len(pathSet) == 0 {
 		return nil
@@ -1245,7 +1401,7 @@ func findMissingEntries(errors []ValidationError, outline []WikiEntry) []WikiEnt
 
 // buildArchitectRetryHint 构建 Architect 重试时追加到 user prompt 末尾的格式提醒
 func buildArchitectRetryHint(attempt int) string {
-	return fmt.Sprintf("\n\n---\n⚠️ 重要提醒（第 %d 次重试）：你上一次的输出无法解析为有效 JSON。\n请确保你**仅**输出纯 JSON 数组，不要包含 markdown 代码块（```）、解释性文字或任何其他内容。\nJSON 必须以 '[' 开头、']' 结尾，每个元素是包含 title/path/description/explore_refs/complexity/children 字段的对象。children 为子目录条目数组（可嵌套），path 不带 content/ 前缀。", attempt)
+	return fmt.Sprintf("\n\n---\n⚠️ 重要提醒（第 %d 次重试）：你上一次的输出无法解析为有效 JSON。\n请确保你**仅**输出纯 JSON 对象，不要包含 markdown 代码块（```）、解释性文字或任何其他内容。\nJSON 必须以 '{' 开头、'}' 结尾，是包含 outline 和 metas 两个键的对象。outline 是目录大纲数组，每个元素是包含 title/path/description/explore_refs/complexity/children/icon 字段的对象。children 为子目录条目数组（可嵌套），path 不带 content/ 前缀且无扩展名。metas 是目录元数据数组，每个元素含 path/title/icon/default_open/pages 字段。", attempt)
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -1304,12 +1460,12 @@ func (o *SubAgentOrchestrator) saveSessionArtifact(
 	}
 
 	meta := sessionArtifactMeta{
-		Role:      role,
-		SessionID: sessionID,
-		StartedAt: start.Format(time.RFC3339),
+		Role:       role,
+		SessionID:  sessionID,
+		StartedAt:  start.Format(time.RFC3339),
 		FinishedAt: time.Now().Format(time.RFC3339),
 		DurationMS: time.Since(start).Milliseconds(),
-		Attempt:   attempt,
+		Attempt:    attempt,
 	}
 	if mc, ok := o.roleModels[role]; ok && mc != nil {
 		meta.Model = mc.ModelName

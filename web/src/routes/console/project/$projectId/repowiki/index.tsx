@@ -21,6 +21,9 @@ import {
 	Play,
 	Trash2,
 	Loader2,
+	XCircle,
+	Layers,
+	HardDriveDownload,
 } from 'lucide-react'
 import { Button } from '@lumina/components/ui/button'
 import { Card, CardContent } from '@lumina/components/ui/card'
@@ -35,6 +38,9 @@ import {
 	useRepoWikiConfigByProjectId,
 	useUpdateRepoWikiConfig,
 	useDeleteRepoWikiConfig,
+	useCleanFailedVersions,
+	useKeepLatestVersions,
+	useCleanRepoWikiGitCache,
 } from '#/hooks/useRepoWiki'
 import { VersionList } from '#/components/repowiki/version-list'
 import { WebhookTab } from '#/components/repowiki/webhook-tab'
@@ -212,7 +218,7 @@ function RepoWikiDetailPage() {
 
 					<TabsContent value="settings" className="mt-0">
 						<div className="rounded-lg border bg-card p-4">
-							<SettingsTab config={config} />
+							<SettingsTab config={config} projectId={projectId} />
 						</div>
 					</TabsContent>
 				</Tabs>
@@ -381,7 +387,7 @@ function ConfigDetails({ config }: { config: RepoWikiConfigItem }) {
 
 // ── 设置 Tab：可编辑表单 + 密码清除 + 危险操作 ──
 
-function SettingsTab({ config }: { config: RepoWikiConfigItem }) {
+function SettingsTab({ config, projectId }: { config: RepoWikiConfigItem; projectId: string }) {
 	const navigate = useNavigate()
 	const [repoUrl, setRepoUrl] = useState(config.repo_url)
 	const [defaultBranch, setDefaultBranch] = useState(config.default_branch)
@@ -390,9 +396,15 @@ function SettingsTab({ config }: { config: RepoWikiConfigItem }) {
 	const [removePassword, setRemovePassword] = useState(false)
 	const [customPrompt, setCustomPrompt] = useState(config.custom_prompt ?? '')
 	const [deleteOpen, setDeleteOpen] = useState(false)
+	const [cleanFailedOpen, setCleanFailedOpen] = useState(false)
+	const [keepLatestOpen, setKeepLatestOpen] = useState(false)
+	const [cleanCacheOpen, setCleanCacheOpen] = useState(false)
 
 	const updateMutation = useUpdateRepoWikiConfig()
 	const deleteMutation = useDeleteRepoWikiConfig()
+	const cleanFailedMutation = useCleanFailedVersions()
+	const keepLatestMutation = useKeepLatestVersions()
+	const cleanCacheMutation = useCleanRepoWikiGitCache()
 	const isPending = updateMutation.isPending
 
 	const handleSave = () => {
@@ -564,22 +576,100 @@ function SettingsTab({ config }: { config: RepoWikiConfigItem }) {
 			{/* 危险操作区 */}
 			<div className="space-y-3">
 				<h3 className="text-sm font-semibold text-destructive">危险操作</h3>
-				<Button variant="destructive" onClick={() => setDeleteOpen(true)} className="gap-2">
-					<Trash2 className="size-4" />
-					删除此 Wiki 配置
-				</Button>
-				<p className="text-xs text-muted-foreground">
-					删除后配置及其所有版本数据将永久清除，不可恢复
-				</p>
+
+				<div className="space-y-2">
+					<Button variant="destructive" onClick={() => setDeleteOpen(true)} className="gap-2">
+						<Trash2 className="size-4" />
+						删除此 Wiki 配置
+					</Button>
+					<p className="text-xs text-muted-foreground">
+						将永久清除配置、所有版本数据、Git 缓存和 Webhook 事件，不可恢复
+					</p>
+				</div>
+
+				<div className="space-y-2">
+					<Button variant="destructive" onClick={() => setCleanFailedOpen(true)} className="gap-2">
+						<XCircle className="size-4" />
+						清理失败版本
+					</Button>
+					<p className="text-xs text-muted-foreground">
+						删除所有状态为失败的版本记录及其文件，不影响进行中或已完成的版本
+					</p>
+				</div>
+
+				<div className="space-y-2">
+					<Button variant="destructive" onClick={() => setKeepLatestOpen(true)} className="gap-2">
+						<Layers className="size-4" />
+						只保留最新版本
+					</Button>
+					<p className="text-xs text-muted-foreground">
+						保留当前选中（或最近完成）的版本，删除其余已完成/已取消版本；进行中的版本会被跳过
+					</p>
+				</div>
+
+				<div className="space-y-2">
+					<Button variant="destructive" onClick={() => setCleanCacheOpen(true)} className="gap-2">
+						<HardDriveDownload className="size-4" />
+						清理 Git 缓存
+					</Button>
+					<p className="text-xs text-muted-foreground">
+						删除本地 Git 克隆缓存，下次更新时将重新拉取。不影响已生成的 Wiki 版本
+					</p>
+				</div>
 			</div>
 
 			<ConfirmDeleteDialog
 				open={deleteOpen}
 				onOpenChange={setDeleteOpen}
 				title="删除配置"
-				description="确定要删除此 Wiki 配置吗？此操作不可恢复，关联的版本数据也将被清除。"
+				description="确定要删除此 Wiki 配置吗？将永久清除配置、所有版本数据、Git 缓存和 Webhook 事件，不可恢复。"
 				onConfirm={handleDelete}
 				isPending={deleteMutation.isPending}
+			/>
+			<ConfirmDeleteDialog
+				open={cleanFailedOpen}
+				onOpenChange={setCleanFailedOpen}
+				title="清理失败版本"
+				description="确定要删除所有状态为失败的版本吗？此操作不可恢复。"
+				confirmText="确认清理"
+				pendingText="清理中..."
+				onConfirm={() => {
+					cleanFailedMutation.mutate(
+						{ configId: config.id, projectId },
+						{ onSuccess: () => setCleanFailedOpen(false) },
+					)
+				}}
+				isPending={cleanFailedMutation.isPending}
+			/>
+			<ConfirmDeleteDialog
+				open={keepLatestOpen}
+				onOpenChange={setKeepLatestOpen}
+				title="只保留最新版本"
+				description="确定要只保留最新版本吗？其余已完成/已取消版本将被删除，进行中的版本会被跳过。"
+				confirmText="确认清理"
+				pendingText="清理中..."
+				onConfirm={() => {
+					keepLatestMutation.mutate(
+						{ configId: config.id, projectId },
+						{ onSuccess: () => setKeepLatestOpen(false) },
+					)
+				}}
+				isPending={keepLatestMutation.isPending}
+			/>
+			<ConfirmDeleteDialog
+				open={cleanCacheOpen}
+				onOpenChange={setCleanCacheOpen}
+				title="清理 Git 缓存"
+				description="确定要删除本地 Git 克隆缓存吗？下次更新时将重新拉取。不影响已生成的 Wiki 版本。"
+				confirmText="确认清理"
+				pendingText="清理中..."
+				onConfirm={() => {
+					cleanCacheMutation.mutate(
+						{ configId: config.id, projectId },
+						{ onSuccess: () => setCleanCacheOpen(false) },
+					)
+				}}
+				isPending={cleanCacheMutation.isPending}
 			/>
 		</div>
 	)

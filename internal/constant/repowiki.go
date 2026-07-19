@@ -12,6 +12,7 @@ const (
 	RepoWikiStatusCloning    = "cloning"    // Git 克隆中
 	RepoWikiStatusScanning   = "scanning"   // 文件扫描中
 	RepoWikiStatusAnalyzing  = "analyzing"  // Agent 分析中
+	RepoWikiStatusAssembling = "assembling" // 文档组装中
 	RepoWikiStatusCompleted  = "completed"  // 分析完成
 	RepoWikiStatusFailed     = "failed"     // 分析失败
 	RepoWikiStatusCancelled  = "cancelled"  // 已取消
@@ -19,11 +20,11 @@ const (
 
 // ── RepoWiki 分析阶段枚举（current_stage 字段用）──
 const (
-	RepoWikiStageScan          = "scan"          // 文件扫描阶段
-	RepoWikiStageExploring     = "exploring"     // 代码探索阶段
-	RepoWikiStageArchitecting  = "architecting"  // 架构设计阶段
-	RepoWikiStageWriting       = "writing"       // 文档编写阶段
-	RepoWikiStageValidating    = "validating"    // 结果校验阶段
+	RepoWikiStageScan         = "scan"         // 文件扫描阶段
+	RepoWikiStageExploring    = "exploring"    // 代码探索阶段
+	RepoWikiStageArchitecting = "architecting" // 架构设计阶段
+	RepoWikiStageWriting      = "writing"      // 文档编写阶段
+	RepoWikiStageValidating   = "validating"   // 结果校验阶段
 )
 
 // ── RepoWiki 默认值 ──
@@ -65,16 +66,16 @@ const (
 
 // ── RepoWiki 编排引擎超时/配额/重试常量 ──
 const (
-	RepoWikiPipelineTimeoutMin   = 60        // Pipeline 总超时（分钟）
-	RepoWikiOverviewTimeoutMin   = 10        // Coordinator 概要阶段超时（分钟）
-	RepoWikiExploreTimeoutMin    = 15        // Explore 每路超时（分钟）
-	RepoWikiArchitectTimeoutMin  = 10        // Architect 阶段超时（分钟）
-	RepoWikiWriterTimeoutMin     = 20        // Writer 每批超时（分钟）
-	RepoWikiValidatorTimeoutMin  = 5         // Validator 阶段超时（分钟）
-	RepoWikiExploreMaxConcurrent = 4         // Explore 最大并发数
-	RepoWikiWriterMaxConcurrent  = 4         // Writer 最大并发数
-	RepoWikiWriterMaxRetry       = 2         // Writer 失败最大重试次数
-	RepoWikiMaxTokens            = 2000000   // 每个 version 总 token 上限
-	RepoWikiMaxRepoSizeMB        = 2048      // 单仓库磁盘上限（MB）
-	RepoWikiMaxVersions          = 10        // 每个 config 保留版本数上限
+	RepoWikiPipelineTimeoutMin   = 60      // Pipeline 总超时（分钟）
+	RepoWikiOverviewTimeoutMin   = 10      // Coordinator 概要阶段超时（分钟）
+	RepoWikiExploreTimeoutMin    = 15      // Explore 每路超时（分钟）
+	RepoWikiArchitectTimeoutMin  = 10      // Architect 阶段超时（分钟）
+	RepoWikiWriterTimeoutMin     = 20      // Writer 每批超时（分钟）
+	RepoWikiValidatorTimeoutMin  = 5       // Validator 阶段超时（分钟）
+	RepoWikiExploreMaxConcurrent = 4       // Explore 最大并发数
+	RepoWikiWriterMaxConcurrent  = 4       // Writer 最大并发数
+	RepoWikiWriterMaxRetry       = 2       // Writer 失败最大重试次数
+	RepoWikiMaxTokens            = 2000000 // 每个 version 总 token 上限
+	RepoWikiMaxRepoSizeMB        = 2048    // 单仓库磁盘上限（MB）
+	RepoWikiMaxVersions          = 10      // 每个 config 保留版本数上限
 )

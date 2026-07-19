@@ -3304,7 +3304,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "根据配置 ID 删除指定 RepoWiki 配置，删除后不可恢复",
+                "description": "级联删除全部版本数据、Git 缓存和 Webhook 事件，有进行中分析任务时拒绝删除",
                 "produces": [
                     "application/json"
                 ],
@@ -3438,6 +3438,60 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "LLM Provider 未就绪",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repowiki/configs/{id}/cache": {
+            "delete": {
+                "description": "删除指定配置的本地 Git 克隆缓存目录，下次更新时将重新拉取。不影响已生成的 Wiki 版本数据。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 清理 Git 克隆缓存",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "清理成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -3665,6 +3719,143 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "保留当前选中（或最近完成）的版本，删除其余已完成/已取消版本；进行中的版本会被跳过",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 只保留最新版本",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "保留策略（仅支持 latest）",
+                        "name": "keep",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "操作完成",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.KeepLatestVersionsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/repowiki/configs/{id}/versions/failed": {
+            "delete": {
+                "description": "删除指定配置下所有状态为失败的版本记录及其文件，不影响进行中或已完成的版本",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RepoWiki接口"
+                ],
+                "summary": "[管理] 清理失败版本",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "清理完成",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repowiki.CleanFailedVersionsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -5015,7 +5206,7 @@ const docTemplate = `{
         },
         "/api/v1/wiki/{id}/page/{path}": {
             "get": {
-                "description": "根据 Wiki ID 和页面路径读取 Markdown 内容，受密码保护的 Wiki 需携带有效的 HMAC Cookie",
+                "description": "根据 Wiki ID 和页面路径读取 .mdx 页面内容（含 YAML frontmatter 解析），受密码保护的 Wiki 需携带有效的 HMAC Cookie",
                 "produces": [
                     "application/json"
                 ],
@@ -5033,7 +5224,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "页面路径（如 content/项目概览.md）",
+                        "description": "页面路径（无扩展名，如 content/项目概览）",
                         "name": "path",
                         "in": "path",
                         "required": true
@@ -6486,6 +6677,15 @@ const docTemplate = `{
                 }
             }
         },
+        "repowiki.CleanFailedVersionsResponse": {
+            "type": "object",
+            "properties": {
+                "cleaned": {
+                    "description": "清理的版本数量",
+                    "type": "integer"
+                }
+            }
+        },
         "repowiki.ConfigListResponse": {
             "type": "object",
             "properties": {
@@ -6605,6 +6805,23 @@ const docTemplate = `{
                 "wiki_password": {
                     "description": "Wiki访问密码（可选保护）",
                     "type": "string"
+                }
+            }
+        },
+        "repowiki.KeepLatestVersionsResponse": {
+            "type": "object",
+            "properties": {
+                "cleaned": {
+                    "description": "清理的版本数量",
+                    "type": "integer"
+                },
+                "kept_version_id": {
+                    "description": "保留的版本ID",
+                    "type": "integer"
+                },
+                "skipped": {
+                    "description": "跳过的非终态版本数量",
+                    "type": "integer"
                 }
             }
         },
@@ -6906,6 +7123,14 @@ const docTemplate = `{
                     "description": "Wiki 语言",
                     "type": "string"
                 },
+                "meta": {
+                    "description": "Wiki 元信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/repowiki.WikiMeta"
+                        }
+                    ]
+                },
                 "navigation": {
                     "description": "侧边栏导航",
                     "type": "array",
@@ -6915,6 +7140,23 @@ const docTemplate = `{
                 },
                 "project_name": {
                     "description": "项目名称",
+                    "type": "string"
+                }
+            }
+        },
+        "repowiki.WikiMeta": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "description": "Wiki 描述",
+                    "type": "string"
+                },
+                "icon": {
+                    "description": "Wiki 图标",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Wiki 标题",
                     "type": "string"
                 }
             }
@@ -6929,8 +7171,41 @@ const docTemplate = `{
                         "$ref": "#/definitions/repowiki.WikiNavItem"
                     }
                 },
+                "default_open": {
+                    "description": "是否默认展开",
+                    "type": "boolean"
+                },
+                "description": {
+                    "description": "导航项描述",
+                    "type": "string"
+                },
+                "icon": {
+                    "description": "图标名称",
+                    "type": "string"
+                },
                 "path": {
-                    "description": "页面路径",
+                    "description": "页面路径（无扩展名）",
+                    "type": "string"
+                },
+                "separator": {
+                    "description": "分组分隔符文本（---文本--- 语法）",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "显示标题",
+                    "type": "string"
+                }
+            }
+        },
+        "repowiki.WikiNavRef": {
+            "type": "object",
+            "properties": {
+                "icon": {
+                    "description": "图标名称",
+                    "type": "string"
+                },
+                "path": {
+                    "description": "页面路径（无扩展名）",
                     "type": "string"
                 },
                 "title": {
@@ -6942,17 +7217,52 @@ const docTemplate = `{
         "repowiki.WikiPageResponse": {
             "type": "object",
             "properties": {
+                "breadcrumb": {
+                    "description": "面包屑导航路径",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/repowiki.WikiNavRef"
+                    }
+                },
                 "content": {
                     "description": "Markdown 内容",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "页面描述（frontmatter description）",
+                    "type": "string"
+                },
+                "icon": {
+                    "description": "页面图标（frontmatter icon）",
                     "type": "string"
                 },
                 "language": {
                     "description": "Wiki 语言",
                     "type": "string"
                 },
+                "last_updated": {
+                    "description": "最后更新时间（Unix 秒）",
+                    "type": "integer"
+                },
+                "next": {
+                    "description": "下一页导航引用",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/repowiki.WikiNavRef"
+                        }
+                    ]
+                },
                 "path": {
                     "description": "页面路径",
                     "type": "string"
+                },
+                "prev": {
+                    "description": "上一页导航引用",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/repowiki.WikiNavRef"
+                        }
+                    ]
                 },
                 "title": {
                     "description": "页面标题",

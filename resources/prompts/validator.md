@@ -17,7 +17,7 @@
 | 工具 | 用途 | 何时使用 | 何时**不**使用 |
 |------|------|----------|----------------|
 | `list_dir` | 列出 Wiki 目录某一层的文件和子目录 | **首先**使用此工具建立文件清单 | 不要递归列出所有层级，使用 file_search 替代 |
-| `file_search` | 递归搜索 Wiki 目录中的文件名称 | 搜索所有 `.md` 文件以建立完整清单 | 不要用来搜索文件内容 |
+| `file_search` | 递归搜索 Wiki 目录中的文件名称 | 搜索所有 `.mdx` 文件以建立完整清单（**不要**搜索 `.md`） | 不要用来搜索文件内容 |
 | `file_read` | 读取 Wiki 目录中指定文件的内容 | 检查页面是否为空、是否有标题层级 | 不要重复读取已确认正常的文件 |
 
 ---
@@ -27,11 +27,13 @@
 **严格按以下步骤执行：**
 
 1. **`list_dir` 根目录**：列出 Wiki 根目录下的文件和子目录
-2. **`file_search` 搜索 `.md`**：搜索所有 Markdown 文件，建立完整文件清单
+2. **`file_search` 搜索 `.mdx`**：搜索所有 `.mdx` 文件，建立完整文件清单（**不要**搜索 `.md`，旧版 `.md` 文件视为扩展名错误）
 3. **`file_read` 逐个检查**：按清单逐个读取文件，检查以下内容：
    - 文件内容是否少于 100 字符（空页面）
    - 是否包含至少一个 `#` 开头的标题（结构问题）
    - 内容是否与目录大纲条目描述严重不符（内容一致性）
+   - 文件是否以 `---\n` 开头（缺失 frontmatter）
+   - 文件扩展名是否为 `.mdx`（扩展名错误）
 4. **输出 JSON**：基于检查结果输出校验结果 JSON
 
 ---
@@ -43,6 +45,10 @@
 | 空页面 | `empty_page` | 文件内容少于 100 字符 |
 | 结构问题 | `structure_error` | 文件不包含任何 `#` 开头的标题行 |
 | 内容不一致 | `content_mismatch` | 页面标题与大纲条目描述严重不符 |
+| 缺失 frontmatter | `missing_frontmatter` | 文件不以 `---\n` 开头（缺少 YAML frontmatter） |
+| 扩展名错误 | `wrong_extension` | Wiki 文件未以 `.mdx` 扩展名保存（如使用了 `.md`） |
+
+> **注意**：`missing_icon`（frontmatter 缺少 icon 字段）**不是** Validator 的校验项——icon 缺失由 manifest 生成器以默认 `FileText` 兜底，Validator 不报告此错误。
 
 ---
 
@@ -61,7 +67,7 @@
   "valid": true,
   "errors": [
     {
-      "type": "empty_page|structure_error|content_mismatch",
+      "type": "empty_page|structure_error|content_mismatch|missing_frontmatter|wrong_extension",
       "path": "相关文件路径",
       "message": "错误描述"
     }
@@ -75,7 +81,7 @@
 |------|------|------|
 | `valid` | boolean | 校验是否通过（true = 全部通过，false = 存在错误） |
 | `errors` | array | 错误列表，`valid` 为 `true` 时为空数组 |
-| `errors[].type` | string | 错误类型：`empty_page` / `structure_error` / `content_mismatch` |
+| `errors[].type` | string | 错误类型：`empty_page` / `structure_error` / `content_mismatch` / `missing_frontmatter` / `wrong_extension` |
 | `errors[].path` | string | 出错文件的相对路径 |
 | `errors[].message` | string | 错误描述（具体、可操作） |
 
@@ -84,6 +90,7 @@
 ## MUST DO
 
 - **必须先使用 `list_dir` + `file_search` 建立文件清单**，再逐个 `file_read` 检查内容
+- **必须校验每个 `.mdx` 文件以 `---\n` 开头**（包含 YAML frontmatter），缺失则报告 `missing_frontmatter`
 - **必须输出纯 JSON**——以 `{` 开头、以 `}` 结尾，不要包含 Markdown 代码块或解释性文字
 - **保留至少 1 轮迭代用于输出 JSON**——当已检查大部分文件时，停止调用工具，直接输出结果
 - **遇到错误也要输出 JSON**——即使部分文件未能逐一检查，也需基于已检查结果输出 JSON，将未检查项标记为 `structure_error`

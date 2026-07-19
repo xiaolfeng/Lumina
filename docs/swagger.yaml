@@ -1010,6 +1010,12 @@ definitions:
         description: 版本ID
         type: integer
     type: object
+  repowiki.CleanFailedVersionsResponse:
+    properties:
+      cleaned:
+        description: 清理的版本数量
+        type: integer
+    type: object
   repowiki.ConfigListResponse:
     properties:
       items:
@@ -1094,6 +1100,18 @@ definitions:
     required:
     - project_id
     - repo_url
+    type: object
+  repowiki.KeepLatestVersionsResponse:
+    properties:
+      cleaned:
+        description: 清理的版本数量
+        type: integer
+      kept_version_id:
+        description: 保留的版本ID
+        type: integer
+      skipped:
+        description: 跳过的非终态版本数量
+        type: integer
     type: object
   repowiki.RegenerateWebhookResponse:
     properties:
@@ -1308,6 +1326,10 @@ definitions:
       language:
         description: Wiki 语言
         type: string
+      meta:
+        allOf:
+        - $ref: '#/definitions/repowiki.WikiMeta'
+        description: Wiki 元信息
       navigation:
         description: 侧边栏导航
         items:
@@ -1317,6 +1339,18 @@ definitions:
         description: 项目名称
         type: string
     type: object
+  repowiki.WikiMeta:
+    properties:
+      description:
+        description: Wiki 描述
+        type: string
+      icon:
+        description: Wiki 图标
+        type: string
+      title:
+        description: Wiki 标题
+        type: string
+    type: object
   repowiki.WikiNavItem:
     properties:
       children:
@@ -1324,8 +1358,32 @@ definitions:
         items:
           $ref: '#/definitions/repowiki.WikiNavItem'
         type: array
+      default_open:
+        description: 是否默认展开
+        type: boolean
+      description:
+        description: 导航项描述
+        type: string
+      icon:
+        description: 图标名称
+        type: string
       path:
-        description: 页面路径
+        description: 页面路径（无扩展名）
+        type: string
+      separator:
+        description: 分组分隔符文本（---文本--- 语法）
+        type: string
+      title:
+        description: 显示标题
+        type: string
+    type: object
+  repowiki.WikiNavRef:
+    properties:
+      icon:
+        description: 图标名称
+        type: string
+      path:
+        description: 页面路径（无扩展名）
         type: string
       title:
         description: 显示标题
@@ -1333,15 +1391,37 @@ definitions:
     type: object
   repowiki.WikiPageResponse:
     properties:
+      breadcrumb:
+        description: 面包屑导航路径
+        items:
+          $ref: '#/definitions/repowiki.WikiNavRef'
+        type: array
       content:
         description: Markdown 内容
+        type: string
+      description:
+        description: 页面描述（frontmatter description）
+        type: string
+      icon:
+        description: 页面图标（frontmatter icon）
         type: string
       language:
         description: Wiki 语言
         type: string
+      last_updated:
+        description: 最后更新时间（Unix 秒）
+        type: integer
+      next:
+        allOf:
+        - $ref: '#/definitions/repowiki.WikiNavRef'
+        description: 下一页导航引用
       path:
         description: 页面路径
         type: string
+      prev:
+        allOf:
+        - $ref: '#/definitions/repowiki.WikiNavRef'
+        description: 上一页导航引用
       title:
         description: 页面标题
         type: string
@@ -3617,7 +3697,7 @@ paths:
       - RepoWiki接口
   /api/v1/repowiki/configs/{id}:
     delete:
-      description: 根据配置 ID 删除指定 RepoWiki 配置，删除后不可恢复
+      description: 级联删除全部版本数据、Git 缓存和 Webhook 事件，有进行中分析任务时拒绝删除
       parameters:
       - description: Bearer Access Token
         in: header
@@ -3788,6 +3868,42 @@ paths:
       summary: '[管理] 触发仓库分析'
       tags:
       - RepoWiki接口
+  /api/v1/repowiki/configs/{id}/cache:
+    delete:
+      description: 删除指定配置的本地 Git 克隆缓存目录，下次更新时将重新拉取。不影响已生成的 Wiki 版本数据。
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 配置ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 清理成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 配置不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 清理 Git 克隆缓存'
+      tags:
+      - RepoWiki接口
   /api/v1/repowiki/configs/{id}/selected-version:
     put:
       consumes:
@@ -3889,6 +4005,51 @@ paths:
       tags:
       - RepoWiki接口
   /api/v1/repowiki/configs/{id}/versions:
+    delete:
+      description: 保留当前选中（或最近完成）的版本，删除其余已完成/已取消版本；进行中的版本会被跳过
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 配置ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 保留策略（仅支持 latest）
+        in: query
+        name: keep
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 操作完成
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/repowiki.KeepLatestVersionsResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 配置不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 只保留最新版本'
+      tags:
+      - RepoWiki接口
     get:
       description: 按配置 ID 分页查询 Wiki 版本列表，返回版本状态与总数
       parameters:
@@ -3931,6 +4092,47 @@ paths:
           schema:
             $ref: '#/definitions/common.BaseResponse'
       summary: '[管理] 获取版本列表'
+      tags:
+      - RepoWiki接口
+  /api/v1/repowiki/configs/{id}/versions/failed:
+    delete:
+      description: 删除指定配置下所有状态为失败的版本记录及其文件，不影响进行中或已完成的版本
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 配置ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 清理完成
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/repowiki.CleanFailedVersionsResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 配置不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 清理失败版本'
       tags:
       - RepoWiki接口
   /api/v1/repowiki/configs/{id}/webhook:
@@ -4785,14 +4987,15 @@ paths:
       - Wiki阅读器接口
   /api/v1/wiki/{id}/page/{path}:
     get:
-      description: 根据 Wiki ID 和页面路径读取 Markdown 内容，受密码保护的 Wiki 需携带有效的 HMAC Cookie
+      description: 根据 Wiki ID 和页面路径读取 .mdx 页面内容（含 YAML frontmatter 解析），受密码保护的 Wiki
+        需携带有效的 HMAC Cookie
       parameters:
       - description: Wiki 配置 ID
         in: path
         name: id
         required: true
         type: string
-      - description: 页面路径（如 content/项目概览.md）
+      - description: 页面路径（无扩展名，如 content/项目概览）
         in: path
         name: path
         required: true

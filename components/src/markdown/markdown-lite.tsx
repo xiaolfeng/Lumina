@@ -4,6 +4,8 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeSlug from 'rehype-slug'
+import { remarkFencedBlocks } from './remark-fenced-blocks'
+import { Callout, Card, Steps, Step } from './fenced-components'
 
 /**
  * 轻量 Markdown 渲染组件（不含 mermaid）。
@@ -24,7 +26,7 @@ interface MarkdownLiteProps extends Omit<ComponentPropsWithoutRef<typeof ReactMa
   className?: string
 }
 
-export function MarkdownLite({ children, className, ...rest }: MarkdownLiteProps) {
+export function MarkdownLite({ children, className, components: userComponents, ...rest }: MarkdownLiteProps) {
   // rehype-slug 静态加载：必须同步可用，否则标题无 id，TOC scrollspy 失效
   const [rehypePlugins, setRehypePlugins] = useState<any[]>([rehypeSlug])
 
@@ -46,8 +48,15 @@ export function MarkdownLite({ children, className, ...rest }: MarkdownLiteProps
   return (
     <div className={className}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
+        remarkPlugins={[remarkGfm, remarkMath, remarkFencedBlocks]}
         rehypePlugins={rehypePlugins as never}
+        components={{
+          callout: Callout,
+          card: Card,
+          steps: Steps,
+          step: Step,
+          ...(userComponents || {}),
+        } as never}
         {...rest}
       >
         {children}

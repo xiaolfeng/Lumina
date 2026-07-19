@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef } from 'react'
 import { lazy, Suspense } from 'react'
-import ReactMarkdown from 'react-markdown'
+import type ReactMarkdown from 'react-markdown'
 import { MarkdownLite } from './markdown-lite'
 
 const MarkdownMermaid = lazy(() => import('./markdown-mermaid'))

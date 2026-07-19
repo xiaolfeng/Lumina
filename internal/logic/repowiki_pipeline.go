@@ -44,7 +44,7 @@ import (
 //   - 不负责并发控制（由 RepoWikiLogic.semaphore 管理）
 //   - 不负责 LLM 角色配置解析（由 RepoWikiLogic.resolveOrchestrator 完成）
 type AnalysisPipeline struct {
-	logic           *RepoWikiLogic     // 引用 Logic 以访问 service / repository
+	logic           *RepoWikiLogic // 引用 Logic 以访问 service / repository
 	log             *xLog.LogNamedLogger
 	orchestrator    *SubAgentOrchestrator // 子 Agent 编排引擎（5 阶段 Wiki 生成）
 	llmProviderName string                // LLM Provider 协议名称（写入版本记录，取 coordinator 角色）

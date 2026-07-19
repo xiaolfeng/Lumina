@@ -1,12 +1,13 @@
 /**
- * Wiki 侧边栏导航组件（shadcn Sidebar inset + 整块淡入动画）
+ * Wiki 页面树侧边栏组件（基于 PageTree 递归渲染）
  *
  * 功能特性：
- * - 从 manifest API 获取导航结构（TanStack Query 自动管理）
- * - 使用 shadcn/ui Sidebar variant="inset" 布局（自动处理移动端 Sheet 行为）
- * - 整块淡入（sidebarBlockFade）—— 不做逐项交错，避免路由切换重放序列动画
- * - 树形嵌套渲染：子目录通过左侧竖线（guide line）+ 缩进表达层级关系
- * - 当前页面路径高亮显示
+ * - 从 manifest API 获取导航结构，经 buildPageTree 转为 PageTree
+ * - 使用 shadcn/ui Sidebar variant="inset"
+ * - 整块淡入（sidebarBlockFade）—— 避免逐项交错动画在路由切换时重放
+ * - 递归渲染：目录节点（可展开/折叠）+ 叶子节点（Link 导航）+ 分隔符节点
+ * - 当前页面路径高亮
+ * - 展开状态持久化到 localStorage
  * - 底部 Powered-by Lumina
  */
 import { useEffect, useRef, useState } from 'react'
@@ -18,7 +19,6 @@ import {
   ChevronDown,
   FolderOpen,
   FolderClosed,
-  FileText,
   BookOpen,
   Loader2,
   Sparkles,
@@ -33,29 +33,71 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
 } from '@lumina/components/ui/sidebar'
-import { cn } from '@lumina/components/lib/utils'
+import { cn } from '@lumina/components/utils'
 import { sidebarBlockFade } from '@lumina/components/motion'
 import { wikiReaderApi } from '#/lib/api-client'
-import type { ManifestResponse, WikiNavItem } from '#/lib/api-client'
+import { buildPageTree, getIcon } from '#/lib/source'
+import type { PageNode, PageTree } from '#/lib/source'
 
-interface WikiSidebarProps {
+interface PageTreeSidebarProps {
   wikiId: string
   currentPagePath?: string
 }
 
-export function WikiSidebar({
+function getExpandedKey(wikiId: string): string {
+  return `wiki-sidebar-expanded-${wikiId}`
+}
+
+function loadExpanded(wikiId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(getExpandedKey(wikiId))
+    if (!raw) return new Set()
+    const arr = JSON.parse(raw) as string[]
+    return new Set(arr)
+  } catch {
+    return new Set()
+  }
+}
+
+function saveExpanded(wikiId: string, expanded: Set<string>): void {
+  localStorage.setItem(
+    getExpandedKey(wikiId),
+    JSON.stringify(Array.from(expanded)),
+  )
+}
+
+function getDirKey(node: PageNode): string {
+  return node.path || node.title
+}
+
+function shouldExpandByDefault(
+  node: PageNode,
+  currentPagePath: string,
+): boolean {
+  if (node.defaultOpen) return true
+  if (!currentPagePath || !node.path) return false
+  return (
+    currentPagePath === node.path ||
+    currentPagePath.startsWith(node.path + '/')
+  )
+}
+
+export function PageTreeSidebar({
   wikiId,
   currentPagePath = '',
-}: WikiSidebarProps) {
-  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
+}: PageTreeSidebarProps) {
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(() =>
+    loadExpanded(wikiId),
+  )
   const hasAutoExpanded = useRef(false)
 
   const {
     data: manifest,
     isLoading,
     error,
-  } = useQuery<ManifestResponse>({
+  } = useQuery({
     queryKey: ['wiki-manifest', wikiId],
     queryFn: () => wikiReaderApi.getManifest(wikiId),
     enabled: !!wikiId,
@@ -64,50 +106,76 @@ export function WikiSidebar({
     refetchOnWindowFocus: false,
   })
 
-  const navEntries: WikiNavItem[] = manifest?.navigation ?? []
-  const projectName = manifest?.project_name ?? 'Wiki'
+  const tree: PageTree | null = manifest ? buildPageTree(manifest) : null
+  const projectName = manifest?.meta?.title ?? manifest?.project_name ?? 'Wiki'
 
   useEffect(() => {
     if (hasAutoExpanded.current) return
-    if (!currentPagePath || navEntries.length === 0) return
+    if (!tree) return
+
     const dirsToExpand = new Set<string>()
-    const pathParts = currentPagePath.split('/').filter(Boolean)
-    let currentPath = ''
-    for (const part of pathParts.slice(0, -1)) {
-      currentPath += (currentPath ? '/' : '') + part
-      dirsToExpand.add(currentPath)
+    function walk(node: PageNode): void {
+      if (node.children && node.children.length > 0) {
+        const dirKey = getDirKey(node)
+        if (shouldExpandByDefault(node, currentPagePath)) {
+          dirsToExpand.add(dirKey)
+        }
+        for (const child of node.children) {
+          walk(child)
+        }
+      }
     }
+    walk(tree.root)
+
     if (dirsToExpand.size > 0) {
-      setExpandedDirs(dirsToExpand)
+      setExpandedDirs((prev) => new Set([...prev, ...dirsToExpand]))
     }
     hasAutoExpanded.current = true
-  }, [currentPagePath, navEntries.length])
+  }, [tree, currentPagePath])
 
-  const toggleDir = (dirPath: string) => {
+  useEffect(() => {
+    if (!wikiId) return
+    saveExpanded(wikiId, expandedDirs)
+  }, [wikiId, expandedDirs])
+
+  const toggleDir = (dirKey: string) => {
     setExpandedDirs((prev) => {
       const next = new Set(prev)
-      if (next.has(dirPath)) {
-        next.delete(dirPath)
+      if (next.has(dirKey)) {
+        next.delete(dirKey)
       } else {
-        next.add(dirPath)
+        next.add(dirKey)
       }
       return next
     })
   }
 
-  const renderNavItem = (entry: WikiNavItem, depth: number) => {
-    const dirKey = entry.path || entry.title
-    const isExpanded = expandedDirs.has(dirKey)
-    const isDirectory =
-      entry.children !== undefined && entry.children.length > 0
-    const isActive = !isDirectory && entry.path === currentPagePath
+  const isNodeExpanded = (node: PageNode): boolean => {
+    return expandedDirs.has(getDirKey(node))
+  }
+
+  const renderNode = (
+    node: PageNode,
+    depth: number,
+    index: number,
+  ): React.ReactNode => {
+    const dirKey = getDirKey(node)
+    const isExpanded = isNodeExpanded(node)
+    const isDirectory = node.children && node.children.length > 0
+    const isLeaf = !isDirectory && !node.separator
+    const isActive = isLeaf && node.path === currentPagePath
+    const Icon = getIcon(node.icon)
+
+    if (node.separator) {
+      return <SidebarSeparator key={`sep-${index}`} />
+    }
 
     return (
       <SidebarMenuItem key={dirKey}>
         {isDirectory ? (
           <SidebarMenuButton
             isActive={false}
-            tooltip={entry.title}
+            tooltip={node.title}
             className={cn(
               depth > 0 && 'text-[13px]',
               isExpanded
@@ -137,24 +205,28 @@ export function WikiSidebar({
               <FolderOpen
                 className={cn(
                   'size-4',
-                  depth === 0 ? 'text-lagoon' : 'text-sea-ink-soft',
+                  depth === 0
+                    ? 'text-lagoon'
+                    : 'text-sea-ink-soft',
                 )}
               />
             ) : (
               <FolderClosed
                 className={cn(
                   'size-4',
-                  depth === 0 ? 'text-muted-foreground' : 'text-sea-ink-soft/70',
+                  depth === 0
+                    ? 'text-muted-foreground'
+                    : 'text-sea-ink-soft/70',
                 )}
               />
             )}
-            <span className="truncate">{entry.title}</span>
+            <span className="truncate">{node.title}</span>
           </SidebarMenuButton>
         ) : (
           <SidebarMenuButton
             asChild
             isActive={isActive}
-            tooltip={entry.title}
+            tooltip={node.title}
             className={cn(
               depth > 0 && 'text-[13px]',
               isActive
@@ -166,23 +238,24 @@ export function WikiSidebar({
           >
             <Link
               to="/wiki/$wikiId/$"
-              params={{ wikiId, _splat: entry.path }}
+              params={{ wikiId, _splat: node.path }}
             >
-              <FileText
+              <Icon
                 className={cn(
                   'size-4',
                   depth > 0 && !isActive && 'text-sea-ink-soft/60',
                 )}
               />
-              <span className="truncate">{entry.title}</span>
+              <span className="truncate">{node.title}</span>
             </Link>
           </SidebarMenuButton>
         )}
 
-        {/* 子项：嵌套在 li 内的 ul，带左侧竖线 guide line 表达树形层级 */}
-        {isExpanded && entry.children && entry.children.length > 0 && (
+        {isExpanded && node.children && node.children.length > 0 && (
           <SidebarMenu className="mt-0.5 min-w-0 gap-0 overflow-hidden border-l border-line/60 pl-1.5 [&>li]:min-w-0">
-            {entry.children.map((child) => renderNavItem(child, depth + 1))}
+            {node.children.map((child, i) =>
+              renderNode(child, depth + 1, i),
+            )}
           </SidebarMenu>
         )}
       </SidebarMenuItem>
@@ -190,7 +263,7 @@ export function WikiSidebar({
   }
 
   return (
-    <Sidebar variant="inset">
+    <Sidebar variant="inset" data-testid="wiki-sidebar">
       <motion.div
         className="flex h-full flex-col"
         initial="hidden"
@@ -200,7 +273,10 @@ export function WikiSidebar({
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg" className="hover:bg-link-bg-hover">
+              <SidebarMenuButton
+                size="lg"
+                className="hover:bg-link-bg-hover"
+              >
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-lagoon text-foam shadow-sm shadow-hero-a">
                   <BookOpen className="size-4" />
                 </div>
@@ -208,7 +284,9 @@ export function WikiSidebar({
                   <span className="font-semibold text-sea-ink">
                     {projectName}
                   </span>
-                  <span className="text-xs text-sea-ink-soft">Wiki 导航</span>
+                  <span className="text-xs text-sea-ink-soft">
+                    Wiki 导航
+                  </span>
                 </div>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -228,20 +306,30 @@ export function WikiSidebar({
 
                 {error && (
                   <div className="mx-1 rounded-md bg-destructive/10 p-3 text-xs text-destructive">
-                    {error instanceof Error ? error.message : '加载导航失败'}
+                    {error instanceof Error
+                      ? error.message
+                      : '加载导航失败'}
                   </div>
                 )}
 
                 {!isLoading &&
                   !error &&
-                  navEntries.length > 0 &&
-                  navEntries.map((entry) => renderNavItem(entry, 0))}
+                  tree &&
+                  tree.root.children &&
+                  tree.root.children.length > 0 &&
+                  tree.root.children.map((child, i) =>
+                    renderNode(child, 0, i),
+                  )}
 
-                {!isLoading && !error && navEntries.length === 0 && (
-                  <div className="py-8 text-center text-sm text-sea-ink-soft">
-                    暂无页面
-                  </div>
-                )}
+                {!isLoading &&
+                  !error &&
+                  (!tree ||
+                    !tree.root.children ||
+                    tree.root.children.length === 0) && (
+                    <div className="py-8 text-center text-sm text-sea-ink-soft">
+                      暂无页面
+                    </div>
+                  )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -253,7 +341,11 @@ export function WikiSidebar({
               <div className="flex items-center gap-2 px-2 py-2 text-xs text-sea-ink-soft">
                 <Sparkles className="size-3.5 shrink-0 text-lagoon" />
                 <span>
-                  由 <span className="font-medium text-sea-ink">Lumina · 微明</span> 驱动
+                  由{' '}
+                  <span className="font-medium text-sea-ink">
+                    Lumina · 微明
+                  </span>{' '}
+                  驱动
                 </span>
               </div>
             </SidebarMenuItem>

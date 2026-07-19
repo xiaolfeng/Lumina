@@ -10,7 +10,7 @@
 
 基于 `bamboo-base-go` 构建的后端服务 + 双前端（TanStack Start 控制台 + Wiki Reader），包含四大核心功能模块：
 
-- **RepoWiki**：克隆项目并通过 5 角色 SubAgent 编排生成结构化 Wiki 文档（已实现，含 Webhook 自动触发 + Cron 定时清理）
+- **RepoWiki**：克隆项目并通过 5 角色 SubAgent 编排生成结构化 Wiki 文档（已实现，Writer 输出 .mdx + frontmatter，manifest 支持 per-folder meta.json + separator/icon，含 Webhook 自动触发 + Cron 定时清理）
 - **Memory**：AI 的长期决策记忆，MCP 端主动推送构建（设计中）
 - **Q&A**：Agent 与用户的富交互式问答通道（WebSocket 实时推送）— ✅ 已实现
 - **Pin**：跨项目依赖约束传递，点对点定向推送与 FIFO 队列消费 — ✅ 已实现
@@ -134,7 +134,17 @@
 ├── web-wiki/                   # TanStack Start Wiki Reader 前端（独立 SPA，部署在 /wiki/）
 │   ├── package.json            # React 19 + TanStack Router + Tailwind CSS 4
 │   ├── vite.config.ts          # Vite + TanStack Router 插件（base: /wiki/）
-│   └── src/                    # 前端源码（只读 Wiki 渲染 + 密码门）
+│   └── src/                    # 前端源码（只读 .mdx Wiki 渲染 + 密码门 + 目录搜索）
+│       ├── lib/                # 工具函数与 API 客户端
+│       │   ├── source.ts       # 运行时页面树构建（buildPageTree）与图标映射
+│       │   └── frontmatter.ts  # 前端 frontmatter 解析与 TOC 提取
+│       └── components/         # 业务组件
+│           ├── page-tree-sidebar.tsx # Wiki 侧边导航树
+│           ├── docs-page.tsx       # 三栏文档页面布局
+│           ├── toc.tsx             # 文章目录（scrollspy）
+│           ├── breadcrumb.tsx      # 面包屑导航
+│           ├── prev-next.tsx       # 上一页/下一页
+│           └── search.tsx          # 客户端全文搜索（Orama）
 └── .agent/skills/              # 项目专属技能（swagger-writer、entity-build、project-style、mcp-qa-test）
 ```
 
@@ -237,6 +247,11 @@
 | `useSshKey` | Hook | `web/src/hooks/useSshKey.ts` | SSH Key 数据 Hook（CRUD + 分页） |
 | `useRepoWiki` | Hook | `web/src/hooks/useRepoWiki.ts` | RepoWiki Hook（配置/版本/分析触发/Webhook 事件） |
 | `useSettings` | Hook | `web/src/hooks/useSettings.ts` | 系统设置 Hook（分组配置读写） |
+| `ReadPage` | 方法 | `internal/service/wiki_storage.go` | 读取 .mdx 页面文件并解析 YAML frontmatter |
+| `computeNav` | 函数 | `internal/handler/wiki_reader.go` | 根据 manifest 计算当前页的 prev/next/breadcrumb |
+| `buildPageTree` | 函数 | `web-wiki/src/lib/source.ts` | 从 manifest 构建运行时页面树（含 parent 指针与 leaves） |
+| `PageTreeSidebar` | 组件 | `web-wiki/src/components/page-tree-sidebar.tsx` | Wiki 侧边导航树（递归目录 + separator + 展开状态） |
+| `DocsPage` | 组件 | `web-wiki/src/components/docs-page.tsx` | 三栏文档页面布局（Sidebar | Article | TOC） |
 
 ## 模块架构
 

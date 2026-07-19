@@ -81,12 +81,12 @@ func (r *WebhookEventRepo) UpdateStatus(ctx context.Context, id xSnowflake.Snowf
 		Model(&entity.WebhookEvent{}).
 		Where("id = ?", id).
 		Updates(map[string]any{
-			"status":         status,
-			"reason":         reason,
-			"version_id":     versionID,
-			"response_code":  responseCode,
-			"processed_at":   processedAt,
-			"updated_at":     time.Now(),
+			"status":        status,
+			"reason":        reason,
+			"version_id":    versionID,
+			"response_code": responseCode,
+			"processed_at":  processedAt,
+			"updated_at":    time.Now(),
 		})
 	if result.Error != nil {
 		r.log.Warn(ctx, result.Error.Error())
@@ -131,4 +131,25 @@ func (r *WebhookEventRepo) ListByConfigID(ctx context.Context, configID xSnowfla
 	}
 
 	return events, total, nil
+}
+
+// DeleteByConfigID 批量删除指定配置的全部 Webhook 事件行
+//
+// 供 logic 层级联删除时调用。RowsAffected==0 不报错（配置可能无 Webhook 事件）。
+//
+// 参数:
+//   - ctx:      上下文对象
+//   - configID: 关联的配置雪花 ID
+//
+// 返回值:
+//   - *xError.Error: 删除过程中的错误
+func (r *WebhookEventRepo) DeleteByConfigID(ctx context.Context, configID xSnowflake.SnowflakeID) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("DeleteByConfigID - 批量删除配置 Webhook 事件 [configID=%d]", configID.Int64()))
+
+	if err := r.db.WithContext(ctx).Where("config_id = ?", configID).Delete(&entity.WebhookEvent{}).Error; err != nil {
+		r.log.Warn(ctx, err.Error())
+		return xError.NewError(ctx, xError.DatabaseError, "批量删除 Webhook 事件失败", false, err)
+	}
+
+	return nil
 }

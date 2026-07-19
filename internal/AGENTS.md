@@ -44,7 +44,7 @@ internal/
 │   ├── qa.go                 # Q&A 处理器（会话 CRUD、问题详情、配置管理）
 │   ├── qa_download.go        # Q&A 文件下载处理器（Token 校验 + 文件流输出）
 │   ├── repowiki.go           # RepoWiki 处理器（配置/版本/分析触发/Webhook 配置）
-│   ├── wiki_reader.go        # Wiki 内容读取处理器（公开/密码保护/manifest/内容流）
+│   ├── wiki_reader.go        # Wiki 内容读取处理器（公开/密码保护/manifest/.mdx 内容流 + computeNav 前后导航）
 │   ├── llm.go                # LLM 处理器（Provider/Model CRUD + Agent 角色模型分配）
 │   ├── ssh_key.go            # SSH Key 处理器（CRUD + 密钥生成/公钥导出）
 │   ├── webhook.go            # Webhook 处理器（Git Push 事件接收 + HMAC 校验）
@@ -105,7 +105,7 @@ internal/
 │   ├── download_token.go     # 文件下载 Token 生成与校验（短时效签名）
 │   ├── file_cache.go         # 文件缓存管理（上传文件本地暂存 + 清理）
 │   ├── media_answer.go       # 媒体回答处理（图片/文件附件的回答格式化）
-│   ├── wiki_storage.go       # RepoWiki 文件系统存储与路径管理
+│   ├── wiki_storage.go       # RepoWiki 文件系统存储与路径管理（ReadPage 读取 .mdx + frontmatter / ReadMetaJSON 读取 per-folder meta.json）
 │   ├── wiki_auth_token.go    # Wiki 访问密码 Token 生成与校验
 │   ├── git_service.go        # Git 仓库克隆/拉取服务（go-git 封装）
 │   ├── agent_factory.go      # LLM Agent 工厂（创建 SubAgent 运行实例）
@@ -195,11 +195,14 @@ internal/
 |---|---|---|---|
 | `NewHandler[T]` | 泛型函数 | `handler/handler.go` | Handler 泛型构造模式，注入全部 Logic |
 | `BindJSON` | 辅助函数 | `handler/bind.go` | 统一请求绑定 + 分页参数规范化 |
+| `computeNav` | 函数 | `handler/wiki_reader.go` | 根据 manifest 计算当前 Wiki 页的 prev/next/breadcrumb |
 | `SubAgentOrchestrator` | 结构体 | `logic/repowiki_orchestrator.go` | 5 角色 SubAgent 编排引擎（overview → explore → architect → writer → validator） |
 | `AnalysisPipeline` | 结构体 | `logic/repowiki_pipeline.go` | RepoWiki 分析管道（Git 准备 + 状态机驱动） |
 | `RepoWikiLogic` | 结构体 | `logic/repowiki_logic.go` | RepoWiki 业务编排（配置/版本/分析入口） |
 | `GetRepoWikiLogicFromContext` | 函数 | `logic/repowiki_logic.go` | 从 context 获取 RepoWikiLogic（MCP/Cron/Handler 共用） |
 | `WikiStorageService` | 结构体 | `service/wiki_storage.go` | RepoWiki 文件系统存储与路径管理 |
+| `ReadPage` | 方法 | `service/wiki_storage.go` | 读取 .mdx 页面文件并解析 YAML frontmatter |
+| `ReadMetaJSON` | 方法 | `service/wiki_storage.go` | 读取 per-folder meta.json（路径不存在时返回 nil, nil） |
 | `GitService` | 结构体 | `service/git_service.go` | Git 仓库克隆/拉取（go-git 封装） |
 | `AgentFactory` | 结构体 | `service/agent_factory.go` | LLM Agent 工厂（创建 SubAgent 运行实例） |
 | `CryptoHelper` | 结构体 | `service/crypto_helper.go` | AES-256-GCM 加解密（LLM API Key / SSH 私钥加密存储） |

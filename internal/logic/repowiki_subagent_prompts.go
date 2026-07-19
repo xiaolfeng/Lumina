@@ -84,7 +84,8 @@ func BuildArchitectUserPrompt(overviewSummary string, exploreOutputs []ExploreOu
 		sb.WriteString("\n\n")
 	}
 
-	sb.WriteString("请输出 Wiki 目录大纲 JSON 数组（格式见指令要求）。\n")
+	sb.WriteString("请输出包含 `outline` 和 `metas` 两个键的 JSON 对象，`outline` 字段是 Wiki 目录大纲数组，`metas` 字段是目录元数据数组（格式见指令要求）。\n")
+	sb.WriteString("请额外输出 metas 数组，为每个有子节点的目录提供 meta（含 pages 顺序 + 分隔符）；outline 的 path 字段无扩展名。\n")
 	return sb.String()
 }
 
@@ -113,7 +114,8 @@ func BuildWriterUserPrompt(entries []WikiEntry, exploreOutputs map[string]string
 		sb.WriteString("\n\n")
 	}
 
-	sb.WriteString("请依次撰写每个页面，使用 save_wiki_page 写入指定的路径。\n")
+	sb.WriteString("请依次撰写每个页面，使用 save_wiki_page 写入指定的 .mdx 路径。\n")
+	sb.WriteString("请确保每个 .mdx 页面以 YAML frontmatter 开头（title/description/icon），详见 system prompt。\n")
 	return sb.String()
 }
 
@@ -175,6 +177,8 @@ func BuildValidatorUserPrompt(wikiDir string, architectOutline string) string {
 	sb.WriteString("\n\n")
 
 	sb.WriteString("请使用 file_read、list_dir 和 file_search 扫描 Wiki 目录，校验页面内容质量和一致性（manifest 已由系统自动生成，无需检查），然后输出校验结果 JSON。\n")
+	sb.WriteString("请校验每个 .mdx 文件以 frontmatter 开头。\n")
+	sb.WriteString("architecture.json 现在是 `{outline, metas}` 对象，outline 数组在 `outline` 字段内，请忽略 `metas` 字段，仅参考 outline 做校验。\n")
 	return sb.String()
 }
 

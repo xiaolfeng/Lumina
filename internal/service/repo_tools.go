@@ -280,17 +280,17 @@ type saveWikiPageTool struct {
 func (t *saveWikiPageTool) Info() tool.ToolInfo {
 	return tool.ToolInfo{
 		Name:        "save_wiki_page",
-		Description: "将 Markdown 内容写入 Wiki 目录内指定相对路径",
+		Description: "将 Markdown 内容写入 Wiki 目录内指定 .mdx 路径，内容必须以 YAML frontmatter 开头",
 		Parameters: tool.InputSchema{
 			Type: "object",
 			Properties: map[string]tool.PropertyDef{
 				"path": {
 					Type:        "string",
-					Description: "相对 Wiki 目录的文件路径，例如 overview.md 或 api/endpoint.md",
+					Description: "相对 Wiki 目录的文件路径，例如 overview.mdx 或 api/endpoint.mdx（非 .mdx 后缀会自动纠正）",
 				},
 				"content": {
 					Type:        "string",
-					Description: "要写入的 Markdown 内容",
+					Description: "要写入的 Markdown 内容（缺失 frontmatter 时自动注入默认）",
 				},
 			},
 			Required: []string{"path", "content"},
@@ -318,7 +318,13 @@ func (t *saveWikiPageTool) Execute(ctx context.Context, input json.RawMessage) (
 		return &tool.ToolResult{Content: "禁止覆盖 meta/ 目录下的文件", IsError: true}, nil
 	}
 
-	safePath, err := resolveSafeWikiPath(t.wikiDir, args.Path)
+	// LLM 容错：强制 .mdx 后缀。.md 自动改名，无扩展名自动补齐
+	wikiPath := normalizeWikiPathExt(args.Path)
+
+	// LLM 容错：缺失 YAML frontmatter 时注入默认（title 取自 basename 去扩展名）
+	content := ensureFrontmatter(wikiPath, args.Content)
+
+	safePath, err := resolveSafeWikiPath(t.wikiDir, wikiPath)
 	if err != nil {
 		return &tool.ToolResult{Content: err.Error(), IsError: true}, nil
 	}
@@ -327,15 +333,62 @@ func (t *saveWikiPageTool) Execute(ctx context.Context, input json.RawMessage) (
 		return &tool.ToolResult{Content: fmt.Sprintf("创建目录失败: %v", err), IsError: true}, nil
 	}
 
-	if err := os.WriteFile(safePath, []byte(args.Content), 0644); err != nil {
+	if err := os.WriteFile(safePath, []byte(content), 0644); err != nil {
 		return &tool.ToolResult{Content: fmt.Sprintf("写入文件失败: %v", err), IsError: true}, nil
 	}
 
 	resultJSON, _ := json.Marshal(map[string]interface{}{
 		"success": true,
-		"path":    args.Path,
+		"path":    wikiPath,
 	})
 	return &tool.ToolResult{Content: string(resultJSON), IsError: false}, nil
+}
+
+// normalizeWikiPathExt 将路径后缀强制为 .mdx：
+//   - 已是 .mdx：原样返回
+//   - .md 后缀：替换为 .mdx
+//   - 无扩展名（或其它扩展名）：追加 .mdx
+//
+// 仅对路径的 basename 做后缀判断，目录部分保持不变。
+func normalizeWikiPathExt(p string) string {
+	clean := filepath.Clean(p)
+	base := filepath.Base(clean)
+	if strings.HasSuffix(base, ".mdx") {
+		return clean
+	}
+	var newBase string
+	if strings.HasSuffix(base, ".md") {
+		newBase = strings.TrimSuffix(base, ".md") + ".mdx"
+	} else {
+		newBase = base + ".mdx"
+	}
+	dir := filepath.Dir(clean)
+	if dir == "." || dir == "" {
+		return newBase
+	}
+	return dir + string(filepath.Separator) + newBase
+}
+
+// ensureFrontmatter 检查 content 是否以 YAML frontmatter 起始（`---\n`），
+// 若缺失则注入默认 frontmatter，title 取自 path basename 去扩展名。
+func ensureFrontmatter(wikiPath, content string) string {
+	if strings.HasPrefix(content, "---\n") {
+		return content
+	}
+	title := deriveFrontmatterTitle(wikiPath)
+	return "---\ntitle: " + title + "\ndescription: \nicon: FileText\n---\n\n" + content
+}
+
+// deriveFrontmatterTitle 从 wiki 路径 basename 去除扩展名作为 frontmatter title。
+func deriveFrontmatterTitle(wikiPath string) string {
+	base := filepath.Base(filepath.Clean(wikiPath))
+	if dot := strings.LastIndex(base, "."); dot > 0 {
+		base = base[:dot]
+	}
+	if base == "" {
+		base = "untitled"
+	}
+	return base
 }
 
 // ──────────────────────────────────────────────────────────────────────

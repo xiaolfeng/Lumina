@@ -45,3 +45,13 @@ export interface RepoWikiVersionListResponse {
 	items: RepoWikiVersionItem[]
 	total: number
 }
+
+export interface CleanFailedVersionsResponse {
+	cleaned: number
+}
+
+export interface KeepLatestVersionsResponse {
+	cleaned: number
+	skipped: number
+	kept_version_id?: string
+}

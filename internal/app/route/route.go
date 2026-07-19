@@ -5,13 +5,13 @@ import (
 	"io/fs"
 	"reflect"
 
+	xVaild "github.com/bamboo-services/bamboo-base-go/common/validator"
 	xMiddle "github.com/bamboo-services/bamboo-base-go/major/middleware"
 	xReg "github.com/bamboo-services/bamboo-base-go/major/register"
 	xRoute "github.com/bamboo-services/bamboo-base-go/major/route"
-	xVaild "github.com/bamboo-services/bamboo-base-go/common/validator"
+	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
-	"github.com/gin-gonic/gin"
 )
 
 type route struct {

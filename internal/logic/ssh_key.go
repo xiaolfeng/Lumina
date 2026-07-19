@@ -51,8 +51,8 @@ type UpdateSshKeyRequest struct {
 
 // sshKeyRepo SSH 密钥模块依赖的仓储集合
 type sshKeyRepo struct {
-	sshKey          *repository.SshKeyRepo          // SSH 密钥 CRUD + Cache-Aside 缓存
-	repowikiConfig  *repository.RepoWikiConfigRepo  // 引用检查（删除前统计关联配置数）
+	sshKey         *repository.SshKeyRepo         // SSH 密钥 CRUD + Cache-Aside 缓存
+	repowikiConfig *repository.RepoWikiConfigRepo // 引用检查（删除前统计关联配置数）
 }
 
 // SshKeyLogic SSH 密钥业务编排层

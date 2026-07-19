@@ -16,6 +16,8 @@ interface ConfirmDeleteDialogProps {
   description: string
   onConfirm: () => void
   isPending: boolean
+  confirmText?: string
+  pendingText?: string
 }
 
 export function ConfirmDeleteDialog({
@@ -25,6 +27,8 @@ export function ConfirmDeleteDialog({
   description,
   onConfirm,
   isPending,
+  confirmText = '确认删除',
+  pendingText = '删除中...',
 }: ConfirmDeleteDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -40,7 +44,7 @@ export function ConfirmDeleteDialog({
             disabled={isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isPending ? '删除中...' : '确认删除'}
+            {isPending ? pendingText : confirmText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
