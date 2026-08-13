@@ -9,7 +9,10 @@ const (
 
 // WebAuthn 默认值
 const (
-	DefaultBiometricRPID   = "localhost"             // 默认 RP ID
-	DefaultBiometricRPName = "Lumina"                // 默认 RP 名称
-	DefaultBiometricOrigin = "http://localhost:8080" // 默认 Origin
+	DefaultBiometricRPID    = "localhost"                                   // 默认 RP ID
+	DefaultBiometricRPName  = "Lumina"                                      // 默认 RP 名称
+	DefaultBiometricOrigin  = "http://localhost:8080,http://localhost:3000" // 默认允许的 Origin，逗号分隔
+	DefaultBiometricTimeout = 300000                                        // 默认 WebAuthn 超时时间（毫秒）
+	MinBiometricTimeout     = 30000                                         // 最小 WebAuthn 超时时间（毫秒）
+	MaxBiometricTimeout     = 600000                                        // 最大 WebAuthn 超时时间（毫秒）
 )

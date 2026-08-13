@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	apiSettings "github.com/xiaolfeng/Lumina/api/settings"
@@ -160,8 +161,12 @@ func (l *SettingsLogic) GetSettingBool(ctx context.Context, key string) (bool, *
 func validateSettingValue(ctx context.Context, def bConst.SettingKeyDef, value string) *xError.Error {
 	switch def.Type {
 	case "int":
-		if _, err := strconv.Atoi(value); err != nil {
+		parsed, err := strconv.Atoi(value)
+		if err != nil {
 			return xError.NewError(ctx, xError.BadRequest, xError.ErrMessage("设置项 ["+def.Key+"] 值 ["+value+"] 不是有效的整数"), false, err)
+		}
+		if def.Key == bConst.InfoKeySecurityWebAuthnTimeout && (parsed < bConst.MinBiometricTimeout || parsed > bConst.MaxBiometricTimeout) {
+			return xError.NewError(ctx, xError.BadRequest, xError.ErrMessage(fmt.Sprintf("WebAuthn 超时时间必须在 %d 到 %d 毫秒之间", bConst.MinBiometricTimeout, bConst.MaxBiometricTimeout)), false, nil)
 		}
 	case "bool":
 		if value != "true" && value != "false" {

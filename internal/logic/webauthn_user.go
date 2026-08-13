@@ -1,10 +1,13 @@
 package logic
 
 import (
+	"bytes"
+	"fmt"
 	"strings"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/google/uuid"
 
 	"github.com/xiaolfeng/Lumina/internal/entity"
 )
@@ -79,25 +82,37 @@ func (u *LuminaWebAuthnUser) WebAuthnCredentials() []webauthn.Credential {
 // entitiesToWebAuthnCredentials 将数据库实体切片转换为 go-webauthn 库的 Credential 切片
 //
 // 传入 nil 或空切片时返回空切片（非 nil），以避免下游库在 len() 判断时出问题。
-func entitiesToWebAuthnCredentials(creds []*entity.BiometricCredential) []webauthn.Credential {
+func entitiesToWebAuthnCredentials(creds []*entity.BiometricCredential) ([]webauthn.Credential, error) {
 	result := make([]webauthn.Credential, 0, len(creds))
 	for _, c := range creds {
 		if c == nil {
 			continue
 		}
-		result = append(result, entityToWebAuthnCredential(c))
+		credential, err := entityToWebAuthnCredential(c)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, credential)
 	}
-	return result
+	return result, nil
 }
 
 // entityToWebAuthnCredential 将单个数据库实体转换为 go-webauthn 库的 Credential
 //
-// 类型映射说明:
-//   - CredentialID / PublicKey: []byte 直接透传
-//   - AAGUID: DB 存 string，库需要 []byte —— 通过 string→[]byte 转换
-//   - Transport: DB 存逗号分隔字符串，库需要 []protocol.AuthenticatorTransport —— 切分重组
-//   - AttestationType: 注册时填写 "none"，避免 attestation 验证开销
-func entityToWebAuthnCredential(c *entity.BiometricCredential) webauthn.Credential {
+// 新凭证优先从 CredentialData 恢复完整状态；历史记录则从旧字段兼容重建。
+func entityToWebAuthnCredential(c *entity.BiometricCredential) (webauthn.Credential, error) {
+	if len(c.CredentialData) > 0 {
+		var credential webauthn.Credential
+		remaining, err := credential.UnmarshalMsg(c.CredentialData)
+		if err != nil {
+			return webauthn.Credential{}, fmt.Errorf("解析 WebAuthn 凭证记录失败: %w", err)
+		}
+		if len(remaining) != 0 {
+			return webauthn.Credential{}, fmt.Errorf("解析 WebAuthn 凭证记录后存在 %d 字节残留数据", len(remaining))
+		}
+		return credential, nil
+	}
+
 	var transports []protocol.AuthenticatorTransport
 	if c.TransportTypes != "" {
 		for _, t := range strings.Split(c.TransportTypes, ",") {
@@ -108,6 +123,11 @@ func entityToWebAuthnCredential(c *entity.BiometricCredential) webauthn.Credenti
 		}
 	}
 
+	aaguid, err := parseStoredAAGUID(c.AAGUID)
+	if err != nil {
+		return webauthn.Credential{}, err
+	}
+
 	return webauthn.Credential{
 		ID:                c.CredentialID,
 		PublicKey:         c.PublicKey,
@@ -115,10 +135,79 @@ func entityToWebAuthnCredential(c *entity.BiometricCredential) webauthn.Credenti
 		AttestationFormat: "none",
 		Transport:         transports,
 		Authenticator: webauthn.Authenticator{
-			AAGUID:    []byte(c.AAGUID),
+			AAGUID:    aaguid,
 			SignCount: c.SignCount,
 		},
+	}, nil
+}
+
+// newBiometricCredentialEntity 将校验通过的完整凭证转换为持久化实体。
+func newBiometricCredentialEntity(credential *webauthn.Credential, deviceName string) (*entity.BiometricCredential, error) {
+	credentialData, err := credential.MarshalMsg(nil)
+	if err != nil {
+		return nil, fmt.Errorf("序列化 WebAuthn 凭证记录失败: %w", err)
 	}
+	aaguid, err := formatAAGUID(credential.Authenticator.AAGUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &entity.BiometricCredential{
+		CredentialID:   credential.ID,
+		PublicKey:      credential.PublicKey,
+		AAGUID:         aaguid,
+		CredentialData: credentialData,
+		SignCount:      credential.Authenticator.SignCount,
+		DeviceName:     deviceName,
+		TransportTypes: transportsToString(credential.Transport),
+	}, nil
+}
+
+// marshalWebAuthnCredential 序列化登录后已更新计数器与备份状态的凭证记录。
+func marshalWebAuthnCredential(credential *webauthn.Credential) ([]byte, error) {
+	data, err := credential.MarshalMsg(nil)
+	if err != nil {
+		return nil, fmt.Errorf("序列化 WebAuthn 凭证记录失败: %w", err)
+	}
+	return data, nil
+}
+
+// hydrateLegacyCredentialFlags 为未保存完整记录的历史凭证补入当前断言标志。
+// 该标志只用于随后进行的公钥签名验证，验证成功后才会持久化。
+func hydrateLegacyCredentialFlags(user *LuminaWebAuthnUser, credentialID []byte, flags protocol.AuthenticatorFlags) {
+	for i := range user.credentials {
+		if bytes.Equal(user.credentials[i].ID, credentialID) {
+			user.credentials[i].Flags = webauthn.NewCredentialFlags(flags)
+			return
+		}
+	}
+}
+
+// formatAAGUID 将 16 字节 AAGUID 转为规范 UUID 文本，避免二进制数据写入 varchar。
+func formatAAGUID(aaguid []byte) (string, error) {
+	id, err := uuid.FromBytes(aaguid)
+	if err != nil {
+		return "", fmt.Errorf("格式化 AAGUID 失败: %w", err)
+	}
+	return id.String(), nil
+}
+
+// parseStoredAAGUID 兼容新的 UUID 文本与历史二进制字符串存储。
+func parseStoredAAGUID(value string) ([]byte, error) {
+	if value == "" {
+		return nil, nil
+	}
+	if id, err := uuid.Parse(value); err == nil {
+		data, marshalErr := id.MarshalBinary()
+		if marshalErr != nil {
+			return nil, fmt.Errorf("解析 AAGUID 失败: %w", marshalErr)
+		}
+		return data, nil
+	}
+	if len(value) == 16 {
+		return []byte(value), nil
+	}
+	return nil, fmt.Errorf("无效的 AAGUID 存储值")
 }
 
 // transportsToString 将 protocol.AuthenticatorTransport 切片转为逗号分隔的字符串

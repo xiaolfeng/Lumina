@@ -14,6 +14,7 @@ type BiometricCredential struct {
 	CredentialID       []byte     `gorm:"type:bytea;not null;uniqueIndex;comment:WebAuthn 凭证 ID" json:"-"` // WebAuthn 凭证 ID
 	PublicKey          []byte     `gorm:"type:bytea;not null;comment:公钥" json:"-"`                         // 公钥
 	AAGUID             string     `gorm:"type:varchar(64);comment:认证器型号标识" json:"aaguid"`                  // 认证器型号标识
+	CredentialData     []byte     `gorm:"type:bytea;comment:完整 WebAuthn 凭证记录" json:"-"`                    // 完整 WebAuthn 凭证记录
 	SignCount          uint32     `gorm:"not null;default:0;comment:签名计数器" json:"sign_count"`              // 签名计数器
 	DeviceName         string     `gorm:"type:varchar(128);comment:设备名称" json:"device_name"`               // 设备名称
 	TransportTypes     string     `gorm:"type:varchar(256);comment:传输类型" json:"transport_types"`           // 传输类型

@@ -18,7 +18,11 @@ export type PublicKeyCredentialCreationOptionsJSON = {
   challenge: string
   pubKeyCredParams: { type: 'public-key'; alg: number }[]
   timeout?: number
-  excludeCredentials?: { type: string; id: string }[]
+  excludeCredentials?: {
+    type: PublicKeyCredentialType
+    id: string
+    transports?: AuthenticatorTransport[]
+  }[]
   authenticatorSelection?: {
     authenticatorAttachment?: 'platform' | 'cross-platform'
     residentKey?: 'preferred' | 'required' | 'discouraged'
@@ -33,7 +37,11 @@ export type PublicKeyCredentialRequestOptionsJSON = {
   challenge: string
   timeout?: number
   rpId?: string
-  allowCredentials?: { type: string; id: string }[]
+  allowCredentials?: {
+    type: PublicKeyCredentialType
+    id: string
+    transports?: AuthenticatorTransport[]
+  }[]
   userVerification?: 'preferred' | 'required' | 'discouraged'
   extensions?: Record<string, unknown>
 }
@@ -104,7 +112,10 @@ export async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
       window.PublicKeyCredential as typeof PublicKeyCredential & {
         isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>
       }
-    if (typeof publicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== 'function') {
+    if (
+      typeof publicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !==
+      'function'
+    ) {
       return false
     }
     return await publicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
@@ -134,35 +145,30 @@ export async function createCredential(
   const pkc = window.PublicKeyCredential as typeof PublicKeyCredential & {
     parseCreationOptionsFromJSON?: (
       options: PublicKeyCredentialCreationOptionsJSON,
-    ) => CredentialCreationOptions
+    ) => PublicKeyCredentialCreationOptions
   }
 
-  let creationOptions: CredentialCreationOptions
+  let publicKey: PublicKeyCredentialCreationOptions
   if (typeof pkc.parseCreationOptionsFromJSON === 'function') {
-    creationOptions = pkc.parseCreationOptionsFromJSON(options)
+    publicKey = pkc.parseCreationOptionsFromJSON(options)
   } else {
     // 降级：手动转换 challenge 等二进制字段
-    creationOptions = {
-      publicKey: {
-        ...options,
-        challenge: base64urlToBuffer(options.challenge),
-        user: {
-          ...options.user,
-          id: base64urlToBuffer(options.user.id),
-        },
-        excludeCredentials: options.excludeCredentials?.map(
-          (cred) =>
-            ({
-              ...cred,
-              id: base64urlToBuffer(cred.id),
-            }) as PublicKeyCredentialDescriptor,
-        ),
+    publicKey = {
+      ...options,
+      challenge: base64urlToBuffer(options.challenge),
+      user: {
+        ...options.user,
+        id: base64urlToBuffer(options.user.id),
       },
+      excludeCredentials: options.excludeCredentials?.map((cred) => ({
+        ...cred,
+        id: base64urlToBuffer(cred.id),
+      })),
     }
   }
 
   try {
-    const credential = await navigator.credentials.create(creationOptions)
+    const credential = await navigator.credentials.create({ publicKey })
     return credential as PublicKeyCredential | null
   } catch (err) {
     // 用户取消操作时 DOMException.name === 'NotAllowedError'
@@ -191,31 +197,26 @@ export async function getCredential(
   const pkc = window.PublicKeyCredential as typeof PublicKeyCredential & {
     parseRequestOptionsFromJSON?: (
       options: PublicKeyCredentialRequestOptionsJSON,
-    ) => CredentialRequestOptions
+    ) => PublicKeyCredentialRequestOptions
   }
 
-  let requestOptions: CredentialRequestOptions
+  let publicKey: PublicKeyCredentialRequestOptions
   if (typeof pkc.parseRequestOptionsFromJSON === 'function') {
-    requestOptions = pkc.parseRequestOptionsFromJSON(options)
+    publicKey = pkc.parseRequestOptionsFromJSON(options)
   } else {
     // 降级：手动转换 challenge 等二进制字段
-    requestOptions = {
-      publicKey: {
-        ...options,
-        challenge: base64urlToBuffer(options.challenge),
-        allowCredentials: options.allowCredentials?.map(
-          (cred) =>
-            ({
-              ...cred,
-              id: base64urlToBuffer(cred.id),
-            }) as PublicKeyCredentialDescriptor,
-        ),
-      },
+    publicKey = {
+      ...options,
+      challenge: base64urlToBuffer(options.challenge),
+      allowCredentials: options.allowCredentials?.map((cred) => ({
+        ...cred,
+        id: base64urlToBuffer(cred.id),
+      })),
     }
   }
 
   try {
-    const credential = await navigator.credentials.get(requestOptions)
+    const credential = await navigator.credentials.get({ publicKey })
     return credential as PublicKeyCredential | null
   } catch (err) {
     // 用户取消操作
@@ -223,5 +224,60 @@ export async function getCredential(
       return null
     }
     throw err
+  }
+}
+
+/**
+ * 将浏览器返回的 PublicKeyCredential 转换为 WebAuthn JSON 表示。
+ *
+ * 新版浏览器优先使用规范内置的 toJSON()，以完整保留 transports、
+ * clientExtensionResults 等字段；旧版浏览器使用等价的手动转换。
+ */
+export function credentialToJSON(credential: PublicKeyCredential): unknown {
+  const jsonSerializable = credential as PublicKeyCredential & {
+    toJSON?: () => unknown
+  }
+  if (typeof jsonSerializable.toJSON === 'function') {
+    return jsonSerializable.toJSON()
+  }
+
+  const response = credential.response
+  const base = {
+    id: credential.id,
+    rawId: bufferToBase64url(credential.rawId),
+    type: credential.type,
+    authenticatorAttachment: credential.authenticatorAttachment,
+    clientExtensionResults: credential.getClientExtensionResults(),
+  }
+
+  if ('attestationObject' in response) {
+    const attestation = response as AuthenticatorAttestationResponse
+    const getTransports = attestation as AuthenticatorAttestationResponse & {
+      getTransports?: () => AuthenticatorTransport[]
+    }
+    return {
+      ...base,
+      response: {
+        attestationObject: bufferToBase64url(attestation.attestationObject),
+        clientDataJSON: bufferToBase64url(attestation.clientDataJSON),
+        transports:
+          typeof getTransports.getTransports === 'function'
+            ? getTransports.getTransports()
+            : undefined,
+      },
+    }
+  }
+
+  const assertion = response as AuthenticatorAssertionResponse
+  return {
+    ...base,
+    response: {
+      authenticatorData: bufferToBase64url(assertion.authenticatorData),
+      clientDataJSON: bufferToBase64url(assertion.clientDataJSON),
+      signature: bufferToBase64url(assertion.signature),
+      userHandle: assertion.userHandle
+        ? bufferToBase64url(assertion.userHandle)
+        : null,
+    },
   }
 }

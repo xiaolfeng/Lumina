@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-webauthn/webauthn/protocol"
@@ -21,7 +22,6 @@ import (
 	apiBiometric "github.com/xiaolfeng/Lumina/api/biometric"
 	apiUser "github.com/xiaolfeng/Lumina/api/user"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
-	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
 )
 
@@ -44,7 +44,7 @@ const challengeTypeLogin = "login"
 //
 // 设计要点:
 //   - RP 配置（RPID / RPDisplayName / RPOrigins）从环境变量读取，禁止硬编码
-//   - challenge 通过 [BiometricCredentialRepo] 的委托方法写入 Redis，60s TTL，单次使用
+//   - challenge 通过 [BiometricCredentialRepo] 的委托方法写入 Redis，动态 TTL，原子单次消费
 //   - 注册/登录成功后更新签名计数器与最后使用时间
 //   - 登录复用 [AuthLogic.generateTokens] 生成访问/刷新令牌
 //
@@ -67,7 +67,7 @@ type BiometricLogic struct {
 // WebAuthn RP 配置从环境变量读取，提供合理默认值（localhost 场景）:
 //   - XLF_BIOMETRIC_RP_ID（默认 localhost）
 //   - XLF_BIOMETRIC_RP_NAME（默认 Lumina）
-//   - XLF_BIOMETRIC_ORIGIN（默认 http://localhost:8080）
+//   - XLF_BIOMETRIC_ORIGIN（逗号分隔，默认覆盖 localhost:8080 与 localhost:3000）
 //
 // 参数说明:
 //   - ctx:      含 db / rdb 注入的上下文（用于构造 repo）
@@ -85,12 +85,16 @@ func NewBiometricLogic(ctx context.Context, authLogic *AuthLogic) *BiometricLogi
 	// 从环境变量读取 WebAuthn RP 配置，禁止硬编码
 	rpID := xEnv.GetEnvString(bConst.EnvBiometricRPID, bConst.DefaultBiometricRPID)
 	rpName := xEnv.GetEnvString(bConst.EnvBiometricRPName, bConst.DefaultBiometricRPName)
-	origin := xEnv.GetEnvString(bConst.EnvBiometricOrigin, bConst.DefaultBiometricOrigin)
+	originValue := xEnv.GetEnvString(bConst.EnvBiometricOrigin, bConst.DefaultBiometricOrigin)
 
 	wconfig := &webauthn.Config{
 		RPDisplayName: rpName,
 		RPID:          rpID,
-		RPOrigins:     []string{origin},
+		RPOrigins:     parseWebAuthnOrigins(originValue),
+		AuthenticatorSelection: protocol.AuthenticatorSelection{
+			ResidentKey:      protocol.ResidentKeyRequirementPreferred,
+			UserVerification: protocol.VerificationRequired,
+		},
 	}
 
 	// webauthn.New 返回 (*WebAuthn, error)，配置校验失败需在启动期暴露
@@ -115,7 +119,7 @@ func NewBiometricLogic(ctx context.Context, authLogic *AuthLogic) *BiometricLogi
 // 流程:
 //  1. 从 Info 表读取 owner 信息，组装 [LuminaWebAuthnUser]
 //  2. 调用 [webauthn.WebAuthn.BeginRegistration] 生成 PublicKeyCredentialCreationOptions + SessionData
-//  3. 序列化 SessionData 写入 Redis（通过 repo 委托，60s TTL）
+//  3. 序列化 SessionData 写入 Redis（通过 repo 委托，TTL 覆盖浏览器 ceremony 超时）
 //  4. 返回 sessionToken + options JSON 给前端
 //
 // 前端拿到 options 后调用 navigator.credentials.create() 进行认证器交互。
@@ -127,13 +131,20 @@ func (l *BiometricLogic) RegisterStart(ctx context.Context, req *apiBiometric.Re
 		return nil, xErr
 	}
 
+	timeout := l.getWebAuthnTimeout(ctx)
+	exclusions := webauthn.Credentials(user.WebAuthnCredentials()).CredentialDescriptors()
+
 	// 生成注册选项与会话数据
-	creation, sessionData, err := l.webAuthn.BeginRegistration(user)
+	creation, sessionData, err := l.webAuthn.BeginRegistration(
+		user,
+		webauthn.WithExclusions(exclusions),
+		withRegistrationTimeout(timeout),
+	)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.ServerInternalError, "生成注册选项失败", false, err)
 	}
 
-	// 序列化 sessionData 存入 Redis（通过 repo 委托，60s TTL）
+	// 序列化 sessionData 存入 Redis（通过 repo 委托，TTL 覆盖浏览器 ceremony 超时）
 	sessionDataJSON, err := json.Marshal(sessionData)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.ServerInternalError, "序列化会话数据失败", false, err)
@@ -141,7 +152,7 @@ func (l *BiometricLogic) RegisterStart(ctx context.Context, req *apiBiometric.Re
 
 	// 生成会话令牌作为 Redis key 的 sessionID 标识
 	sessionToken := xUtil.Security().GenerateKey()
-	if xErr := l.repo.SetChallenge(ctx, challengeTypeRegister, sessionToken, sessionDataJSON); xErr != nil {
+	if xErr := l.repo.SetChallenge(ctx, challengeTypeRegister, sessionToken, sessionDataJSON, challengeTTL(timeout)); xErr != nil {
 		return nil, xErr
 	}
 
@@ -175,16 +186,13 @@ func (l *BiometricLogic) RegisterFinish(ctx context.Context, req *apiBiometric.R
 	l.log.Info(ctx, "RegisterFinish - 完成生物特征注册")
 
 	// 读取并删除 challenge（单次使用）
-	sessionDataJSON, ok, xErr := l.repo.GetChallenge(ctx, challengeTypeRegister, req.SessionToken)
+	sessionDataJSON, ok, xErr := l.repo.ConsumeChallenge(ctx, challengeTypeRegister, req.SessionToken)
 	if xErr != nil {
 		return nil, xErr
 	}
 	if !ok {
 		return nil, xError.NewError(ctx, xError.TokenExpired, "注册会话已过期，请重新注册", false, nil)
 	}
-	// 验证后立即删除，防止 challenge 被重放
-	l.repo.DeleteChallenge(ctx, challengeTypeRegister, req.SessionToken)
-
 	// 反序列化 SessionData
 	var sessionData webauthn.SessionData
 	if err := json.Unmarshal(sessionDataJSON, &sessionData); err != nil {
@@ -209,13 +217,9 @@ func (l *BiometricLogic) RegisterFinish(ctx context.Context, req *apiBiometric.R
 	}
 
 	// 持久化凭证到数据库
-	credEntity := &entity.BiometricCredential{
-		CredentialID:   credential.ID,
-		PublicKey:      credential.PublicKey,
-		AAGUID:         string(credential.Authenticator.AAGUID), // []byte → string
-		SignCount:      credential.Authenticator.SignCount,
-		DeviceName:     req.DeviceName,
-		TransportTypes: transportsToString(credential.Transport),
+	credEntity, err := newBiometricCredentialEntity(credential, req.DeviceName)
+	if err != nil {
+		return nil, xError.NewError(ctx, xError.SerializeError, "序列化凭证记录失败", false, err)
 	}
 	if xErr := l.repo.Create(ctx, credEntity); xErr != nil {
 		return nil, xErr
@@ -236,7 +240,7 @@ func (l *BiometricLogic) RegisterFinish(ctx context.Context, req *apiBiometric.R
 // 流程:
 //  1. 从 Info 表读取 owner 信息 + 所有凭证，组装 [LuminaWebAuthnUser]
 //  2. 调用 [webauthn.WebAuthn.BeginLogin] 生成 PublicKeyCredentialRequestOptions + SessionData
-//  3. 序列化 SessionData 写入 Redis（60s TTL）
+//  3. 序列化 SessionData 写入 Redis（TTL 覆盖浏览器 ceremony 超时）
 //  4. 返回 sessionToken + options JSON 给前端
 //
 // 前端拿到 options 后调用 navigator.credentials.get() 进行认证器交互。
@@ -248,20 +252,26 @@ func (l *BiometricLogic) LoginStart(ctx context.Context) (*apiBiometric.LoginSta
 		return nil, xErr
 	}
 
+	timeout := l.getWebAuthnTimeout(ctx)
+
 	// 生成登录选项与会话数据
-	assertion, sessionData, err := l.webAuthn.BeginLogin(user)
+	assertion, sessionData, err := l.webAuthn.BeginLogin(
+		user,
+		webauthn.WithUserVerification(protocol.VerificationRequired),
+		withLoginTimeout(timeout),
+	)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.ServerInternalError, "生成登录选项失败", false, err)
 	}
 
-	// 序列化 SessionData 存入 Redis（60s TTL）
+	// 序列化 SessionData 存入 Redis（TTL 覆盖浏览器 ceremony 超时）
 	sessionDataJSON, err := json.Marshal(sessionData)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.ServerInternalError, "序列化会话数据失败", false, err)
 	}
 
 	sessionToken := xUtil.Security().GenerateKey()
-	if xErr := l.repo.SetChallenge(ctx, challengeTypeLogin, sessionToken, sessionDataJSON); xErr != nil {
+	if xErr := l.repo.SetChallenge(ctx, challengeTypeLogin, sessionToken, sessionDataJSON, challengeTTL(timeout)); xErr != nil {
 		return nil, xErr
 	}
 
@@ -295,16 +305,13 @@ func (l *BiometricLogic) LoginFinish(ctx context.Context, req *apiBiometric.Logi
 	l.log.Info(ctx, "LoginFinish - 完成生物特征登录")
 
 	// 读取并删除 challenge（单次使用）
-	sessionDataJSON, ok, xErr := l.repo.GetChallenge(ctx, challengeTypeLogin, req.SessionToken)
+	sessionDataJSON, ok, xErr := l.repo.ConsumeChallenge(ctx, challengeTypeLogin, req.SessionToken)
 	if xErr != nil {
 		return nil, xErr
 	}
 	if !ok {
 		return nil, xError.NewError(ctx, xError.TokenExpired, "登录会话已过期，请重新登录", false, nil)
 	}
-	// 验证后立即删除，防止 challenge 被重放
-	l.repo.DeleteChallenge(ctx, challengeTypeLogin, req.SessionToken)
-
 	// 反序列化 SessionData
 	var sessionData webauthn.SessionData
 	if err := json.Unmarshal(sessionDataJSON, &sessionData); err != nil {
@@ -322,17 +329,29 @@ func (l *BiometricLogic) LoginFinish(ctx context.Context, req *apiBiometric.Logi
 		return nil, xError.NewError(ctx, xError.ParameterError, "解析凭证数据失败", false, err)
 	}
 
+	// 历史记录没有持久化 CredentialFlags。仅对这类记录从当前断言临时恢复标志，
+	// 随后仍需通过已存公钥完成签名校验；成功后会写回完整凭证记录。
+	credEntity, xErr := l.repo.GetByCredentialID(ctx, parsedResponse.RawID)
+	if xErr != nil {
+		return nil, xErr
+	}
+	if len(credEntity.CredentialData) == 0 {
+		hydrateLegacyCredentialFlags(user, parsedResponse.RawID, parsedResponse.Response.AuthenticatorData.Flags)
+	}
+
 	// 验证断言（签名、challenge、origin 等）
 	credential, err := l.webAuthn.ValidateLogin(user, sessionData, parsedResponse)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.LoginFailed, "生物特征验证失败", false, err)
 	}
 
-	// 通过 WebAuthn credential.ID（[]byte）反查 DB 实体，获取雪花 ID
-	// 用于更新签名计数器（反克隆检测）与最后使用时间
-	if credEntity, xErr := l.repo.GetByCredentialID(ctx, credential.ID); xErr == nil && credEntity != nil {
-		_ = l.repo.UpdateSignCount(ctx, credEntity.ID, credential.Authenticator.SignCount)
-		_ = l.repo.UpdateLastUsedAt(ctx, credEntity.ID)
+	// 持久化更新后的签名计数器、备份状态与最后使用时间。
+	credentialData, err := marshalWebAuthnCredential(credential)
+	if err != nil {
+		return nil, xError.NewError(ctx, xError.SerializeError, "序列化凭证记录失败", false, err)
+	}
+	if xErr := l.repo.UpdateAfterLogin(ctx, credEntity, credentialData, credential.Authenticator.SignCount); xErr != nil {
+		return nil, xErr
 	}
 
 	// 复用 AuthLogic.generateTokens 生成令牌
@@ -440,5 +459,55 @@ func (l *BiometricLogic) getWebAuthnUser(ctx context.Context) (*LuminaWebAuthnUs
 		return nil, xErr
 	}
 
-	return NewLuminaWebAuthnUser(username, email, entitiesToWebAuthnCredentials(creds)), nil
+	credentials, err := entitiesToWebAuthnCredentials(creds)
+	if err != nil {
+		return nil, xError.NewError(ctx, xError.ServerInternalError, "解析 WebAuthn 凭证记录失败", false, err)
+	}
+
+	return NewLuminaWebAuthnUser(username, email, credentials), nil
+}
+
+// parseWebAuthnOrigins 解析逗号分隔的允许 Origin 列表。
+func parseWebAuthnOrigins(value string) []string {
+	origins := make([]string, 0, 2)
+	for _, origin := range strings.Split(value, ",") {
+		if origin = strings.TrimSpace(origin); origin != "" {
+			origins = append(origins, origin)
+		}
+	}
+	if len(origins) == 0 {
+		return []string{"http://localhost:8080"}
+	}
+	return origins
+}
+
+// getWebAuthnTimeout 读取安全设置中的 ceremony 超时，并限制在安全范围内。
+func (l *BiometricLogic) getWebAuthnTimeout(ctx context.Context) int {
+	value, xErr := l.info.GetByKey(ctx, bConst.InfoKeySecurityWebAuthnTimeout)
+	if xErr != nil {
+		return bConst.DefaultBiometricTimeout
+	}
+	timeout, err := strconv.Atoi(value)
+	if err != nil || timeout < bConst.MinBiometricTimeout || timeout > bConst.MaxBiometricTimeout {
+		l.log.Warn(ctx, fmt.Sprintf("WebAuthn 超时配置无效 [%s]，使用默认值", value))
+		return bConst.DefaultBiometricTimeout
+	}
+	return timeout
+}
+
+// challengeTTL 比浏览器 ceremony 超时多保留 30 秒网络与提交余量。
+func challengeTTL(timeout int) time.Duration {
+	return time.Duration(timeout)*time.Millisecond + 30*time.Second
+}
+
+func withRegistrationTimeout(timeout int) webauthn.RegistrationOption {
+	return func(options *protocol.PublicKeyCredentialCreationOptions) {
+		options.Timeout = timeout
+	}
+}
+
+func withLoginTimeout(timeout int) webauthn.LoginOption {
+	return func(options *protocol.PublicKeyCredentialRequestOptions) {
+		options.Timeout = timeout
+	}
 }

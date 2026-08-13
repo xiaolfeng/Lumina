@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
-import { writeTokenCookies, THIRTY_DAYS_IN_SECONDS } from '#/lib/auth/cookie-utils'
+import {
+  writeTokenCookies,
+  THIRTY_DAYS_IN_SECONDS,
+} from '#/lib/auth/cookie-utils'
 import * as api from '#/lib/apis/auth'
 import { getCurrentUser } from '#/lib/apis/user'
 import type {
@@ -12,8 +15,11 @@ import type {
 import type { TokenResponse, StatusResponse } from '#/lib/models/response/auth'
 import type { UserInfoResponse } from '#/lib/models/response/user'
 import * as biometricApi from '#/lib/apis/biometric'
-import { getCredential, bufferToBase64url } from '#/lib/webauthn/helpers'
-import type { AvailabilityResponse, LoginFinishResponse } from '#/lib/models/response/biometric'
+import { getCredential, credentialToJSON } from '#/lib/webauthn/helpers'
+import type {
+  AvailabilityResponse,
+  LoginFinishResponse,
+} from '#/lib/models/response/biometric'
 import type { BaseResponse } from '#/lib/models/response/common'
 
 export const getCookie = Cookies.get
@@ -73,7 +79,8 @@ export function useStatus() {
 }
 
 export function useCurrentUser() {
-  const hasToken = !!Cookies.get('access_token') || !!Cookies.get('refresh_token')
+  const hasToken =
+    !!Cookies.get('access_token') || !!Cookies.get('refresh_token')
   return useQuery<BaseResponse<UserInfoResponse>, Error>({
     queryKey: ['user', 'current'],
     queryFn: getCurrentUser,
@@ -81,31 +88,6 @@ export function useCurrentUser() {
     enabled: hasToken,
     retry: false,
   })
-}
-
-// ── Biometric Helpers ──
-
-/**
- * 将 PublicKeyCredential 序列化为可提交的 JSON 对象
- * 遵循 WebAuthn 规范的 JSON 序列化格式
- */
-function serializeCredentialForRequest(credential: PublicKeyCredential): unknown {
-  const response = credential.response as AuthenticatorAssertionResponse
-  return {
-    id: credential.id,
-    rawId: credential.id, // base64url
-    type: credential.type,
-    authenticatorAttachment: credential.authenticatorAttachment,
-    response: {
-      authenticatorData: bufferToBase64url(response.authenticatorData),
-      clientDataJSON: bufferToBase64url(response.clientDataJSON),
-      signature: bufferToBase64url(response.signature),
-      userHandle: response.userHandle
-        ? bufferToBase64url(response.userHandle)
-        : null,
-    },
-    clientExtensionResults: {},
-  }
 }
 
 // ── Biometric Hooks ──
@@ -144,7 +126,7 @@ export function useBiometricLogin() {
       }
 
       // 3. 序列化 credential 为 JSON（WebAuthn 规范的 JSON 序列化）
-      const credentialJSON = serializeCredentialForRequest(credential)
+      const credentialJSON = credentialToJSON(credential)
 
       // 4. 登录完成：提交凭证换取 Token
       return biometricApi.loginFinish({
@@ -159,7 +141,7 @@ export function useBiometricLogin() {
         // 需要计算 expiresIn 用于 Cookie 过期
         const expiresIn = Math.max(
           0,
-          Math.floor((tokenData.expires_at - Date.now() / 1000)),
+          Math.floor(tokenData.expires_at - Date.now() / 1000),
         )
         writeTokenCookies(
           {
@@ -184,7 +166,8 @@ export function useAuth() {
   const status = useStatus()
   const currentUser = useCurrentUser()
 
-  const isAuthenticated = !!Cookies.get('access_token') || !!Cookies.get('refresh_token')
+  const isAuthenticated =
+    !!Cookies.get('access_token') || !!Cookies.get('refresh_token')
 
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh

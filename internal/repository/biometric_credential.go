@@ -168,38 +168,35 @@ func (r *BiometricCredentialRepo) ListAll(ctx context.Context) ([]*entity.Biomet
 	return creds, nil
 }
 
-// UpdateSignCount 更新签名计数器（WebAuthn 反克隆检测）
+// UpdateAfterLogin 持久化登录后更新的完整凭证状态与最后使用时间
 //
 // 参数:
-//   - ctx:       上下文对象
-//   - id:        凭证雪花 ID
-//   - signCount: 新的签名计数器值
+//   - ctx:            上下文对象
+//   - cred:           待更新的凭证实体
+//   - credentialData: 登录验证后更新的完整 WebAuthn 凭证记录
+//   - signCount:      新的签名计数器值
 //
 // 返回值:
 //   - *xError.Error: 更新过程中的错误
-func (r *BiometricCredentialRepo) UpdateSignCount(ctx context.Context, id xSnowflake.SnowflakeID, signCount uint32) *xError.Error {
-	r.log.Info(ctx, fmt.Sprintf("UpdateSignCount - 更新签名计数器 [%d]", id.Int64()))
-
-	if err := r.db.WithContext(ctx).Model(&entity.BiometricCredential{}).Where("id = ?", id).Update("sign_count", signCount).Error; err != nil {
-		return xError.NewError(ctx, xError.DatabaseError, "更新签名计数器失败", false, err)
-	}
-	return nil
-}
-
-// UpdateLastUsedAt 更新最后使用时间
-//
-// 参数:
-//   - ctx: 上下文对象
-//   - id:  凭证雪花 ID
-//
-// 返回值:
-//   - *xError.Error: 更新过程中的错误
-func (r *BiometricCredentialRepo) UpdateLastUsedAt(ctx context.Context, id xSnowflake.SnowflakeID) *xError.Error {
-	r.log.Info(ctx, fmt.Sprintf("UpdateLastUsedAt - 更新最后使用时间 [%d]", id.Int64()))
-
+func (r *BiometricCredentialRepo) UpdateAfterLogin(ctx context.Context, cred *entity.BiometricCredential, credentialData []byte, signCount uint32) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("UpdateAfterLogin - 更新凭证登录状态 [%d]", cred.ID.Int64()))
 	now := time.Now()
-	if err := r.db.WithContext(ctx).Model(&entity.BiometricCredential{}).Where("id = ?", id).Update("last_used_at", now).Error; err != nil {
-		return xError.NewError(ctx, xError.DatabaseError, "更新最后使用时间失败", false, err)
+	if err := r.db.WithContext(ctx).
+		Model(&entity.BiometricCredential{}).
+		Where("id = ?", cred.ID).
+		Updates(map[string]interface{}{
+			"credential_data": credentialData,
+			"sign_count":      signCount,
+			"last_used_at":    now,
+		}).Error; err != nil {
+		return xError.NewError(ctx, xError.DatabaseError, "更新凭证登录状态失败", false, err)
+	}
+
+	cred.CredentialData = credentialData
+	cred.SignCount = signCount
+	cred.LastUsedAt = &now
+	if xErr := r.cache.SetCredential(ctx, cred); xErr != nil {
+		r.log.Warn(ctx, xErr.Error())
 	}
 	return nil
 }
@@ -280,14 +277,14 @@ func (r *BiometricCredentialRepo) IsAvailable(ctx context.Context) (bool, *xErro
 //
 // 返回值:
 //   - *xError.Error: 写入过程中的错误
-func (r *BiometricCredentialRepo) SetChallenge(ctx context.Context, challengeType string, sessionID string, data []byte) *xError.Error {
-	if xErr := r.cache.SetChallenge(ctx, challengeType, sessionID, data); xErr != nil {
-		return xError.NewError(ctx, xError.DatabaseError, "写入 challenge 失败", false, xErr)
+func (r *BiometricCredentialRepo) SetChallenge(ctx context.Context, challengeType string, sessionID string, data []byte, ttl time.Duration) *xError.Error {
+	if xErr := r.cache.SetChallenge(ctx, challengeType, sessionID, data, ttl); xErr != nil {
+		return xError.NewError(ctx, xError.CacheError, "写入 challenge 失败", false, xErr)
 	}
 	return nil
 }
 
-// GetChallenge 读取 challenge（委托给 cache）
+// ConsumeChallenge 原子读取并删除 challenge（委托给 cache）
 //
 // 参数:
 //   - ctx:          上下文对象
@@ -298,20 +295,10 @@ func (r *BiometricCredentialRepo) SetChallenge(ctx context.Context, challengeTyp
 //   - []byte:          challenge 数据
 //   - bool:            是否命中
 //   - *xError.Error:   查询过程中的错误
-func (r *BiometricCredentialRepo) GetChallenge(ctx context.Context, challengeType string, sessionID string) ([]byte, bool, *xError.Error) {
-	data, ok, xErr := r.cache.GetChallenge(ctx, challengeType, sessionID)
+func (r *BiometricCredentialRepo) ConsumeChallenge(ctx context.Context, challengeType string, sessionID string) ([]byte, bool, *xError.Error) {
+	data, ok, xErr := r.cache.ConsumeChallenge(ctx, challengeType, sessionID)
 	if xErr != nil {
-		return nil, false, xError.NewError(ctx, xError.DatabaseError, "读取 challenge 失败", false, xErr)
+		return nil, false, xError.NewError(ctx, xError.CacheError, "读取 challenge 失败", false, xErr)
 	}
 	return data, ok, nil
-}
-
-// DeleteChallenge 删除 challenge（委托给 cache，验证后调用防重放）
-//
-// 参数:
-//   - ctx:          上下文对象
-//   - challengeType: challenge 类型（"reg" 或 "login"）
-//   - sessionID:     会话标识
-func (r *BiometricCredentialRepo) DeleteChallenge(ctx context.Context, challengeType string, sessionID string) {
-	r.cache.DeleteChallenge(ctx, challengeType, sessionID)
 }

@@ -18,7 +18,7 @@
 #
 # 注意:
 #   - LLM_ENCRYPT_SECRET 为必需配置（LLM API Key 加密密钥），.env 缺失时启动报错。
-#   - .env 中的 XLF_BIOMETRIC_*（WebAuthn RP_ID / ORIGIN）默认指向 localhost:8080，
+#   - .env 中的 XLF_BIOMETRIC_*（WebAuthn RP_ID / ORIGIN）默认覆盖 localhost:8080 与 localhost:3000，
 #     本地全栈编排可直接使用；如需外网访问请按实际域名修改。
 #
 # 用法:

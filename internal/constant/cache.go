@@ -33,7 +33,7 @@ const (
 	CacheBiometricCredentialByCredID RedisKey = "biometric:cred:credid:%s" // CacheBiometricCredentialByCredID WebAuthn CredentialID→详情缓存（%s = credentialID hex）
 	CacheBiometricAvailability       RedisKey = "biometric:availability"   // CacheBiometricAvailability 生物特征登录可用性缓存
 
-	// ── 生物特征 Challenge 缓存（TTL 60 秒）──
+	// ── 生物特征 Challenge 缓存（动态 TTL，覆盖浏览器 ceremony 超时时间）──
 	CacheBiometricChallengeRegister RedisKey = "biometric:challenge:reg:%s"   // CacheBiometricChallengeRegister 注册 Challenge 缓存（%s = sessionID）
 	CacheBiometricChallengeLogin    RedisKey = "biometric:challenge:login:%s" // CacheBiometricChallengeLogin 登录 Challenge 缓存（%s = sessionID）
 

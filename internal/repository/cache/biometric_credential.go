@@ -20,7 +20,7 @@ import (
 // 管理三类缓存：
 //   - 凭证缓存（Cache-Aside，ID + CredentialID 双维度，TTL 30min）
 //   - 可用性缓存（简单 bool，TTL 30min）
-//   - Challenge 临时存储（register/login 共用，TTL 60s，单次使用）
+//   - Challenge 临时存储（register/login 共用，动态 TTL，单次使用）
 type BiometricCredentialCache struct {
 	*Base
 }
@@ -141,10 +141,7 @@ func (c *BiometricCredentialCache) ClearAvailability(ctx context.Context) {
 	c.RDB.Del(ctx, key)
 }
 
-// ── Challenge 临时存储（TTL 60s，单次使用）──
-
-// challengeTTL Challenge 缓存的固定过期时间（60 秒），不使用主 TTL
-const challengeTTL = 60 * time.Second
+// ── Challenge 临时存储（动态 TTL，单次使用）──
 
 // challengeKey 根据 challengeType 和 sessionID 生成对应的 Redis key
 func (c *BiometricCredentialCache) challengeKey(ctx context.Context, challengeType, sessionID string) (string, *xError.Error) {
@@ -161,45 +158,36 @@ func (c *BiometricCredentialCache) challengeKey(ctx context.Context, challengeTy
 // SetChallenge 写入 challenge（register/login 共用，通过 challengeType 区分）
 //
 // challengeType 为 "reg" 或 "login"；sessionID 为会话标识；data 为 WebAuthn session data 的 JSON 序列化。
-func (c *BiometricCredentialCache) SetChallenge(ctx context.Context, challengeType string, sessionID string, data []byte) *xError.Error {
+func (c *BiometricCredentialCache) SetChallenge(ctx context.Context, challengeType string, sessionID string, data []byte, ttl time.Duration) *xError.Error {
 	key, xErr := c.challengeKey(ctx, challengeType, sessionID)
 	if xErr != nil {
 		return xErr
 	}
-	if err := c.RDB.Set(ctx, key, data, challengeTTL).Err(); err != nil {
+	if err := c.RDB.Set(ctx, key, data, ttl).Err(); err != nil {
 		return xError.NewError(ctx, xError.CacheError, "写入 challenge 缓存失败", false, err)
 	}
 	return nil
 }
 
-// GetChallenge 读取 challenge
+// ConsumeChallenge 原子读取并删除 challenge
 //
 // 返回值:
 //   - []byte: challenge 数据
 //   - bool:   是否命中
 //   - *xError.Error: 仅在意外错误时返回
-func (c *BiometricCredentialCache) GetChallenge(ctx context.Context, challengeType string, sessionID string) ([]byte, bool, *xError.Error) {
+func (c *BiometricCredentialCache) ConsumeChallenge(ctx context.Context, challengeType string, sessionID string) ([]byte, bool, *xError.Error) {
 	key, xErr := c.challengeKey(ctx, challengeType, sessionID)
 	if xErr != nil {
 		return nil, false, xErr
 	}
 
-	val, err := c.RDB.Get(ctx, key).Result()
+	val, err := c.RDB.GetDel(ctx, key).Result()
 	if err == redis.Nil {
 		return nil, false, nil
 	}
 	if err != nil {
-		return nil, false, nil
+		return nil, false, xError.NewError(ctx, xError.CacheError, "读取 challenge 缓存失败", false, err)
 	}
 
 	return []byte(val), true, nil
-}
-
-// DeleteChallenge 删除 challenge（验证后立即调用，防重放）
-func (c *BiometricCredentialCache) DeleteChallenge(ctx context.Context, challengeType string, sessionID string) {
-	key, xErr := c.challengeKey(ctx, challengeType, sessionID)
-	if xErr != nil {
-		return
-	}
-	c.RDB.Del(ctx, key)
 }
