@@ -151,3 +151,43 @@ func (r *PreviewFileRepo) ListBySession(ctx context.Context, sessionID xSnowflak
 
 	return files, nil
 }
+
+// DeleteBySession 物理删除指定会话的全部预览文件（级联清理用）
+//
+// 参数:
+//   - ctx:       上下文对象
+//   - sessionID: 预览会话雪花 ID
+//
+// 返回值:
+//   - *xError.Error: 删除过程中的错误
+func (r *PreviewFileRepo) DeleteBySession(ctx context.Context, sessionID xSnowflake.SnowflakeID) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("DeleteBySession - 删除会话全部预览文件 [%d]", sessionID.Int64()))
+
+	if err := r.db.WithContext(ctx).Where("session_id = ?", sessionID).Delete(&entity.PreviewFile{}).Error; err != nil {
+		r.log.Warn(ctx, err.Error())
+		return xError.NewError(ctx, xError.DatabaseError, "删除会话预览文件失败", false, err)
+	}
+	return nil
+}
+
+// Delete 物理删除单个预览文件
+//
+// 参数:
+//   - ctx: 上下文对象
+//   - id:  待删除的预览文件雪花 ID
+//
+// 返回值:
+//   - *xError.Error: 删除过程中的错误
+func (r *PreviewFileRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("Delete - 删除预览文件 [%d]", id.Int64()))
+
+	result := r.db.WithContext(ctx).Where("id = ?", id).Delete(&entity.PreviewFile{})
+	if result.Error != nil {
+		r.log.Warn(ctx, result.Error.Error())
+		return xError.NewError(ctx, xError.DatabaseError, "删除预览文件失败", false, result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return xError.NewError(ctx, xError.NotFound, "预览文件不存在", false, nil)
+	}
+	return nil
+}

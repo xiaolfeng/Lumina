@@ -102,11 +102,11 @@ func (r *PreviewSessionRepo) GetByHash(ctx context.Context, hash string) (*entit
 	return &session, nil
 }
 
-// ListByProject 分页获取指定项目下的预览会话列表（按创建时间降序）
+// List 分页获取预览会话列表（按创建时间降序，projectID 为零值时不过滤）
 //
 // 参数:
 //   - ctx:       上下文对象
-//   - projectID: 项目雪花 ID
+//   - projectID: 项目雪花 ID（零值表示不按项目过滤）
 //   - page:      页码（从 1 开始）
 //   - size:      每页数量
 //
@@ -114,12 +114,15 @@ func (r *PreviewSessionRepo) GetByHash(ctx context.Context, hash string) (*entit
 //   - []*entity.PreviewSession: 当前页的预览会话列表
 //   - int64:                    符合条件的总记录数
 //   - *xError.Error:            查询过程中的错误
-func (r *PreviewSessionRepo) ListByProject(ctx context.Context, projectID xSnowflake.SnowflakeID, page, size int) ([]*entity.PreviewSession, int64, *xError.Error) {
+func (r *PreviewSessionRepo) List(ctx context.Context, projectID xSnowflake.SnowflakeID, page, size int) ([]*entity.PreviewSession, int64, *xError.Error) {
 	pageReq := xModels.PageRequest{Page: int64(page), Size: int64(size)}.Normalize()
 	page, size = int(pageReq.Page), int(pageReq.Size)
-	r.log.Info(ctx, fmt.Sprintf("ListByProject - 分页获取预览会话列表 [projectID=%d, page=%d, size=%d]", projectID.Int64(), page, size))
+	r.log.Info(ctx, fmt.Sprintf("List - 分页获取预览会话列表 [projectID=%d, page=%d, size=%d]", projectID.Int64(), page, size))
 
-	query := r.db.WithContext(ctx).Model(&entity.PreviewSession{}).Where("project_id = ?", projectID)
+	query := r.db.WithContext(ctx).Model(&entity.PreviewSession{})
+	if !projectID.IsZero() {
+		query = query.Where("project_id = ?", projectID)
+	}
 
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -137,4 +140,26 @@ func (r *PreviewSessionRepo) ListByProject(ctx context.Context, projectID xSnowf
 	}
 
 	return sessions, total, nil
+}
+
+// Delete 物理删除预览会话
+//
+// 参数:
+//   - ctx: 上下文对象
+//   - id:  待删除的预览会话雪花 ID
+//
+// 返回值:
+//   - *xError.Error: 删除过程中的错误
+func (r *PreviewSessionRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("Delete - 删除预览会话 [%d]", id.Int64()))
+
+	result := r.db.WithContext(ctx).Where("id = ?", id).Delete(&entity.PreviewSession{})
+	if result.Error != nil {
+		r.log.Warn(ctx, result.Error.Error())
+		return xError.NewError(ctx, xError.DatabaseError, "删除预览会话失败", false, result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return xError.NewError(ctx, xError.NotFound, "预览会话不存在", false, nil)
+	}
+	return nil
 }

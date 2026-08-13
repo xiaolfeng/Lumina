@@ -23,6 +23,11 @@ export interface PreviewSessionDetailResponse {
   files: PreviewFileItem[]
 }
 
+export interface PreviewSessionListResponse {
+  items: PreviewSessionItem[]
+  total: number
+}
+
 export interface PreviewFileDetailResponse extends PreviewFileItem {
   session_hash: string
 }

@@ -97,3 +97,94 @@ func (h *PreviewHandler) GetFileByID(ctx *gin.Context) {
 
 	xResult.SuccessHasData(ctx, "查询成功", resp)
 }
+
+// ListSessions 获取预览会话列表（管理端，分页 + 可选项目筛选）
+//
+// @Summary     [管理] 获取预览会话列表
+// @Description 分页获取预览会话列表，可按项目 ID 筛选（不传则返回全部）
+// @Tags        Preview接口
+// @Accept      json
+// @Produce     json
+// @Param       Authorization  header    string  true  "Bearer Access Token"
+// @Param       project_id     query     string  false "项目ID筛选"
+// @Param       page           query     int     false "页码"  default(1)
+// @Param       size           query     int     false "每页数量"  default(20)
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiPreview.PreviewSessionListResponse}  "查询成功"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Router      /api/v1/preview/sessions [GET]
+func (h *PreviewHandler) ListSessions(ctx *gin.Context) {
+	h.log.Info(ctx, "ListSessions - 获取预览会话列表")
+
+	var req apiPreview.PreviewSessionListRequest
+	if !BindQuery(ctx, &req) {
+		return
+	}
+
+	resp, xErr := h.service.previewLogic.ListSessions(ctx.Request.Context(), req.ProjectID, req.Page, req.Size)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.SuccessHasData(ctx, "查询成功", resp)
+}
+
+// DeleteSession 删除预览会话（级联删除其下全部文件）
+//
+// @Summary     [管理] 删除预览会话
+// @Description 根据会话 ID 删除预览会话，并级联删除该会话下的全部预览文件
+// @Tags        Preview接口
+// @Accept      json
+// @Produce     json
+// @Param       Authorization  header    string   true  "Bearer Access Token"
+// @Param       id             path      string   true  "预览会话 ID"
+// @Success     200  {object}  apiCommon.BaseResponse  "删除成功"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Failure     404  {object}  apiCommon.BaseResponse  "预览会话不存在"
+// @Router      /api/v1/preview/sessions/{id} [DELETE]
+func (h *PreviewHandler) DeleteSession(ctx *gin.Context) {
+	h.log.Info(ctx, "DeleteSession - 删除预览会话")
+
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	if xErr := h.service.previewLogic.DeleteSession(ctx.Request.Context(), id); xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.Success(ctx, "删除成功")
+}
+
+// DeleteFile 删除单个预览文件
+//
+// @Summary     [管理] 删除预览文件
+// @Description 根据文件 ID 删除单个预览文件
+// @Tags        Preview接口
+// @Accept      json
+// @Produce     json
+// @Param       Authorization  header    string   true  "Bearer Access Token"
+// @Param       id             path      string   true  "预览文件 ID"
+// @Success     200  {object}  apiCommon.BaseResponse  "删除成功"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Failure     404  {object}  apiCommon.BaseResponse  "预览文件不存在"
+// @Router      /api/v1/preview/files/{id} [DELETE]
+func (h *PreviewHandler) DeleteFile(ctx *gin.Context) {
+	h.log.Info(ctx, "DeleteFile - 删除预览文件")
+
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	if xErr := h.service.previewLogic.DeleteFile(ctx.Request.Context(), id); xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.Success(ctx, "删除成功")
+}

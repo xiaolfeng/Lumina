@@ -8,6 +8,7 @@ import {
 	LayoutDashboard,
 	MessageCircle,
 	MessageCircleQuestion,
+	MonitorPlay,
 	Settings,
 	Sparkles,
 	User,
@@ -60,6 +61,7 @@ const navGroups: NavGroup[] = [
 				{ title: "项目管理", to: "/console/project", icon: FolderKanban },
 				{ title: "Pin 管理", to: "/console/pin", icon: Pin },
 				{ title: "问答管理", to: "/console/qa", icon: MessageCircleQuestion },
+				{ title: "预览管理", to: "/console/preview", icon: MonitorPlay },
 			],
 		},
 	{

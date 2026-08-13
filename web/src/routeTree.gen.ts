@@ -33,6 +33,7 @@ import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as PublicStartRouteImport } from './routes/_public/start'
 import { Route as ConsoleQaIndexRouteImport } from './routes/console/qa/index'
 import { Route as ConsoleProjectIndexRouteImport } from './routes/console/project/index'
+import { Route as ConsolePreviewIndexRouteImport } from './routes/console/preview/index'
 import { Route as ConsoleQaSessionIdRouteImport } from './routes/console/qa/$sessionId'
 import { Route as ConsoleProjectProjectIdRepowikiIndexRouteImport } from './routes/console/project/$projectId/repowiki/index'
 import { Route as ConsoleProjectProjectIdRepowikiCreateRouteImport } from './routes/console/project/$projectId/repowiki/create'
@@ -156,6 +157,11 @@ const ConsoleProjectIndexRoute = ConsoleProjectIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ConsoleProjectRoute,
 } as any)
+const ConsolePreviewIndexRoute = ConsolePreviewIndexRouteImport.update({
+  id: '/preview/',
+  path: '/preview/',
+  getParentRoute: () => ConsoleRoute,
+} as any)
 const ConsoleQaSessionIdRoute = ConsoleQaSessionIdRouteImport.update({
   id: '/$sessionId',
   path: '/$sessionId',
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/interact/': typeof InteractIndexRoute
   '/preview/': typeof PreviewIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/console/preview/': typeof ConsolePreviewIndexRoute
   '/console/project/': typeof ConsoleProjectIndexRoute
   '/console/qa/': typeof ConsoleQaIndexRoute
   '/console/project/$projectId/repowiki/create': typeof ConsoleProjectProjectIdRepowikiCreateRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/interact': typeof InteractIndexRoute
   '/preview': typeof PreviewIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/console/preview': typeof ConsolePreviewIndexRoute
   '/console/project': typeof ConsoleProjectIndexRoute
   '/console/qa': typeof ConsoleQaIndexRoute
   '/console/project/$projectId/repowiki/create': typeof ConsoleProjectProjectIdRepowikiCreateRoute
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   '/interact/': typeof InteractIndexRoute
   '/preview/': typeof PreviewIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/console/preview/': typeof ConsolePreviewIndexRoute
   '/console/project/': typeof ConsoleProjectIndexRoute
   '/console/qa/': typeof ConsoleQaIndexRoute
   '/console/project/$projectId/repowiki/create': typeof ConsoleProjectProjectIdRepowikiCreateRoute
@@ -280,6 +289,7 @@ export interface FileRouteTypes {
     | '/interact/'
     | '/preview/'
     | '/console/qa/$sessionId'
+    | '/console/preview/'
     | '/console/project/'
     | '/console/qa/'
     | '/console/project/$projectId/repowiki/create'
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
     | '/interact'
     | '/preview'
     | '/console/qa/$sessionId'
+    | '/console/preview'
     | '/console/project'
     | '/console/qa'
     | '/console/project/$projectId/repowiki/create'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/interact/'
     | '/preview/'
     | '/console/qa/$sessionId'
+    | '/console/preview/'
     | '/console/project/'
     | '/console/qa/'
     | '/console/project/$projectId/repowiki/create'
@@ -516,6 +528,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsoleProjectIndexRouteImport
       parentRoute: typeof ConsoleProjectRoute
     }
+    '/console/preview/': {
+      id: '/console/preview/'
+      path: '/preview'
+      fullPath: '/console/preview/'
+      preLoaderRoute: typeof ConsolePreviewIndexRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
     '/console/qa/$sessionId': {
       id: '/console/qa/$sessionId'
       path: '/$sessionId'
@@ -609,6 +628,7 @@ interface ConsoleRouteChildren {
   ConsoleSettingsRoute: typeof ConsoleSettingsRoute
   ConsoleSshRoute: typeof ConsoleSshRoute
   ConsoleIndexRoute: typeof ConsoleIndexRoute
+  ConsolePreviewIndexRoute: typeof ConsolePreviewIndexRoute
 }
 
 const ConsoleRouteChildren: ConsoleRouteChildren = {
@@ -621,6 +641,7 @@ const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleSettingsRoute: ConsoleSettingsRoute,
   ConsoleSshRoute: ConsoleSshRoute,
   ConsoleIndexRoute: ConsoleIndexRoute,
+  ConsolePreviewIndexRoute: ConsolePreviewIndexRoute,
 }
 
 const ConsoleRouteWithChildren =

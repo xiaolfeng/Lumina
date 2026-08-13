@@ -75,11 +75,11 @@ func (l *PreviewLogic) CreateSession(ctx context.Context, projectID xSnowflake.S
 	return toPreviewSessionResponse(session), nil
 }
 
-// ListSessions 分页获取指定项目下的预览会话列表
+// ListSessions 分页获取预览会话列表（projectID 为零值时不过滤）
 func (l *PreviewLogic) ListSessions(ctx context.Context, projectID xSnowflake.SnowflakeID, page, size int) (*apiPreview.PreviewSessionListResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("ListSessions - 分页获取预览会话列表 [projectID=%d, page=%d, size=%d]", projectID.Int64(), page, size))
 
-	sessions, total, xErr := l.repo.session.ListByProject(ctx, projectID, page, size)
+	sessions, total, xErr := l.repo.session.List(ctx, projectID, page, size)
 	if xErr != nil {
 		return nil, xErr
 	}
@@ -206,6 +206,30 @@ func (l *PreviewLogic) GetFileByID(ctx context.Context, fileID xSnowflake.Snowfl
 		PreviewFileResponse: *toPreviewFileResponse(file),
 		SessionHash:         session.Hash,
 	}, nil
+}
+
+// DeleteSession 删除预览会话（级联删除其下全部预览文件）
+func (l *PreviewLogic) DeleteSession(ctx context.Context, sessionID xSnowflake.SnowflakeID) *xError.Error {
+	l.log.Info(ctx, fmt.Sprintf("DeleteSession - 删除预览会话 [%d]", sessionID.Int64()))
+
+	// 校验会话存在
+	if _, xErr := l.repo.session.GetByID(ctx, sessionID); xErr != nil {
+		return xErr
+	}
+
+	// 级联删除文件
+	if xErr := l.repo.file.DeleteBySession(ctx, sessionID); xErr != nil {
+		return xErr
+	}
+
+	// 删除会话
+	return l.repo.session.Delete(ctx, sessionID)
+}
+
+// DeleteFile 删除单个预览文件
+func (l *PreviewLogic) DeleteFile(ctx context.Context, fileID xSnowflake.SnowflakeID) *xError.Error {
+	l.log.Info(ctx, fmt.Sprintf("DeleteFile - 删除预览文件 [%d]", fileID.Int64()))
+	return l.repo.file.Delete(ctx, fileID)
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
