@@ -33,60 +33,14 @@ body {
   font-family: var(--font-sans);
   background-color: var(--bg-base);
   background:
-    radial-gradient(1000px 560px at -6% -8%, var(--hero-a), transparent 60%),
-    radial-gradient(900px 520px at 108% -10%, var(--hero-b), transparent 64%),
-    radial-gradient(
-      640px 340px at 50% 118%,
-      rgba(201, 136, 58, 0.16),
-      transparent 72%
-    ),
-    linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--sand) 60%, #fff) 0%,
-      var(--foam) 40%,
-      var(--bg-base) 100%
-    );
+    radial-gradient(1100px 500px at 85% -8%, var(--hero-a), transparent 62%),
+    radial-gradient(900px 480px at -8% 40%, var(--hero-b), transparent 60%);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 烛晕纹理 — 模拟烛光在空气中的微粒感 */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.24;
-  background:
-    radial-gradient(
-      circle at 22% 18%,
-      rgba(255, 248, 235, 0.7),
-      transparent 36%
-    ),
-    radial-gradient(
-      circle at 76% 24%,
-      rgba(201, 136, 58, 0.22),
-      transparent 44%
-    ),
-    radial-gradient(circle at 44% 84%, rgba(184, 112, 80, 0.16), transparent 38%);
-}
-
-/* 微网格 — 如古纸纤维 */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.06;
-  background-image:
-    linear-gradient(rgba(51, 39, 28, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(51, 39, 28, 0.04) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: radial-gradient(circle at 50% 30%, black, transparent 80%);
-}
+/* 静烛：纸面干净，不设烛晕纹理与网格，唯留右上微光 */
 
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {

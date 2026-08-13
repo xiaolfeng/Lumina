@@ -10,11 +10,9 @@ import {
 	MessageCircleQuestion,
 	MonitorPlay,
 	Settings,
-	Sparkles,
 	User,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { Avatar, AvatarFallback } from "@lumina/components/ui/avatar";
 import {
 	Sidebar,
 	SidebarContent,
@@ -101,18 +99,14 @@ export function AppSidebar() {
 									asChild
 									className="hover:bg-link-bg-hover"
 								>
-									<Link to="/console/dashboard">
-										<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-lagoon text-foam shadow-sm shadow-hero-a">
-											<Sparkles className="size-4" />
-										</div>
-										<div className="flex flex-col gap-0.5 leading-none">
-											<span className="display-title text-sm font-semibold text-sea-ink">
-												微明 Lumina
-											</span>
-											<span className="text-xs text-sea-ink-soft">
-												管理后台
-											</span>
-										</div>
+									<Link to="/console/dashboard" className="flex flex-col gap-1 px-1">
+										<span className="flex items-center gap-2.5">
+											<span className="size-2.5 shrink-0 rounded-full bg-lagoon shadow-[0_0_0_3px_rgba(201,136,58,0.16)]" />
+											<span className="display-title text-base font-semibold text-sea-ink">微明</span>
+										</span>
+										<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sea-ink-soft">
+											Lumina Console
+										</span>
 									</Link>
 								</SidebarMenuButton>
 							</motion.div>
@@ -140,8 +134,8 @@ export function AppSidebar() {
 														tooltip={item.title}
 														className={
 															isActive
-																? "bg-chip-bg text-lagoon border border-chip-line font-medium"
-																: "hover:bg-link-bg-hover"
+																? "relative font-medium text-sea-ink after:absolute after:-left-4 after:top-1/2 after:h-4 after:w-[3px] after:-translate-y-1/2 after:bg-lagoon"
+																: "text-sea-ink-soft hover:bg-link-bg-hover hover:text-sea-ink"
 														}
 													>
 														{item.external ? (
@@ -178,11 +172,9 @@ export function AppSidebar() {
 									size="lg"
 									className="hover:bg-link-bg-hover"
 								>
-									<Avatar className="size-8 rounded-lg">
-										<AvatarFallback className="rounded-lg bg-(--accent) text-lagoon text-sm font-medium">
-											{fallbackInitial}
-										</AvatarFallback>
-									</Avatar>
+									<div className="flex size-8 shrink-0 items-center justify-center border border-line text-sm font-bold text-lagoon-deep">
+										{fallbackInitial}
+									</div>
 									<div className="flex flex-col gap-0.5 leading-none">
 										<span className="text-sm font-medium text-sea-ink">
 											{displayName}

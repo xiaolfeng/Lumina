@@ -6,126 +6,126 @@
 /* 以幽暗为底，燃一寸静烛。不求烈日灼目，只愿微光渡桥。 */
 
 :root {
-  /* ── 意象层 ── */
-  --sea-ink: #33271c; /* 深暖褐 — 幽暗之主（余烬暖阳：更暖的墨褐） */
-  --sea-ink-soft: #6b5f52; /* 柔褐 — 隐于幽微，需保证对比度 */
-  --lagoon: #c9883a; /* 琥珀金 — 烛光本体 */
-  --lagoon-deep: #7a4e1a; /* 深琥珀 — 烛芯，需保证对比度 */
-  --palm: #b87050; /* 余烬橙 — 温暖余温 */
-  --sand: #f2e7d5; /* 沙褐 — 沉淀之壤（更暖更亮） */
-  --foam: #fdf8f0; /* 烛晕 — 微光弥漫（更亮） */
+  /* ── 意象层 · 静烛 ── */
+  --sea-ink: #2b2018; /* 墨褐 — 文字之主 */
+  --sea-ink-soft: #8a7c6e; /* 柔墨 — 次级文字 */
+  --lagoon: #c9883a; /* 琥珀 — 点睛 */
+  --lagoon-deep: #7a4e1a; /* 深琥珀 — 强调 */
+  --palm: #b87050; /* 余烬橙 — 暖意 */
+  --sand: #faf7f1; /* 暖纸 — 承物之底 */
+  --foam: #ffffff; /* 纸白 — 最亮 */
 
-  /* ── 材质层 ── */
-  --surface: rgba(255, 251, 245, 0.72);
-  --surface-strong: rgba(255, 251, 245, 0.92);
-  --line: rgba(51, 39, 28, 0.12);
-  --inset-glint: rgba(255, 251, 245, 0.78);
-  --kicker: #a06820;
-  --bg-base: #f6ecdf;
-  --header-bg: rgba(255, 251, 245, 0.82);
-  --chip-bg: rgba(255, 251, 245, 0.78);
-  --chip-line: rgba(169, 120, 50, 0.18);
-  --link-bg-hover: rgba(255, 251, 245, 0.92);
+  /* ── 材质层 · 纸 ── */
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-strong: rgba(255, 255, 255, 0.95);
+  --line: rgba(43, 32, 24, 0.1);
+  --inset-glint: rgba(255, 255, 255, 0.8);
+  --kicker: #7a4e1a;
+  --bg-base: #faf7f1;
+  --header-bg: rgba(250, 247, 241, 0.9);
+  --chip-bg: #f4efe6;
+  --chip-line: rgba(201, 136, 58, 0.35);
+  --link-bg-hover: #f4efe6;
 
-  /* ── 光晕层 ── */
-  --hero-a: rgba(201, 136, 58, 0.38);
-  --hero-b: rgba(184, 112, 80, 0.26);
+  /* ── 光晕层 · 微 ── */
+  --hero-a: rgba(201, 136, 58, 0.12);
+  --hero-b: rgba(184, 112, 80, 0.07);
 
   /* ── shadcn 兼容 ── */
-  --background: oklch(0.965 0.018 82);
-  --foreground: oklch(0.24 0.03 45);
-  --card: oklch(0.97 0.018 84);
-  --card-foreground: oklch(0.24 0.03 45);
-  --popover: oklch(0.97 0.018 84);
-  --popover-foreground: oklch(0.24 0.03 45);
-  --primary: #c9883a;
-  --primary-foreground: #fffbf5;
-  --secondary: #f0e3cf;
-  --secondary-foreground: #33271c;
-  --muted: #f0e3cf;
-  --muted-foreground: oklch(0.5 0.03 55);
-  --accent: #f6e9d3;
-  --accent-foreground: #33271c;
-  --destructive: oklch(0.55 0.18 25);
-  --destructive-foreground: oklch(0.97 0.01 85);
-  --border: oklch(0.88 0.015 78);
-  --input: oklch(0.88 0.015 78);
+  --background: #faf7f1;
+  --foreground: #2b2018;
+  --card: #ffffff;
+  --card-foreground: #2b2018;
+  --popover: #ffffff;
+  --popover-foreground: #2b2018;
+  --primary: #2b2018;
+  --primary-foreground: #faf7f1;
+  --secondary: #f4efe6;
+  --secondary-foreground: #2b2018;
+  --muted: #f4efe6;
+  --muted-foreground: #8a7c6e;
+  --accent: #f4efe6;
+  --accent-foreground: #2b2018;
+  --destructive: #b05345;
+  --destructive-foreground: #ffffff;
+  --border: rgba(43, 32, 24, 0.1);
+  --input: rgba(43, 32, 24, 0.18);
   --ring: #c9883a;
-  --chart-1: oklch(0.6 0.15 45);
-  --chart-2: oklch(0.55 0.1 60);
-  --chart-3: oklch(0.45 0.08 50);
-  --chart-4: oklch(0.75 0.12 80);
-  --chart-5: oklch(0.7 0.1 70);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.96 0.018 82);
-  --sidebar-foreground: oklch(0.24 0.03 45);
-  --sidebar-primary: oklch(0.24 0.03 45);
-  --sidebar-primary-foreground: oklch(0.97 0.01 85);
-  --sidebar-accent: oklch(0.945 0.018 82);
-  --sidebar-accent-foreground: oklch(0.24 0.03 45);
-  --sidebar-border: oklch(0.88 0.015 78);
-  --sidebar-ring: oklch(0.78 0.04 70);
+  --chart-1: oklch(0.55 0.09 45);
+  --chart-2: oklch(0.6 0.09 60);
+  --chart-3: oklch(0.5 0.06 55);
+  --chart-4: oklch(0.7 0.1 80);
+  --chart-5: oklch(0.65 0.08 30);
+  --radius: 0px;
+  --sidebar: #f4efe6;
+  --sidebar-foreground: #2b2018;
+  --sidebar-primary: #2b2018;
+  --sidebar-primary-foreground: #faf7f1;
+  --sidebar-accent: #ffffff;
+  --sidebar-accent-foreground: #2b2018;
+  --sidebar-border: rgba(43, 32, 24, 0.1);
+  --sidebar-ring: #c9883a;
 }
 
 .dark {
-  /* ── 意象层 · 夜烛 ── */
-  --sea-ink: #e8ddd0; /* 暖白 — 被烛光照亮的文字 */
+  /* ── 意象层 · 夜纸 ── */
+  --sea-ink: #ece2d4; /* 暖白 — 夜中被烛光照亮的文字 */
   --sea-ink-soft: #a89a8a; /* 暗羊皮 — 隐于夜色 */
-  --lagoon: #e8a855; /* 亮琥珀 — 烛光跳动 */
-  --lagoon-deep: #f5c574; /* 浅琥珀 —  Hover 更暖 */
+  --lagoon: #e8a855; /* 亮琥珀 — 夜烛 */
+  --lagoon-deep: #f5c574; /* 浅琥珀 — Hover 更暖 */
   --palm: #e08a5e; /* 暖橙 — 余温 */
-  --sand: #1a1512; /* 深褐 — 夜色之底 */
-  --foam: #13100e; /* 烟褐 — 幽暗深处 */
+  --sand: #12100d; /* 深褐 — 夜色之底 */
+  --foam: #1a1512; /* 夜纸 — 次底 */
 
   /* ── 材质层 · 夜 ── */
-  --surface: rgba(30, 25, 20, 0.78);
-  --surface-strong: rgba(25, 20, 16, 0.92);
-  --line: rgba(232, 213, 190, 0.14);
-  --inset-glint: rgba(255, 235, 210, 0.1);
-  --kicker: #f5d69a; /* 暖金 — 夜中标签 */
-  --bg-base: #0f0c0a; /* 烟黑 — 最深 */
-  --header-bg: rgba(15, 12, 10, 0.85);
-  --chip-bg: rgba(30, 25, 20, 0.88);
-  --chip-line: rgba(232, 213, 190, 0.2);
-  --link-bg-hover: rgba(40, 32, 26, 0.8);
+  --surface: rgba(26, 21, 16, 0.7);
+  --surface-strong: rgba(20, 16, 12, 0.9);
+  --line: rgba(236, 226, 212, 0.12);
+  --inset-glint: rgba(255, 235, 210, 0.08);
+  --kicker: #f5d69a;
+  --bg-base: #12100d;
+  --header-bg: rgba(18, 16, 13, 0.9);
+  --chip-bg: #241e19;
+  --chip-line: rgba(232, 168, 85, 0.3);
+  --link-bg-hover: #241e19;
 
   /* ── 光晕层 · 夜 ── */
-  --hero-a: rgba(232, 168, 85, 0.18);
-  --hero-b: rgba(224, 138, 94, 0.1);
+  --hero-a: rgba(232, 168, 85, 0.12);
+  --hero-b: rgba(224, 138, 94, 0.07);
 
   /* ── shadcn 兼容 · 夜 ── */
-  --background: oklch(0.14 0.02 50);
-  --foreground: oklch(0.95 0.01 85);
-  --card: oklch(0.14 0.02 50);
-  --card-foreground: oklch(0.95 0.01 85);
-  --popover: oklch(0.14 0.02 50);
-  --popover-foreground: oklch(0.95 0.01 85);
-  --primary: #e8a855;
+  --background: #12100d;
+  --foreground: #ece2d4;
+  --card: #1a1512;
+  --card-foreground: #ece2d4;
+  --popover: #1a1512;
+  --popover-foreground: #ece2d4;
+  --primary: #ece2d4;
   --primary-foreground: #1a1512;
-  --secondary: #2a2420;
-  --secondary-foreground: #e8ddd0;
-  --muted: #2a2420;
-  --muted-foreground: oklch(0.7 0.02 70);
-  --accent: #3a322c;
-  --accent-foreground: #e8ddd0;
-  --destructive: oklch(0.4 0.14 25);
-  --destructive-foreground: oklch(0.95 0.01 85);
-  --border: oklch(0.24 0.02 50);
-  --input: oklch(0.24 0.02 50);
+  --secondary: #241e19;
+  --secondary-foreground: #ece2d4;
+  --muted: #241e19;
+  --muted-foreground: #a89a8a;
+  --accent: #241e19;
+  --accent-foreground: #ece2d4;
+  --destructive: #c06a5c;
+  --destructive-foreground: #ece2d4;
+  --border: rgba(236, 226, 212, 0.12);
+  --input: rgba(236, 226, 212, 0.18);
   --ring: #e8a855;
-  --chart-1: oklch(0.55 0.18 45);
-  --chart-2: oklch(0.65 0.14 60);
-  --chart-3: oklch(0.75 0.12 70);
-  --chart-4: oklch(0.6 0.2 80);
-  --chart-5: oklch(0.6 0.18 25);
-  --sidebar: oklch(0.2 0.02 50);
-  --sidebar-foreground: oklch(0.95 0.01 85);
-  --sidebar-primary: oklch(0.55 0.18 45);
-  --sidebar-primary-foreground: oklch(0.95 0.01 85);
-  --sidebar-accent: oklch(0.24 0.02 50);
-  --sidebar-accent-foreground: oklch(0.95 0.01 85);
-  --sidebar-border: oklch(0.24 0.02 50);
-  --sidebar-ring: oklch(0.5 0.04 60);
+  --chart-1: oklch(0.6 0.12 45);
+  --chart-2: oklch(0.65 0.1 60);
+  --chart-3: oklch(0.7 0.08 70);
+  --chart-4: oklch(0.6 0.14 80);
+  --chart-5: oklch(0.6 0.12 30);
+  --sidebar: #1a1512;
+  --sidebar-foreground: #ece2d4;
+  --sidebar-primary: #ece2d4;
+  --sidebar-primary-foreground: #1a1512;
+  --sidebar-accent: #241e19;
+  --sidebar-accent-foreground: #ece2d4;
+  --sidebar-border: rgba(236, 226, 212, 0.12);
+  --sidebar-ring: #e8a855;
 }
 
 @theme inline {
@@ -182,22 +182,18 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  /* 圆角 */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* 圆角 · 静烛：一切取方，直角为骨 */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
 
-  /* 方圆尺度（暖阳 · 5 级，语义化命名，生成 rounded-flat/chip/btn/card 工具类）
-     flat  纸页的方：线条 / tab / 表格
-     chip  器物的微圆：标签 / chip / 小图标
-     btn   被照亮器物的圆：按钮 / 输入
-     card  包裹的柔：卡片 / 面板
-     ── 全圆用内置 rounded-full（999px）：烛光的圆，只给头像 / 状态点 / 火焰，少而精 */
+  /* 方圆尺度（静烛 · 全平）：以纸页之方为准
+     全圆用内置 rounded-full（999px）：烛光的圆，只给头像 / 状态点 / 火焰，少而精 */
   --radius-flat: 0px;
-  --radius-chip: 4px;
-  --radius-btn: 8px;
-  --radius-card: 14px;
+  --radius-chip: 0px;
+  --radius-btn: 0px;
+  --radius-card: 0px;
 
   /* 侧边栏 */
   --color-sidebar: var(--sidebar);

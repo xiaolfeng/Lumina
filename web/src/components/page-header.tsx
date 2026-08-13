@@ -10,16 +10,15 @@ interface PageHeaderProps {
 export function PageHeader({ title, description, action }: PageHeaderProps) {
   return (
     <motion.div
-      className="relative flex items-center justify-between pl-1.5"
+      className="flex items-center justify-between pl-1"
       variants={staggerItemLeft}
     >
-      <div className="absolute -left-4 top-0 h-full w-1 rounded-r-full bg-gradient-to-b from-lagoon to-palm" />
       <div>
         <h1 className="display-title text-2xl font-semibold tracking-tight text-sea-ink">
           {title}
         </h1>
         {description && (
-          <p className="mt-1 text-sm text-sea-ink-soft">{description}</p>
+          <p className="mt-1.5 text-sm text-sea-ink-soft">{description}</p>
         )}
       </div>
       {action}

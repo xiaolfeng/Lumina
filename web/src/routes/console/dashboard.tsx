@@ -1,10 +1,9 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
-import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
 import { Button } from '@lumina/components/ui/button'
 import { Skeleton } from '@lumina/components/ui/skeleton'
 import { useApikeyList } from '#/hooks/useApikey'
-import { KeyRound, ShieldCheck, Clock, Plus, Sparkles } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { PageHeader } from '#/components/page-header'
 
@@ -22,131 +21,102 @@ function DashboardPage() {
 
   return (
     <motion.div
-      className="space-y-6"
+      className="space-y-10"
       initial="hidden"
       animate="visible"
       variants={staggerContainer}
     >
       <PageHeader title="看板" description="Lumina Console 概览" />
 
-      {/* 欢迎横幅 */}
+      {/* 欢迎 · 静烛 Hero */}
       <motion.div variants={staggerItem}>
-        <Card className="border-chip-line bg-gradient-to-r from-surface-strong to-surface overflow-hidden">
-          <CardContent className="flex items-center gap-4 py-4">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-lagoon/15 text-lagoon">
-              <Sparkles className="size-5" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-sea-ink">
-                欢迎回来，管理员
-              </p>
-              <p className="text-xs text-sea-ink-soft">
-                这是你的 Lumina 管理面板，在这里管理项目、令牌和系统配置
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex items-end justify-between gap-6 border-b border-line pb-8">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-lagoon-deep">
+              烛照幽微 · 知识中枢
+            </p>
+            <h2 className="display-title mt-4 text-3xl font-medium text-sea-ink">
+              欢迎回来，管理员
+            </h2>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-sea-ink-soft">
+              这是你的 Lumina 管理面板，在这里管理项目、令牌和系统配置。
+            </p>
+          </div>
+          {!isLoading && totalCount > 0 && (
+            <Button
+              asChild
+              className="shrink-0 bg-sea-ink text-foam hover:bg-lagoon-deep"
+            >
+              <Link to="/console/apikey">
+                <Plus className="size-4" />
+                创建新令牌
+              </Link>
+            </Button>
+          )}
+        </div>
       </motion.div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* 令牌总数 */}
-        <motion.div variants={staggerItem}>
-          <Card className="transition-shadow duration-200 hover:shadow-md hover:shadow-hero-a">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-sea-ink-soft">
-                令牌总数
-              </CardTitle>
-              <div className="flex size-8 items-center justify-center rounded-lg bg-lagoon/10 text-lagoon">
-                <KeyRound className="size-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <div className="text-2xl font-bold text-sea-ink">{totalCount}</div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* 活跃令牌 */}
-        <motion.div variants={staggerItem}>
-          <Card className="transition-shadow duration-200 hover:shadow-md hover:shadow-hero-b">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-sea-ink-soft">
-                活跃令牌
-              </CardTitle>
-              <div className="flex size-8 items-center justify-center rounded-lg bg-palm/10 text-palm">
-                <ShieldCheck className="size-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <div className="text-2xl font-bold text-sea-ink">{activeCount}</div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* 最近创建 */}
-        <motion.div variants={staggerItem}>
-          <Card className="transition-shadow duration-200 hover:shadow-md hover:shadow-hero-a">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-sea-ink-soft">
-                最近创建
-              </CardTitle>
-              <div className="flex size-8 items-center justify-center rounded-lg bg-kicker/10 text-kicker">
-                <Clock className="size-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-8 w-32" />
-              ) : latestCreated ? (
-                <div className="text-lg font-bold text-sea-ink">
-                  {new Date(latestCreated).toLocaleDateString('zh-CN')}
-                </div>
-              ) : (
-                <div className="text-sm text-sea-ink-soft">暂无令牌</div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* 快速操作 */}
+      {/* KPI · 发丝线分栏 */}
       <motion.div variants={staggerItem}>
-        <h2 className="mb-4 text-lg font-semibold text-sea-ink">快速操作</h2>
-        {!isLoading && totalCount === 0 ? (
-          <Card className="border-dashed border-chip-line">
-            <CardContent className="flex flex-col items-center gap-3 py-8">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-lagoon/10 text-lagoon">
-                <KeyRound className="size-6" />
-              </div>
-              <p className="text-center text-sea-ink-soft">
-                还没有创建任何 API 令牌
+        <div className="grid grid-cols-3 border-b border-line">
+          <div className="border-r border-line py-7 pr-6">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
+              令牌总数
+            </p>
+            {isLoading ? (
+              <Skeleton className="mt-3 h-8 w-16" />
+            ) : (
+              <p className="display-title mt-3 text-4xl font-medium tracking-tight text-sea-ink">
+                {totalCount}
               </p>
-              <Button asChild className="bg-lagoon text-foam hover:bg-lagoon-deep">
-                <Link to="/console/apikey">
-                  <Plus className="mr-2 size-4" />
-                  去创建
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <Button asChild className="bg-lagoon text-foam hover:bg-lagoon-deep">
-            <Link to="/console/apikey">
-              <Plus className="mr-2 size-4" />
-              创建新令牌
-            </Link>
-          </Button>
-        )}
+            )}
+          </div>
+          <div className="border-r border-line px-6 py-7">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
+              活跃令牌
+            </p>
+            {isLoading ? (
+              <Skeleton className="mt-3 h-8 w-16" />
+            ) : (
+              <p className="display-title mt-3 text-4xl font-medium tracking-tight text-sea-ink">
+                {activeCount}
+              </p>
+            )}
+          </div>
+          <div className="py-7 pl-6">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
+              最近创建
+            </p>
+            {isLoading ? (
+              <Skeleton className="mt-3 h-8 w-28" />
+            ) : latestCreated ? (
+              <p className="display-title mt-3 text-3xl font-medium tracking-tight text-sea-ink">
+                {new Date(latestCreated).toLocaleDateString('zh-CN')}
+              </p>
+            ) : (
+              <p className="mt-4 text-sm text-sea-ink-soft">暂无令牌</p>
+            )}
+          </div>
+        </div>
       </motion.div>
+
+      {/* 快速操作 · 空态 */}
+      {!isLoading && totalCount === 0 && (
+        <motion.div variants={staggerItem}>
+          <div className="border border-dashed border-chip-line py-10 text-center">
+            <p className="text-sm text-sea-ink-soft">还没有创建任何 API 令牌</p>
+            <Button
+              asChild
+              className="mt-4 bg-sea-ink text-foam hover:bg-lagoon-deep"
+            >
+              <Link to="/console/apikey">
+                <Plus className="mr-2 size-4" />
+                去创建
+              </Link>
+            </Button>
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   )
 }
