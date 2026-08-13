@@ -1,7 +1,7 @@
 # 项目知识库
 
-**生成日期:** 2026-07-15
-**提交:** 79f3e61
+**生成日期:** 2026-08-13
+**提交:** 31c19c1
 **分支:** master
 
 ## 概述
@@ -15,7 +15,7 @@
 - **Q&A**：Agent 与用户的富交互式问答通道（WebSocket 实时推送）— ✅ 已实现
 - **Pin**：跨项目依赖约束传递，点对点定向推送与 FIFO 队列消费 — ✅ 已实现
 
-后端通过 Streamable MCP 协议 + HTTP REST API + WebSocket 三通道对外暴露能力；前端通过 REST API + WebSocket 与后端通信。控制台前端（`web/`）与 Wiki Reader 前端（`web-wiki/`）构建产物分别通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。两前端通过 `@lumina/components` workspace 包共享 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体和微明主题 CSS。
+后端通过 Streamable MCP 协议 + HTTP REST API + WebSocket 三通道对外暴露能力；前端通过 REST API + WebSocket 与后端通信。控制台前端（`web/`）与 Wiki Reader 前端（`web-wiki/`）构建产物分别通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。两前端通过 `@lumina/components` workspace 包共享 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体和微明主题 CSS。项目采用 pnpm monorepo 管理双前端与共享组件包，并提供 Dockerfile + docker-compose 及 GitHub Actions 发布流水线支持容器化部署。
 
 > ⚠️ 本文档中涉及的所有模块设计（MCP 工具名称、REST API 路径、数据结构、存储策略等）均为**设计参考方案，并非最终决策**。实际实现时可根据技术约束和开发决策进行调整。详见 `docs/wiki/` 目录。
 
@@ -25,8 +25,28 @@
 ./
 ├── main.go                     # 入口；引用 resources.FrontendDist/WikiFrontendDist → xMain.Runner + Cron Runner
 ├── go.mod                      # Go 1.25.0；依赖 bamboo-base-go 模块
-├── Makefile                    # 开发/测试/格式化/一键构建命令
+├── Makefile                    # 开发/测试/格式化/构建/容器化发布命令
 ├── .env.example                # 必需的环境变量模板
+├── Dockerfile                  # 多阶段构建镜像（前端 pnpm build → Go 编译 → 精简运行镜像）
+├── .dockerignore               # 镜像构建忽略清单
+├── docker-compose.yaml         # 精简编排（app + db + redis）
+├── docker-compose.full.yaml    # 完整编排（含可选服务）
+├── .github/workflows/          # CI/CD 流水线
+│   └── docker-publish.yml      # 镜像构建发布（tag 触发）
+├── pnpm-workspace.yaml         # pnpm monorepo 工作区（web + web-wiki + components）
+├── pnpm-lock.yaml              # monorepo 根锁文件（由 web/pnpm-lock.yaml 迁移而来）
+├── components/                 # @lumina/components 共享 workspace 包
+│   ├── package.json            # 包名 @lumina/components，被 web / web-wiki 共同消费
+│   ├── components.json         # shadcn/ui 配置（new-york、zinc、lucide）
+│   ├── vitest.config.ts        # Vitest 测试配置
+│   └── src/
+│       ├── index.ts            # 包导出入口（ui/markdown/motion/styles/hooks/lib）
+│       ├── ui/                 # shadcn/ui 组件（27 个，从 web 迁移而来）
+│       ├── markdown/           # Markdown 渲染原语（markdown/markdown-lite/markdown-mermaid/remark-fenced-blocks/table-of-contents/prose/fenced-components）
+│       ├── motion/             # motion 动画变体与缓动函数（自 web/src/lib/motion.ts 迁移）
+│       ├── styles/             # 微明主题 CSS（theme.css）
+│       ├── hooks/              # 共享 Hooks（use-mobile 等）
+│       └── lib/                # 共享工具（cn() 等）
 ├── resources/                  # 项目级内嵌资源（prompts、前端构建产物等）
 │   ├── embed.go                # go:embed 暴露 PromptFiles / FrontendDist / WikiFrontendDist
 │   ├── prompts/                # RepoWiki 5 角色 system prompt 文件
@@ -37,20 +57,19 @@
 │   │   └── validator.md         # Validator 角色 prompt
 │   ├── web/dist                  # 控制台前端构建产物（pnpm build 产出，go:embed 嵌入）
 │   └── web-wiki/dist             # Wiki Reader 前端构建产物（pnpm build 产出，go:embed 嵌入）
-├── components/                 # @lumina/components 共享组件包（shadcn ui + markdown 原语 + motion + 主题 CSS）
-├── api/                        # 请求/响应 DTO（按业务域分包）
-│   ├── auth/                   # 认证模块 DTO
-│   ├── user/                   # 用户模块 DTO（资料/密码）
-│   ├── biometric/              # WebAuthn 生物认证 DTO
-│   ├── apikey/                 # API Key 模块 DTO（CRUD + 重置）
-│   ├── project/                # 项目模块 DTO（CRUD）
-│   ├── pin/                    # Pin 模块 DTO（CRUD + 筛选）
-│   ├── repowiki/               # RepoWiki 模块 DTO（配置/版本/Wiki）
-│   ├── qa/                     # Q&A 模块 DTO（会话/问题/配置）
-│   ├── llm/                    # LLM 模块 DTO（Provider/Model/Agent 分配）
-│   ├── ssh/                    # SSH Key 模块 DTO（CRUD）
-│   ├── webhook/                # Webhook 模块 DTO（事件接收）
-│   ├── settings/               # 系统设置 DTO（分组配置读写）
+├── api/                        # 请求/响应 DTO（按业务域分包，域内按操作类型拆文件）
+│   ├── auth/                   # 认证 DTO（initialize/login/refresh/status）
+│   ├── user/                   # 用户 DTO（info/password/profile/credential）
+│   ├── biometric/              # WebAuthn DTO（availability/login/register）
+│   ├── apikey/                 # API Key DTO（create/detail/list/reset/update）
+│   ├── project/                # 项目 DTO（create/detail/update）
+│   ├── pin/                    # Pin DTO（create/detail/list/update）
+│   ├── repowiki/               # RepoWiki DTO（create_config/detail_config/update_config/version/webhook/wiki）
+│   ├── qa/                     # Q&A DTO（session/question/supplement/config）
+│   ├── llm/                    # LLM DTO（provider/model/agent）
+│   ├── ssh/                    # SSH Key DTO（create/detail/list/update）
+│   ├── webhook/                # Webhook DTO（event/response）
+│   ├── settings/               # 系统设置 DTO（setting/update）
 │   ├── common/                 # 通用响应结构
 │   └── health/                 # 健康检查 DTO
 ├── docs/
@@ -126,7 +145,7 @@
 │   ├── components.json         # shadcn/ui（new-york、zinc、lucide）
 │   └── src/                    # 前端源码
 │       ├── routes/             # 基于文件的路由（公开页 + 认证页 + 控制台 + Interact 交互）
-│       ├── components/         # 组件（含 ui/、landing/、通用组件和业务子目录 apikey/、project/、pin/、profile/、qa/、interact/、llm/、ssh/、repowiki/、settings/）
+│       ├── components/         # 组件（landing/、通用组件和业务子目录；shadcn/ui 与 markdown/motion 原语由 @lumina/components 提供）
 │       ├── hooks/              # React Hooks（15 个，含 LLM/SSH/RepoWiki/Webhook/Settings）
 │       ├── lib/                # 工具函数 + API 客户端 + 类型定义 + WebAuthn 辅助 + Cookie 工具
 │       ├── styles.css          # 全局样式 + Tailwind 主题
@@ -178,8 +197,12 @@
 | 新增前端 API 封装 | `web/src/lib/apis/` | 使用 apiClient 封装 |
 | 新增前端数据 Hook | `web/src/hooks/` | 基于 TanStack Query |
 | 前端样式调整 | `web/src/styles.css` | 仅限全局 CSS 变量和 Tailwind 主题 |
-| shadcn/ui 组件 | `web/src/components/ui/` 或 `components/` | 通过 `pnpm dlx shadcn@latest add <component>` 添加 |
+| shadcn/ui 组件 | `components/src/ui/` | 通过 `pnpm dlx shadcn@latest add <component>` 添加到共享包 |
+| 新增共享组件/原语 | `components/src/` | 被 web / web-wiki 共同消费的 ui/markdown/motion/主题 |
 | Wiki Reader 前端 | `web-wiki/` | 独立 SPA，部署在 `/wiki/`，只读渲染 |
+| 调整 Docker 镜像 | `Dockerfile`、`.dockerignore` | 多阶段构建，前端产物先构建再嵌入 |
+| 调整容器编排 | `docker-compose.yaml` / `docker-compose.full.yaml` | 精简/完整两套编排 |
+| 调整 CI/CD | `.github/workflows/docker-publish.yml` | tag 触发镜像构建发布 |
 
 ## 代码地图
 
@@ -224,7 +247,7 @@
 | `SshKeyGen` | 结构体 | `internal/service/ssh_key_gen.go` | SSH 密钥对生成（ed25519/rsa） |
 | `WebhookParser` | 结构体 | `internal/service/webhook_parser.go` | Webhook Payload 解析（GitHub/GitLab 事件格式） |
 | `WebhookSigner` | 结构体 | `internal/service/webhook_signer.go` | Webhook HMAC 签名生成与校验 |
-| `RepoWikiConfig` | 结构体 | `internal/entity/repowiki_config.go` | RepoWiki 配置实体（Gene=39，仓库地址/Webhook 配置/当前选中版本） |
+| `RepoWikiConfig` | 结构体 | `internal/entity/repowiki_config.go` | RepoWiki 配置实体（Gene=39，仓库地址/Webhook 配置/自定义提示词/当前选中版本） |
 | `WikiVersion` | 结构体 | `internal/entity/wiki_version.go` | Wiki 版本实体（Gene=40，版本号/状态/文件路径/token 统计） |
 | `LlmProvider` | 结构体 | `internal/entity/llm_provider.go` | LLM Provider 实体（Gene=41，名称/BaseURL/加密 API Key） |
 | `LlmModel` | 结构体 | `internal/entity/llm_model.go` | LLM Model 实体（Gene=42，Provider 关联/Agent 角色分配） |
@@ -294,6 +317,7 @@
 | Cron Runner | RepoWiki 定时清理（超时任务清理 + 失败重试） | 无持久化（基于 xCronRunner） | ✅ 已实现 |
 | 健康检查 | 服务/数据库就绪检查 | 无持久化 | ✅ 已实现 |
 | Wiki Reader 前端 | 只读 Wiki 渲染 SPA + 密码门 | 无持久化（go:embed 嵌入） | ✅ 已实现 |
+| 容器化部署 | Dockerfile 多阶段构建 + docker-compose 编排 + CI/CD 发布 | Docker 镜像 + GitHub Actions | ✅ 已实现 |
 
 ### 设计中模块
 
@@ -345,11 +369,14 @@ Wiki Reader 前端（web-wiki/）──REST API───▶ 后端（/wiki/* + W
 - **双前端嵌入部署**：通过 `go:embed` 将 `resources/web/dist` 和 `resources/web-wiki/dist` 分别嵌入 Go 二进制，构建命令 `make generate` 完成前端打包 → Swagger → Go 编译全流程。
 - **MCP 路由注册**：MCP 端点必须在 `engine.Use()` 之前注册以绕开 `ResponseMiddleware`。
 - **共享组件包**：shadcn ui 组件、Markdown 渲染原语、motion 动画变体、微明主题 CSS 统一在 `@lumina/components` workspace 包管理，被 `web` 和 `web-wiki` 共同消费。
-- **资源内嵌**：RepoWiki 5 角色 system prompt 通过 `go:embed` 内嵌在 `resources/prompts/`，由 `service/prompt_loader.go` 读取；禁止在 logic 中硬编码 prompt 文本。
+- **pnpm monorepo**：`web`、`web-wiki`、`components` 三个 workspace 包由根 `pnpm-workspace.yaml` 统一管理，锁文件为根目录 `pnpm-lock.yaml`；在根目录执行 `pnpm install` 安装全部依赖。
+- **DTO 拆分**：`api/<domain>/` 内按操作类型拆分文件（`create.go`/`update.go`/`detail.go`/`list.go` 等），同一操作的相关 request+response 放在同一文件，禁止将所有 DTO 塞入单文件。
+- **资源内嵌**：RepoWiki 5 角色 system prompt 通过 `go:embed` 内嵌在 `resources/prompts/`，由 `service/prompt_loader.go` 读取；前端构建产物由 `resources/embed.go` 统一 `go:embed` 暴露，禁止在 logic 中硬编码 prompt 文本。
 - **LLM 热配置**：LLM Provider/Model 配置存储在数据库（非环境变量），通过前端管理页面配置；API Key 经 `service/crypto_helper.go` AES-256-GCM 加密，密钥由 `LLM_ENCRYPT_SECRET` 环境变量提供。
 - **加密存储**：LLM API Key 和 SSH 私钥必须经 AES-256-GCM 加密后存储，禁止明文落库。
 - **Webhook 签名校验**：所有 Webhook 请求必须经 `service/webhook_signer.go` 校验 HMAC 签名，密钥由 `REPOWIKI_HMAC_SECRET` 环境变量提供。
 - **Cron 任务**：定时任务通过 `xCronRunner` 注册（`startup_cron.go`），由 `main.go` 传入 `xMain.Runner` 异步执行，不阻塞启动节点链。
+- **容器化构建**：`Dockerfile` 采用多阶段构建（先构建双前端产物，再 `go build` 嵌入，最后精简运行镜像）；镜像标签由 `Makefile` 的 `validate-version` + `docker-build` + `publish` 目标驱动，CI 在 tag 触发时发布。
 - **子模块约定**：后端分层详情见 [internal/](./internal/AGENTS.md)，控制台前端专属约定见 [web/](./web/AGENTS.md)，Wiki Reader 前端约定见 [web-wiki/](./web-wiki/AGENTS.md)。
 
 ## 反模式
@@ -364,6 +391,7 @@ Wiki Reader 前端（web-wiki/）──REST API───▶ 后端（/wiki/* + W
 - 禁止在 Webhook 处理中跳过 HMAC 签名校验。
 - 禁止在 `resources/prompts/` 外散落 prompt 文件；所有内嵌静态资源集中在 `resources/` 目录。
 - 禁止通过裸 goroutine 调度定时任务；统一走 `xCronRunner`。
+- 禁止在 `web` / `web-wiki` 内重新创建已迁入 `@lumina/components` 的 ui/markdown/motion/主题代码；应通过共享包导入。
 - 子模块反模式详见各子模块 AGENTS.md。
 
 ## 独特风格
@@ -375,7 +403,9 @@ Wiki Reader 前端（web-wiki/）──REST API───▶ 后端（/wiki/* + W
 - **双通道暴露**：每个模块同时提供 REST API 和 MCP Tool。
 - **MCP 编排**：Lumina 不做跨模块编排，由 Agent 端自行决定调用顺序和组合。
 - **泛型 Handler 构造**：`NewHandler[T]` 统一注入所有 logic 实例（12 个 Logic）。
-- **双前端嵌入**：`resources/embed.go` 统一管理 `FrontendDist` + `WikiFrontendDist`，配合 `route_frontend.go` 实现双 SPA fallback，单二进制部署。
+- **双前端嵌入**：`resources/embed.go` 统一管理 `FrontendDist` + `WikiFrontendDist` + `PromptFiles`，配合 `route_frontend.go` 实现双 SPA fallback，单二进制部署。
+- **pnpm monorepo 共享包**：`@lumina/components` workspace 包集中管理 shadcn/ui（27 个）、Markdown 渲染原语（含 remark fenced-blocks 插件）、motion 动画变体、微明主题 CSS，被 `web` 和 `web-wiki` 共同消费。
+- **DTO 按操作类型拆分**：`api/` 各业务域内以 `create.go`/`update.go`/`detail.go`/`list.go` 等操作命名文件，同一操作 request+response 同文件。
 - **API Key 安全**：`lumi_` 前缀 + base64 RawURL 编码 + bcrypt 哈希，仅创建/重置时返回完整密钥。
 - **API Key 认证中间件**：`middleware.ApikeyAuth` 专门用于 MCP 端点认证，与 `middleware.Auth`（Bearer Token）分离。
 - **Wiki Auth 中间件**：`middleware.WikiAuth` 处理 Wiki Reader 的密码 Token / Cookie 会话认证，与控制台认证分离。
@@ -399,9 +429,10 @@ Wiki Reader 前端（web-wiki/）──REST API───▶ 后端（/wiki/* + W
 - **LLM 热配置**：Provider/Model 配置存储在数据库，支持 Agent 角色（Coordinator/Explore/Architect/Writer/Validator）分别分配不同模型；API Key 经 AES-256-GCM 加密存储。
 - **文件下载 Token**：`service/download_token.go` 生成短时效签名 Token，用于 Q&A 文件附件下载鉴权。
 - **媒体回答处理**：`service/media_answer.go` 处理图片/文件附件的回答格式化，供 Q&A MCP 工具调用。
-- **双前端共享**：`@lumina/components` workspace 包统一管理 shadcn ui 组件、Markdown 渲染原语、motion 动画变体、微明主题 CSS，被 web 和 web-wiki 共同消费。
-- **内嵌资源集中管理**：`resources/` 目录集中管理项目级内嵌静态资源（如 RepoWiki prompt），通过 `go:embed` 暴露给各业务包引用，避免资源文件散落在业务包内部。
+- **双前端共享**：`@lumina/components` workspace 包统一管理 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体、微明主题 CSS，被 web 和 web-wiki 共同消费。
+- **内嵌资源集中管理**：`resources/` 目录集中管理项目级内嵌静态资源（prompt 文件 + 双前端构建产物），通过 `go:embed` 暴露给各业务包引用，避免资源文件散落在业务包内部。
 - **Cron Runner 模式**：`startup.NewCronRunner()` 返回的函数由 `main.go` 传入 `xMain.Runner` 的 goroutineFunc 参数，与启动节点链解耦异步执行。
+- **容器化部署**：`Dockerfile` 多阶段构建 + `docker-compose.yaml`（精简）/ `docker-compose.full.yaml`（完整）双编排 + `.github/workflows/docker-publish.yml` 在 tag 触发时发布镜像。
 
 ## 常用命令
 
@@ -415,6 +446,7 @@ go mod tidy
 # 开发
 make dev-backend   # 生成 Swagger 文档并运行（推荐）
 make dev-frontend  # 启动控制台前端开发服务器（端口 3000）
+make dev-wiki-frontend # 启动 Wiki Reader 前端开发服务器（端口 3001）
 make swag          # 仅生成 Swagger 文档
 make run           # 运行已编译二进制
 
@@ -425,9 +457,25 @@ make generate      # 或 make build
 make tidy          # 整理 Go 模块
 make fmt           # 格式化代码
 make test          # 运行测试
+make vet           # go vet 静态检查
+make lint          # golangci-lint 检查
 
 # 验证
 curl http://localhost:8080/api/v1/health/ping
+
+# ── 容器化 / 发布 ──
+
+make validate-version  # 校验镜像 tag 与版本一致性
+make docker-build      # 构建 Docker 镜像
+make publish           # 发布 Docker 镜像
+
+# 或直接使用 docker compose
+docker compose up -d                    # 精简编排（app + db + redis）
+docker compose -f docker-compose.full.yaml up -d  # 完整编排
+
+# ── monorepo（根目录）──
+
+pnpm install       # 安装 web / web-wiki / components 全部依赖
 
 # ── 控制台前端 (web/) ──
 
@@ -446,7 +494,7 @@ pnpm check        # Prettier 格式检查
 pnpm test         # 运行 Vitest 测试
 
 # shadcn/ui 组件
-pnpm dlx shadcn@latest add <component>  # 添加 UI 组件
+pnpm dlx shadcn@latest add <component>  # 添加 UI 组件（输出到 @lumina/components）
 
 # ── Wiki Reader 前端 (web-wiki/) ──
 
@@ -454,15 +502,23 @@ cd web-wiki
 pnpm install      # 安装依赖
 pnpm dev          # 开发服务器（端口 3001）
 pnpm build        # 类型检查 + 生产构建
+pnpm test         # 运行 Vitest 测试
 pnpm lint         # ESLint 检查
 pnpm format       # Prettier 格式化 + ESLint 自动修复
+
+# ── 共享组件包 (components/) ──
+
+cd components
+pnpm build        # 构建 @lumina/components
+pnpm test         # 运行 Vitest 测试（markdown/remark-fenced-blocks）
 ```
 
 ## 备注
 
 - 双前端通过 `go:embed` 嵌入 Go 二进制，构建顺序：先 `pnpm build`（产出 `resources/web/dist` + `resources/web-wiki/dist`），再 `go build`。使用 `make generate` 一键完成。
-- 前端独立开发时使用 `make dev-frontend`（控制台 Vite dev server 端口 3000）和 `cd web-wiki && pnpm dev`（Wiki Reader 端口 3001），但生产部署时前后端合一。
-- 尚未配置 CI 工作流（`.github/workflows` 不存在）。
+- 前端独立开发时使用 `make dev-frontend`（控制台 Vite dev server 端口 3000）和 `make dev-wiki-frontend` / `cd web-wiki && pnpm dev`（Wiki Reader 端口 3001），但生产部署时前后端合一。
+- 已配置 CI 工作流（`.github/workflows/docker-publish.yml`），在打 tag 时触发镜像构建并发布到容器仓库。
+- 项目已 pnpm monorepo 化：锁文件为根目录 `pnpm-lock.yaml`，`web/pnpm-lock.yaml` 与 `web-wiki/pnpm-lock.yaml` 已移除；依赖安装统一在根目录执行 `pnpm install`。
 - `make test` 命令存在，已有测试用例覆盖 project、llm_model、llm_provider、ssh_key_gen、webhook_parser、webhook_signer、wiki_auth_token、wiki_storage、git_service、file_scanner、dependency_extractor、repowiki_orchestrator 等模块。
 - `docs/wiki/` 为手动维护的设计文档，与 `docs/swagger*` 自动生成文件不同。
 - `docs/wiki/qa/` 设计文档已删除（Q&A 模块已从设计进入实现阶段）。
@@ -474,6 +530,7 @@ pnpm format       # Prettier 格式化 + ESLint 自动修复
 - RepoWiki 模块需要独立的 LLM Provider 配置；**LLM 配置已从环境变量迁移到数据库热配置**，通过前端「系统设置」页面管理 Provider 和 Model，并为 Agent 角色分配模型。`LLM_ENCRYPT_SECRET` 环境变量（必填）用于加密 API Key。
 - RepoWiki 存储路径默认 `./.lumina/repowiki`，可通过 `REPOWIKI_STORAGE_PATH` 配置；支持并发数、超时、配额、重试等精细控制（`REPOWIKI_*` 环境变量族）。
 - RepoWiki Webhook 需配置 `REPOWIKI_HMAC_SECRET` 用于 HMAC 签名校验。
+- RepoWiki 生成产物为 `.mdx` 格式（含 YAML frontmatter），**旧版 `.md` 已不再兼容**；`RepoWikiConfig` 已移除冗余 `Name` 字段，新增 `CustomPrompt` 双层提示词机制（全局 prompt + 项目级自定义提示词）。
 - 认证模块已实现（登录、初始化、Token 刷新、Bearer 中间件、资料更新、密码修改）。
 - WebAuthn 生物认证已实现（注册/登录/凭证 CRUD/Challenge 缓存），前端集成 `useBiometric` Hook + `lib/webauthn/helpers.ts`。
 - API Key 和项目模块已完整实现（后端 CRUD + 前端管理页面）。
@@ -487,7 +544,8 @@ pnpm format       # Prettier 格式化 + ESLint 自动修复
 - MCP Server 已实现，注册了 QA（10 工具）、Project（3 工具）、Pin（5 工具）、RepoWiki（2 只读工具）四套工具共 20 个，通过 API Key 认证。
 - WebSocket Hub 已实现，支持 sessionID → deviceID 二级索引，心跳检测，优雅关闭，断线重连和会话恢复。
 - Cron Runner 已实现，注册 RepoWiki 定时清理任务（默认每 5 分钟），由 `main.go` 传入 `xMain.Runner` 异步执行。
-- Wiki Reader 前端（`web-wiki/`）已实现，独立 SPA 部署在 `/wiki/`，支持密码门认证和只读 Wiki 渲染。
+- Wiki Reader 前端（`web-wiki/`）已实现，独立 SPA 部署在 `/wiki/`，支持密码门认证和只读 .mdx Wiki 渲染。
+- Docker 容器化已实现（多阶段 Dockerfile + 双 docker-compose 编排 + GitHub Actions tag 发布流水线）。
 
 ## 引用
 
