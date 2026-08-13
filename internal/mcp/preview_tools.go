@@ -123,6 +123,30 @@ var previewToolDefs = []struct {
 			"required": []string{"session_id"},
 		},
 	},
+	{
+		name: "preview_file_get",
+		description: `获取指定预览会话中某个文件的完整内容（提取代码）。
+
+触发场景：需要读取预览工作区中已上传文件的源码内容时使用，例如基于已有代码继续迭代、将 preview 中已确立的代码作为规范基准提取回上下文。
+
+推荐流程：
+1. 用 preview_file_list 查看会话内有哪些文件（拿到文件名）
+2. 用 preview_file_get 提取指定文件的完整代码`,
+		inputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"session_id": map[string]any{
+					"type":        "string",
+					"description": "目标预览会话 ID（必填，雪花 ID 字符串）",
+				},
+				"filename": map[string]any{
+					"type":        "string",
+					"description": "文件名（必填，如 index.html、style.css、app.js）",
+				},
+			},
+			"required": []string{"session_id", "filename"},
+		},
+	},
 }
 
 // ─── Tool Handlers ──────────────────────────────────────────────────────
@@ -279,7 +303,39 @@ func handlePreviewFileList(_ context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	return textResult(result), nil
 }
 
-// RegisterPreviewTools 将 Preview 模块的 4 个 MCP 工具注册到 Server。
+// handlePreviewFileGet 获取预览文件完整内容
+func handlePreviewFileGet(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	if previewLogic == nil {
+		return textResult("PreviewLogic 未初始化，请联系管理员"), nil
+	}
+	args := parseArgs(req.Params.Arguments)
+	if errMsg := checkParseError(args); errMsg != "" {
+		return textResult(errMsg), nil
+	}
+
+	sessionIDStr, _ := args["session_id"].(string)
+	if sessionIDStr == "" {
+		return textResult("缺少必填参数: session_id"), nil
+	}
+	sessionID, err := xSnowflake.ParseSnowflakeID(sessionIDStr)
+	if err != nil {
+		return textResult(fmt.Sprintf("无效的 session_id: %s", sessionIDStr)), nil
+	}
+
+	filename, _ := args["filename"].(string)
+	if filename == "" {
+		return textResult("缺少必填参数: filename"), nil
+	}
+
+	resp, xErr := previewLogic.GetFileContentBySession(context.Background(), sessionID, filename)
+	if xErr != nil {
+		return textResult(fmt.Sprintf("获取预览文件内容失败: %s", xErr.Error())), nil
+	}
+
+	return textResult(fmt.Sprintf("=== %s（%s）===\n\n%s", resp.Filename, resp.MimeType, resp.Content)), nil
+}
+
+// RegisterPreviewTools 将 Preview 模块的 5 个 MCP 工具注册到 Server。
 func RegisterPreviewTools(server *mcp.Server) {
 	for _, def := range previewToolDefs {
 		schemaBytes, _ := json.Marshal(def.inputSchema)
@@ -299,6 +355,8 @@ func RegisterPreviewTools(server *mcp.Server) {
 			handler = handlePreviewFileUpload
 		case "preview_file_list":
 			handler = handlePreviewFileList
+		case "preview_file_get":
+			handler = handlePreviewFileGet
 		default:
 			handler = stubToolHandler(def.name)
 		}

@@ -186,6 +186,27 @@ func (l *PreviewLogic) GetFileContent(ctx context.Context, hash, filename string
 	}, nil
 }
 
+// GetFileContentBySession 根据会话 ID 与文件名获取预览文件完整内容（MCP 提取代码用）
+func (l *PreviewLogic) GetFileContentBySession(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string) (*apiPreview.PreviewFileContentResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("GetFileContentBySession - 获取预览文件内容 [sessionID=%d, filename=%s]", sessionID.Int64(), filename))
+
+	// 校验会话存在
+	if _, xErr := l.repo.session.GetByID(ctx, sessionID); xErr != nil {
+		return nil, xErr
+	}
+
+	file, xErr := l.repo.file.GetBySessionAndFilename(ctx, sessionID, filename)
+	if xErr != nil {
+		return nil, xErr
+	}
+
+	return &apiPreview.PreviewFileContentResponse{
+		Filename: file.Filename,
+		MimeType: file.MimeType,
+		Content:  file.Content,
+	}, nil
+}
+
 // GetFileByID 根据文件 ID 获取预览文件详情（含关联会话哈希）
 //
 // 供 Q&A supplement preview 类型渲染时，由 file_id 解析出 (session_hash, filename) 以构造 serve 地址。
