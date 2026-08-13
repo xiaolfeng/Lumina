@@ -237,22 +237,18 @@ var qaToolDefs = []struct {
 	},
 	{
 		name: "qa_push_supplement",
-		description: `为已推送的问题或选项补充详细内容，补充内容在用户浏览器右侧面板即时渲染。
+		description: `用途：为已推送的问题或某个选项写入一份右侧详情面板内容。每个目标只保留一份 supplement；对同一 question_id/option_id 再次调用会覆盖旧内容。
 
-⚠️ content_type 约束（重要）：
-  - markdown（默认）：双通道 — 浏览器渲染 + AI 可读（作为约束/上下文返回给 Agent）
-  - html：单通道 — 仅浏览器渲染（提升用户可读性），不会返回给 Agent
-  - preview：单通道 — 仅浏览器渲染，content 为 JSON（{"session_id","file_id"}），用于引用预览会话中的前端文件
+何时调用：qa_push_question 使用 supplement=true、选项需要展开说明，或 qa_get_answer 返回 [NEED_SUPPLEMENT] 时调用。它不会创建问题、Preview 文件或浏览器页面；目标问题必须已存在。
 
-选择建议：
-  - 技术说明、决策矩阵、约束条件 → 使用 markdown（AI 需要读取这些信息）
-  - 交互式预览、动画演示、复杂布局 → 使用 html（仅展示给用户看）
+content_type 选择：
+- markdown（默认）：技术说明、约束、代码、表格、Mermaid、KaTeX；浏览器与 Agent 都可读。凡是后续推理必须保留的信息都应使用 markdown。
+- html：一个自包含的展示片段或轻量交互；仅浏览器渲染，不返回给 Agent。不要用它承载 Agent 后续必须读取的约束。
+- preview：多文件或可复用前端预览；仅浏览器渲染。必须先完成 preview_session_create/list → preview_file_upload → preview_file_list，并将 Preview 返回的 qa_supplement.content 原样作为 content。
 
-触发场景：选项 label 过于简洁需要展开技术细节、展示架构图/流程图等可视化内容、
-或 qa_get_answer 返回 [NEED_SUPPLEMENT] 时响应用户的补充请求。
+preview 的 content 必须是且只能是 JSON 字符串 {"session_id":"...","file_id":"..."}；file_id 决定实际渲染入口。不要传 preview hash、preview_url、HTML 源码，不要添加 Markdown 围栏或解释文字。
 
-Markdown 适合文本说明、代码渲染、表格、Mermaid 流程图、KaTeX 数学公式；
-HTML 适合交互式预览、自定义布局。每个目标是 1:1 映射，重复推送会覆盖之前内容。`,
+下一步：问题/各选项需要的 supplement 全部推送后，确保用户已进入 qa_session_create 返回的交互 URL，再调用 qa_get_answer 等待回答。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -270,7 +266,7 @@ HTML 适合交互式预览、自定义布局。每个目标是 1:1 映射，重�
 				},
 				"content": map[string]any{
 					"type":        "string",
-					"description": "补充内容，支持 Markdown 或 HTML 格式",
+					"description": "补充内容。markdown/html 时为正文；preview 时必须原样传入 Preview 工具返回的 qa_supplement.content JSON 字符串。",
 				},
 				"content_type": map[string]any{
 					"type":        "string",

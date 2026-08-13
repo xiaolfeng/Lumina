@@ -23,6 +23,7 @@ import (
 type previewRepo struct {
 	session *repository.PreviewSessionRepo
 	file    *repository.PreviewFileRepo
+	info    *repository.InfoRepo
 }
 
 // PreviewLogic Preview 业务逻辑层，负责预览会话管理、文件上传与渲染内容编排
@@ -44,6 +45,7 @@ func NewPreviewLogic(ctx context.Context) *PreviewLogic {
 		repo: previewRepo{
 			session: repository.NewPreviewSessionRepo(db),
 			file:    repository.NewPreviewFileRepo(db),
+			info:    repository.NewInfoRepo(db),
 		},
 	}
 }
@@ -93,6 +95,25 @@ func (l *PreviewLogic) ListSessions(ctx context.Context, projectID xSnowflake.Sn
 		Items: items,
 		Total: total,
 	}, nil
+}
+
+// GetSessionByID 根据会话 ID 获取预览会话。
+func (l *PreviewLogic) GetSessionByID(ctx context.Context, sessionID xSnowflake.SnowflakeID) (*apiPreview.PreviewSessionResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("GetSessionByID - 获取预览会话 [sessionID=%d]", sessionID.Int64()))
+
+	session, xErr := l.repo.session.GetByID(ctx, sessionID)
+	if xErr != nil {
+		return nil, xErr
+	}
+
+	return toPreviewSessionResponse(session), nil
+}
+
+// BuildSessionURL 构造面向用户的预览会话访问地址。
+//
+// filename 为空时返回会话首页；非空时返回指定文件的深链。
+func (l *PreviewLogic) BuildSessionURL(ctx context.Context, hash, filename string) string {
+	return buildPreviewURL(resolveRuntimeDomain(ctx, l.repo.info), hash, filename)
 }
 
 // UploadFile 上传或覆写预览文件（扁平单层，同 Session 同文件名覆盖）

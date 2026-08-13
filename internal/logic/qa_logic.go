@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 	"github.com/xiaolfeng/Lumina/api/qa"
@@ -351,16 +349,7 @@ func (l *QaLogic) GetQaConfig(ctx context.Context) (*qa.QaConfigResponse, *xErro
 // 访问域名，否则生成的链接远程无法访问。host 为通配地址（0.0.0.0 / ::）
 // 时统一替换为 localhost。
 func (l *QaLogic) resolveRuntimeDomain(ctx context.Context) string {
-	if domain, xErr := l.repo.info.GetByKey(ctx, bConst.InfoKeySiteDomain); xErr == nil && domain != "" {
-		return strings.TrimRight(domain, "/")
-	}
-
-	host := xEnv.GetEnvString(xEnv.Host, "localhost")
-	if host == "" || host == "0.0.0.0" || host == "::" {
-		host = "localhost"
-	}
-	port := xEnv.GetEnvString(xEnv.Port, "8080")
-	return fmt.Sprintf("http://%s:%s", host, port)
+	return resolveRuntimeDomain(ctx, l.repo.info)
 }
 
 // UpdateQaConfig 更新Q&A配置

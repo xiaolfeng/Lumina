@@ -42,12 +42,10 @@ func handleQaSessionCreate(ctx context.Context, req *mcp.CallToolRequest) (*mcp.
 	}
 
 	return textResult(fmt.Sprintf(
-		"[RESPONSE] 会话创建成功（ID: %s）\n[URL] %s\n[TIP] 会话已创建，请在可视化桌面环境下使用命令打开浏览器引导用户进入会话页：\n"+
-			"  - macOS:   open \"%s\"\n"+
-			"  - Linux:   xdg-open \"%s\"（需 X11/Wayland 桌面环境）\n"+
-			"  - Windows: start \"\" \"%s\"\n"+
-			"  若当前为无头环境（如远程 SSH/容器），请直接将 URL 输出给用户手动访问。",
-		id, link, link, link, link,
+		"[RESPONSE] 会话创建成功（ID: %s）\n[URL] %s\n"+
+			"[STATE] awaiting_question：当前会话还没有问题，不要先打开空交互页。\n"+
+			"[NEXT_ACTION] 先调用 qa_what_question 获取目标题型规范，再调用 qa_push_question。问题及其 supplement 准备完成后，若客户端有原生浏览器/打开链接能力则打开上述 URL；否则把可点击 URL 交给用户，然后调用 qa_get_answer。",
+		id, link,
 	)), nil
 }
 
@@ -208,8 +206,11 @@ func handleQaPushQuestion(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 	}
 	if supplement {
 		result += "[REQUIRE_SUPPLEMENT] 您已选中为此问题传递补充详情内容（supplement: true）。" +
-			"请使用 qa_push_supplement 为该问题（或其各选项）推送 Markdown/HTML 详情后，" +
-			"再调用 qa_get_answer 等待用户回答。否则前端将持续等待补充内容而阻塞用户操作。\n"
+			"请使用 qa_push_supplement 为该问题（或其各选项）推送 Markdown/HTML/Preview 详情。" +
+			"全部 supplement 推送完成后，确保用户已打开 qa_session_create 返回的交互 URL，再调用 qa_get_answer。" +
+			"否则前端将持续等待补充内容而阻塞用户操作。\n"
+	} else {
+		result += "[NEXT_ACTION] 问题已可回答。若交互页尚未打开，优先使用客户端原生浏览器/打开链接能力访问 qa_session_create 返回的 URL；能力不可用时将 URL 交给用户。\n"
 	}
 	result += "[TIP] 使用 qa_get_answer 等待用户回答"
 
@@ -265,6 +266,11 @@ func handleQaPushSupplement(ctx context.Context, req *mcp.CallToolRequest) (*mcp
 	case "preview":
 		contentType = "preview"
 	}
+	if contentType == "preview" {
+		if err := validatePreviewSupplementContent(content); err != nil {
+			return errorTextResult(err.Error()), nil
+		}
+	}
 
 	xErr := qaLogic.PushSupplement(ctx, sessionID, targetType, targetID, contentType, content)
 	if xErr != nil {
@@ -295,8 +301,37 @@ func handleQaPushSupplement(ctx context.Context, req *mcp.CallToolRequest) (*mcp
 			result += line + "\n"
 		}
 	}
+	result += "\n[NEXT_ACTION] 若该问题及其选项所需的 supplement 已全部推送，确保用户已打开 qa_session_create 返回的交互 URL，然后调用 qa_get_answer；否则继续补齐剩余 supplement。"
 
 	return textResult(result), nil
+}
+
+// validatePreviewSupplementContent 校验 preview supplement 的严格引用格式。
+// 仅接受 session_id 与 file_id 两个字段，防止 Agent 误传 hash、URL 或源码。
+func validatePreviewSupplementContent(content string) error {
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(content), &payload); err != nil {
+		return fmt.Errorf("preview content 必须是合法 JSON 字符串: %w", err)
+	}
+	if len(payload) != 2 {
+		return fmt.Errorf("preview content 只能包含 session_id 与 file_id")
+	}
+
+	var sessionID string
+	if raw, ok := payload["session_id"]; !ok || json.Unmarshal(raw, &sessionID) != nil || sessionID == "" {
+		return fmt.Errorf("preview content 必须包含非空字符串 session_id")
+	}
+	var fileID string
+	if raw, ok := payload["file_id"]; !ok || json.Unmarshal(raw, &fileID) != nil || fileID == "" {
+		return fmt.Errorf("preview content 必须包含非空字符串 file_id")
+	}
+	if _, err := xSnowflake.ParseSnowflakeID(sessionID); err != nil {
+		return fmt.Errorf("preview content 的 session_id 无效: %s", sessionID)
+	}
+	if _, err := xSnowflake.ParseSnowflakeID(fileID); err != nil {
+		return fmt.Errorf("preview content 的 file_id 无效: %s", fileID)
+	}
+	return nil
 }
 
 // handleQaWhatQuestion 返回问题类型帮助信息
@@ -484,6 +519,13 @@ func textResult(text string) *mcp.CallToolResult {
 			&mcp.TextContent{Text: text},
 		},
 	}
+}
+
+// errorTextResult 构建可供模型读取并自我修正的 MCP 工具执行错误。
+func errorTextResult(text string) *mcp.CallToolResult {
+	result := textResult(text)
+	result.IsError = true
+	return result
 }
 
 // stubToolHandler 返回通用的「尚未实现」存根响应。
