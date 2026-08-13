@@ -6,6 +6,7 @@ import { DataTablePagination } from '#/components/data-table-pagination'
 import { Tabs, TabsList, TabsTrigger } from '@lumina/components/ui/tabs'
 import { useSessionList, useDeleteSession } from '#/hooks/useQaAdmin'
 import { getSessionColumns } from '#/components/qa/columns'
+import { SessionDetailDrawer } from '#/components/qa/session-detail-drawer'
 import { ConfirmDeleteDialog } from '#/components/confirm-delete-dialog'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { PageHeader } from '#/components/page-header'
@@ -20,6 +21,7 @@ function QaPage() {
 	const [pageSize, setPageSize] = useState(10)
 	const [statusFilter, setStatusFilter] = useState<string>('')
 	const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+	const [viewTarget, setViewTarget] = useState<string | null>(null)
 
 	const { data, isLoading } = useSessionList({ page, size: pageSize, status: statusFilter as any })
 	const deleteMutation = useDeleteSession()
@@ -28,7 +30,7 @@ function QaPage() {
 	const totalItems = data?.data?.total ?? 0
 	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
 
-	const columns = getSessionColumns((session) => setDeleteTarget(session.id))
+	const columns = getSessionColumns((session) => setDeleteTarget(session.id), (session) => setViewTarget(session.id))
 
 	return (
 		<motion.div
@@ -86,6 +88,8 @@ function QaPage() {
 				}}
 				isPending={deleteMutation.isPending}
 			/>
+
+			<SessionDetailDrawer sessionId={viewTarget} onClose={() => setViewTarget(null)} />
 		</motion.div>
 	)
 }

@@ -16,7 +16,7 @@ import {
 import { kickerBase } from './hero-section'
 
 const shellBase =
-  'border border-line bg-surface shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-sm'
+  'border border-line bg-surface shadow-[0_4px_24px_rgba(51,39,28,0.06)] backdrop-blur-sm'
 
 export function TechSection() {
   return (

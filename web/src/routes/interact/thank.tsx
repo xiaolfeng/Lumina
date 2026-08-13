@@ -15,7 +15,7 @@ function ThankPage() {
 	return (
 		<div className="flex min-h-0 flex-1 items-center justify-center p-4">
 			<motion.div
-				className="w-full max-w-lg rounded-2xl border border-line bg-surface p-8 shadow-[0_1px_3px_rgba(42,36,32,0.04),0_8px_24px_-8px_rgba(42,36,32,0.10)]"
+				className="w-full max-w-lg rounded-2xl border border-line bg-surface p-8 shadow-[0_1px_3px_rgba(51,39,28,0.04),0_8px_24px_-8px_rgba(51,39,28,0.10)]"
 				initial="hidden"
 				animate="visible"
 				variants={staggerContainer}

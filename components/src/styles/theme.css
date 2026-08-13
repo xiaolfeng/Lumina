@@ -7,63 +7,63 @@
 
 :root {
   /* ── 意象层 ── */
-  --sea-ink: #2a2420; /* 深墨褐 — 幽暗之主 */
-  --sea-ink-soft: #5c534a; /* 柔褐 — 隐于幽微，需保证对比度 */
+  --sea-ink: #33271c; /* 深暖褐 — 幽暗之主（余烬暖阳：更暖的墨褐） */
+  --sea-ink-soft: #6b5f52; /* 柔褐 — 隐于幽微，需保证对比度 */
   --lagoon: #c9883a; /* 琥珀金 — 烛光本体 */
   --lagoon-deep: #7a4e1a; /* 深琥珀 — 烛芯，需保证对比度 */
   --palm: #b87050; /* 余烬橙 — 温暖余温 */
-  --sand: #ede5d8; /* 沙褐 — 沉淀之壤 */
-  --foam: #f8f4ee; /* 烛晕 — 微光弥漫 */
+  --sand: #f2e7d5; /* 沙褐 — 沉淀之壤（更暖更亮） */
+  --foam: #fdf8f0; /* 烛晕 — 微光弥漫（更亮） */
 
   /* ── 材质层 ── */
   --surface: rgba(255, 251, 245, 0.72);
   --surface-strong: rgba(255, 251, 245, 0.92);
-  --line: rgba(42, 36, 32, 0.11);
+  --line: rgba(51, 39, 28, 0.12);
   --inset-glint: rgba(255, 251, 245, 0.78);
   --kicker: #a06820;
-  --bg-base: #f5efe6;
+  --bg-base: #f6ecdf;
   --header-bg: rgba(255, 251, 245, 0.82);
   --chip-bg: rgba(255, 251, 245, 0.78);
   --chip-line: rgba(169, 120, 50, 0.18);
   --link-bg-hover: rgba(255, 251, 245, 0.92);
 
   /* ── 光晕层 ── */
-  --hero-a: rgba(201, 136, 58, 0.28);
-  --hero-b: rgba(184, 112, 80, 0.16);
+  --hero-a: rgba(201, 136, 58, 0.38);
+  --hero-b: rgba(184, 112, 80, 0.26);
 
   /* ── shadcn 兼容 ── */
-  --background: oklch(0.97 0.01 85);
-  --foreground: oklch(0.22 0.02 50);
-  --card: oklch(0.97 0.01 85);
-  --card-foreground: oklch(0.22 0.02 50);
-  --popover: oklch(0.97 0.01 85);
-  --popover-foreground: oklch(0.22 0.02 50);
-  --primary: #c17a2e;
+  --background: oklch(0.965 0.018 82);
+  --foreground: oklch(0.24 0.03 45);
+  --card: oklch(0.97 0.018 84);
+  --card-foreground: oklch(0.24 0.03 45);
+  --popover: oklch(0.97 0.018 84);
+  --popover-foreground: oklch(0.24 0.03 45);
+  --primary: #c9883a;
   --primary-foreground: #fffbf5;
-  --secondary: #e8ddd0;
-  --secondary-foreground: #2a2420;
-  --muted: #e8ddd0;
-  --muted-foreground: oklch(0.55 0.02 60);
-  --accent: #f0e6d6;
-  --accent-foreground: #2a2420;
+  --secondary: #f0e3cf;
+  --secondary-foreground: #33271c;
+  --muted: #f0e3cf;
+  --muted-foreground: oklch(0.5 0.03 55);
+  --accent: #f6e9d3;
+  --accent-foreground: #33271c;
   --destructive: oklch(0.55 0.18 25);
   --destructive-foreground: oklch(0.97 0.01 85);
-  --border: oklch(0.88 0.01 80);
-  --input: oklch(0.88 0.01 80);
-  --ring: #c17a2e;
+  --border: oklch(0.88 0.015 78);
+  --input: oklch(0.88 0.015 78);
+  --ring: #c9883a;
   --chart-1: oklch(0.6 0.15 45);
   --chart-2: oklch(0.55 0.1 60);
   --chart-3: oklch(0.45 0.08 50);
   --chart-4: oklch(0.75 0.12 80);
   --chart-5: oklch(0.7 0.1 70);
   --radius: 0.625rem;
-  --sidebar: oklch(0.96 0.01 85);
-  --sidebar-foreground: oklch(0.22 0.02 50);
-  --sidebar-primary: oklch(0.22 0.02 50);
+  --sidebar: oklch(0.96 0.018 82);
+  --sidebar-foreground: oklch(0.24 0.03 45);
+  --sidebar-primary: oklch(0.24 0.03 45);
   --sidebar-primary-foreground: oklch(0.97 0.01 85);
-  --sidebar-accent: oklch(0.94 0.01 85);
-  --sidebar-accent-foreground: oklch(0.22 0.02 50);
-  --sidebar-border: oklch(0.88 0.01 80);
+  --sidebar-accent: oklch(0.945 0.018 82);
+  --sidebar-accent-foreground: oklch(0.24 0.03 45);
+  --sidebar-border: oklch(0.88 0.015 78);
   --sidebar-ring: oklch(0.78 0.04 70);
 }
 

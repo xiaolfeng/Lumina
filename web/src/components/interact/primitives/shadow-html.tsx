@@ -37,13 +37,13 @@ const BASE_STYLE = `
 /* 基础排版重置 —— 仅作用于影子根内部 */
 * { box-sizing: border-box; }
 h1, h2, h3, h4, h5, h6 { margin: 0 0 0.5em; font-weight: 600; line-height: 1.3; }
-h1 { font-size: 1.75em; color: var(--sea-ink, #2a2420); }
-h2 { font-size: 1.3em; color: var(--sea-ink, #2a2420); }
-h3 { font-size: 1.1em; color: var(--sea-ink, #2a2420); }
-p { margin: 0 0 0.75em; color: var(--sea-ink-soft, #5c534a); }
+h1 { font-size: 1.75em; color: var(--sea-ink, #33271c); }
+h2 { font-size: 1.3em; color: var(--sea-ink, #33271c); }
+h3 { font-size: 1.1em; color: var(--sea-ink, #33271c); }
+p { margin: 0 0 0.75em; color: var(--sea-ink-soft, #6b5f52); }
 a { color: var(--lagoon-deep, #7a4e1a); text-decoration: underline; }
-strong { color: var(--sea-ink, #2a2420); font-weight: 600; }
-ul, ol { margin: 0 0 0.75em; padding-left: 1.5em; color: var(--sea-ink-soft, #5c534a); }
+strong { color: var(--sea-ink, #33271c); font-weight: 600; }
+ul, ol { margin: 0 0 0.75em; padding-left: 1.5em; color: var(--sea-ink-soft, #6b5f52); }
 li { margin-bottom: 0.25em; }
 blockquote {
 	margin: 0 0 0.75em;
@@ -51,7 +51,7 @@ blockquote {
 	border-left: 3px solid var(--lagoon, #c9883a);
 	background: color-mix(in srgb, var(--lagoon, #c9883a) 5%, transparent);
 	border-radius: 0 6px 6px 0;
-	color: var(--sea-ink-soft, #5c534a);
+	color: var(--sea-ink-soft, #6b5f52);
 }
 table {
 	width: 100%;
@@ -60,17 +60,17 @@ table {
 	font-size: 0.875em;
 }
 th {
-	background: var(--foam, #f8f4ee);
+	background: var(--foam, #fdf8f0);
 	padding: 0.5em 0.75em;
 	text-align: left;
 	font-weight: 600;
-	color: var(--sea-ink, #2a2420);
-	border: 1px solid var(--line, rgba(42,36,32,0.11));
+	color: var(--sea-ink, #33271c);
+	border: 1px solid var(--line, rgba(51,39,28,0.11));
 }
 td {
 	padding: 0.5em 0.75em;
-	border-top: 1px solid var(--line, rgba(42,36,32,0.11));
-	color: var(--sea-ink-soft, #5c534a);
+	border-top: 1px solid var(--line, rgba(51,39,28,0.11));
+	color: var(--sea-ink-soft, #6b5f52);
 }
 code {
 	padding: 0.1em 0.35em;
@@ -84,7 +84,7 @@ pre {
 	margin: 0 0 0.75em;
 	padding: 0.75em;
 	border-radius: 8px;
-	border: 1px solid var(--line, rgba(42,36,32,0.11));
+	border: 1px solid var(--line, rgba(51,39,28,0.11));
 	background: #fff;
 	font-size: 0.8125em;
 	font-family: ui-monospace, 'SF Mono', monospace;
@@ -99,7 +99,7 @@ pre code {
 }
 hr {
 	border: none;
-	border-top: 1px solid var(--line, rgba(42,36,32,0.11));
+	border-top: 1px solid var(--line, rgba(51,39,28,0.11));
 	margin: 1em 0;
 }
 img { max-width: 100%; height: auto; border-radius: 8px; }

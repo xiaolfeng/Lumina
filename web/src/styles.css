@@ -37,7 +37,7 @@ body {
     radial-gradient(900px 520px at 108% -10%, var(--hero-b), transparent 64%),
     radial-gradient(
       640px 340px at 50% 118%,
-      rgba(201, 136, 58, 0.08),
+      rgba(201, 136, 58, 0.16),
       transparent 72%
     ),
     linear-gradient(
@@ -67,10 +67,10 @@ body::before {
     ),
     radial-gradient(
       circle at 76% 24%,
-      rgba(201, 136, 58, 0.15),
+      rgba(201, 136, 58, 0.22),
       transparent 44%
     ),
-    radial-gradient(circle at 44% 84%, rgba(184, 112, 80, 0.1), transparent 38%);
+    radial-gradient(circle at 44% 84%, rgba(184, 112, 80, 0.16), transparent 38%);
 }
 
 /* 微网格 — 如古纸纤维 */
@@ -82,8 +82,8 @@ body::after {
   z-index: -1;
   opacity: 0.06;
   background-image:
-    linear-gradient(rgba(42, 36, 32, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(42, 36, 32, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(51, 39, 28, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(51, 39, 28, 0.04) 1px, transparent 1px);
   background-size: 32px 32px;
   mask-image: radial-gradient(circle at 50% 30%, black, transparent 80%);
 }

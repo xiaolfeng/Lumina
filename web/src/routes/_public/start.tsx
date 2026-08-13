@@ -38,7 +38,7 @@ const viewportOnce = { once: true, margin: '-80px' } as const
 /* ─── Shared class strings ─────────────────────────────── */
 
 const shellBase =
-  'border border-line bg-surface shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-sm'
+  'border border-line bg-surface shadow-[0_4px_24px_rgba(51,39,28,0.06)] backdrop-blur-sm'
 
 const kickerBase =
   'text-[11px] font-semibold uppercase tracking-[0.2em] text-lagoon-deep'
@@ -164,7 +164,7 @@ function StartPage() {
               aria-label={`步骤 ${item.step}：${item.title}`}
               variants={fadeUp}
               whileHover={{
-                boxShadow: '0 8px 36px rgba(42,36,32,0.10)',
+                boxShadow: '0 8px 36px rgba(51,39,28,0.10)',
                 transition: { duration: 0.2 },
               }}
             >
@@ -308,7 +308,7 @@ function StartPage() {
                 variants={fadeUp}
                 whileHover={{
                   y: -4,
-                  boxShadow: '0 8px 36px rgba(42,36,32,0.10)',
+                  boxShadow: '0 8px 36px rgba(51,39,28,0.10)',
                   transition: { duration: 0.2 },
                 }}
               >

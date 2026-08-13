@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { ArrowRight, Sparkles } from 'lucide-react'
 
 import { Button } from '@lumina/components/ui/button'
@@ -12,12 +12,13 @@ import {
 } from '@lumina/components/motion'
 
 const shellBase =
-  'border border-line bg-surface shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-sm'
+  'border border-line bg-surface shadow-[0_4px_24px_rgba(51,39,28,0.06)] backdrop-blur-sm'
 
 const kickerBase =
   'text-[11px] font-semibold uppercase tracking-[0.2em] text-lagoon-deep'
 
 export function HeroSection() {
+  const reduceMotion = useReducedMotion()
   return (
     <motion.section
       className="relative flex min-h-[90vh] items-center justify-center overflow-hidden px-4 pt-4 pb-20 text-center md:min-h-[92vh] md:pt-6 md:pb-24"
@@ -30,19 +31,21 @@ export function HeroSection() {
         className="pointer-events-none absolute inset-0 opacity-[0.035]"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(42,36,32,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(42,36,32,0.4) 1px, transparent 1px)',
+            'linear-gradient(rgba(51,39,28,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(51,39,28,0.4) 1px, transparent 1px)',
           backgroundSize: '48px 48px',
           maskImage:
             'radial-gradient(circle at 50% 40%, black, transparent 75%)',
         }}
       />
 
-      <div
-        className="pointer-events-none absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-50 blur-3xl md:h-[900px] md:w-[900px] md:opacity-40"
+      <motion.div
+        className="pointer-events-none absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl md:h-[900px] md:w-[900px]"
         style={{
           background:
             'radial-gradient(circle, var(--hero-a), transparent 60%)',
         }}
+        animate={reduceMotion ? undefined : { opacity: [0.45, 0.6, 0.45] }}
+        transition={reduceMotion ? undefined : { duration: 7, repeat: Infinity, ease: 'easeInOut' }}
       />
 
       <div

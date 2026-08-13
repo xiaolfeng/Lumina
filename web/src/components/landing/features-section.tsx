@@ -10,7 +10,7 @@ import {
 import { kickerBase } from './hero-section'
 
 const shellBase =
-  'border border-line bg-surface shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-sm'
+  'border border-line bg-surface shadow-[0_4px_24px_rgba(51,39,28,0.06)] backdrop-blur-sm'
 
 const features = [
   {
@@ -77,7 +77,7 @@ export function FeaturesSection() {
               variants={fadeUp}
               whileHover={{
                 y: -4,
-                boxShadow: '0 8px 36px rgba(42,36,32,0.10)',
+                boxShadow: '0 8px 36px rgba(51,39,28,0.10)',
                 transition: { duration: 0.2 },
               }}
             >

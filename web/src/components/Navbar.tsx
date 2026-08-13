@@ -37,7 +37,7 @@ export function Navbar() {
         className={
           'mx-auto grid max-w-6xl grid-cols-12 items-center gap-4 border transition-all duration-300 ' +
           (scrolled
-            ? 'mt-4 rounded-xl border-line bg-surface px-6 py-3 shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-md'
+            ? 'mt-4 rounded-xl border-line bg-surface px-6 py-3 shadow-[0_4px_24px_rgba(51,39,28,0.06)] backdrop-blur-md'
             : 'border-transparent bg-transparent px-4 py-4 md:px-6 md:py-5')
         }
       >
@@ -142,7 +142,7 @@ export function Navbar() {
         {/* ── Mobile menu panel ── */}
         {open && (
           <motion.div
-            className="col-span-12 flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 shadow-[0_4px_24px_rgba(42,36,32,0.06)] backdrop-blur-md md:hidden"
+            className="col-span-12 flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 shadow-[0_4px_24px_rgba(51,39,28,0.06)] backdrop-blur-md md:hidden"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}

@@ -34,7 +34,7 @@ function SessionDetailPage() {
         <h2 className="text-lg font-semibold mb-4">问题列表 ({session.questions?.length ?? 0})</h2>
         <div className="space-y-3">
           {session.questions?.map((q: QuestionSummary) => (
-            <QuestionCard key={q.id} sessionId={sessionId} question={q} />
+            <QuestionCard key={q.id} question={q} />
           ))}
           {(!session.questions || session.questions.length === 0) && (
             <p className="text-center py-8 text-muted-foreground">暂无问题</p>

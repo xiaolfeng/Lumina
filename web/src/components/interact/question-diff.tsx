@@ -80,7 +80,7 @@ export function QuestionDiff({
 							variables: {
 								light: {
 									diffViewerBackground: '#ffffff',
-									diffViewerColor: '#2a2420',
+									diffViewerColor: '#33271c',
 									addedBackground: '#f0fdf4',
 									addedColor: '#166534',
 									removedBackground: '#fef2f2',

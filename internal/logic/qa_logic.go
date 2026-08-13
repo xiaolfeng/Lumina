@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -120,6 +121,20 @@ func (l *QaLogic) GetSessionDetail(ctx context.Context, id string) (*qa.SessionD
 		return nil, xErr
 	}
 
+	// 建立 optionID → questionID 归属映射，用于把选项级补充归到所属问题
+	optionOwner := make(map[string]string)
+	for _, q := range questions {
+		var opts []map[string]interface{}
+		if q.Options != nil {
+			_ = json.Unmarshal(q.Options, &opts)
+		}
+		for _, o := range opts {
+			if id, ok := o["id"].(string); ok && id != "" {
+				optionOwner[id] = q.ID.String()
+			}
+		}
+	}
+
 	// 批量查询会话级全部补充内容（一次查询，避免 N+1），按问题 ID 分组
 	supplementMap := make(map[string][]qa.SupplementResponse)
 	supplements, suppErr := l.repo.supplement.GetBySessionID(ctx, parsedID)
@@ -127,11 +142,20 @@ func (l *QaLogic) GetSessionDetail(ctx context.Context, id string) (*qa.SessionD
 		l.log.Warn(ctx, fmt.Sprintf("GetSessionDetail - 查询补充内容失败（忽略，返回空补充）: %s", suppErr.Error()))
 	}
 	for _, s := range supplements {
-		// 仅聚合问题级补充（target_type=question），选项级补充由单题详情接口提供
-		if s.TargetType != "question" {
+		// 问题级补充按 question ID 归属；选项级补充经 optionID → questionID 映射归属
+		var key string
+		switch s.TargetType {
+		case "question":
+			key = s.TargetID.String()
+		case "option":
+			owner, ok := optionOwner[s.TargetID.String()]
+			if !ok {
+				continue // 无法归属的选项级补充，跳过
+			}
+			key = owner
+		default:
 			continue
 		}
-		key := s.TargetID.String()
 		supplementMap[key] = append(supplementMap[key], qa.SupplementResponse{
 			ID:          s.ID,
 			TargetType:  s.TargetType,
@@ -186,23 +210,39 @@ func (l *QaLogic) GetQuestionDetail(ctx context.Context, sessionID, questionID s
 		return nil, xErr
 	}
 
-	// 查询问题级别的补充内容
-	supplement, suppErr := l.repo.supplement.GetByTarget(ctx, "question", parsedQID)
-	var supplements []qa.SupplementResponse
-	if suppErr == nil && supplement != nil {
-		supplements = []qa.SupplementResponse{
-			{
-				ID:          supplement.ID,
-				TargetType:  supplement.TargetType,
-				TargetID:    supplement.TargetID,
-				ContentType: supplement.ContentType,
-				Content:     supplement.Content,
-				CreatedAt:   supplement.CreatedAt.Format(time.RFC3339),
-				UpdatedAt:   supplement.UpdatedAt.Format(time.RFC3339),
-			},
+	// 解析该问题的选项 ID 集合，用于归属选项级补充
+	optionSet := make(map[string]bool)
+	if question.Options != nil {
+		var opts []map[string]interface{}
+		if json.Unmarshal(question.Options, &opts) == nil {
+			for _, o := range opts {
+				if id, ok := o["id"].(string); ok && id != "" {
+					optionSet[id] = true
+				}
+			}
 		}
-	} else {
-		supplements = make([]qa.SupplementResponse, 0)
+	}
+
+	// 查询会话全部补充，过滤出该问题关联的（问题级 + 选项级）
+	allSupplements, suppErr := l.repo.supplement.GetBySessionID(ctx, parsedSID)
+	supplements := make([]qa.SupplementResponse, 0)
+	if suppErr == nil {
+		for _, s := range allSupplements {
+			isOwnQuestion := s.TargetType == "question" && s.TargetID == parsedQID
+			isOwnOption := s.TargetType == "option" && optionSet[s.TargetID.String()]
+			if !isOwnQuestion && !isOwnOption {
+				continue
+			}
+			supplements = append(supplements, qa.SupplementResponse{
+				ID:          s.ID,
+				TargetType:  s.TargetType,
+				TargetID:    s.TargetID,
+				ContentType: s.ContentType,
+				Content:     s.Content,
+				CreatedAt:   s.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:   s.UpdatedAt.Format(time.RFC3339),
+			})
+		}
 	}
 
 	return &qa.QuestionDetailResponse{

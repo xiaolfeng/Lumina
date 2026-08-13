@@ -1,80 +1,116 @@
-import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
 import { Badge } from '@lumina/components/ui/badge'
-import { ChevronDown, ChevronUp } from 'lucide-react'
-import type { SupplementItem } from '#/lib/models/response/qa-admin'
-import { useQuestionDetail } from '#/hooks/useQaAdmin'
+import type { QuestionSummary, SupplementItem } from '#/lib/models/response/qa-admin'
 import { Markdown, ShadowHtml } from '#/components/interact/primitives'
+import { formatAnswer, type AnswerOption } from '#/lib/format-answer'
 
 interface QuestionCardProps {
-  sessionId: string
-  question: { id: string; type: string; title: string; status: string; created_at: string; answered_at: string }
+  question: QuestionSummary
 }
 
-export function QuestionCard({ sessionId, question }: QuestionCardProps) {
-  const [expanded, setExpanded] = useState(false)
-  const { data, isLoading } = useQuestionDetail(sessionId, question.id)
+const statusVariantMap: Record<QuestionSummary['status'], 'default' | 'outline' | 'destructive' | 'secondary'> = {
+  answered: 'default',
+  skipped: 'outline',
+  cancelled: 'destructive',
+  pending: 'secondary',
+}
 
-  const statusVariant = question.status === 'answered' ? 'default' : question.status === 'skipped' ? 'outline' : 'secondary'
-  const statusLabel = question.status === 'answered' ? '已回答' : question.status === 'skipped' ? '已跳过' : '待回答'
+const statusLabelMap: Record<QuestionSummary['status'], string> = {
+  answered: '已回答',
+  skipped: '已跳过',
+  cancelled: '已取消',
+  pending: '待回答',
+}
+
+export function QuestionCard({ question }: QuestionCardProps) {
+  const options = (question.options ?? []) as AnswerOption[]
+  const questionSupplements = (question.supplements ?? []).filter(
+    (s) => s.target_type === 'question',
+  )
+
+  // 选项级补充按 target_id（选项 ID）分组，渲染选项时对齐展示
+  const optionSupplements = new Map<string, SupplementItem[]>()
+  for (const s of question.supplements ?? []) {
+    if (s.target_type !== 'option') continue
+    const list = optionSupplements.get(s.target_id) ?? []
+    list.push(s)
+    optionSupplements.set(s.target_id, list)
+  }
+
+  const variant = statusVariantMap[question.status] ?? 'secondary'
+  const statusLabel = statusLabelMap[question.status] ?? question.status
 
   return (
-    <Card className="cursor-pointer" onClick={() => setExpanded(!expanded)}>
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between py-3">
         <div className="flex items-center gap-3">
           <Badge variant="outline">{question.type}</Badge>
           <CardTitle className="text-base">{question.title}</CardTitle>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={statusVariant}>{statusLabel}</Badge>
-          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </div>
+        <Badge variant={variant}>{statusLabel}</Badge>
       </CardHeader>
-      {expanded && (
-        <CardContent>
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">加载中...</p>
-          ) : data?.data ? (
-            <div className="space-y-4">
-              {question.status === 'answered' && data.data.answer && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-1">回答</h4>
-                  <pre className="text-sm bg-muted p-3 rounded-md overflow-auto max-h-64">
-                    {JSON.stringify(data.data.answer, null, 2)}
-                  </pre>
-                </div>
-              )}
-              {data.data.description && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-1">描述</h4>
-                  <p className="text-sm text-muted-foreground">{data.data.description}</p>
-                </div>
-              )}
-              {data.data.supplements?.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-1">补充内容</h4>
-                  {data.data.supplements.map((s: SupplementItem) => (
-                    <div key={s.id} className="text-sm bg-muted p-3 rounded-md mt-1">
-                      <Badge variant="outline" className="mb-1">{s.content_type}</Badge>
-                      {s.content_type === 'html' ? (
-                        <ShadowHtml content={s.content} />
-                      ) : (
-                        <Markdown>{s.content}</Markdown>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="text-xs text-muted-foreground">
-                创建: {new Date(question.created_at).toLocaleString()}
-                {question.answered_at && ` | 回答: ${new Date(question.answered_at).toLocaleString()}`}
+      <CardContent className="space-y-4">
+        {/* 回答（按题型格式化） */}
+        {question.status === 'answered' && question.answer != null && (
+          <div>
+            <h4 className="text-sm font-semibold mb-1">回答</h4>
+            <p className="text-sm text-sea-ink">{formatAnswer(question.answer, options)}</p>
+          </div>
+        )}
+
+        {/* 选项列表（含选项级补充） */}
+        {options.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold mb-2">选项</h4>
+            <ul className="space-y-2">
+              {options.map((opt) => {
+                const supplements = optionSupplements.get(opt.id) ?? []
+                return (
+                  <li key={opt.id} className="text-sm">
+                    <span className="font-medium text-sea-ink">{opt.label}</span>
+                    {opt.description && (
+                      <span className="text-sea-ink-soft"> — {opt.description}</span>
+                    )}
+                    {supplements.map((s) => (
+                      <div key={s.id} className="mt-1.5 rounded-md bg-muted p-2.5">
+                        {s.content_type === 'html' ? (
+                          <ShadowHtml content={s.content} />
+                        ) : (
+                          <Markdown>{s.content}</Markdown>
+                        )}
+                      </div>
+                    ))}
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
+
+        {/* 问题级补充 */}
+        {questionSupplements.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold mb-1">补充内容</h4>
+            {questionSupplements.map((s) => (
+              <div key={s.id} className="mt-1.5 rounded-md bg-muted p-3">
+                <Badge variant="outline" className="mb-1.5">
+                  {s.content_type}
+                </Badge>
+                {s.content_type === 'html' ? (
+                  <ShadowHtml content={s.content} />
+                ) : (
+                  <Markdown>{s.content}</Markdown>
+                )}
               </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">暂无详情</p>
-          )}
-        </CardContent>
-      )}
+            ))}
+          </div>
+        )}
+
+        <div className="text-xs text-muted-foreground">
+          创建: {new Date(question.created_at).toLocaleString()}
+          {question.answered_at && ` | 回答: ${new Date(question.answered_at).toLocaleString()}`}
+        </div>
+      </CardContent>
     </Card>
   )
 }

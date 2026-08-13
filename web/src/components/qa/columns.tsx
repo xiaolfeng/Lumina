@@ -1,10 +1,13 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@lumina/components/ui/badge'
 import { Button } from '@lumina/components/ui/button'
-import { Trash2 } from 'lucide-react'
+import { Eye, Trash2 } from 'lucide-react'
 import type { SessionItem } from '#/lib/models/response/qa-admin'
 
-export function getSessionColumns(onDelete: (session: SessionItem) => void): ColumnDef<SessionItem>[] {
+export function getSessionColumns(
+  onDelete: (session: SessionItem) => void,
+  onView: (session: SessionItem) => void,
+): ColumnDef<SessionItem>[] {
 	return [
 		{
 			accessorKey: 'title',
@@ -67,6 +70,9 @@ export function getSessionColumns(onDelete: (session: SessionItem) => void): Col
 				const session = row.original
 				return (
 					<div className="flex items-center gap-2">
+						<Button variant="ghost" size="icon" title="查看详情" onClick={() => onView(session)}>
+							<Eye className="size-4" />
+						</Button>
 						<Button variant="ghost" size="icon" onClick={() => onDelete(session)}>
 							<Trash2 className="size-4 text-destructive" />
 						</Button>

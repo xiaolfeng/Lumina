@@ -21,14 +21,6 @@ export function useSessionDetail(id: string) {
   })
 }
 
-export function useQuestionDetail(sessionId: string, questionId: string) {
-  return useQuery({
-    queryKey: ['qa', 'session', sessionId, 'question', questionId],
-    queryFn: () => api.getQuestionDetail(sessionId, questionId),
-    enabled: !!sessionId && !!questionId,
-  })
-}
-
 export function useDeleteSession() {
   const queryClient = useQueryClient()
   return useMutation({

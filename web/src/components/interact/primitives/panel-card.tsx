@@ -31,7 +31,7 @@ export function PanelCard({
 	return (
 		<section
 			className={cn(
-				'overflow-hidden rounded-xl border border-line bg-surface shadow-[0_1px_3px_rgba(42,36,32,0.04),0_8px_24px_-8px_rgba(42,36,32,0.10)] backdrop-blur-sm',
+				'overflow-hidden rounded-xl border border-line bg-surface shadow-[0_1px_3px_rgba(51,39,28,0.04),0_8px_24px_-8px_rgba(51,39,28,0.10)] backdrop-blur-sm',
 				className,
 			)}
 		>
