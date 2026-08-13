@@ -21,14 +21,9 @@ type route struct {
 	wikiFrontendFS fs.FS
 }
 
-// NewRoute 注册所有后端 API 路由（不含前端静态资源）。
-func NewRoute(reg *xReg.Reg) {
-	NewRouteWithFrontend(nil, nil)(reg)
-}
-
-// NewRouteWithFrontend 注册全部路由，包括前端 SPA 静态资源服务。
+// NewRoute 注册全部路由，包括前端 SPA 静态资源服务。
 // frontendFS 或 wikiFrontendFS 为 nil 时跳过对应前端路由注册。
-func NewRouteWithFrontend(frontendFS fs.FS, wikiFrontendFS fs.FS) func(reg *xReg.Reg) {
+func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) func(reg *xReg.Reg) {
 	return func(reg *xReg.Reg) {
 		if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 			_ = xVaild.RegisterCustomValidators(v)

@@ -24,4 +24,3 @@ type CreateResponse struct {
 	IsActive    bool                   `json:"is_active"`            // 是否启用
 	CreatedAt   string                 `json:"created_at"`           // 创建时间（手动映射，BaseEntity.CreatedAt 的 json:"-"）
 }
-0

@@ -1,0 +1,124 @@
+# --------------------------------------------------------------------------------
+# Copyright (c) 2016-NOW(至今) 筱锋
+# Author: 筱锋「xiao_lfeng」(https://www.x-lf.com)
+# --------------------------------------------------------------------------------
+# 许可证声明：版权所有 (c) 2016-2026 筱锋。保留所有权利。
+# 有关MIT许可证的更多信息，请查看项目根目录下的LICENSE文件或访问：
+# https://opensource.org/licenses/MIT
+# --------------------------------------------------------------------------------
+
+# Docker 构建与 Release 发布流水线（GitHub Actions 驱动，本机不执行打包）
+#
+# 触发方式（Makefile 封装，需 gh CLI 已登录）:
+#   make docker-build VERSION=v0.1.0                 # 仅构建并推送镜像
+#   make publish VERSION=v0.1.1-beta.1               # 构建推送 + 创建 GitHub Release
+#
+# 版本语义:
+#   版本号含 "-"（如 v0.1.1-beta.1 / v0.2.0-alpha）→ 发布为 prerelease，镜像额外打 beta-latest tag
+#   其余（如 v0.1.0）                                → 正式 Release，镜像额外打 latest tag
+#
+# 前置条件: 仓库 Secrets 需配置 DOCKERHUB_USERNAME 与 DOCKERHUB_TOKEN（Docker Hub 凭据）
+# 注意: workflow_dispatch 只能从默认分支（master）触发，首次落地需先提交至 master
+name: Docker Build & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '发布版本号，如 v0.1.0 或 v0.1.1-beta.1（含 - 视为 prerelease）'
+        required: true
+        type: string
+      publish:
+        description: '构建完成后创建 GitHub Release'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write # 创建 Release / Git Tag（Docker Hub 推送走 DOCKERHUB_TOKEN，无需 packages）
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 完整历史，供 --generate-notes 与上一 tag 对比
+          fetch-tags: true
+
+      - name: Validate version format
+        run: |
+          echo "${{ inputs.version }}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' \
+            || { echo "::error::非法版本号: ${{ inputs.version }}，应为 vX.Y.Z 或 vX.Y.Z-预发布后缀"; exit 1; }
+
+      - name: Compute metadata (tags & prerelease)
+        id: meta
+        run: |
+          image="${{ secrets.DOCKERHUB_USERNAME }}/lumina"
+          tags="$image:${{ inputs.version }}"
+          prerelease="false"
+          if [[ "${{ inputs.version }}" == *-* ]]; then
+            # 预览版（含 -）：额外打 beta-latest，指向最新预览镜像
+            prerelease="true"
+            tags="$tags,$image:beta-latest"
+          else
+            # 正式版：额外打 latest，指向最新稳定镜像
+            tags="$tags,$image:latest"
+          fi
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create GitHub Release
+        # inputs.publish 为 boolean 类型，直接以布尔值判断（`== 'true'` 宽松比较
+        # 会转数字导致 true≠'true'，条件恒为 false 使 Release 永不创建）
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease_flag=""
+          if [ "${{ steps.meta.outputs.prerelease }}" = "true" ]; then
+            prerelease_flag="--prerelease"
+          fi
+
+          # 手动生成变更日志：GitHub 自动生成器（--generate-notes）依赖 previous tag 作
+          # 对比基准，首次发布（无任何 tag）时仅产出 Full Changelog 链接、无实际内容，
+          # 故改为 git log 列出提交：有 previous tag 时取版本区间，否则取全部提交。
+          prev_tag=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$prev_tag" ]; then
+            changelog=$(git log --oneline --no-merges "$prev_tag"..HEAD)
+          else
+            changelog=$(git log --oneline --no-merges)
+          fi
+
+          # 变更日志写入临时文件，经 --notes-file 传递（多行内容避免参数换行/缩进问题）
+          notes_file=$(mktemp)
+          printf '## 变更日志\n\n' > "$notes_file"
+          printf '%s\n' "$changelog" >> "$notes_file"
+
+          gh release create "${{ inputs.version }}" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "${{ inputs.version }}" \
+            --notes-file "$notes_file" \
+            $prerelease_flag
+
+          rm -f "$notes_file"

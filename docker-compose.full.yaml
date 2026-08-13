@@ -1,0 +1,101 @@
+# --------------------------------------------------------------------------------
+# Copyright (c) 2016-NOW(至今) 筱锋
+# Author: 筱锋「xiao_lfeng」(https://www.x-lf.com)
+# --------------------------------------------------------------------------------
+# 许可证声明：版权所有 (c) 2016-2026 筱锋。保留所有权利。
+# 有关MIT许可证的更多信息，请查看项目根目录下的LICENSE文件或访问：
+# https://opensource.org/licenses/MIT
+# --------------------------------------------------------------------------------
+
+# docker-compose.full.yaml — 全栈编排（应用 + PostgreSQL + Redis）
+#
+# 一条命令拉起完整环境，适用于本地开发 / 测试 / 演示。仅应用服务的部署编排见 docker-compose.yaml。
+#
+# 配置同样来自项目根目录 .env（env_file 直接注入容器），本文件仅覆盖：
+#   - DATABASE_HOST / NOSQL_HOST 指向 compose 内部服务名（覆盖 .env 中的 localhost）
+#   - 容器内固定监听地址与端口（映射端口由 .env XLF_PORT 决定，此处对齐保持一致）
+# .env 缺失时自动跳过（required: false）。
+#
+# 注意:
+#   - LLM_ENCRYPT_SECRET 为必需配置（LLM API Key 加密密钥），.env 缺失时启动报错。
+#   - .env 中的 XLF_BIOMETRIC_*（WebAuthn RP_ID / ORIGIN）默认指向 localhost:8080，
+#     本地全栈编排可直接使用；如需外网访问请按实际域名修改。
+#
+# 用法:
+#   docker compose -f docker-compose.full.yaml up -d --build
+#   docker compose -f docker-compose.full.yaml down -v   # 连同数据卷一并清理
+name: lumina-full
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lumina-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-lumina}
+      POSTGRES_PASSWORD: ${DATABASE_PASS:-lumina}
+      POSTGRES_DB: ${DATABASE_NAME:-lumina}
+      TZ: Asia/Shanghai
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-lumina} -d ${DATABASE_NAME:-lumina}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: lumina-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${NOSQL_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+    image: xiaolfeng/lumina:${VERSION:-latest}
+    container_name: lumina
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # 引入项目 .env 作为容器环境变量（DATABASE_*/NOSQL_*/LLM_*/REPOWIKI_*/XLF_* 等）
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # 覆盖为 compose 内部服务名（env_file 注入的 localhost 会被此处覆盖）
+      DATABASE_HOST: postgres
+      NOSQL_HOST: redis
+      # 容器内固定监听地址与端口（映射端口由 .env XLF_PORT 决定，此处对齐保持一致）
+      XLF_HOST: "0.0.0.0"
+      XLF_PORT: "${XLF_PORT:-8080}"
+    ports:
+      - "${XLF_PORT:-8080}:${XLF_PORT:-8080}"
+    volumes:
+      # RepoWiki 存储（.lumina/repowiki）与 Q&A 缓存（.lumina/cache）持久化
+      - lumina-data:/app/.lumina
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:${XLF_PORT:-8080}/api/v1/health/ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  pgdata:
+  redisdata:
+  lumina-data:

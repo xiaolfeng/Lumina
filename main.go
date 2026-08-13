@@ -29,7 +29,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	xMain.Runner(reg, log, route.NewRouteWithFrontend(distFS, wikiDistFS),
+	xMain.Runner(reg, log,
+		route.NewRoute(distFS, wikiDistFS),
 		startup.NewCronRunner(),
 	)
 }

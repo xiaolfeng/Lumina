@@ -1,0 +1,53 @@
+# --------------------------------------------------------------------------------
+# Copyright (c) 2016-NOW(至今) 筱锋
+# Author: 筱锋「xiao_lfeng」(https://www.x-lf.com)
+# --------------------------------------------------------------------------------
+# 许可证声明：版权所有 (c) 2016-2026 筱锋。保留所有权利。
+# 有关MIT许可证的更多信息，请查看项目根目录下的LICENSE文件或访问：
+# https://opensource.org/licenses/MIT
+# --------------------------------------------------------------------------------
+
+# docker-compose.yaml — 仅应用服务编排
+#
+# 默认连接外部已有的 PostgreSQL / Redis，适用于已有数据库/缓存基础设施的部署环境。
+# 完整自包含编排（app + postgres + redis）见 docker-compose.full.yaml。
+#
+# 配置全部来自项目根目录 .env（env-first 约定，env_file 直接注入容器），
+# 本文件仅覆盖容器内必须固定的项。.env 缺失时自动跳过（required: false）。
+#
+# 注意:
+#   - .env 中的 DATABASE_HOST / NOSQL_HOST 若为 localhost，容器内无法连接宿主，
+#     请改为宿主机可达地址（如 host.docker.internal）或 compose 服务名。
+#   - LLM_ENCRYPT_SECRET 为必需配置（LLM API Key 加密密钥），.env 缺失时启动报错。
+#   - .env 中的 XLF_BIOMETRIC_*（WebAuthn RP_ID / ORIGIN）需按实际访问域名配置。
+#
+# 用法:
+#   docker compose up -d --build
+#   docker compose up -d --build -f docker-compose.full.yaml   # 全栈
+name: lumina
+
+services:
+  app:
+    build:
+      context: .
+    image: ${DOCKER_HUB_USER:-xiaolfeng}/lumina:${VERSION:-latest}
+    container_name: lumina
+    restart: unless-stopped
+    # 引入项目 .env 作为容器环境变量（DATABASE_*/NOSQL_*/LLM_*/REPOWIKI_*/XLF_* 等）
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # 容器内固定监听地址（.env 的 XLF_HOST 保持原样注入，此处兜底为 0.0.0.0）
+      XLF_HOST: "0.0.0.0"
+    ports:
+      - "${XLF_PORT:-8080}:${XLF_PORT:-8080}"
+    volumes:
+      # RepoWiki 存储（.lumina/repowiki）与 Q&A 缓存（.lumina/cache）持久化
+      - ./.lumina:/app/.lumina
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:${XLF_PORT:-8080}/api/v1/health/ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
