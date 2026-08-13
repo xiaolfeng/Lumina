@@ -142,7 +142,7 @@ web/
     │           ├── index.ts          # 原语导出入口
     │           ├── kicker.tsx        # 小标题标签
     │           ├── panel-card.tsx    # 面板卡片容器
-    │           ├── shadow-html.tsx   # Shadow DOM HTML 沙盒渲染器（安全隔离）
+    │           ├── sandbox-frame.tsx # iframe sandbox HTML 沙盒渲染器（安全隔离）
     │           └── state-views.tsx   # 状态视图（空/加载/错误）
     ├── hooks/                  # React Hooks
     │   ├── useAuth.ts          # 认证 Hook（登录/登出/刷新/初始化/自动续期/WebAuthn）
@@ -220,7 +220,7 @@ web/
 | 新增首页落地页区块 | `src/components/landing/` | 首页拆分为 hero/features/tech 等区块组件 |
 | 新增业务组件 | `src/components/<domain>/` | 按业务域组织（apikey/、project/、pin/、profile/、qa/、interact/、llm/、ssh/、repowiki/、settings/） |
 | 新增题型组件 | `src/components/interact/question-*.tsx` | 遵循 `question-<type>.tsx` 命名，通过 `question-card.tsx` 分发 |
-| 新增交互原语 | `src/components/interact/primitives/` | 可复用的展示原语（Kicker/PanelCard/ShadowHtml 等）；Markdown 原语由 `@lumina/components` 提供 |
+| 新增交互原语 | `src/components/interact/primitives/` | 可复用的展示原语（Kicker/PanelCard/SandboxFrame 等）；Markdown 原语由 `@lumina/components` 提供 |
 | 新增 LLM 配置组件 | `src/components/llm/` | Provider/Model CRUD + Agent 角色模型分配 |
 | 新增 SSH Key 组件 | `src/components/ssh/` | CRUD 对话框 + 密钥生成入口 |
 | 新增 RepoWiki 组件 | `src/components/repowiki/` | 配置表单/版本管理/分析触发/Webhook 配置 |
@@ -259,7 +259,7 @@ web/
 - **Q&A 管理端**：Console Q&A 页面通过 REST API 管理会话，使用 `useQaAdmin` Hook。
 - **题型组件**：Interact 页面每种题型对应独立的 `question-<type>.tsx` 组件，通过 `question-card.tsx` 统一分发渲染，`question-shell.tsx` 提供统一外壳布局。
 - **交互原语**：`interact/primitives/` 包含可复用的展示原语组件，通过 `index.ts` 统一导出；文件名统一使用 **kebab-case**（如 `kicker.tsx`、`panel-card.tsx`），禁止使用 PascalCase 命名。Markdown 渲染原语（markdown/markdown-lite/markdown-mermaid/prose）已迁入 `@lumina/components`。
-- **HTML 沙盒**：`shadow-html.tsx` 使用 Shadow DOM 隔离不可信 HTML 渲染，禁止直接使用 `dangerouslySetInnerHTML`。
+- **HTML 沙盒**：`sandbox-frame.tsx` 使用 iframe sandbox（`allow-scripts` 不配 `allow-same-origin`）隔离不可信 HTML/CSS/JS 渲染，禁止直接使用 `dangerouslySetInnerHTML`。
 - **WebAuthn 集成**：浏览器端通过 `lib/webauthn/helpers.ts` 处理 ArrayBuffer/Base64 编解码，`useBiometric` Hook 管理注册/登录/凭证 CRUD 流程。
 - **个人资料管理**：`console/profile.tsx` 页面包含三个标签页（资料/密码/生物认证），分别对应 `profile/` 下的三个组件。
 - **首页模块化**：`routes/_public/index.tsx` 已拆分为 `components/landing/` 下的区块组件（hero/features/tech），禁止在路由文件中内联大段 JSX。
@@ -280,7 +280,7 @@ web/
 - 禁止在组件中直接操作 WebAuthn API；必须通过 `lib/webauthn/helpers.ts` + `useBiometric` Hook。
 - 禁止在 Interact 页面使用轮询获取问题；统一通过 WebSocket 实时推送。
 - 禁止在 `interact/primitives/` 中使用 PascalCase 文件名；统一 kebab-case。
-- 禁止直接使用 `dangerouslySetInnerHTML` 渲染不可信 HTML；必须通过 `shadow-html.tsx` 沙盒组件。
+- 禁止直接使用 `dangerouslySetInnerHTML` 渲染不可信 HTML；必须通过 `sandbox-frame.tsx` 沙盒组件。
 - 禁止在业务模块中重复创建删除确认对话框；统一使用 `confirm-delete-dialog.tsx`。
 - 禁止在路由文件（`routes/*.tsx`）中内联大段页面 JSX；拆分到 `components/` 下。
 - 禁止在前端缓存或持久化 LLM API Key / SSH 私钥明文。
