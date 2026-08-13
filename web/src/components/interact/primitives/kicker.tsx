@@ -35,7 +35,7 @@ export function Kicker({
 			className={cn(
 				'inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em]',
 				toneClass[tone],
-				accent && 'before:h-3 before:w-0.5 before:rounded-full before:bg-lagoon',
+				accent && 'before:h-3 before:w-0.5 before:bg-lagoon',
 				className,
 			)}
 		>

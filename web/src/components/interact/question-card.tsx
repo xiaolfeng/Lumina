@@ -110,7 +110,7 @@ export function QuestionCard({
       header={
         <div className="flex items-center gap-3 px-5 py-4">
           {/* 烛火 Agent 徽章 —— 烛光的圆（全圆只给有生命的东西） */}
-          <div className="relative grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-lagoon to-palm shadow-[0_4px_16px_-4px_rgba(201,136,58,0.55)]">
+          <div className="relative grid size-9 shrink-0 place-items-center border border-line text-lagoon-deep">
             <Flame className="size-4 text-white" aria-hidden />
           </div>
           <div className="flex min-w-0 flex-col">

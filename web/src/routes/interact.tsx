@@ -19,7 +19,7 @@ function InteractLayout() {
 		>
 			<div className="flex h-screen flex-col bg-bg-base">
 				{/* 顶部品牌栏 */}
-				<header className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-header-bg px-4 backdrop-blur-md">
+				<header className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-header-bg px-4">
 					<Sparkles className="size-4 text-lagoon" aria-hidden />
 					<span className="display-title text-sm font-bold tracking-tight text-sea-ink">
 						Lumina
@@ -42,7 +42,7 @@ function InteractLayout() {
 					)}
 
 					{progress && (
-						<span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600 mr-2">
+						<span className="inline-flex items-center gap-1 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600 mr-2">
 							<span className="inline-block size-1.5 rounded-full bg-emerald-500" />
 							活跃
 						</span>

@@ -2,7 +2,7 @@
 
 import { Button } from '@lumina/components/ui/button'
 import { Link, useRouter } from '@tanstack/react-router'
-import { Github, LayoutDashboard, LogOut, Menu, Sparkles, X } from 'lucide-react'
+import { Github, LayoutDashboard, LogOut, Menu, X } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { getCookie, useAuth } from '#/hooks/useAuth'
@@ -37,7 +37,7 @@ export function Navbar() {
         className={
           'mx-auto grid max-w-6xl grid-cols-12 items-center gap-4 border transition-all duration-300 ' +
           (scrolled
-            ? 'mt-4 rounded-xl border-line bg-surface px-6 py-3 shadow-[0_4px_24px_rgba(51,39,28,0.06)] backdrop-blur-md'
+            ? 'mt-4 border-line bg-surface px-6 py-3'
             : 'border-transparent bg-transparent px-4 py-4 md:px-6 md:py-5')
         }
       >
@@ -48,18 +48,9 @@ export function Navbar() {
             className="inline-flex items-center gap-2 no-underline"
             aria-label="Lumina 首页"
           >
-            <Sparkles
-              className="h-5 w-5 shrink-0 text-lagoon"
-              aria-hidden
-            />
-            <span className="display-title text-lg font-bold tracking-tight text-sea-ink">
-              Lumina
-            </span>
-            <span className="hidden items-center gap-1.5 sm:inline-flex">
-              <span className="h-px w-3 bg-lagoon/40" />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-lagoon-deep">
-                微明
-              </span>
+            <span className="size-2.5 shrink-0 rounded-full bg-lagoon shadow-[0_0_0_3px_rgba(201,136,58,0.16)]" />
+            <span className="display-title text-lg font-semibold tracking-tight text-sea-ink">
+              微明
             </span>
           </Link>
         </div>
@@ -142,7 +133,7 @@ export function Navbar() {
         {/* ── Mobile menu panel ── */}
         {open && (
           <motion.div
-            className="col-span-12 flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 shadow-[0_4px_24px_rgba(51,39,28,0.06)] backdrop-blur-md md:hidden"
+            className="col-span-12 flex flex-col gap-3 border border-line bg-surface p-5 md:hidden"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}

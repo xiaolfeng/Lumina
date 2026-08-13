@@ -38,7 +38,7 @@ export function MobileSessionDrawer({
 				side="right"
 				showCloseButton={false}
 				overlayClassName="bg-black/20 backdrop-blur-sm"
-				className="m-3 h-[calc(100%-1.5rem)] w-[340px] rounded-2xl border border-line bg-surface-strong shadow-[0_24px_80px_rgba(0,0,0,0.18)] data-[state=open]:duration-300 data-[state=closed]:duration-200"
+				className="m-3 h-[calc(100%-1.5rem)] w-[340px] border border-line bg-surface-strong data-[state=open]:duration-300 data-[state=closed]:duration-200"
 			>
 				<SessionPanel
 					sessions={sessions}

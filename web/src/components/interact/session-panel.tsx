@@ -76,7 +76,7 @@ export function SessionPanel({
 					<Separator className="bg-line" />
 					<div className={isMobile ? 'p-4' : 'p-3'}>
 						<div
-							className={`rounded-xl border border-line bg-foam ${isMobile ? 'p-4' : 'p-3'}`}
+							className={`border border-line bg-foam ${isMobile ? 'p-4' : 'p-3'}`}
 						>
 							<div
 								className={`${isMobile ? 'mb-3' : 'mb-2'} flex items-center justify-between`}
@@ -84,7 +84,7 @@ export function SessionPanel({
 								<span className="text-[10px] font-semibold uppercase tracking-wider text-sea-ink-soft">
 									会话信息
 								</span>
-								<span className="inline-flex items-center gap-1 rounded-full bg-lagoon/10 px-2 py-0.5 text-[10px] font-medium text-lagoon-deep">
+								<span className="inline-flex items-center gap-1 bg-lagoon/10 px-2 py-0.5 text-[10px] font-medium text-lagoon-deep">
 									<span className="inline-block size-1.5 rounded-full bg-lagoon" />
 									活跃
 								</span>
@@ -114,7 +114,7 @@ export function SessionPanel({
 									className={`${isMobile ? 'h-2' : 'h-1.5'} overflow-hidden rounded-full bg-line`}
 								>
 									<div
-										className="h-full rounded-full bg-gradient-to-r from-lagoon to-palm transition-all duration-500"
+										className="h-full bg-lagoon transition-all duration-500"
 										style={{ width: `${percent}%` }}
 									/>
 								</div>

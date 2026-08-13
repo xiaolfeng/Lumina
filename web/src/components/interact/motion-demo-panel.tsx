@@ -95,7 +95,7 @@ export function MotionDemoPanel({
 					</pre>
 				</div>
 
-				<div className="rounded-xl border border-line p-5">
+				<div className="border border-line p-5">
 					<p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-sea-ink-soft">
 						实际效果预览
 					</p>

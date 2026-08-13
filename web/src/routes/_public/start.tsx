@@ -38,7 +38,7 @@ const viewportOnce = { once: true, margin: '-80px' } as const
 /* ─── Shared class strings ─────────────────────────────── */
 
 const shellBase =
-  'border border-line bg-surface shadow-[0_4px_24px_rgba(51,39,28,0.06)] backdrop-blur-sm'
+  'border border-line bg-surface'
 
 const kickerBase =
   'text-[11px] font-semibold uppercase tracking-[0.2em] text-lagoon-deep'
@@ -124,9 +124,9 @@ function StartPage() {
             className="mb-4 flex items-center justify-center gap-3"
             variants={fadeUp}
           >
-            <span className="h-px w-8 bg-gradient-to-r from-transparent to-lagoon/30" />
+            <span className="h-px w-8 bg-line" />
             <span className={kickerBase}>快速开始</span>
-            <span className="h-px w-8 bg-gradient-to-l from-transparent to-lagoon/30" />
+            <span className="h-px w-8 bg-line" />
           </motion.div>
 
           <motion.h1
@@ -134,7 +134,7 @@ function StartPage() {
             variants={fadeUp}
           >
             开始使用{' '}
-            <span className="bg-gradient-to-br from-lagoon-deep to-palm bg-clip-text text-transparent">
+            <span className="text-lagoon-deep">
               Lumina
             </span>
           </motion.h1>
@@ -160,7 +160,7 @@ function StartPage() {
           {steps.map((item) => (
             <motion.article
               key={item.step}
-              className={`${shellBase} rounded-xl p-6`}
+              className={`${shellBase} p-6`}
               aria-label={`步骤 ${item.step}：${item.title}`}
               variants={fadeUp}
               whileHover={{
@@ -229,13 +229,13 @@ function StartPage() {
             className="mb-8 flex items-center justify-center gap-3"
             variants={fadeUp}
           >
-            <span className="h-px w-8 bg-gradient-to-r from-transparent to-lagoon/30" />
+            <span className="h-px w-8 bg-line" />
             <span className={kickerBase}>验证部署</span>
-            <span className="h-px w-8 bg-gradient-to-l from-transparent to-lagoon/30" />
+            <span className="h-px w-8 bg-line" />
           </motion.div>
 
           <motion.div
-            className={`${shellBase} rounded-xl p-6`}
+            className={`${shellBase} p-6`}
             variants={fadeUp}
           >
             <p className="mb-4 text-sm text-sea-ink-soft">
@@ -287,9 +287,9 @@ function StartPage() {
             className="mb-8 flex items-center justify-center gap-3"
             variants={fadeUp}
           >
-            <span className="h-px w-8 bg-gradient-to-r from-transparent to-lagoon/30" />
+            <span className="h-px w-8 bg-line" />
             <span className={kickerBase}>核心模块</span>
-            <span className="h-px w-8 bg-gradient-to-l from-transparent to-lagoon/30" />
+            <span className="h-px w-8 bg-line" />
           </motion.div>
 
           <motion.h2
@@ -303,7 +303,7 @@ function StartPage() {
             {coreModules.map((mod) => (
               <motion.article
                 key={mod.title}
-                className={`${shellBase} cursor-pointer rounded-xl p-5`}
+                className={`${shellBase} cursor-pointer p-5`}
                 aria-label={`${mod.title} 模块说明`}
                 variants={fadeUp}
                 whileHover={{
@@ -328,7 +328,7 @@ function StartPage() {
                   {mod.tools.map((tool) => (
                     <span
                       key={tool}
-                      className="inline-flex items-center rounded-full bg-gradient-to-r from-lagoon/5 to-palm/5 px-2.5 py-0.5 text-[10px] font-semibold text-lagoon-deep ring-1 ring-lagoon/10"
+                      className="inline-flex items-center border border-line px-2.5 py-0.5 text-[10px] font-semibold text-lagoon-deep"
                     >
                       {tool}
                     </span>
@@ -346,7 +346,7 @@ function StartPage() {
         aria-label="行动号召"
       >
         <motion.div
-          className={`${shellBase} mx-auto max-w-xl rounded-2xl px-8 py-14`}
+          className={`${shellBase} mx-auto max-w-xl px-8 py-14`}
           initial="hidden"
           whileInView="visible"
           viewport={viewportOnce}
@@ -377,7 +377,7 @@ function StartPage() {
             <Button
               asChild
               size="lg"
-              className="group relative h-12 overflow-hidden rounded-full bg-gradient-to-r from-lagoon to-palm px-8 text-base font-semibold !text-white shadow-lg shadow-lagoon/25 transition-shadow duration-300 hover:shadow-xl hover:shadow-lagoon/40"
+              className="group relative h-12 bg-sea-ink px-8 text-base font-semibold text-foam hover:bg-lagoon-deep"
             >
               <Link to="/auth/login" aria-label="登录 Lumina">
                 立即登录
@@ -391,7 +391,7 @@ function StartPage() {
               asChild
               variant="outline"
               size="lg"
-              className="h-12 rounded-full border-line px-8 text-base font-medium text-sea-ink-soft transition-colors duration-300 hover:border-lagoon/30 hover:bg-lagoon/5 hover:text-sea-ink"
+              className="h-12 px-8 text-base font-medium text-sea-ink-soft transition-colors duration-300 hover:border-sea-ink hover:text-sea-ink"
             >
               <a
                 href="https://github.com/xiaolfeng/Lumina"

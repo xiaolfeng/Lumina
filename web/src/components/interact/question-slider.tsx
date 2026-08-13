@@ -29,10 +29,10 @@ export function QuestionSlider({
 			onSubmit={() => onSubmit({ value })}
 		>
 			<div
-				className={`space-y-3 rounded-xl border border-line bg-foam px-5 py-6 ${isSupplementLoading ? 'pointer-events-none opacity-50' : ''}`}
+				className={`space-y-3 border border-line bg-foam px-5 py-6 ${isSupplementLoading ? 'pointer-events-none opacity-50' : ''}`}
 			>
 				<div className="text-center">
-					<span className="inline-flex items-center justify-center rounded-full bg-lagoon/10 px-4 py-1.5 font-mono text-2xl font-bold text-lagoon-deep">
+					<span className="inline-flex items-center justify-center bg-lagoon/10 px-4 py-1.5 font-mono text-2xl font-bold text-lagoon-deep">
 						{value}
 					</span>
 				</div>

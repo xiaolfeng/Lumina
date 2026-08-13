@@ -40,7 +40,7 @@ export function HistoryCard({
         {Object.entries(groupedHistory).map(([group, questions]) => (
           <div key={group} className="px-3 py-2">
             <div className="mb-1.5 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-lagoon/8 px-2 py-0.5 text-[10px] font-semibold text-lagoon-deep">
+              <span className="inline-flex items-center gap-1 bg-lagoon/8 px-2 py-0.5 text-[10px] font-semibold text-lagoon-deep">
                 {group}
               </span>
               <span className="text-[10px] text-sea-ink-soft">

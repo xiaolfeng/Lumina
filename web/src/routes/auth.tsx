@@ -81,16 +81,6 @@ function AuthLayout() {
         animate="visible"
         variants={leftPanelVariants}
       >
-        {/* Decorative orbs */}
-        <div
-          className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full opacity-20 blur-3xl"
-          style={{ background: 'var(--lagoon)' }}
-        />
-        <div
-          className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full opacity-15 blur-3xl"
-          style={{ background: 'var(--palm)' }}
-        />
-
         {/* Top */}
         <div className="relative z-10">
           <motion.div variants={itemVariants}>
@@ -138,7 +128,7 @@ function AuthLayout() {
             {highlights.map((h) => (
               <span
                 key={h.label}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium backdrop-blur-sm"
+                className="inline-flex items-center gap-1.5 border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium"
               >
                 <h.icon className="h-4 w-4 text-lagoon" aria-hidden />
                 {h.label}

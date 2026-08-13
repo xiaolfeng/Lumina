@@ -128,7 +128,7 @@ export function QuestionShell({
               size="sm"
               onClick={onSubmit}
               disabled={submitDisabled || isSupplementLoading}
-              className="rounded-lg bg-gradient-to-b from-lagoon to-lagoon-deep text-white shadow-sm hover:from-lagoon/95 hover:to-lagoon-deep/95"
+              className="bg-sea-ink text-foam hover:bg-lagoon-deep"
             >
               <Send className="mr-1.5 size-3.5" aria-hidden />
               提交

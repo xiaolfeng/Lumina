@@ -19,7 +19,7 @@ export function OptionDetailLabel({
 
   return (
     <motion.div
-      className={`flex shrink-0 items-center gap-0.5 self-start cursor-pointer overflow-hidden whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-medium transition-colors duration-200 ${
+      className={`flex shrink-0 items-center gap-0.5 self-start cursor-pointer overflow-hidden whitespace-nowrap px-1.5 py-0.5 text-[10px] font-medium transition-colors duration-200 ${
         isActive ? 'bg-lagoon/15 text-lagoon-deep' : 'bg-blue-100 text-blue-600'
       }`}
       animate={{ width: expanded ? 'auto' : 22 }}

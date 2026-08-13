@@ -107,7 +107,7 @@ export function QuestionOptions({
                   {opt.label}
                 </span>
                 {opt.recommended && (
-                  <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                  <span className="inline-flex shrink-0 items-center gap-0.5 bg-lagoon/10 px-2 py-0.5 text-[10px] font-semibold text-lagoon-deep">
                     <Star className="size-2.5" aria-hidden />
                     推荐
                   </span>
