@@ -1,8 +1,8 @@
 import { lazy, Suspense } from 'react'
-import { CircleDot } from 'lucide-react'
+import { Flame } from 'lucide-react'
 
 import type { Question } from './types'
-import { Kicker, Markdown, PanelCard, proseQuestion } from './primitives'
+import { Markdown, PanelCard, proseQuestion } from './primitives'
 
 import type {
   QuestionComponentProps,
@@ -68,6 +68,8 @@ interface QuestionCardProps {
   onDismissSupplementLoading?: () => void
   onViewOptionDetail?: (optId: string) => void
   activeOptionId?: string
+  /** 发起提问的 Agent 名称（编者按引言用），缺省显示「Agent」 */
+  agent?: string
 }
 
 export function QuestionCard({
@@ -79,6 +81,7 @@ export function QuestionCard({
   onDismissSupplementLoading,
   onViewOptionDetail,
   activeOptionId,
+  agent,
 }: QuestionCardProps) {
   if (!question) {
     return (
@@ -105,12 +108,19 @@ export function QuestionCard({
     <PanelCard
       flushHeader
       header={
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <Kicker tone="lagoon-deep">当前问题</Kicker>
-          <span className="inline-flex items-center gap-1 rounded-full bg-lagoon/10 px-2 py-0.5 text-[10px] font-semibold text-lagoon-deep">
-            <CircleDot className="size-2.5" aria-hidden />
-            {question.groupLabel}
-          </span>
+        <div className="flex items-center gap-3 px-5 py-4">
+          {/* 烛火 Agent 徽章 —— 烛光的圆（全圆只给有生命的东西） */}
+          <div className="relative grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-lagoon to-palm shadow-[0_4px_16px_-4px_rgba(201,136,58,0.55)]">
+            <Flame className="size-4 text-white" aria-hidden />
+          </div>
+          <div className="flex min-w-0 flex-col">
+            <span className="display-title text-sm italic leading-tight text-sea-ink">
+              {agent ?? 'Agent'} 想问你
+            </span>
+            <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-lagoon">
+              关于 {question.groupLabel || '本次主题'}
+            </span>
+          </div>
         </div>
       }
     >

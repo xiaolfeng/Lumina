@@ -188,6 +188,17 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
+  /* 方圆尺度（暖阳 · 5 级，语义化命名，生成 rounded-flat/chip/btn/card 工具类）
+     flat  纸页的方：线条 / tab / 表格
+     chip  器物的微圆：标签 / chip / 小图标
+     btn   被照亮器物的圆：按钮 / 输入
+     card  包裹的柔：卡片 / 面板
+     ── 全圆用内置 rounded-full（999px）：烛光的圆，只给头像 / 状态点 / 火焰，少而精 */
+  --radius-flat: 0px;
+  --radius-chip: 4px;
+  --radius-btn: 8px;
+  --radius-card: 14px;
+
   /* 侧边栏 */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);

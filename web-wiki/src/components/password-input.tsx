@@ -33,7 +33,7 @@ export function PasswordInput({ wikiId }: PasswordInputProps) {
     <div className="flex min-h-[400px] items-center justify-center px-4 py-12">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-6 rounded-xl border border-line bg-surface-strong p-6 shadow-sm"
+        className="w-full max-w-sm space-y-6 rounded-card border border-line bg-surface-strong p-6 shadow-sm"
       >
         {/* 图标 + 标题 */}
         <div className="text-center">

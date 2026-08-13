@@ -13,7 +13,7 @@ export function getSessionColumns(
 			accessorKey: 'title',
 			header: '标题',
 			cell: ({ row }) => (
-				<span className="font-medium">{row.getValue('title')}</span>
+				<span className="display-title font-medium">{row.getValue('title')}</span>
 			),
 		},
 		{
@@ -45,10 +45,15 @@ export function getSessionColumns(
 			header: '状态',
 			cell: ({ row }) => {
 				const status = row.getValue('status') as string
-				const variant =
-					status === 'active' ? 'default' : status === 'expired' ? 'outline' : 'destructive'
 				const label = status === 'active' ? '活跃' : status === 'expired' ? '已过期' : '已删除'
-				return <Badge variant={variant}>{label}</Badge>
+				const dot = status === 'active' ? 'bg-emerald-500' : status === 'expired' ? 'bg-sea-ink-soft/40' : 'bg-destructive'
+				const text = status === 'active' ? 'text-emerald-600' : status === 'expired' ? 'text-sea-ink-soft' : 'text-destructive'
+				return (
+					<span className={`inline-flex items-center gap-1.5 text-xs font-medium ${text}`}>
+						<span className={`size-1.5 rounded-full ${dot}`} aria-hidden />
+						{label}
+					</span>
+				)
 			},
 		},
 		{

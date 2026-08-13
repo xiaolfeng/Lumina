@@ -20,14 +20,14 @@ export function SessionItem({
 		<button
 			type="button"
 			onClick={() => onSelect(session.id)}
-			className={`group flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-3 py-2.5 text-left transition-colors duration-150 ${
+			className={`group flex w-full cursor-pointer flex-col gap-1.5 rounded-chip px-3 py-2.5 text-left transition-colors duration-150 ${
 				isActive
 					? 'bg-lagoon/10 text-sea-ink'
 					: 'text-sea-ink-soft hover:bg-lagoon/5 hover:text-sea-ink'
 			}`}
 			aria-label={`会话：${session.title}`}
 		>
-			<span className="text-sm font-medium leading-tight">{session.title}</span>
+			<span className="display-title text-sm font-medium leading-tight">{session.title}</span>
 			<div className="flex items-center gap-2 text-[11px]">
 				<span className="flex items-center gap-0.5">
 					<Bot className="size-3" aria-hidden />

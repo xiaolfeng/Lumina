@@ -44,7 +44,7 @@ function QaPage() {
 			{/* 状态筛选 + 表格区域 */}
 			<motion.div variants={staggerItem}>
 				<Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
-					<TabsList>
+					<TabsList variant="line" className="gap-6">
 						<TabsTrigger value="">全部</TabsTrigger>
 						<TabsTrigger value="active">活跃</TabsTrigger>
 						<TabsTrigger value="expired">已过期</TabsTrigger>

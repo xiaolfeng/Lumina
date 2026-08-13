@@ -23,7 +23,7 @@ function ProfilePage() {
 
       <motion.div variants={staggerItem}>
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList>
+          <TabsList variant="line" className="gap-6">
             <TabsTrigger value="profile">个人资料</TabsTrigger>
             <TabsTrigger value="biometric">生物特征</TabsTrigger>
             <TabsTrigger value="password">修改密码</TabsTrigger>

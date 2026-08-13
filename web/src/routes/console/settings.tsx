@@ -90,7 +90,7 @@ function SettingsPage() {
       />
 
       <Tabs defaultValue="provider" className="space-y-4">
-        <TabsList>
+        <TabsList variant="line" className="gap-6">
           <TabsTrigger value="provider">Provider 管理</TabsTrigger>
           <TabsTrigger value="model">模型管理</TabsTrigger>
           <TabsTrigger value="agent">Agent 分配</TabsTrigger>

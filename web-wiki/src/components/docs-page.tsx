@@ -56,7 +56,7 @@ export function DocsPage({ wikiId, tree, pageData, children }: DocsPageProps) {
         <header className="flex h-16 shrink-0 items-center gap-2 px-4">
           <SidebarTrigger className="-ml-1" />
           {pageData?.title && (
-            <h1 className="text-lg font-semibold text-sea-ink">
+            <h1 className="display-title text-lg font-semibold text-sea-ink">
               {pageData.title}
             </h1>
           )}
@@ -81,7 +81,7 @@ export function DocsPage({ wikiId, tree, pageData, children }: DocsPageProps) {
                 {/* Header：标题 + 描述 + 面包屑 + 更新时间 */}
                 <header className="mb-8">
                   {pageData?.title && (
-                    <h1 className="mb-2 text-3xl font-bold tracking-tight text-sea-ink">
+                    <h1 className="mb-2 display-title text-3xl font-semibold tracking-tight text-sea-ink">
                       {pageData.title}
                     </h1>
                   )}

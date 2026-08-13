@@ -104,7 +104,7 @@ export function AppSidebar() {
 											<Sparkles className="size-4" />
 										</div>
 										<div className="flex flex-col gap-0.5 leading-none">
-											<span className="font-semibold text-sea-ink">
+											<span className="display-title text-sm font-semibold text-sea-ink">
 												微明 Lumina
 											</span>
 											<span className="text-xs text-sea-ink-soft">

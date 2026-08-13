@@ -217,6 +217,7 @@ function InteractPage() {
               ) : activeQuestion ? (
                 <QuestionCard
                   question={activeQuestion}
+                  agent={current?.agent}
                   onSubmit={(answer) => submitAnswer(activeQuestion.id, answer)}
                   onSkip={() => skipQuestion(activeQuestion.id)}
                   onRequestSupplement={(payload) => requestSupplement(payload)}

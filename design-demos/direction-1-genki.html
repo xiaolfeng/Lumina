@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>方向一 · 元气对话感 — Lumina Q&A 重设计</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ═══════ 方向一 · 元气对话感 ═══════
+     设计逻辑：为「泉此方」的元气御宅族性格量身定制。
+     把 Q&A 从「填问卷」变成「元气少女跟你一问一答」。
+     保留余烬暖阳配色，但提亮饱满、加入对话气泡与活泼微交互。 */
+
+  :root {
+    --amber: #d9953c;        /* 琥珀金 · 提亮（烛光本体） */
+    --amber-bright: #e8a855; /* 亮琥珀 · 高光 hover */
+    --ember: #c47b5a;        /* 余烬橙 · 温暖余温 */
+    --ink: #33271c;          /* 深暖褐 · 文字主色 */
+    --ink-soft: #6b5f52;     /* 柔褐 · 次要文字 */
+    --sand: #f2e7d5;         /* 沙褐 · 沉淀之壤 */
+    --foam: #fdf8f0;         /* 烛晕 · 微光弥漫 */
+    --cream: #fffbf5;        /* 奶油白 · 气泡底 */
+    --line: rgba(51, 39, 28, 0.12);
+    --ok: #4f9d69;           /* 苔绿 · 在线/活跃 */
+
+    --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Fraunces', Georgia, serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background:
+      radial-gradient(900px 500px at -6% -8%, rgba(217, 149, 60, 0.30), transparent 60%),
+      radial-gradient(800px 480px at 108% -10%, rgba(196, 123, 90, 0.20), transparent 62%),
+      linear-gradient(180deg, #fbf3e7 0%, #f6ecdf 45%, #f2e7d5 100%);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* ── 预览切换器（仅原型辅助，非产品 UI） ── */
+  .demo-switcher {
+    position: fixed; top: 16px; right: 16px; z-index: 100;
+    display: flex; gap: 4px; padding: 4px;
+    background: rgba(51, 39, 28, 0.82);
+    border-radius: 999px; backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px -8px rgba(51,39,28,0.4);
+  }
+  .demo-switcher button {
+    font-family: var(--font-sans); font-size: 12px; font-weight: 700;
+    color: rgba(255,251,245,0.6); background: transparent; border: 0;
+    padding: 7px 16px; border-radius: 999px; cursor: pointer;
+    transition: all .2s ease;
+  }
+  .demo-switcher button.active { color: var(--ink); background: var(--amber-bright); }
+
+  .screen { display: none; height: 100vh; }
+  .screen.active { display: flex; }
+
+  /* ═══════ INTERACT 界面 ═══════ */
+  .app { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* 顶部品牌栏 */
+  .topbar {
+    height: 56px; flex: none; display: flex; align-items: center; gap: 10px;
+    padding: 0 20px; background: rgba(255,251,245,0.78);
+    border-bottom: 1px solid var(--line); backdrop-filter: blur(12px);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; }
+  .brand-mark {
+    width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+    background: linear-gradient(145deg, var(--amber-bright), var(--amber));
+    box-shadow: 0 2px 8px -2px rgba(217,149,60,0.6);
+  }
+  .brand-mark svg { width: 15px; height: 15px; color: #fff; }
+  .brand-name { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+  .brand-sub { font-size: 10px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber); }
+
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .progress-dots { display: flex; align-items: center; gap: 4px; }
+  .progress-dots .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+  .progress-dots .dot.done { background: var(--amber-bright); box-shadow: 0 0 0 3px rgba(232,168,85,0.18); animation: glow 2s ease-in-out infinite; }
+  .progress-dots .dot.now { background: var(--amber); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes glow { 0%,100%{box-shadow:0 0 0 3px rgba(232,168,85,0.16)} 50%{box-shadow:0 0 0 6px rgba(232,168,85,0.05)} }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.35)} }
+
+  .live-chip {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700;
+    color: var(--ok); background: rgba(79,157,105,0.12); padding: 4px 10px; border-radius: 999px;
+  }
+  .live-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); animation: pulse 1.4s infinite; }
+
+  /* 三栏主体 */
+  .body { flex: 1; display: flex; min-height: 0; }
+
+  /* 会话列表 */
+  .sessions {
+    width: 264px; flex: none; display: flex; flex-direction: column;
+    border-right: 1px solid var(--line); background: rgba(255,251,245,0.4); padding: 14px;
+  }
+  .sessions-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .sessions-head .label { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); }
+  .session-item {
+    display: flex; flex-direction: column; gap: 3px; padding: 11px 12px; border-radius: 12px;
+    cursor: pointer; transition: all .18s ease; position: relative;
+  }
+  .session-item:hover { background: rgba(217,149,60,0.08); }
+  .session-item.active { background: rgba(255,251,245,0.92); box-shadow: 0 4px 14px -6px rgba(51,39,28,0.18); }
+  .session-item .t { font-size: 13px; font-weight: 700; line-height: 1.3; }
+  .session-item .meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--ink-soft); }
+  .session-item .meta svg { width: 11px; height: 11px; }
+  .session-item.active::before {
+    content: ''; position: absolute; left: -14px; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 22px; border-radius: 3px; background: var(--amber-bright);
+  }
+
+  /* 问答区 */
+  .qa { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; padding: 28px 32px; }
+  .qa-inner { max-width: 640px; margin: 0 auto; width: 100%; }
+
+  /* 对话气泡 */
+  .msg { display: flex; gap: 12px; margin-bottom: 20px; }
+  .msg .avatar {
+    width: 38px; height: 38px; flex: none; border-radius: 50%;
+    background: linear-gradient(145deg, var(--amber-bright), var(--ember));
+    display: grid; place-items: center; box-shadow: 0 4px 12px -3px rgba(196,123,90,0.5);
+    position: relative;
+  }
+  .msg .avatar svg { width: 19px; height: 19px; color: #fff; }
+  .msg .avatar .spark {
+    position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--amber-bright); box-shadow: 0 0 0 2px #fff;
+  }
+  .bubble {
+    position: relative; background: var(--cream); border: 1px solid var(--line);
+    border-radius: 18px; border-top-left-radius: 5px; padding: 16px 18px;
+    box-shadow: 0 6px 18px -8px rgba(51,39,28,0.14); max-width: 520px;
+  }
+  .bubble .kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber); margin-bottom: 8px; }
+  .bubble .kicker::before { content: ''; width: 14px; height: 2px; border-radius: 2px; background: var(--amber-bright); }
+  .bubble .q { font-family: var(--font-display); font-size: 21px; font-weight: 600; line-height: 1.45; }
+  .bubble .desc { margin-top: 8px; font-size: 13px; color: var(--ink-soft); line-height: 1.6; }
+
+  /* 选项 */
+  .options { display: flex; flex-direction: column; gap: 9px; margin-top: 14px; }
+  .opt {
+    display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-radius: 14px;
+    background: var(--cream); border: 1.5px solid var(--line); cursor: pointer;
+    transition: all .16s ease; font-size: 14px; font-weight: 600;
+  }
+  .opt:hover { border-color: var(--amber); transform: translateX(3px); background: #fffdf8; }
+  .opt .radio {
+    width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2px solid var(--line);
+    display: grid; place-items: center; transition: all .16s ease;
+  }
+  .opt.sel { border-color: var(--amber); background: rgba(232,168,85,0.08); box-shadow: 0 4px 14px -6px rgba(217,149,60,0.35); }
+  .opt.sel .radio { border-color: var(--amber); }
+  .opt.sel .radio::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--amber); }
+
+  /* 历史回答 */
+  .history { margin-top: 30px; }
+  .history .h-title { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 12px; }
+  .history .h-title::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  .h-item { display: flex; gap: 10px; padding: 10px 4px; border-bottom: 1px dashed var(--line); }
+  .h-item .check { width: 18px; height: 18px; flex: none; border-radius: 50%; background: rgba(79,157,105,0.14); display: grid; place-items: center; margin-top: 1px; }
+  .h-item .check svg { width: 10px; height: 10px; color: var(--ok); }
+  .h-item .hq { font-size: 13px; font-weight: 600; }
+  .h-item .ha { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .h-item .ha b { color: var(--amber); font-weight: 700; }
+
+  /* 操作栏 */
+  .actions { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-sans);
+    font-size: 13px; font-weight: 700; border: 0; cursor: pointer; transition: all .16s ease;
+  }
+  .btn-ghost { color: var(--ink-soft); background: transparent; padding: 8px 12px; border-radius: 10px; }
+  .btn-ghost:hover { background: rgba(51,39,28,0.05); }
+  .btn-outline { color: var(--ink); background: transparent; border: 1.5px solid var(--line); padding: 9px 16px; border-radius: 12px; }
+  .btn-outline:hover { border-color: var(--amber); }
+  .btn-primary {
+    color: #fff; background: linear-gradient(160deg, var(--amber-bright), var(--amber) 60%, #c9832f);
+    padding: 10px 20px; border-radius: 12px; box-shadow: 0 6px 16px -4px rgba(217,149,60,0.5);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 22px -6px rgba(217,149,60,0.6); }
+  .btn-primary:active { transform: translateY(0); }
+
+  /* ═══════ ADMIN 界面 ═══════ */
+  .admin { flex: 1; display: flex; flex-direction: column; padding: 30px 34px; overflow-y: auto; }
+  .admin-inner { max-width: 980px; margin: 0 auto; width: 100%; }
+  .admin-head { margin-bottom: 22px; }
+  .admin-head .eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: var(--amber); }
+  .admin-head .eyebrow::before { content: ''; width: 16px; height: 2px; border-radius: 2px; background: var(--amber-bright); }
+  .admin-head h1 { font-family: var(--font-display); font-size: 30px; font-weight: 700; margin-top: 6px; }
+  .admin-head p { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+
+  .tabs { display: inline-flex; gap: 4px; padding: 4px; background: rgba(51,39,28,0.05); border-radius: 12px; }
+  .tab { font-family: var(--font-sans); font-size: 13px; font-weight: 700; color: var(--ink-soft); background: transparent; border: 0; padding: 8px 18px; border-radius: 9px; cursor: pointer; transition: all .16s ease; }
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--ink); background: var(--cream); box-shadow: 0 3px 10px -4px rgba(51,39,28,0.2); }
+
+  .table-card { margin-top: 18px; background: var(--cream); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; box-shadow: 0 10px 30px -14px rgba(51,39,28,0.2); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-align: left; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  tbody td { font-size: 13px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  tbody tr { transition: background .14s ease; }
+  tbody tr:hover { background: rgba(217,149,60,0.05); }
+  tbody tr:last-child td { border-bottom: 0; }
+  .t-title { font-weight: 700; }
+  .t-agent { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-soft); }
+  .t-agent .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 4px 11px; border-radius: 999px; }
+  .badge.active { color: var(--ok); background: rgba(79,157,105,0.13); }
+  .badge.active .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); animation: pulse 1.4s infinite; }
+  .badge.expired { color: var(--ink-soft); background: rgba(51,39,28,0.07); }
+  .badge.deleted { color: #b4553f; background: rgba(180,85,63,0.1); }
+  .row-actions { display: flex; gap: 6px; }
+  .icon-btn { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: transparent; border: 1px solid transparent; cursor: pointer; color: var(--ink-soft); transition: all .14s ease; }
+  .icon-btn:hover { background: rgba(51,39,28,0.05); border-color: var(--line); color: var(--ink); }
+  .icon-btn.danger:hover { background: rgba(180,85,63,0.08); color: #b4553f; }
+  .icon-btn svg { width: 14px; height: 14px; }
+
+  .pager { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-soft); }
+  .pager .btns { display: flex; gap: 5px; }
+  .pg { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 12px; font-weight: 700; border: 1px solid transparent; cursor: pointer; color: var(--ink-soft); }
+  .pg.active { background: var(--amber); color: #fff; border-color: var(--amber); }
+  .pg:hover:not(.active) { border-color: var(--line); }
+</style>
+</head>
+<body>
+
+<!-- 预览切换器 -->
+<div class="demo-switcher">
+  <button class="active" onclick="show('interact', this)">交互界面</button>
+  <button onclick="show('admin', this)">管理界面</button>
+</div>
+
+<!-- ═══════ INTERACT 界面 ═══════ -->
+<div class="screen active" id="screen-interact">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+        </div>
+        <span class="brand-name">Lumina</span>
+        <span class="brand-sub">Q&amp;A</span>
+      </div>
+      <div class="topbar-right">
+        <div class="progress-dots">
+          <span class="dot done"></span><span class="dot done"></span><span class="dot now"></span><span class="dot"></span>
+        </div>
+        <span class="live-chip"><span class="dot"></span>活跃</span>
+      </div>
+    </header>
+
+    <div class="body">
+      <!-- 会话列表 -->
+      <aside class="sessions">
+        <div class="sessions-head"><span class="label">会话</span></div>
+        <div class="session-item active">
+          <span class="t">余烬暖阳主题开发 Q&amp;A</span>
+          <span class="meta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>
+            8 分钟前
+          </span>
+        </div>
+        <div class="session-item">
+          <span class="t">API 设计评审</span>
+          <span class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg> 昨天</span>
+        </div>
+        <div class="session-item">
+          <span class="t">前端交互打磨</span>
+          <span class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg> 3 天前</span>
+        </div>
+        <div class="session-item">
+          <span class="t">部署流程确认</span>
+          <span class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg> 上周</span>
+        </div>
+      </aside>
+
+      <!-- 问答区 -->
+      <div class="qa">
+        <div class="qa-inner">
+          <!-- 当前问题 -->
+          <div class="msg">
+            <div class="avatar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+              <span class="spark"></span>
+            </div>
+            <div class="bubble">
+              <span class="kicker">当前问题</span>
+              <div class="q">你喜欢哪种「烛光」的亮度来作为主视觉氛围？ (´∀｀)</div>
+              <div class="desc">这是决定整体基调的关键一步 —— 选一个最让你觉得「啊，就是这种感觉」的氛围。</div>
+              <div class="options">
+                <div class="opt sel"><span class="radio"></span>幽微暗场 —— 深邃、克制、留白呼吸</div>
+                <div class="opt"><span class="radio"></span>柔和微光 —— 平衡、温暖、恰到好处</div>
+                <div class="opt"><span class="radio"></span>明亮暖阳 —— 饱满、元气、一眼明亮</div>
+                <div class="opt"><span class="radio"></span>深邃夜烛 —— 神秘、聚焦、氛围感</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 操作栏 -->
+          <div class="actions" style="max-width:520px; margin-left:50px;">
+            <button class="btn btn-ghost">请求补充信息</button>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-outline">跳过</button>
+              <button class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                提交
+              </button>
+            </div>
+          </div>
+
+          <!-- 历史回答 -->
+          <div class="history">
+            <div class="h-title">已回答</div>
+            <div class="h-item">
+              <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+              <div>
+                <div class="hq">你更看重代码的可读性还是极致性能？</div>
+                <div class="ha">你的回答：<b>可读性优先</b></div>
+              </div>
+            </div>
+            <div class="h-item">
+              <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+              <div>
+                <div class="hq">界面的信息密度你更倾向哪种？</div>
+                <div class="ha">你的回答：<b>克制留白</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ ADMIN 界面 ═══════ -->
+<div class="screen" id="screen-admin">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+        </div>
+        <span class="brand-name">Lumina</span>
+        <span class="brand-sub">控制台</span>
+      </div>
+      <div class="topbar-right">
+        <div style="display:flex; gap:8px;">
+          <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(145deg,var(--amber-bright),var(--ember));display:grid;place-items:center;color:#fff;font-size:12px;font-weight:800;">筱</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="admin">
+      <div class="admin-inner">
+        <div class="admin-head">
+          <span class="eyebrow">Q&amp;A · 管理</span>
+          <h1>问答管理</h1>
+          <p>管理 Q&amp;A 会话和问答记录 —— 看看大家聊到哪儿啦。</p>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active">全部</button>
+          <button class="tab">活跃</button>
+          <button class="tab">已过期</button>
+          <button class="tab">已删除</button>
+        </div>
+
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>会话</th><th>Agent</th><th>状态</th><th>更新时间</th><th style="width:90px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="t-title">余烬暖阳主题开发 Q&amp;A</span></td>
+                <td><span class="t-agent"><span class="dot"></span>lumina-agent</span></td>
+                <td><span class="badge active"><span class="dot"></span>活跃</span></td>
+                <td style="color:var(--ink-soft);">8 分钟前</td>
+                <td>
+                  <div class="row-actions">
+                    <button class="icon-btn" title="查看"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                    <button class="icon-btn danger" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="t-title">API 设计评审</span></td>
+                <td><span class="t-agent"><span class="dot"></span>mcp-agent</span></td>
+                <td><span class="badge active"><span class="dot"></span>活跃</span></td>
+                <td style="color:var(--ink-soft);">昨天</td>
+                <td><div class="row-actions"><button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="icon-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg></button></div></td>
+              </tr>
+              <tr>
+                <td><span class="t-title">前端交互打磨</span></td>
+                <td><span class="t-agent"><span class="dot"></span>web</span></td>
+                <td><span class="badge expired">已过期</span></td>
+                <td style="color:var(--ink-soft);">3 天前</td>
+                <td><div class="row-actions"><button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="icon-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg></button></div></td>
+              </tr>
+              <tr>
+                <td><span class="t-title">部署流程确认</span></td>
+                <td><span class="t-agent"><span class="dot"></span>devops</span></td>
+                <td><span class="badge deleted">已删除</span></td>
+                <td style="color:var(--ink-soft);">上周</td>
+                <td><div class="row-actions"><button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="icon-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg></button></div></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pager">
+            <span>共 24 条会话</span>
+            <div class="btns">
+              <span class="pg">‹</span><span class="pg active">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function show(name, btn) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+    document.querySelectorAll('.demo-switcher button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+</script>
+</body>
+</html>

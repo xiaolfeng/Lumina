@@ -277,11 +277,11 @@ export function PageTreeSidebar({
                 size="lg"
                 className="hover:bg-link-bg-hover"
               >
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-lagoon text-foam shadow-sm shadow-hero-a">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-chip bg-lagoon text-foam shadow-sm shadow-hero-a">
                   <BookOpen className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold text-sea-ink">
+                  <span className="display-title text-sm font-semibold text-sea-ink">
                     {projectName}
                   </span>
                   <span className="text-xs text-sea-ink-soft">

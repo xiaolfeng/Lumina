@@ -57,7 +57,7 @@ export function PasswordGate({ wikiId, children }: PasswordGateProps) {
 function PasswordGateSkeleton() {
   return (
     <div className="flex min-h-[400px] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm space-y-6 rounded-xl border border-line bg-surface-strong p-6 shadow-sm">
+      <div className="w-full max-w-sm space-y-6 rounded-card border border-line bg-surface-strong p-6 shadow-sm">
         {/* 图标骨架 */}
         <div className="flex justify-center">
           <div className="h-14 w-14 animate-pulse rounded-full bg-muted" />
@@ -94,7 +94,7 @@ function PasswordGateError({
 }: PasswordGateErrorProps) {
   return (
     <div className="flex min-h-[400px] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm space-y-4 rounded-xl border border-destructive/20 bg-surface-strong p-6 text-center shadow-sm">
+      <div className="w-full max-w-sm space-y-4 rounded-card border border-destructive/20 bg-surface-strong p-6 text-center shadow-sm">
         <AlertCircle className="mx-auto h-10 w-10 text-destructive" />
         <h3 className="text-lg font-semibold text-sea-ink">加载失败</h3>
         <p className="text-sm text-sea-ink-soft">

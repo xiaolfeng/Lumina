@@ -179,7 +179,7 @@ function RepoWikiDetailPage() {
 			{/* Tabs：版本管理 / Webhook / 配置详情（只读）/ 设置（可编辑） */}
 			<motion.div variants={staggerItem}>
 				<Tabs defaultValue="versions" className="gap-3">
-					<TabsList>
+					<TabsList variant="line" className="gap-6">
 						<TabsTrigger value="versions" className="gap-1.5">
 							<FileText className="size-3.5" />
 							版本管理

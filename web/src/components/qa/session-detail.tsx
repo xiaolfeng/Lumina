@@ -14,7 +14,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{session.title}</CardTitle>
+        <CardTitle className="display-title">{session.title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
