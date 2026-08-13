@@ -30,7 +30,7 @@ services:
   app:
     build:
       context: .
-    image: ${DOCKER_HUB_USER:-xiaolfeng}/lumina:${VERSION:-latest}
+    image: xiaolfeng/lumina:${VERSION:-latest}
     container_name: lumina
     restart: unless-stopped
     # 引入项目 .env 作为容器环境变量（DATABASE_*/NOSQL_*/LLM_*/REPOWIKI_*/XLF_* 等）
