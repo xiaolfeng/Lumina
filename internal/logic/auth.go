@@ -11,6 +11,7 @@ import (
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 	apiAuth "github.com/xiaolfeng/Lumina/api/auth"
 	apiUser "github.com/xiaolfeng/Lumina/api/user"
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/repository"
 )
 
@@ -46,7 +47,7 @@ func NewAuthLogic(ctx context.Context) *AuthLogic {
 func (l *AuthLogic) GetInitialStatus(ctx context.Context) (bool, *xError.Error) {
 	l.log.Info(ctx, "GetInitialStatus - 检查系统初始化状态")
 
-	value, xErr := l.repo.info.GetByKey(ctx, "is_initial")
+	value, xErr := l.repo.info.GetByKey(ctx, bConst.InfoKeyAuthIsInitial)
 	if xErr != nil {
 		// NotFound 视为未初始化
 		if xErr.GetErrorCode() == xError.NotFound {
@@ -74,10 +75,10 @@ func (l *AuthLogic) Initialize(ctx context.Context, req *apiAuth.InitializeReque
 	// 在事务中原子写入：owner 凭据 + 初始化状态
 	// bcrypt 加密属于业务逻辑，在 logic 层完成；事务边界下沉到 InfoRepo
 	kv := map[string]string{
-		"owner_username": req.Username,
-		"owner_email":    req.Email,
-		"owner_password": xUtil.Password().MustEncryptString(req.Password),
-		"is_initial":     "false",
+		bConst.InfoKeyOwnerUsername: req.Username,
+		bConst.InfoKeyOwnerEmail:    req.Email,
+		bConst.InfoKeyOwnerPassword: xUtil.Password().MustEncryptString(req.Password),
+		bConst.InfoKeyAuthIsInitial: "false",
 	}
 	if xErr := l.repo.info.UpdateValuesInTx(ctx, kv); xErr != nil {
 		return xError.NewError(ctx, xError.DatabaseError, "系统初始化失败", false, nil)
@@ -89,12 +90,12 @@ func (l *AuthLogic) Initialize(ctx context.Context, req *apiAuth.InitializeReque
 
 // GetOwnerInfo 从 Info 表读取 owner 用户名与邮箱
 func (l *AuthLogic) GetOwnerInfo(ctx context.Context) (username, email string, xErr *xError.Error) {
-	username, xErr = l.repo.info.GetByKey(ctx, "owner_username")
+	username, xErr = l.repo.info.GetByKey(ctx, bConst.InfoKeyOwnerUsername)
 	if xErr != nil {
 		return "", "", xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
 	}
 
-	email, xErr = l.repo.info.GetByKey(ctx, "owner_email")
+	email, xErr = l.repo.info.GetByKey(ctx, bConst.InfoKeyOwnerEmail)
 	if xErr != nil {
 		return "", "", xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
 	}
@@ -124,7 +125,7 @@ func (l *AuthLogic) Login(ctx context.Context, req *apiAuth.LoginRequest) (*apiA
 	}
 
 	// 从 Info 表读取 owner 密码哈希
-	passwordHash, xErr := l.repo.info.GetByKey(ctx, "owner_password")
+	passwordHash, xErr := l.repo.info.GetByKey(ctx, bConst.InfoKeyOwnerPassword)
 	if xErr != nil {
 		return nil, xError.NewError(ctx, xError.DatabaseError, "读取用户信息失败", false, nil)
 	}
@@ -203,7 +204,7 @@ func (l *AuthLogic) GetCurrentUser(ctx context.Context) (*apiUser.UserInfoRespon
 
 	// 读取生物特征状态（Info 表标记，由 BiometricLogic 维护）
 	biometricEnabled := false
-	if val, xErr := l.repo.info.GetByKey(ctx, "biometric_enabled"); xErr == nil {
+	if val, xErr := l.repo.info.GetByKey(ctx, bConst.InfoKeyOwnerBiometricEnabled); xErr == nil {
 		biometricEnabled = val == "true"
 	}
 
@@ -240,8 +241,8 @@ func (l *AuthLogic) UpdateProfile(ctx context.Context, req *apiUser.UpdateProfil
 	l.log.Info(ctx, "UpdateProfile - 更新个人资料")
 
 	kv := map[string]string{
-		"owner_username": req.Username,
-		"owner_email":    req.Email,
+		bConst.InfoKeyOwnerUsername: req.Username,
+		bConst.InfoKeyOwnerEmail:    req.Email,
 	}
 	if xErr := l.repo.info.UpdateValuesInTx(ctx, kv); xErr != nil {
 		return xError.NewError(ctx, xError.DatabaseError, "更新个人资料失败", false, nil)
@@ -255,7 +256,7 @@ func (l *AuthLogic) UpdateProfile(ctx context.Context, req *apiUser.UpdateProfil
 func (l *AuthLogic) UpdatePassword(ctx context.Context, req *apiUser.UpdatePasswordRequest) *xError.Error {
 	l.log.Info(ctx, "UpdatePassword - 修改密码")
 
-	oldHash, xErr := l.repo.info.GetByKey(ctx, "owner_password")
+	oldHash, xErr := l.repo.info.GetByKey(ctx, bConst.InfoKeyOwnerPassword)
 	if xErr != nil {
 		return xError.NewError(ctx, xError.DatabaseError, "读取密码信息失败", false, nil)
 	}
@@ -264,7 +265,7 @@ func (l *AuthLogic) UpdatePassword(ctx context.Context, req *apiUser.UpdatePassw
 	}
 
 	newHash := xUtil.Password().MustEncryptString(req.NewPassword)
-	if xErr := l.repo.info.UpdateValue(ctx, "owner_password", newHash); xErr != nil {
+	if xErr := l.repo.info.UpdateValue(ctx, bConst.InfoKeyOwnerPassword, newHash); xErr != nil {
 		return xError.NewError(ctx, xError.DatabaseError, "更新密码失败", false, nil)
 	}
 

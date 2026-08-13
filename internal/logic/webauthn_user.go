@@ -30,8 +30,8 @@ type LuminaWebAuthnUser struct {
 // NewLuminaWebAuthnUser 构造一个 LuminaWebAuthnUser 实例
 //
 // 参数说明:
-//   - username:    Info 表的 owner_username，作为 WebAuthnName
-//   - email:       Info 表的 owner_email，作为 WebAuthnDisplayName
+//   - username:    Info 表的 owner.username，作为 WebAuthnName
+//   - email:       Info 表的 owner.email，作为 WebAuthnDisplayName
 //   - credentials: 已从 DB 查询并转换后的 WebAuthn 凭证列表
 //
 // 返回值:

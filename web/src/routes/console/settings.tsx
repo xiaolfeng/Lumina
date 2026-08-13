@@ -89,16 +89,44 @@ function SettingsPage() {
         description="管理 LLM 配置、站点信息、模块运行参数和安全策略"
       />
 
-      <Tabs defaultValue="provider" className="space-y-4">
+      <Tabs defaultValue="site" className="space-y-4">
         <TabsList variant="line" className="gap-6">
-          <TabsTrigger value="provider">Provider 管理</TabsTrigger>
-          <TabsTrigger value="model">模型管理</TabsTrigger>
-          <TabsTrigger value="agent">Agent 分配</TabsTrigger>
           <TabsTrigger value="site">站点信息</TabsTrigger>
           <TabsTrigger value="qa">Q&A 配置</TabsTrigger>
           <TabsTrigger value="repowiki">RepoWiki</TabsTrigger>
           <TabsTrigger value="security">安全策略</TabsTrigger>
+          <TabsTrigger value="provider">Provider 管理</TabsTrigger>
+          <TabsTrigger value="model">模型管理</TabsTrigger>
+          <TabsTrigger value="agent">Agent 分配</TabsTrigger>
         </TabsList>
+
+        {/* 站点信息 */}
+        <TabsContent value="site">
+          <motion.div variants={staggerItem}>
+            <SiteSettingsForm />
+          </motion.div>
+        </TabsContent>
+
+        {/* Q&A 配置 */}
+        <TabsContent value="qa">
+          <motion.div variants={staggerItem}>
+            <QaSettingsForm />
+          </motion.div>
+        </TabsContent>
+
+        {/* RepoWiki */}
+        <TabsContent value="repowiki">
+          <motion.div variants={staggerItem}>
+            <RepowikiSettingsForm />
+          </motion.div>
+        </TabsContent>
+
+        {/* 安全策略 */}
+        <TabsContent value="security">
+          <motion.div variants={staggerItem}>
+            <SecuritySettingsForm />
+          </motion.div>
+        </TabsContent>
 
         {/* Provider 管理 */}
         <TabsContent value="provider">
@@ -144,34 +172,6 @@ function SettingsPage() {
         <TabsContent value="agent">
           <motion.div variants={staggerItem}>
             <AgentModelAssignGroup module="repowiki" />
-          </motion.div>
-        </TabsContent>
-
-        {/* 站点信息 */}
-        <TabsContent value="site">
-          <motion.div variants={staggerItem}>
-            <SiteSettingsForm />
-          </motion.div>
-        </TabsContent>
-
-        {/* Q&A 配置 */}
-        <TabsContent value="qa">
-          <motion.div variants={staggerItem}>
-            <QaSettingsForm />
-          </motion.div>
-        </TabsContent>
-
-        {/* RepoWiki */}
-        <TabsContent value="repowiki">
-          <motion.div variants={staggerItem}>
-            <RepowikiSettingsForm />
-          </motion.div>
-        </TabsContent>
-
-        {/* 安全策略 */}
-        <TabsContent value="security">
-          <motion.div variants={staggerItem}>
-            <SecuritySettingsForm />
           </motion.div>
         </TabsContent>
       </Tabs>

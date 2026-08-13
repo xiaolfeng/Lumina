@@ -5,14 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
+	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 	"github.com/xiaolfeng/Lumina/api/qa"
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	qaQueue "github.com/xiaolfeng/Lumina/internal/qa"
 	"github.com/xiaolfeng/Lumina/internal/repository"
@@ -297,7 +300,7 @@ func (l *QaLogic) GetQaConfig(ctx context.Context) (*qa.QaConfigResponse, *xErro
 	l.log.Info(ctx, "GetQaConfig - 获取Q&A配置")
 
 	// 读取 Session TTL（读失败兜底默认 7 天）
-	ttlStr, xErr := l.repo.info.GetByKey(ctx, "qa.session.ttl")
+	ttlStr, xErr := l.repo.info.GetByKey(ctx, bConst.InfoKeyQaSessionTTL)
 	if xErr != nil {
 		l.log.Warn(ctx, fmt.Sprintf("读取qa.session.ttl失败: %s，使用默认值", xErr.GetMessage()))
 		ttlStr = "604800"
@@ -307,17 +310,13 @@ func (l *QaLogic) GetQaConfig(ctx context.Context) (*qa.QaConfigResponse, *xErro
 		ttl = 604800
 	}
 
-	// 读取运行时域名（读失败兜底 localhost）
-	domain, xErr := l.repo.info.GetByKey(ctx, "runtime.domain")
-	if xErr != nil {
-		l.log.Warn(ctx, fmt.Sprintf("读取runtime.domain失败: %s，使用默认值", xErr.GetMessage()))
-		domain = "http://localhost:3000"
-	}
+	// 读取运行时域名（未配置时回退到后端监听地址）
+	domain := l.resolveRuntimeDomain(ctx)
 
 	// 读取 qa_get_answer 单次阻塞上限（分片超时）
-	sliceStr, xErr := l.repo.info.GetByKey(ctx, "qa.get_answer.poll_slice")
+	sliceStr, xErr := l.repo.info.GetByKey(ctx, bConst.InfoKeyQaGetAnswerPollSlice)
 	if xErr != nil {
-		l.log.Warn(ctx, fmt.Sprintf("读取qa.get_answer.poll_slice失败: %s，使用默认值", xErr.GetMessage()))
+		l.log.Warn(ctx, fmt.Sprintf("读取qa.get-answer.poll-slice失败: %s，使用默认值", xErr.GetMessage()))
 		sliceStr = "25"
 	}
 	pollSlice, _ := strconv.Atoi(sliceStr)
@@ -326,9 +325,9 @@ func (l *QaLogic) GetQaConfig(ctx context.Context) (*qa.QaConfigResponse, *xErro
 	}
 
 	// 读取 qa_get_answer 最大重试次数
-	retryStr, xErr := l.repo.info.GetByKey(ctx, "qa.get_answer.max_retries")
+	retryStr, xErr := l.repo.info.GetByKey(ctx, bConst.InfoKeyQaGetAnswerMaxRetries)
 	if xErr != nil {
-		l.log.Warn(ctx, fmt.Sprintf("读取qa.get_answer.max_retries失败: %s，使用默认值", xErr.GetMessage()))
+		l.log.Warn(ctx, fmt.Sprintf("读取qa.get-answer.max-retries失败: %s，使用默认值", xErr.GetMessage()))
 		retryStr = "36"
 	}
 	maxRetries, _ := strconv.Atoi(retryStr)
@@ -344,20 +343,40 @@ func (l *QaLogic) GetQaConfig(ctx context.Context) (*qa.QaConfigResponse, *xErro
 	}, nil
 }
 
+// resolveRuntimeDomain 解析运行时对外域名
+//
+// 优先读取 Info 表 site.domain（热修改配置，可在「系统设置 → 站点信息」
+// 直接修改并立即生效，用于生成 MCP 返回的交互/下载链接）。未配置时回退到
+// 后端监听地址 http://<host>:<port>，仅适用于本地开发；部署时必须配置对外
+// 访问域名，否则生成的链接远程无法访问。host 为通配地址（0.0.0.0 / ::）
+// 时统一替换为 localhost。
+func (l *QaLogic) resolveRuntimeDomain(ctx context.Context) string {
+	if domain, xErr := l.repo.info.GetByKey(ctx, bConst.InfoKeySiteDomain); xErr == nil && domain != "" {
+		return strings.TrimRight(domain, "/")
+	}
+
+	host := xEnv.GetEnvString(xEnv.Host, "localhost")
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "localhost"
+	}
+	port := xEnv.GetEnvString(xEnv.Port, "8080")
+	return fmt.Sprintf("http://%s:%s", host, port)
+}
+
 // UpdateQaConfig 更新Q&A配置
 func (l *QaLogic) UpdateQaConfig(ctx context.Context, req *qa.UpdateQaConfigRequest) (*qa.QaConfigResponse, *xError.Error) {
 	l.log.Info(ctx, "UpdateQaConfig - 更新Q&A配置")
 
 	// 更新 Session TTL
 	if req.SessionTTL != nil {
-		if xErr := l.repo.info.UpdateValue(ctx, "qa.session.ttl", strconv.Itoa(*req.SessionTTL)); xErr != nil {
+		if xErr := l.repo.info.UpdateValue(ctx, bConst.InfoKeyQaSessionTTL, strconv.Itoa(*req.SessionTTL)); xErr != nil {
 			return nil, xError.NewError(ctx, xError.DatabaseError, "更新Session TTL失败", false, nil)
 		}
 	}
 
 	// 更新运行时域名
 	if req.RuntimeDomain != nil {
-		if xErr := l.repo.info.UpdateValue(ctx, "runtime.domain", *req.RuntimeDomain); xErr != nil {
+		if xErr := l.repo.info.UpdateValue(ctx, bConst.InfoKeySiteDomain, *req.RuntimeDomain); xErr != nil {
 			return nil, xError.NewError(ctx, xError.DatabaseError, "更新运行时域名失败", false, nil)
 		}
 	}
@@ -367,7 +386,7 @@ func (l *QaLogic) UpdateQaConfig(ctx context.Context, req *qa.UpdateQaConfigRequ
 		if *req.PollSlice < 1 || *req.PollSlice > 28 {
 			return nil, xError.NewError(ctx, xError.BusinessError, "poll_slice 必须在 1-28 秒之间（需小于客户端 tool 超时）", false, nil)
 		}
-		if xErr := l.repo.info.UpdateValue(ctx, "qa.get_answer.poll_slice", strconv.Itoa(*req.PollSlice)); xErr != nil {
+		if xErr := l.repo.info.UpdateValue(ctx, bConst.InfoKeyQaGetAnswerPollSlice, strconv.Itoa(*req.PollSlice)); xErr != nil {
 			return nil, xError.NewError(ctx, xError.DatabaseError, "更新poll_slice失败", false, nil)
 		}
 	}
@@ -377,7 +396,7 @@ func (l *QaLogic) UpdateQaConfig(ctx context.Context, req *qa.UpdateQaConfigRequ
 		if *req.MaxRetries < 1 {
 			return nil, xError.NewError(ctx, xError.BusinessError, "max_retries 必须至少为 1", false, nil)
 		}
-		if xErr := l.repo.info.UpdateValue(ctx, "qa.get_answer.max_retries", strconv.Itoa(*req.MaxRetries)); xErr != nil {
+		if xErr := l.repo.info.UpdateValue(ctx, bConst.InfoKeyQaGetAnswerMaxRetries, strconv.Itoa(*req.MaxRetries)); xErr != nil {
 			return nil, xError.NewError(ctx, xError.DatabaseError, "更新max_retries失败", false, nil)
 		}
 	}

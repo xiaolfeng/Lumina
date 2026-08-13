@@ -85,11 +85,8 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType, 
 	}
 
 	// 读取运行时域名配置，生成浏览器链接
-	domain, xErr := l.repo.info.GetByKey(ctx, "runtime.domain")
-	if xErr != nil || domain == "" {
-		domain = "http://localhost:3000"
-	}
-	link := fmt.Sprintf("%s/interact?session=%s", strings.TrimRight(domain, "/"), hash)
+	domain := l.resolveRuntimeDomain(ctx)
+	link := fmt.Sprintf("%s/interact?session=%s", domain, hash)
 
 	return id.String(), link, nil
 }

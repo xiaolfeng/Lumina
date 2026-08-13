@@ -60,7 +60,7 @@ func NewLlmResolver(
 // ResolveAgentModel 解析 Agent 角色对应的 LLM 配置
 //
 // 解析流程:
-//  1. 从 Info 表读取 llm_agent_model:{role} 的值（model_id）
+//  1. 从 Info 表读取 llm.agent.{role} 的值（model_id）
 //  2. 查 Model 实体获取模型参数 + ProviderID
 //  3. 查 Provider 实体获取协议、端点、加密的 APIKey
 //  4. 解密 APIKey
@@ -69,7 +69,7 @@ func NewLlmResolver(
 // 参数说明:
 //   - ctx:       上下文
 //   - role:      Agent 角色标识（如 "repowiki"）
-//   - keyPrefix: Info 表键前缀（如 "llm_agent_model:"）
+//   - keyPrefix: Info 表键前缀（如 "llm.agent."）
 //
 // 返回值:
 //   - *ResolvedLlmConfig: 解析后的 LLM 配置
@@ -125,7 +125,7 @@ func (r *LlmResolver) ResolveAgentModel(ctx context.Context, role string, keyPre
 // ResolveAgentModels 批量解析多个角色的 LLM 配置
 //
 // 返回 map[role]*ResolvedLlmConfig，缺失角色不出现在 map 中（不报错）。
-// keyPrefix 如 "llm_agent_model:"，与单角色方法一致。
+// keyPrefix 如 "llm.agent."，与单角色方法一致。
 func (r *LlmResolver) ResolveAgentModels(
 	ctx context.Context,
 	roles []string,

@@ -71,42 +71,42 @@ export function RepowikiSettingsForm() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="repowiki.default_language">
+                <Label htmlFor="repowiki.default-language">
                   默认语言
                 </Label>
                 <Input
-                  id="repowiki.default_language"
-                  value={formValues['repowiki.default_language'] || ''}
+                  id="repowiki.default-language"
+                  value={formValues['repowiki.default-language'] || ''}
                   onChange={(e) =>
-                    handleChange('repowiki.default_language', e.target.value)
+                    handleChange('repowiki.default-language', e.target.value)
                   }
                   placeholder="zh-CN"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="repowiki.default_branch">
+                <Label htmlFor="repowiki.default-branch">
                   默认分支
                 </Label>
                 <Input
-                  id="repowiki.default_branch"
-                  value={formValues['repowiki.default_branch'] || ''}
+                  id="repowiki.default-branch"
+                  value={formValues['repowiki.default-branch'] || ''}
                   onChange={(e) =>
-                    handleChange('repowiki.default_branch', e.target.value)
+                    handleChange('repowiki.default-branch', e.target.value)
                   }
                   placeholder="main"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="repowiki.wiki_cookie_max_age">
+                <Label htmlFor="repowiki.wiki-cookie-max-age">
                   Wiki Cookie 有效期（秒）
                 </Label>
                 <Input
-                  id="repowiki.wiki_cookie_max_age"
+                  id="repowiki.wiki-cookie-max-age"
                   type="number"
-                  value={formValues['repowiki.wiki_cookie_max_age'] || ''}
+                  value={formValues['repowiki.wiki-cookie-max-age'] || ''}
                   onChange={(e) =>
                     handleChange(
-                      'repowiki.wiki_cookie_max_age',
+                      'repowiki.wiki-cookie-max-age',
                       e.target.value,
                     )
                   }

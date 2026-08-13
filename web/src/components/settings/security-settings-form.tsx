@@ -70,57 +70,57 @@ export function SecuritySettingsForm() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="security.access_token_ttl">
+                <Label htmlFor="security.access-token-ttl">
                   Access Token TTL（秒）
                 </Label>
                 <Input
-                  id="security.access_token_ttl"
+                  id="security.access-token-ttl"
                   type="number"
-                  value={formValues['security.access_token_ttl'] || ''}
+                  value={formValues['security.access-token-ttl'] || ''}
                   onChange={(e) =>
-                    handleChange('security.access_token_ttl', e.target.value)
+                    handleChange('security.access-token-ttl', e.target.value)
                   }
                   placeholder="3600"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="security.refresh_token_ttl">
+                <Label htmlFor="security.refresh-token-ttl">
                   Refresh Token TTL（秒）
                 </Label>
                 <Input
-                  id="security.refresh_token_ttl"
+                  id="security.refresh-token-ttl"
                   type="number"
-                  value={formValues['security.refresh_token_ttl'] || ''}
+                  value={formValues['security.refresh-token-ttl'] || ''}
                   onChange={(e) =>
-                    handleChange('security.refresh_token_ttl', e.target.value)
+                    handleChange('security.refresh-token-ttl', e.target.value)
                   }
                   placeholder="604800"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="security.max_api_keys">
+                <Label htmlFor="security.max-api-keys">
                   最大 API Key 数量
                 </Label>
                 <Input
-                  id="security.max_api_keys"
+                  id="security.max-api-keys"
                   type="number"
-                  value={formValues['security.max_api_keys'] || ''}
+                  value={formValues['security.max-api-keys'] || ''}
                   onChange={(e) =>
-                    handleChange('security.max_api_keys', e.target.value)
+                    handleChange('security.max-api-keys', e.target.value)
                   }
                   placeholder="10"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="security.webauthn_timeout">
+                <Label htmlFor="security.webauthn-timeout">
                   WebAuthn 超时（毫秒）
                 </Label>
                 <Input
-                  id="security.webauthn_timeout"
+                  id="security.webauthn-timeout"
                   type="number"
-                  value={formValues['security.webauthn_timeout'] || ''}
+                  value={formValues['security.webauthn-timeout'] || ''}
                   onChange={(e) =>
-                    handleChange('security.webauthn_timeout', e.target.value)
+                    handleChange('security.webauthn-timeout', e.target.value)
                   }
                   placeholder="60000"
                 />

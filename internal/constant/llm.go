@@ -2,11 +2,11 @@ package bConst
 
 // Agent 角色常量（当前仅 repowiki，Memory 预留但不定义常量避免 scope creep）
 const (
-	AgentRoleRepoWikiCoordinator = "repowiki:coordinator" // RepoWiki 主控 Agent（编排决策）
-	AgentRoleRepoWikiExplore     = "repowiki:explore"     // RepoWiki 探索 Agent（读代码）
-	AgentRoleRepoWikiWrite       = "repowiki:write"       // RepoWiki 写作 Agent（写文档）
-	AgentRoleRepoWikiArchitect   = "repowiki:architect"   // RepoWiki 架构 Agent（架构梳理）
-	AgentRoleRepoWikiValidator   = "repowiki:validator"   // RepoWiki 校验 Agent（校验审阅）
+	AgentRoleRepoWikiCoordinator = "repowiki.coordinator" // RepoWiki 主控 Agent（编排决策）
+	AgentRoleRepoWikiExplore     = "repowiki.explore"     // RepoWiki 探索 Agent（读代码）
+	AgentRoleRepoWikiWrite       = "repowiki.write"       // RepoWiki 写作 Agent（写文档）
+	AgentRoleRepoWikiArchitect   = "repowiki.architect"   // RepoWiki 架构 Agent（架构梳理）
+	AgentRoleRepoWikiValidator   = "repowiki.validator"   // RepoWiki 校验 Agent（校验审阅）
 )
 
 // AgentRolesRepoWiki RepoWiki 模块的子 Agent 角色列表
@@ -20,7 +20,7 @@ var AgentRolesRepoWiki = []string{
 
 // Info 表中 Agent → Model 映射的键前缀
 const (
-	LlmAgentModelKeyPrefix = "llm_agent_model:" // Agent 模型分配键前缀
+	LlmAgentModelKeyPrefix = "llm.agent." // Agent 模型分配键前缀
 )
 
 // LLM Provider 协议类型

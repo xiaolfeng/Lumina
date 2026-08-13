@@ -17,7 +17,7 @@ func SetQaLogic(l *logic.QaLogic) { qaLogic = l }
 
 const (
 	// fallbackPollSlice 是 qa_get_answer 单次阻塞上限的兜底值。
-	// 当 DB 配置（qa.get_answer.poll_slice）读取失败时使用。
+	// 当 DB 配置（qa.get-answer.poll-slice）读取失败时使用。
 	// 必须小于 MCP 客户端的 tool 执行超时（如 ZCode 约 30s）。
 	fallbackPollSlice = 25 * time.Second
 

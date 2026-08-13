@@ -154,11 +154,8 @@ func (l *QaLogic) enhanceMediaAnswerWithOTP(ctx context.Context, questionType, s
 		return formatted
 	}
 
-	// 读取运行时域名配置（Info 表 key=runtime.domain）
-	domain := "http://localhost:8080"
-	if domainVal, xErr := l.repo.info.GetByKey(ctx, "runtime.domain"); xErr == nil && domainVal != "" {
-		domain = strings.TrimRight(domainVal, "/")
-	}
+	// 读取运行时域名配置（Info 表 key=site.domain）
+	domain := l.resolveRuntimeDomain(ctx)
 
 	// 为每个文件生成 OTP 令牌（使用注入的 downloadToken 服务，避免 logic 直连 Redis）
 	var tokenUrls []string

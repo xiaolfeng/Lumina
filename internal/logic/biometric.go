@@ -51,7 +51,7 @@ const challengeTypeLogin = "login"
 // 字段说明:
 //   - logic:     公共基础（仅持有 log）
 //   - repo:      生物特征凭证数据访问层（含 challenge 委托）
-//   - info:      Info 表数据访问层（读取 owner 信息 / 更新 biometric_enabled 标记）
+//   - info:      Info 表数据访问层（读取 owner 信息 / 更新 owner.biometric-enabled 标记）
 //   - auth:      认证业务逻辑层（复用 generateTokens）
 //   - webAuthn:  go-webauthn 核心实例（封装 RP 配置）
 type BiometricLogic struct {
@@ -168,7 +168,7 @@ func (l *BiometricLogic) RegisterStart(ctx context.Context, req *apiBiometric.Re
 //  3. 调用 [protocol.ParseCredentialCreationResponseBody] 解析前端提交的凭证 JSON
 //  4. 调用 [webauthn.WebAuthn.CreateCredential] 完成服务端验证
 //  5. 持久化凭证到数据库（通过 repo）
-//  6. 更新 Info 表 biometric_enabled 标记为 true
+//  6. 更新 Info 表 owner.biometric-enabled 标记为 true
 //
 // 任何步骤失败都会立即返回错误，challenge 已在读取时删除确保不被重放。
 func (l *BiometricLogic) RegisterFinish(ctx context.Context, req *apiBiometric.RegisterFinishRequest) (*apiBiometric.RegisterFinishResponse, *xError.Error) {
@@ -222,7 +222,7 @@ func (l *BiometricLogic) RegisterFinish(ctx context.Context, req *apiBiometric.R
 	}
 
 	// 注册成功后更新 Info 表标记（非致命，失败仅记录日志）
-	_ = l.info.UpdateValue(ctx, "biometric_enabled", "true")
+	_ = l.info.UpdateValue(ctx, bConst.InfoKeyOwnerBiometricEnabled, "true")
 
 	l.log.Info(ctx, "RegisterFinish - 生物特征注册成功")
 	return &apiBiometric.RegisterFinishResponse{
@@ -399,7 +399,7 @@ func (l *BiometricLogic) ListCredentials(ctx context.Context) (*apiUser.Biometri
 // 流程:
 //  1. 将字符串 ID 解析为雪花 ID
 //  2. 通过 repo 删除凭证（会同步清除缓存）
-//  3. 检查是否还有剩余凭证，若无则将 Info 表 biometric_enabled 标记置为 false
+//  3. 检查是否还有剩余凭证，若无则将 Info 表 owner.biometric-enabled 标记置为 false
 //
 // 删除最后一个凭证后，「生物特征登录」入口会自动隐藏。
 func (l *BiometricLogic) DeleteCredential(ctx context.Context, idStr string) *xError.Error {
@@ -415,7 +415,7 @@ func (l *BiometricLogic) DeleteCredential(ctx context.Context, idStr string) *xE
 
 	// 检查是否还有剩余凭证，更新 Info 标记（非致命，失败仅记录日志）
 	if available, _ := l.repo.IsAvailable(ctx); !available {
-		_ = l.info.UpdateValue(ctx, "biometric_enabled", "false")
+		_ = l.info.UpdateValue(ctx, bConst.InfoKeyOwnerBiometricEnabled, "false")
 	}
 
 	l.log.Info(ctx, fmt.Sprintf("DeleteCredential - 凭证删除成功 [%d]", id))

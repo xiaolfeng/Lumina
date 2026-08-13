@@ -3,42 +3,34 @@ package prepare
 import (
 	"log/slog"
 
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 )
 
-// prepareInfo 初始化 Info 表种子数据
+// prepareInfo 初始化 Info 表认证种子数据
 //
-// 写入站点基础配置和站主信息。使用 FirstOrCreate 保证幂等性，
-// 已存在的 key 不会被覆盖。is_initial 默认值为 "true"，表示系统处于未初始化状态。
+// 写入站主信息与系统初始化标记（认证模块内部状态，不对外暴露为设置项）。
+// 使用 FirstOrCreate 保证幂等性，已存在的 key 不会被覆盖。
+// auth.is-initial 默认值为 "true"，表示系统处于未初始化状态。
 func (p *Prepare) prepareInfo() {
 	infos := []entity.Info{
 		{
-			Key:         "site_name",
-			Value:       "Lumina",
-			Description: "站点名称",
-		},
-		{
-			Key:         "site_description",
-			Value:       "赋予 AI 深度代码认知与长期记忆的知识中枢",
-			Description: "站点描述",
-		},
-		{
-			Key:         "owner_username",
+			Key:         bConst.InfoKeyOwnerUsername,
 			Value:       "",
 			Description: "站主用户名",
 		},
 		{
-			Key:         "owner_email",
+			Key:         bConst.InfoKeyOwnerEmail,
 			Value:       "",
 			Description: "站主邮箱",
 		},
 		{
-			Key:         "owner_password",
+			Key:         bConst.InfoKeyOwnerPassword,
 			Value:       "",
 			Description: "站主密码（加密存储）",
 		},
 		{
-			Key:         "is_initial",
+			Key:         bConst.InfoKeyAuthIsInitial,
 			Value:       "true",
 			Description: "系统是否为初始状态（true=未初始化，false=已初始化）",
 		},

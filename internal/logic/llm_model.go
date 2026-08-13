@@ -234,7 +234,7 @@ func (l *LlmModelLogic) SetActive(ctx context.Context, id string, active bool) *
 
 // GetAgentModelConfig 根据 Agent 角色读取配置的 Model + Provider
 //
-// 从 Info 表读取 llm_agent_model:{role} 的值，解析 model_id 后查询关联的 Model 和 Provider。
+// 从 Info 表读取 llm.agent.{role} 的值，解析 model_id 后查询关联的 Model 和 Provider。
 // 未配置时返回 NotFound 错误。
 func (l *LlmModelLogic) GetAgentModelConfig(ctx context.Context, role string) (*AgentModelConfig, *xError.Error) {
 	l.log.Info(ctx, "GetAgentModelConfig - 获取Agent模型配置 ["+role+"]")

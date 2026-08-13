@@ -72,55 +72,55 @@ export function SiteSettingsForm() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="site_name">站点名称</Label>
+                <Label htmlFor="site.name">站点名称</Label>
                 <Input
-                  id="site_name"
-                  value={formValues.site_name || ''}
-                  onChange={(e) => handleChange('site_name', e.target.value)}
+                  id="site.name"
+                  value={formValues['site.name'] || ''}
+                  onChange={(e) => handleChange('site.name', e.target.value)}
                   placeholder="输入站点名称"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="site_description">站点描述</Label>
+                <Label htmlFor="site.description">站点描述</Label>
                 <Textarea
-                  id="site_description"
-                  value={formValues.site_description || ''}
+                  id="site.description"
+                  value={formValues['site.description'] || ''}
                   onChange={(e) =>
-                    handleChange('site_description', e.target.value)
+                    handleChange('site.description', e.target.value)
                   }
                   placeholder="输入站点描述"
                   rows={3}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="site_logo_url">站点 Logo URL</Label>
+                <Label htmlFor="site.logo-url">站点 Logo URL</Label>
                 <Input
-                  id="site_logo_url"
-                  value={formValues.site_logo_url || ''}
+                  id="site.logo-url"
+                  value={formValues['site.logo-url'] || ''}
                   onChange={(e) =>
-                    handleChange('site_logo_url', e.target.value)
+                    handleChange('site.logo-url', e.target.value)
                   }
                   placeholder="https://example.com/logo.png"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="site_theme_color">主题色</Label>
+                <Label htmlFor="site.domain">对外访问域名</Label>
                 <Input
-                  id="site_theme_color"
-                  value={formValues.site_theme_color || ''}
+                  id="site.domain"
+                  value={formValues['site.domain'] || ''}
                   onChange={(e) =>
-                    handleChange('site_theme_color', e.target.value)
+                    handleChange('site.domain', e.target.value)
                   }
-                  placeholder="#3b82f6"
+                  placeholder="https://your-domain.com"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="site_footer_text">页脚文本</Label>
+                <Label htmlFor="site.footer-text">页脚文本</Label>
                 <Input
-                  id="site_footer_text"
-                  value={formValues.site_footer_text || ''}
+                  id="site.footer-text"
+                  value={formValues['site.footer-text'] || ''}
                   onChange={(e) =>
-                    handleChange('site_footer_text', e.target.value)
+                    handleChange('site.footer-text', e.target.value)
                   }
                   placeholder="输入页脚文本"
                 />

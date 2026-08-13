@@ -24,7 +24,6 @@ func New(log *xLog.LogNamedLogger, ctx context.Context) *Prepare {
 
 func (p *Prepare) Prepare() {
 	p.prepareInfo()
-	p.prepareQa()
 	p.prepareProject()
 	p.prepareQaHash()
 	p.prepareLlm()
