@@ -723,6 +723,17 @@ definitions:
         - $ref: '#/definitions/preview.PreviewSessionResponse'
         description: 会话信息
     type: object
+  preview.PreviewSessionListResponse:
+    properties:
+      items:
+        description: 预览会话列表
+        items:
+          $ref: '#/definitions/preview.PreviewSessionResponse'
+        type: array
+      total:
+        description: 总数量
+        type: integer
+    type: object
   preview.PreviewSessionResponse:
     properties:
       created_at:
@@ -3161,6 +3172,39 @@ paths:
       tags:
       - Pin接口
   /api/v1/preview/files/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根据文件 ID 删除单个预览文件
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 预览文件 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 预览文件不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 删除预览文件'
+      tags:
+      - Preview接口
     get:
       description: 根据文件 ID 查询预览文件详情与关联会话哈希，供 Q&A supplement preview 类型渲染解析 serve 地址
       parameters:
@@ -3186,6 +3230,50 @@ paths:
           schema:
             $ref: '#/definitions/common.BaseResponse'
       summary: '[公开] 获取预览文件详情'
+      tags:
+      - Preview接口
+  /api/v1/preview/sessions:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取预览会话列表，可按项目 ID 筛选（不传则返回全部）
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 项目ID筛选
+        in: query
+        name: project_id
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/preview.PreviewSessionListResponse'
+              type: object
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 获取预览会话列表'
       tags:
       - Preview接口
   /api/v1/preview/sessions/{hash}:
@@ -3240,6 +3328,40 @@ paths:
           schema:
             $ref: '#/definitions/common.BaseResponse'
       summary: '[公开] 获取预览文件内容'
+      tags:
+      - Preview接口
+  /api/v1/preview/sessions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根据会话 ID 删除预览会话，并级联删除该会话下的全部预览文件
+      parameters:
+      - description: Bearer Access Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 预览会话 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "401":
+          description: 未授权
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 预览会话不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[管理] 删除预览会话'
       tags:
       - Preview接口
   /api/v1/project:

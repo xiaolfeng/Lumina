@@ -2230,6 +2230,125 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "description": "根据文件 ID 删除单个预览文件",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Preview接口"
+                ],
+                "summary": "[管理] 删除预览文件",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "预览文件 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "预览文件不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/preview/sessions": {
+            "get": {
+                "description": "分页获取预览会话列表，可按项目 ID 筛选（不传则返回全部）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Preview接口"
+                ],
+                "summary": "[管理] 获取预览会话列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目ID筛选",
+                        "name": "project_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "每页数量",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/preview.PreviewSessionListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/preview/sessions/{hash}": {
@@ -2311,6 +2430,57 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "预览文件不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/preview/sessions/{id}": {
+            "delete": {
+                "description": "根据会话 ID 删除预览会话，并级联删除该会话下的全部预览文件",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Preview接口"
+                ],
+                "summary": "[管理] 删除预览会话",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "预览会话 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "预览会话不存在",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -6410,6 +6580,22 @@ const docTemplate = `{
                             "$ref": "#/definitions/preview.PreviewSessionResponse"
                         }
                     ]
+                }
+            }
+        },
+        "preview.PreviewSessionListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "预览会话列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/preview.PreviewSessionResponse"
+                    }
+                },
+                "total": {
+                    "description": "总数量",
+                    "type": "integer"
                 }
             }
         },
