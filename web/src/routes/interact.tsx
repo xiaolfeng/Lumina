@@ -11,12 +11,7 @@ export const Route = createFileRoute("/interact")({
 /* ─── Layout Component ─────────────────────────────────── */
 
 function InteractLayout() {
-		const [sidebarOpen, setSidebarOpen] = useState(() => {
-			if (typeof window !== "undefined") {
-				return window.matchMedia("(min-width: 1280px)").matches;
-			}
-			return false;
-		});
+		const [sidebarOpen, setSidebarOpen] = useState(false);
 		const [progress, setProgress] = useState<SessionProgress | null>(null);
 	return (
 		<SidebarOpenContext.Provider

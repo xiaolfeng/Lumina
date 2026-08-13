@@ -33,20 +33,13 @@ function InteractPage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  const { setOpen, setProgress } = useSidebarOpen()
+  const { setProgress } = useSidebarOpen()
 
   const search = useSearch({ from: '/interact/' })
   const navigate = useNavigate()
   const hashParam = search.session
 
   const isConnected = !!sessionHash
-
-  // xl 屏幕加载会话后自动展开抽屉
-  useEffect(() => {
-    if (isConnected && window.matchMedia('(min-width: 1280px)').matches) {
-      setOpen(true)
-    }
-  }, [isConnected, setOpen])
 
   // URL 有 hash → 加载会话详情
   useEffect(() => {
