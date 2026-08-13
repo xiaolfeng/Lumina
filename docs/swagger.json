@@ -2174,6 +2174,139 @@
                 }
             }
         },
+        "/api/v1/preview/files/{id}": {
+            "get": {
+                "description": "根据文件 ID 查询预览文件详情与关联会话哈希，供 Q\u0026A supplement preview 类型渲染解析 serve 地址",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Preview接口"
+                ],
+                "summary": "[公开] 获取预览文件详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "预览文件 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/preview.PreviewFileDetailResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "预览文件不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/preview/sessions/{hash}": {
+            "get": {
+                "description": "根据访问哈希获取预览会话元数据与文件列表，用于预览页加载",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Preview接口"
+                ],
+                "summary": "[公开] 获取预览会话详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "预览会话访问哈希",
+                        "name": "hash",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/preview.PreviewSessionDetailResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "预览会话不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/preview/sessions/{hash}/files/{filename}": {
+            "get": {
+                "description": "根据访问哈希与文件名返回文件原始内容（带正确 Content-Type），供预览 iframe 加载",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "Preview接口"
+                ],
+                "summary": "[公开] 获取预览文件内容",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "预览会话访问哈希",
+                        "name": "hash",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "文件名（如 index.html）",
+                        "name": "filename",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "文件内容"
+                    },
+                    "404": {
+                        "description": "预览文件不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/project": {
             "get": {
                 "description": "按 page/size 分页查询项目列表，返回项目信息与总数",
@@ -6175,6 +6308,129 @@
                 },
                 "priority": {
                     "description": "优先级 (可选更新)",
+                    "type": "string"
+                }
+            }
+        },
+        "preview.PreviewFileDetailResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "filename": {
+                    "description": "文件名",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "预览文件 ID",
+                    "type": "integer"
+                },
+                "mime_type": {
+                    "description": "MIME类型",
+                    "type": "string"
+                },
+                "session_hash": {
+                    "description": "关联会话访问哈希",
+                    "type": "string"
+                },
+                "session_id": {
+                    "description": "关联会话ID",
+                    "type": "integer"
+                },
+                "size": {
+                    "description": "文件大小(字节)",
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                }
+            }
+        },
+        "preview.PreviewFileResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "filename": {
+                    "description": "文件名",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "预览文件 ID",
+                    "type": "integer"
+                },
+                "mime_type": {
+                    "description": "MIME类型",
+                    "type": "string"
+                },
+                "session_id": {
+                    "description": "关联会话ID",
+                    "type": "integer"
+                },
+                "size": {
+                    "description": "文件大小(字节)",
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                }
+            }
+        },
+        "preview.PreviewSessionDetailResponse": {
+            "type": "object",
+            "properties": {
+                "files": {
+                    "description": "文件列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/preview.PreviewFileResponse"
+                    }
+                },
+                "session": {
+                    "description": "会话信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/preview.PreviewSessionResponse"
+                        }
+                    ]
+                }
+            }
+        },
+        "preview.PreviewSessionResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "hash": {
+                    "description": "访问哈希标识",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "预览会话 ID",
+                    "type": "integer"
+                },
+                "project_id": {
+                    "description": "关联项目ID",
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "会话状态",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "会话标题",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新时间",
                     "type": "string"
                 }
             }

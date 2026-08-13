@@ -44,6 +44,7 @@ lumina
 ### Frontend Build ###
 resources/web/dist/
 resources/web-wiki/dist/
+design-demos/
 
 ### Lumina ###
 .lumina/
