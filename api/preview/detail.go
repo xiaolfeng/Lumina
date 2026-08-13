@@ -36,3 +36,9 @@ type PreviewSessionDetailResponse struct {
 	Session PreviewSessionResponse `json:"session"` // 会话信息
 	Files   []PreviewFileResponse  `json:"files"`   // 文件列表
 }
+
+// PreviewFileDetailResponse 预览文件详情响应（含关联会话哈希，供 preview supplement 渲染解析 serve 地址）
+type PreviewFileDetailResponse struct {
+	PreviewFileResponse
+	SessionHash string `json:"session_hash"` // 关联会话访问哈希
+}

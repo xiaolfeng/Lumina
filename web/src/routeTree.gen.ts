@@ -9,10 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PreviewRouteImport } from './routes/preview'
 import { Route as InteractRouteImport } from './routes/interact'
 import { Route as ConsoleRouteImport } from './routes/console'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PublicRouteImport } from './routes/_public'
+import { Route as PreviewIndexRouteImport } from './routes/preview/index'
 import { Route as InteractIndexRouteImport } from './routes/interact/index'
 import { Route as ConsoleIndexRouteImport } from './routes/console/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
@@ -35,6 +37,11 @@ import { Route as ConsoleQaSessionIdRouteImport } from './routes/console/qa/$ses
 import { Route as ConsoleProjectProjectIdRepowikiIndexRouteImport } from './routes/console/project/$projectId/repowiki/index'
 import { Route as ConsoleProjectProjectIdRepowikiCreateRouteImport } from './routes/console/project/$projectId/repowiki/create'
 
+const PreviewRoute = PreviewRouteImport.update({
+  id: '/preview',
+  path: '/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InteractRoute = InteractRouteImport.update({
   id: '/interact',
   path: '/interact',
@@ -53,6 +60,11 @@ const AuthRoute = AuthRouteImport.update({
 const PublicRoute = PublicRouteImport.update({
   id: '/_public',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewIndexRoute = PreviewIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PreviewRoute,
 } as any)
 const InteractIndexRoute = InteractIndexRouteImport.update({
   id: '/',
@@ -167,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/console': typeof ConsoleRouteWithChildren
   '/interact': typeof InteractRouteWithChildren
+  '/preview': typeof PreviewRouteWithChildren
   '/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
@@ -182,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/interact/thank': typeof InteractThankRoute
   '/console/': typeof ConsoleIndexRoute
   '/interact/': typeof InteractIndexRoute
+  '/preview/': typeof PreviewIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
   '/console/project/': typeof ConsoleProjectIndexRoute
   '/console/qa/': typeof ConsoleQaIndexRoute
@@ -204,6 +218,7 @@ export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
   '/console': typeof ConsoleIndexRoute
   '/interact': typeof InteractIndexRoute
+  '/preview': typeof PreviewIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
   '/console/project': typeof ConsoleProjectIndexRoute
   '/console/qa': typeof ConsoleQaIndexRoute
@@ -216,6 +231,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/console': typeof ConsoleRouteWithChildren
   '/interact': typeof InteractRouteWithChildren
+  '/preview': typeof PreviewRouteWithChildren
   '/_public/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
@@ -232,6 +248,7 @@ export interface FileRoutesById {
   '/_public/': typeof PublicIndexRoute
   '/console/': typeof ConsoleIndexRoute
   '/interact/': typeof InteractIndexRoute
+  '/preview/': typeof PreviewIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
   '/console/project/': typeof ConsoleProjectIndexRoute
   '/console/qa/': typeof ConsoleQaIndexRoute
@@ -245,6 +262,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/console'
     | '/interact'
+    | '/preview'
     | '/start'
     | '/auth/login'
     | '/auth/new'
@@ -260,6 +278,7 @@ export interface FileRouteTypes {
     | '/interact/thank'
     | '/console/'
     | '/interact/'
+    | '/preview/'
     | '/console/qa/$sessionId'
     | '/console/project/'
     | '/console/qa/'
@@ -282,6 +301,7 @@ export interface FileRouteTypes {
     | '/'
     | '/console'
     | '/interact'
+    | '/preview'
     | '/console/qa/$sessionId'
     | '/console/project'
     | '/console/qa'
@@ -293,6 +313,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/console'
     | '/interact'
+    | '/preview'
     | '/_public/start'
     | '/auth/login'
     | '/auth/new'
@@ -309,6 +330,7 @@ export interface FileRouteTypes {
     | '/_public/'
     | '/console/'
     | '/interact/'
+    | '/preview/'
     | '/console/qa/$sessionId'
     | '/console/project/'
     | '/console/qa/'
@@ -321,10 +343,18 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   ConsoleRoute: typeof ConsoleRouteWithChildren
   InteractRoute: typeof InteractRouteWithChildren
+  PreviewRoute: typeof PreviewRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/preview': {
+      id: '/preview'
+      path: '/preview'
+      fullPath: '/preview'
+      preLoaderRoute: typeof PreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/interact': {
       id: '/interact'
       path: '/interact'
@@ -352,6 +382,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof PublicRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/preview/': {
+      id: '/preview/'
+      path: '/'
+      fullPath: '/preview/'
+      preLoaderRoute: typeof PreviewIndexRouteImport
+      parentRoute: typeof PreviewRoute
     }
     '/interact/': {
       id: '/interact/'
@@ -603,11 +640,23 @@ const InteractRouteWithChildren = InteractRoute._addFileChildren(
   InteractRouteChildren,
 )
 
+interface PreviewRouteChildren {
+  PreviewIndexRoute: typeof PreviewIndexRoute
+}
+
+const PreviewRouteChildren: PreviewRouteChildren = {
+  PreviewIndexRoute: PreviewIndexRoute,
+}
+
+const PreviewRouteWithChildren =
+  PreviewRoute._addFileChildren(PreviewRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   PublicRoute: PublicRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   ConsoleRoute: ConsoleRouteWithChildren,
   InteractRoute: InteractRouteWithChildren,
+  PreviewRoute: PreviewRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

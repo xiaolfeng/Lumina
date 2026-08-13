@@ -12,4 +12,5 @@ func (r *route) previewRouter(route gin.IRouter) {
 	previewGroup := route.Group("/preview")
 	previewGroup.GET("/sessions/:hash", previewHandler.GetSession)
 	previewGroup.GET("/sessions/:hash/files/:filename", previewHandler.GetFile)
+	previewGroup.GET("/files/:id", previewHandler.GetFileByID)
 }

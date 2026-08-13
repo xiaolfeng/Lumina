@@ -1,6 +1,7 @@
 export { Markdown, MarkdownLite } from '@lumina/components/markdown'
 export { proseQuestion, proseHint, proseArticle } from '@lumina/components/markdown'
 export { SandboxFrame } from './sandbox-frame'
+export { PreviewFrame, PreviewSupplement } from './preview-frame'
 export { Kicker } from './kicker'
 export { PanelCard } from './panel-card'
 export { EmptyState, LoadingState } from './state-views'

@@ -5,7 +5,7 @@ import { Button } from "@lumina/components/ui/button";
 import { ScrollArea } from "@lumina/components/ui/scroll-area";
 import { ease } from "@lumina/components/motion";
 
-import { Markdown, proseArticle, SandboxFrame } from "./primitives";
+import { Markdown, proseArticle, SandboxFrame, PreviewSupplement } from "./primitives";
 import { MotionDemoPanel } from "./motion-demo-panel";
 import type { Question } from "./types";
 
@@ -26,10 +26,13 @@ interface DetailPanelProps {
 	onBack: () => void;
 }
 
-/** 渲染补充内容：markdown 用统一 Markdown 组件（含高亮/katex/mermaid），html 走 iframe sandbox 沙盒隔离 */
+/** 渲染补充内容：markdown 用统一 Markdown 组件（含高亮/katex/mermaid），html 走 iframe sandbox 沙盒隔离，preview 走跨文件引用预览 */
 function SupplementContent({ content, contentType }: { content: string; contentType: string }) {
 	if (contentType === "html") {
 		return <SandboxFrame content={content} className="w-full" />;
+	}
+	if (contentType === "preview") {
+		return <PreviewSupplement content={content} />;
 	}
 	return (
 		<article className={proseArticle}>

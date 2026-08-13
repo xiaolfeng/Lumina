@@ -55,7 +55,7 @@ export interface SupplementItem {
   id: string
   target_type: 'question' | 'option'
   target_id: string
-  content_type: 'markdown' | 'html'
+  content_type: 'markdown' | 'html' | 'preview'
   content: string
   created_at: string
   updated_at: string

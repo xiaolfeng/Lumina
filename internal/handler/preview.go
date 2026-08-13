@@ -69,3 +69,31 @@ func (h *PreviewHandler) GetFile(ctx *gin.Context) {
 
 	ctx.Data(http.StatusOK, file.MimeType, []byte(file.Content))
 }
+
+// GetFileByID 获取预览文件详情（公开，按 file_id，含会话哈希）
+//
+// @Summary     [公开] 获取预览文件详情
+// @Description 根据文件 ID 查询预览文件详情与关联会话哈希，供 Q&A supplement preview 类型渲染解析 serve 地址
+// @Tags        Preview接口
+// @Produce     json
+// @Param       id  path  string  true  "预览文件 ID"
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiPreview.PreviewFileDetailResponse}  "查询成功"
+// @Failure     404  {object}  apiCommon.BaseResponse  "预览文件不存在"
+// @Router      /api/v1/preview/files/{id} [GET]
+func (h *PreviewHandler) GetFileByID(ctx *gin.Context) {
+	h.log.Info(ctx, "GetFileByID - 获取预览文件详情")
+
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	resp, xErr := h.service.previewLogic.GetFileByID(ctx.Request.Context(), id)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.SuccessHasData(ctx, "查询成功", resp)
+}

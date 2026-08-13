@@ -186,6 +186,28 @@ func (l *PreviewLogic) GetFileContent(ctx context.Context, hash, filename string
 	}, nil
 }
 
+// GetFileByID 根据文件 ID 获取预览文件详情（含关联会话哈希）
+//
+// 供 Q&A supplement preview 类型渲染时，由 file_id 解析出 (session_hash, filename) 以构造 serve 地址。
+func (l *PreviewLogic) GetFileByID(ctx context.Context, fileID xSnowflake.SnowflakeID) (*apiPreview.PreviewFileDetailResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("GetFileByID - 根据 ID 获取预览文件详情 [%d]", fileID.Int64()))
+
+	file, xErr := l.repo.file.GetByID(ctx, fileID)
+	if xErr != nil {
+		return nil, xErr
+	}
+
+	session, xErr := l.repo.session.GetByID(ctx, file.SessionID)
+	if xErr != nil {
+		return nil, xErr
+	}
+
+	return &apiPreview.PreviewFileDetailResponse{
+		PreviewFileResponse: *toPreviewFileResponse(file),
+		SessionHash:         session.Hash,
+	}, nil
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 // validateFilename 校验文件名是否合法（扁平单层）
