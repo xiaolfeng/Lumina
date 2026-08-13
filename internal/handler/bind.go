@@ -3,7 +3,7 @@ package handler
 import (
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	xVaild "github.com/bamboo-services/bamboo-base-go/common/validator"
+	xVaild "github.com/bamboo-services/bamboo-base-go/major/validator"
 	"github.com/gin-gonic/gin"
 )
 

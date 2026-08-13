@@ -9,7 +9,6 @@ import (
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	"github.com/redis/go-redis/v9"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
@@ -44,7 +43,7 @@ type WikiVersionRepo struct {
 func NewWikiVersionRepo(db *gorm.DB, rdb *redis.Client) *WikiVersionRepo {
 	return &WikiVersionRepo{
 		db:    db,
-		cache: cache.NewRepoWikiCache(&xCache.Cache{RDB: rdb}),
+		cache: cache.NewRepoWikiCache(&cache.Base{RDB: rdb}),
 		log:   xLog.WithName(xLog.NamedREPO, "WikiVersionRepo"),
 	}
 }

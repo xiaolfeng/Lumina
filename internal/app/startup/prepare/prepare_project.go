@@ -3,8 +3,8 @@ package prepare
 import (
 	"log/slog"
 
-	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
+	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 )
 
 func (p *Prepare) prepareProject() {

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
@@ -13,13 +12,13 @@ import (
 //
 // 承接原先散落在 logic 层的 l.rdb.Incr/Expire/Del 调用，将重试计数器语义
 // 封装到 cache 子层。该计数器是纯 Redis INCR 计数器，与 KeyCache 接口
-// （GET/SET/DEL）语义不匹配，因此不实现 KeyCache，仅持有 *xCache.Cache
+// （GET/SET/DEL）语义不匹配，因此不实现 KeyCache，仅持有 *Base
 // 复用 RDB 连接。
 //
 // 计数语义：首次 INCR（结果==1）时自动设置 TTL，后续递增不重置 TTL；
 // 消费成功或会话结束时通过 Reset 删除计数器。
 type QaRetryCache struct {
-	*xCache.Cache
+	*Base
 }
 
 // Increment 递增指定会话的重试计数器并返回递增后的值

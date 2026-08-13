@@ -7,7 +7,7 @@ import (
 
 	xVaild "github.com/bamboo-services/bamboo-base-go/common/validator"
 	xMiddle "github.com/bamboo-services/bamboo-base-go/major/middleware"
-	xReg "github.com/bamboo-services/bamboo-base-go/major/register"
+	xOption "github.com/bamboo-services/bamboo-base-go/major/option"
 	xRoute "github.com/bamboo-services/bamboo-base-go/major/route"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -23,8 +23,8 @@ type route struct {
 
 // NewRoute 注册全部路由，包括前端 SPA 静态资源服务。
 // frontendFS 或 wikiFrontendFS 为 nil 时跳过对应前端路由注册。
-func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) func(reg *xReg.Reg) {
-	return func(reg *xReg.Reg) {
+func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) xOption.RouteRegistrar {
+	return func(ctx context.Context, serve *gin.Engine) {
 		if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 			_ = xVaild.RegisterCustomValidators(v)
 			_ = xVaild.RegisterTranslator(v)
@@ -38,8 +38,8 @@ func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) func(reg *xReg.Reg) {
 		}
 
 		r := &route{
-			engine:         reg.Serve,
-			context:        reg.Init.Ctx,
+			engine:         serve,
+			context:        ctx,
 			frontendFS:     frontendFS,
 			wikiFrontendFS: wikiFrontendFS,
 		}

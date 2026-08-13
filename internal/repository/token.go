@@ -6,7 +6,6 @@ import (
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	"github.com/redis/go-redis/v9"
 	"github.com/xiaolfeng/Lumina/internal/repository/cache"
 )
@@ -41,10 +40,10 @@ type TokenRepo struct {
 func NewTokenRepo(rdb *redis.Client) *TokenRepo {
 	return &TokenRepo{
 		atCache: &cache.AccessTokenCache{
-			Cache: &xCache.Cache{RDB: rdb, TTL: 2 * time.Hour},
+			Base: &cache.Base{RDB: rdb, TTL: 2 * time.Hour},
 		},
 		rtCache: &cache.RefreshTokenCache{
-			Cache: &xCache.Cache{RDB: rdb, TTL: 14 * 24 * time.Hour},
+			Base: &cache.Base{RDB: rdb, TTL: 14 * 24 * time.Hour},
 		},
 		log: xLog.WithName(xLog.NamedREPO, "TokenRepo"),
 	}

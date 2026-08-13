@@ -60,6 +60,15 @@ func GetHub(handler MessageHandler, sessionRepo *repository.QaSessionRepo, db *g
 	return globalHub
 }
 
+// GetGlobalHub 返回全局 Hub 单例（不创建）。
+//
+// 仅在 Hub 已通过 [GetHub] 创建后调用，未创建时返回 nil。
+// 供「仅获取」场景使用：如 startup 的 goroutineFunc 需获取已由 route 层
+// 在 Register 阶段创建的 Hub 以启动主循环（避免因时序/参数误用创建空 Hub）。
+func GetGlobalHub() *Hub {
+	return globalHub
+}
+
 // NewHub 创建 Hub 实例
 func NewHub(handler MessageHandler, sessionRepo *repository.QaSessionRepo, db *gorm.DB) *Hub {
 	return &Hub{

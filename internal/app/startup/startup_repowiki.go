@@ -6,8 +6,8 @@ import (
 	"os"
 
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
-	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
+	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/logic"

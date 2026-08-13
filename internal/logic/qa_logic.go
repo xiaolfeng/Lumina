@@ -10,9 +10,8 @@ import (
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
+	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 	"github.com/xiaolfeng/Lumina/api/qa"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	qaQueue "github.com/xiaolfeng/Lumina/internal/qa"
@@ -67,7 +66,7 @@ func NewQaLogic(ctx context.Context) *QaLogic {
 			question:      repository.NewQaQuestionRepo(db),
 			supplement:    repository.NewQaSupplementRepo(db),
 			info:          repository.NewInfoRepo(db),
-			retryCache:    &cache.QaRetryCache{Cache: &xCache.Cache{RDB: rdb}},
+			retryCache:    &cache.QaRetryCache{Base: &cache.Base{RDB: rdb}},
 			downloadToken: service.NewDownloadTokenService(rdb),
 			fileCache:     service.NewFileCacheService(),
 		},

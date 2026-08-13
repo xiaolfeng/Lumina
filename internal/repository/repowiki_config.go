@@ -8,7 +8,6 @@ import (
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	"github.com/redis/go-redis/v9"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository/cache"
@@ -43,7 +42,7 @@ type RepoWikiConfigRepo struct {
 func NewRepoWikiConfigRepo(db *gorm.DB, rdb *redis.Client) *RepoWikiConfigRepo {
 	return &RepoWikiConfigRepo{
 		db:    db,
-		cache: cache.NewRepoWikiCache(&xCache.Cache{RDB: rdb}),
+		cache: cache.NewRepoWikiCache(&cache.Base{RDB: rdb}),
 		log:   xLog.WithName(xLog.NamedREPO, "RepoWikiConfigRepo"),
 	}
 }

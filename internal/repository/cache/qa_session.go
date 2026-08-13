@@ -6,7 +6,6 @@ import (
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 )
@@ -18,9 +17,9 @@ import (
 //   - Hash → 会话 ID（哈希索引，GetByHash 命中后复用 GetByID）
 //
 // 与 ProjectCache 同理，多 key 维度不套单 key 的 KeyCache 接口，
-// 持有 *xCache.Cache 复用 RDB/TTL。
+// 持有 *Base 复用 RDB/TTL。
 type QaSessionCache struct {
-	*xCache.Cache
+	*Base
 }
 
 // GetIDByHash 根据 Hash 读取会话 ID 映射缓存

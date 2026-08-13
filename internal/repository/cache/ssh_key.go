@@ -6,7 +6,6 @@ import (
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 )
@@ -25,15 +24,15 @@ type sshKeyCacheData struct {
 // SshKeyCache SSH 密钥缓存管理器，实现 Cache-Aside 模式
 //
 // 缓存 ID → SshKey JSON 详情（含私钥），TTL 30 分钟，与 RepoWikiConfigCache 同策略。
-// 持有 *xCache.Cache 复用 RDB 连接。
+// 持有 *Base 复用 RDB 连接。
 type SshKeyCache struct {
-	*xCache.Cache
+	*Base
 }
 
 // NewSshKeyCache 创建 SshKeyCache 实例
-func NewSshKeyCache(cache *xCache.Cache) *SshKeyCache {
-	cache.TTL = cacheTTLSshKey
-	return &SshKeyCache{Cache: cache}
+func NewSshKeyCache(base *Base) *SshKeyCache {
+	base.TTL = cacheTTLSshKey
+	return &SshKeyCache{Base: base}
 }
 
 // GetConfig 根据 ID 读取 SSH 密钥详情缓存

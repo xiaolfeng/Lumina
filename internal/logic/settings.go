@@ -10,7 +10,7 @@ import (
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
-	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
+	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 )
 
 // SettingsLogic 系统设置业务编排层

@@ -8,7 +8,7 @@ import (
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xUtil "github.com/bamboo-services/bamboo-base-go/common/utility"
-	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
+	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 	apiAuth "github.com/xiaolfeng/Lumina/api/auth"
 	apiUser "github.com/xiaolfeng/Lumina/api/user"
 	"github.com/xiaolfeng/Lumina/internal/repository"

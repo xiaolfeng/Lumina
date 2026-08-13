@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
@@ -16,7 +15,7 @@ type TokenInfo struct {
 
 // AccessTokenCache AccessToken 缓存管理器
 type AccessTokenCache struct {
-	*xCache.Cache
+	*Base
 }
 
 // Get 根据 AccessToken 检索认证状态
@@ -87,7 +86,7 @@ func (c *AccessTokenCache) Delete(ctx context.Context, token string) *xError.Err
 
 // RefreshTokenCache RefreshToken 缓存管理器
 type RefreshTokenCache struct {
-	*xCache.Cache
+	*Base
 }
 
 // Get 根据 RefreshToken 检索认证状态

@@ -8,7 +8,6 @@ import (
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository/cache"
 
@@ -48,7 +47,7 @@ func NewQaSessionRepo(db *gorm.DB, rdb *redis.Client) *QaSessionRepo {
 	return &QaSessionRepo{
 		db: db,
 		cache: &cache.QaSessionCache{
-			Cache: &xCache.Cache{RDB: rdb, TTL: cacheTTLSession},
+			Base: &cache.Base{RDB: rdb, TTL: cacheTTLSession},
 		},
 		log: xLog.WithName(xLog.NamedREPO, "QaSessionRepo"),
 	}

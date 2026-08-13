@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 )
@@ -20,9 +19,9 @@ import (
 //   - MatchPath → 项目 ID（路径索引，每个路径一条）
 //
 // 该缓存为多 key 维度，与单 key 的 KeyCache[K,V] 接口不匹配，
-// 故持有 *xCache.Cache 复用 RDB/TTL，内部直接操作 Redis。
+// 故持有 *Base 复用 RDB/TTL，内部直接操作 Redis。
 type ProjectCache struct {
-	*xCache.Cache
+	*Base
 }
 
 // GetByID 根据 ID 读取项目详情缓存

@@ -3,7 +3,7 @@ package route
 import (
 	"time"
 
-	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
+	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 	"github.com/gin-gonic/gin"
 	"github.com/xiaolfeng/Lumina/internal/app/middleware"
 	"github.com/xiaolfeng/Lumina/internal/entity"
@@ -27,8 +27,9 @@ func (r *route) wsRouter(route gin.IRouter) {
 	// 创建 Hub 并注入消息处理器、Session 仓库和数据库实例
 	hub := websocket.GetHub(msgHandler, sessionRepo, db)
 
-	// 启动 Hub 主循环
-	go hub.Run(r.context)
+	// Hub 主循环不在此启动：RouteRegistrar 传入的 ctx 未经 Runner.WithCancel 包裹，
+	// 若在此 `go hub.Run(r.context)` 会导致 ctx.Done() 永不触发、WebSocket 无法优雅关闭。
+	// 改由 startup.NewWebSocketRunner 通过 xMain.Runner 的 goroutineFunc 接收可取消 ctx 后启动。
 
 	// 设置 QaLogic 回调，使其推送问题时通过 WebSocket 广播到在线设备
 	logic.OnQuestionPushed = func(sessionID string, question *entity.QaQuestion) {

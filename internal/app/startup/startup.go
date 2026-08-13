@@ -20,8 +20,9 @@ func newInit() *reg {
 func Init() (context.Context, []xRegNode.RegNodeList) {
 	businessReg := newInit()
 	regNode := []xRegNode.RegNodeList{
-		{Key: xCtx.DatabaseKey, Node: businessReg.databaseInit},
-		{Key: xCtx.RedisClientKey, Node: businessReg.nosqlInit},
+		// Database / Cache 已由 main.go 的 xOption.WithDatabase / WithCache 声明式装配
+		// （框架在业务节点之前注册 DatabaseKey / CacheManagerKey / RedisClientKey），
+		// 此处仅注册业务节点（依赖 db/rdb 的 RepoWiki / MCP / 种子数据）。
 		{Key: bConst.RepoWikiLogicKey, Node: businessReg.repoWikiInit},
 		{Key: MCPHandlerKey, Node: businessReg.mcpInit},
 		{Key: xCtx.Exec, Node: businessReg.businessDataPrepare},

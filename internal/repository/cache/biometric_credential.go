@@ -11,7 +11,6 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 )
@@ -23,7 +22,7 @@ import (
 //   - 可用性缓存（简单 bool，TTL 30min）
 //   - Challenge 临时存储（register/login 共用，TTL 60s，单次使用）
 type BiometricCredentialCache struct {
-	*xCache.Cache
+	*Base
 }
 
 // ── 凭证缓存（Cache-Aside，ID + CredentialID 双维度）──

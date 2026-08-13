@@ -9,7 +9,6 @@ import (
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
@@ -49,7 +48,7 @@ func NewBiometricCredentialRepo(db *gorm.DB, rdb *redis.Client) *BiometricCreden
 	return &BiometricCredentialRepo{
 		db: db,
 		cache: &cache.BiometricCredentialCache{
-			Cache: &xCache.Cache{RDB: rdb, TTL: cacheTTLBiometric},
+			Base: &cache.Base{RDB: rdb, TTL: cacheTTLBiometric},
 		},
 		log: xLog.WithName(xLog.NamedREPO, "BiometricCredentialRepo"),
 	}

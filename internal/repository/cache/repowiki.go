@@ -6,7 +6,6 @@ import (
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 )
@@ -23,16 +22,16 @@ const cacheTTLRepoWikiVersionStatus = 30 * time.Second
 //   - Config 缓存：ID → 配置 JSON 详情，TTL 30 分钟，与 ProjectCache 同策略
 //   - 版本状态缓存：versionID → status 字符串，TTL 30 秒，专为 Agent 轮询状态优化（短 TTL 保证状态准实时）
 //
-// 持有 *xCache.Cache 复用 RDB；Config 缓存使用 c.TTL（30min），
+// 持有 *Base 复用 RDB；Config 缓存使用 c.TTL（30min），
 // 版本状态缓存使用独立的 cacheTTLRepoWikiVersionStatus（30s）。
 type RepoWikiCache struct {
-	*xCache.Cache
+	*Base
 }
 
 // NewRepoWikiCache 创建 RepoWikiCache 实例
-func NewRepoWikiCache(cache *xCache.Cache) *RepoWikiCache {
-	cache.TTL = cacheTTLRepoWikiConfig
-	return &RepoWikiCache{Cache: cache}
+func NewRepoWikiCache(base *Base) *RepoWikiCache {
+	base.TTL = cacheTTLRepoWikiConfig
+	return &RepoWikiCache{Base: base}
 }
 
 // ── Config 缓存（TTL 30 分钟）──

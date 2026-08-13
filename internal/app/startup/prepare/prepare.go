@@ -4,7 +4,7 @@ import (
 	"context"
 
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
-	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
+	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 	"gorm.io/gorm"
 )
 

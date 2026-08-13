@@ -22,9 +22,9 @@ import (
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
+	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 	xAsync "github.com/bamboo-services/bamboo-base-go/plugins/async"
 	"github.com/bamboo-services/bamboo-messages/bamboo"
 

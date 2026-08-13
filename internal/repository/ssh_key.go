@@ -8,7 +8,6 @@ import (
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	xCache "github.com/bamboo-services/bamboo-base-go/major/cache"
 	"github.com/redis/go-redis/v9"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository/cache"
@@ -31,7 +30,7 @@ type SshKeyRepo struct {
 func NewSshKeyRepo(db *gorm.DB, rdb *redis.Client) *SshKeyRepo {
 	return &SshKeyRepo{
 		db:    db,
-		cache: cache.NewSshKeyCache(&xCache.Cache{RDB: rdb}),
+		cache: cache.NewSshKeyCache(&cache.Base{RDB: rdb}),
 		log:   xLog.WithName(xLog.NamedREPO, "SshKeyRepo"),
 	}
 }

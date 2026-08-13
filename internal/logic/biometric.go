@@ -15,8 +15,8 @@ import (
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xUtil "github.com/bamboo-services/bamboo-base-go/common/utility"
-	xCtxUtil "github.com/bamboo-services/bamboo-base-go/common/utility/context"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
+	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
 
 	apiBiometric "github.com/xiaolfeng/Lumina/api/biometric"
 	apiUser "github.com/xiaolfeng/Lumina/api/user"
