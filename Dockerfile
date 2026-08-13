@@ -33,7 +33,9 @@ COPY web-wiki/ web-wiki/
 COPY components/ components/
 
 # 双前端构建；vite outDir 相对各包目录，分别产出到 /build/resources/web/dist 与 /build/resources/web-wiki/dist
-RUN pnpm --filter web build && pnpm --filter web-wiki build
+# 注意：--filter 按包名匹配（web-wiki 的包名为 lumina-wiki-reader，与目录名不一致），
+# 故用 ./ 路径选择器对齐目录，避免匹配不到包时 pnpm 静默跳过（exit 0）导致产物缺失
+RUN pnpm --filter ./web build && pnpm --filter ./web-wiki build
 
 # ---------- Stage 2: Go 编译 ----------
 FROM golang:1.25-alpine AS go-builder
