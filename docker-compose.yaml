@@ -41,7 +41,7 @@ services:
       # 容器内固定监听地址（.env 的 XLF_HOST 保持原样注入，此处兜底为 0.0.0.0）
       XLF_HOST: "0.0.0.0"
     ports:
-      - "${XLF_PORT:-8080}:${XLF_PORT:-8080}"
+      - "${XLF_PORT:-8800}:${XLF_PORT:-8800}"
     volumes:
       # RepoWiki 存储（.lumina/repowiki）与 Q&A 缓存（.lumina/cache）持久化
       - ./.lumina:/app/.lumina

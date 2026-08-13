@@ -73,7 +73,7 @@ WORKDIR /app
 COPY --from=go-builder /out/lumina /app/lumina
 RUN mkdir -p /app/.lumina/repowiki /app/.lumina/cache
 
-EXPOSE 8080
+EXPOSE 8800
 
 # tini 作为 PID 1 转发 SIGTERM/SIGINT，保证框架 Runner 优雅退出
 ENTRYPOINT ["/sbin/tini", "--"]
