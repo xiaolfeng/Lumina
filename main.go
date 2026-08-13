@@ -52,6 +52,8 @@ func main() {
 				&entity.LlmProvider{},
 				&entity.LlmModel{},
 				&entity.WebhookEvent{},
+				&entity.PreviewSession{},
+				&entity.PreviewFile{},
 			),
 		),
 		xOption.WithCache(xOptCache.FromEnv()),

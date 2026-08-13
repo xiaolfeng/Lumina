@@ -259,8 +259,11 @@ func handleQaPushSupplement(ctx context.Context, req *mcp.CallToolRequest) (*mcp
 
 	// 内容类型
 	contentType := "markdown"
-	if ct, _ := args["content_type"].(string); ct == "html" {
+	switch ct, _ := args["content_type"].(string); ct {
+	case "html":
 		contentType = "html"
+	case "preview":
+		contentType = "preview"
 	}
 
 	xErr := qaLogic.PushSupplement(ctx, sessionID, targetType, targetID, contentType, content)

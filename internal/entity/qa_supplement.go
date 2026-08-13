@@ -12,7 +12,7 @@ type QaSupplement struct {
 	SessionID          xSnowflake.SnowflakeID `gorm:"type:bigint;not null;index;comment:关联会话ID" json:"session_id"`               // 关联会话ID
 	TargetType         string                 `gorm:"type:varchar(16);not null;comment:关联类型 question/option" json:"target_type"` // 关联类型 question/option
 	TargetID           xSnowflake.SnowflakeID `gorm:"type:bigint;not null;comment:关联ID" json:"target_id"`                        // 关联ID
-	ContentType        string                 `gorm:"type:varchar(16);not null;comment:内容类型 markdown/html" json:"content_type"`  // 内容类型 markdown/html
+	ContentType        string                 `gorm:"type:varchar(16);not null;comment:内容类型 markdown/html/preview" json:"content_type"`  // 内容类型 markdown/html/preview
 	Content            string                 `gorm:"type:text;not null;comment:补充内容" json:"content"`                            // 补充内容
 }
 

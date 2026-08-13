@@ -242,6 +242,7 @@ var qaToolDefs = []struct {
 ⚠️ content_type 约束（重要）：
   - markdown（默认）：双通道 — 浏览器渲染 + AI 可读（作为约束/上下文返回给 Agent）
   - html：单通道 — 仅浏览器渲染（提升用户可读性），不会返回给 Agent
+  - preview：单通道 — 仅浏览器渲染，content 为 JSON（{"session_id","file_id"}），用于引用预览会话中的前端文件
 
 选择建议：
   - 技术说明、决策矩阵、约束条件 → 使用 markdown（AI 需要读取这些信息）
@@ -273,8 +274,8 @@ HTML 适合交互式预览、自定义布局。每个目标是 1:1 映射，重�
 				},
 				"content_type": map[string]any{
 					"type":        "string",
-					"description": "内容类型：markdown 或 html，默认 markdown",
-					"enum":        []string{"markdown", "html"},
+					"description": "内容类型：markdown / html / preview，默认 markdown",
+					"enum":        []string{"markdown", "html", "preview"},
 				},
 			},
 			"required": []string{"session_id", "question_id", "content"},

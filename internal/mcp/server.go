@@ -35,8 +35,11 @@ func InitMCPServer(ctx context.Context) http.Handler {
 	// 注册 RepoWiki 模块工具
 	RegisterRepoWikiTools(server)
 
+	// 注册 Preview 模块工具
+	RegisterPreviewTools(server)
+
 	log := xLog.WithName(xLog.NamedINIT)
-	log.Info(ctx, "MCP Server initialized with QA, Project, Pin and RepoWiki tools registered")
+	log.Info(ctx, "MCP Server initialized with QA, Project, Pin, RepoWiki and Preview tools registered")
 
 	// 创建 Streamable HTTP Handler，每个请求使用同一个 Server 实例
 	return mcp.NewStreamableHTTPHandler(

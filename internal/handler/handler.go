@@ -20,6 +20,7 @@ type service struct {
 	llmProviderLogic *logic.LlmProviderLogic
 	llmModelLogic    *logic.LlmModelLogic
 	settingsLogic    *logic.SettingsLogic
+	previewLogic     *logic.PreviewLogic
 }
 
 type handler struct {
@@ -59,6 +60,7 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 			llmProviderLogic: logic.NewLlmProviderLogic(ctx),
 			llmModelLogic:    logic.NewLlmModelLogic(ctx),
 			settingsLogic:    logic.NewSettingsLogic(ctx),
+			previewLogic:     logic.NewPreviewLogic(ctx),
 		},
 	}
 }
@@ -88,3 +90,5 @@ type WebhookHandler handler
 type LlmHandler handler
 
 type SettingsHandler handler
+
+type PreviewHandler handler

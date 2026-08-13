@@ -37,10 +37,10 @@ func toSessionResponse(session *entity.QaSession) qa.SessionResponse {
 // P-21 安全过滤：HTML 格式 supplement 仅浏览器渲染（ShadowHtml 沙盒隔离），予以保留；
 // markdown 格式 supplement 检测危险 HTML 标签（<script>/<iframe> 等），含危险标签则跳过。
 func toQuestionSummary(q *entity.QaQuestion, supplements []qa.SupplementResponse) qa.QuestionSummaryResponse {
-	// P-21: 过滤 supplement — html 保留给浏览器；markdown 检测危险标签
+	// P-21: 过滤 supplement — html/preview 保留给浏览器；markdown 检测危险标签
 	filtered := make([]qa.SupplementResponse, 0, len(supplements))
 	for _, s := range supplements {
-		if s.ContentType != "html" && containsDangerousTags(s.Content) {
+		if s.ContentType != "html" && s.ContentType != "preview" && containsDangerousTags(s.Content) {
 			continue
 		}
 		filtered = append(filtered, s)
