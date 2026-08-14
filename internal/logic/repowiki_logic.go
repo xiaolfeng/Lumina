@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
@@ -804,19 +805,22 @@ func (l *RepoWikiLogic) VersionStats(ctx context.Context, configID xSnowflake.Sn
 
 // QueryWiki 查询 Wiki 内容（MCP 工具用）
 //
-// 根据 wikiID 定位项目的 Wiki 目录，返回 manifest 或首页 Markdown 内容。
-// query 参数保留用于未来全文检索扩展（当前 v1 仅返回首页摘要）。
+// 根据 wikiID 定位项目的 Wiki 目录，读取指定页面或首页的 Markdown 正文。
+// - page 为空：读取 manifest.Home 指向的首页正文（返回「首页摘要」语义的完整首页）。
+// - page 非空：按相对路径读取对应 .mdx 页面正文（含路径遍历防护与 .mdx 强制扩展名）。
+// query 参数保留用于未来全文检索扩展（v1 未使用）。
 //
 // 参数说明:
 //   - ctx:    上下文
 //   - wikiID: Wiki 版本 ID（用于定位 Wiki 文档目录）
+//   - page:   目标页面路径（无扩展名，如 "content/架构设计"）；空表示读取首页
 //   - query:  查询关键词（v1 未使用，保留扩展）
 //
 // 返回值:
-//   - string:       Wiki 内容（Markdown 或 manifest JSON 摘要）
-//   - *xError.Error: 版本不存在 / Wiki 未生成
-func (l *RepoWikiLogic) QueryWiki(ctx context.Context, wikiID int64, query string) (string, *xError.Error) {
-	l.log.Info(ctx, fmt.Sprintf("QueryWiki - 查询 Wiki 内容 [wikiID=%d, query=%s]", wikiID, query))
+//   - string:       页面 Markdown 正文；manifest 无法解析且 page 为空时回退返回 manifest 原文
+//   - *xError.Error: 版本不存在 / Wiki 未生成 / 页面不存在
+func (l *RepoWikiLogic) QueryWiki(ctx context.Context, wikiID int64, page, query string) (string, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("QueryWiki - 查询 Wiki 内容 [wikiID=%d, page=%s, query=%s]", wikiID, page, query))
 
 	// 获取版本记录，确认 Wiki 已生成
 	version, xErr := l.repo.version.GetByID(ctx, xSnowflake.SnowflakeID(wikiID))
@@ -829,14 +833,64 @@ func (l *RepoWikiLogic) QueryWiki(ctx context.Context, wikiID int64, query strin
 			xError.ErrMessage(fmt.Sprintf("Wiki 尚未生成完成（当前状态: %s）", version.Status)), false, nil)
 	}
 
-	// 尝试读取 manifest
-	manifestPath := l.svc.storage.GetManifestPath(version.ID.Int64())
-	if content, xErr := l.svc.storage.ReadMarkdown(manifestPath); xErr == nil {
-		return content, nil
+	wikiPath := l.svc.storage.GetWikiPath(version.ID.Int64())
+	targetPage := page
+
+	// page 为空：从 manifest 解析首页路径
+	if targetPage == "" {
+		manifestPath := l.svc.storage.GetManifestPath(version.ID.Int64())
+		var manifest apiRepowiki.WikiManifestResponse
+		if mErr := l.svc.storage.ReadJSON(manifestPath, &manifest); mErr != nil {
+			// manifest 缺失/损坏时回退读取原文，保持向后兼容
+			if content, cErr := l.svc.storage.ReadMarkdown(manifestPath); cErr == nil {
+				return content, nil
+			}
+			return "", xError.NewError(ctx, xError.NotFound,
+				"Wiki manifest 不存在或无法解析，可能文档组装尚未完成", false, mErr)
+		}
+		if manifest.Home == "" {
+			return "", xError.NewError(ctx, xError.NotFound,
+				"Wiki manifest 未指定首页（home 为空），无法定位首页内容", false, nil)
+		}
+		targetPage = manifest.Home
 	}
 
-	return "", xError.NewError(ctx, xError.NotFound,
-		"Wiki 文档文件不存在，可能文档组装尚未完成", false, nil)
+	return l.readWikiPage(ctx, wikiPath, targetPage)
+}
+
+// readWikiPage 读取指定 Wiki 页面正文（路径遍历防护 + 强制 .mdx 扩展名）
+//
+// page 为相对 wikiPath 的路径（无扩展名），内部拼接后经 SanitizePath 双重防护，
+// 并强制追加 .mdx 扩展名（与 Wiki Reader 的 BREAKING 约定一致，无 .md 回退）。
+// 返回页面正文 Markdown；frontmatter 的 title 作为一级标题前缀，便于 Agent 识别页面。
+func (l *RepoWikiLogic) readWikiPage(ctx context.Context, wikiPath, page string) (string, *xError.Error) {
+	safePath, pErr := l.svc.storage.SanitizePath(wikiPath + "/" + page)
+	if pErr != nil {
+		return "", xError.NewError(ctx, xError.BadRequest,
+			xError.ErrMessage("无效的页面路径: "+page), false, pErr)
+	}
+
+	// 强制 .mdx 扩展名（manifest path 无扩展名，磁盘文件为 {path}.mdx）
+	if !strings.HasSuffix(safePath, ".mdx") {
+		safePath = safePath + ".mdx"
+	}
+
+	content, xErr := l.svc.storage.ReadPage(safePath)
+	if xErr != nil {
+		return "", xErr
+	}
+
+	// frontmatter title 作为一级标题前缀（无 frontmatter 时不添加）
+	title := ""
+	if content.Frontmatter != nil {
+		if fm, ok := content.Frontmatter["title"].(string); ok && fm != "" {
+			title = fm
+		}
+	}
+	if title != "" {
+		return "# " + title + "\n\n" + content.Body, nil
+	}
+	return content.Body, nil
 }
 
 // ──────────────────────────────────────────────────────────────────────

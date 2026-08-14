@@ -31,7 +31,8 @@ var repoWikiToolDefs = []struct {
 触发场景：Agent 需要获取某个仓库的 Wiki 文档以理解代码库结构、架构设计、模块说明等内容时调用。
 
 wiki_id 为 Wiki 版本 ID（由 repoWiki_list 返回的 version_id）。
-query 参数为可选的关键词搜索（当前版本返回 Wiki 首页摘要，关键词搜索为预留扩展）。
+page 参数为可选的目标页面路径（无扩展名，如 content/架构设计）；不传时返回 Wiki 首页正文。
+query 参数为可选的关键词搜索（当前版本为预留扩展，尚未启用）。
 
 Wiki 必须处于 completed 状态才可查询；分析中或失败的版本会返回错误提示。`,
 		inputSchema: map[string]any{
@@ -41,9 +42,13 @@ Wiki 必须处于 completed 状态才可查询；分析中或失败的版本会�
 					"type":        "integer",
 					"description": "Wiki 版本 ID（由 repoWiki_list 返回的 version_id）",
 				},
+				"page": map[string]any{
+					"type":        "string",
+					"description": "目标页面路径（无扩展名，如 content/架构设计）；不传时返回 Wiki 首页正文",
+				},
 				"query": map[string]any{
 					"type":        "string",
-					"description": "查询关键词（可选，不传返回 Wiki 概览）",
+					"description": "查询关键词（可选，预留扩展，尚未启用）",
 				},
 			},
 			"required": []string{"wiki_id"},
@@ -83,9 +88,10 @@ func handleRepoWikiQuery(_ context.Context, req *mcp.CallToolRequest) (*mcp.Call
 	if !ok {
 		return textResult("缺少必填参数: wiki_id（整数）"), nil
 	}
+	page, _ := args["page"].(string)
 	query, _ := args["query"].(string)
 
-	content, xErr := repoWikiLogic.QueryWiki(context.Background(), wikiID, query)
+	content, xErr := repoWikiLogic.QueryWiki(context.Background(), wikiID, page, query)
 	if xErr != nil {
 		return textResult(fmt.Sprintf("查询 Wiki 失败: %s", xErr.Error())), nil
 	}

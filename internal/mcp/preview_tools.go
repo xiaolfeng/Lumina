@@ -9,6 +9,7 @@ import (
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	apiPreview "github.com/xiaolfeng/Lumina/api/preview"
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/logic"
 )
 
@@ -213,10 +214,11 @@ func previewSessionSchema() map[string]any {
 		"title":       map[string]any{"type": "string", "description": "会话标题。"},
 		"hash":        map[string]any{"type": "string", "description": "网页访问哈希；不可替代 Q&A file_id 引用。"},
 		"status":      map[string]any{"type": "string", "description": "会话状态。"},
+		"file_count":  map[string]any{"type": "integer", "minimum": 0, "description": "会话内文件数量（批量统计，避免 Agent 逐会话轮询）。"},
 		"created_at":  map[string]any{"type": "string", "description": "RFC 3339 创建时间。"},
 		"updated_at":  map[string]any{"type": "string", "description": "RFC 3339 更新时间。"},
 		"preview_url": map[string]any{"type": "string", "format": "uri", "description": "绝对预览页 URL。"},
-	}, "id", "project_id", "title", "hash", "status", "created_at", "updated_at", "preview_url")
+	}, "id", "project_id", "title", "hash", "status", "file_count", "created_at", "updated_at", "preview_url")
 }
 
 func previewFileSchema() map[string]any {
@@ -665,6 +667,7 @@ func previewSessionData(session *apiPreview.PreviewSessionResponse, previewURL s
 		"title":       session.Title,
 		"hash":        session.Hash,
 		"status":      session.Status,
+		"file_count":  session.FileCount,
 		"created_at":  session.CreatedAt,
 		"updated_at":  session.UpdatedAt,
 		"preview_url": previewURL,
@@ -683,9 +686,13 @@ func previewFileData(file *apiPreview.PreviewFileResponse) map[string]any {
 	}
 }
 
+// findPreviewEntry 从文件清单中选择 HTML 入口文件
+//
+// 判定依据是 MIME 类型等于 PreviewMimeHTML 常量（"text/html; charset=utf-8"），
+// 与 logic 层 inferMimeType 存储的值完全一致，避免裸字符串漂移导致入口永远检测不到。
 func findPreviewEntry(files []apiPreview.PreviewFileResponse) *apiPreview.PreviewFileResponse {
 	for i := range files {
-		if files[i].MimeType == "text/html" {
+		if files[i].MimeType == bConst.PreviewMimeHTML {
 			return &files[i]
 		}
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	apiPreview "github.com/xiaolfeng/Lumina/api/preview"
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
 func TestPreviewToolDefinitions(t *testing.T) {
@@ -91,13 +92,22 @@ func TestValidatePreviewSupplementContent(t *testing.T) {
 }
 
 func TestFindPreviewEntry(t *testing.T) {
+	// 与 logic 层 inferMimeType 存储的真实 MIME 一致（text/html; charset=utf-8）
 	files := []apiPreview.PreviewFileResponse{
-		{ID: xSnowflake.SnowflakeID(1), Filename: "app.js", MimeType: "application/javascript"},
-		{ID: xSnowflake.SnowflakeID(2), Filename: "index.html", MimeType: "text/html"},
+		{ID: xSnowflake.SnowflakeID(1), Filename: "app.js", MimeType: "application/javascript; charset=utf-8"},
+		{ID: xSnowflake.SnowflakeID(2), Filename: "index.html", MimeType: bConst.PreviewMimeHTML},
 	}
 	entry := findPreviewEntry(files)
 	if entry == nil || entry.Filename != "index.html" {
 		t.Fatalf("findPreviewEntry() = %#v", entry)
+	}
+
+	// 负例：裸 "text/html"（不含 charset）不是生产代码产出的 MIME，不应命中
+	bare := []apiPreview.PreviewFileResponse{
+		{ID: xSnowflake.SnowflakeID(1), Filename: "index.html", MimeType: "text/html"},
+	}
+	if entry := findPreviewEntry(bare); entry != nil {
+		t.Fatalf("findPreviewEntry(bare text/html) = %#v, want nil", entry)
 	}
 }
 
