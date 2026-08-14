@@ -86,25 +86,9 @@ func (l *RepoWikiLogic) HandleWebhookPush(ctx context.Context, token string, hea
 	// Step 1: Token → Config 查找
 	config, xErr := l.repo.config.GetByWebhookToken(ctx, token)
 	if xErr != nil {
-		// Token 无效：记录 config_id=nil 的失败事件
-		event := &entity.WebhookEvent{
-			BaseEntity:   xModels.BaseEntity{ID: xSnowflake.GenerateID(bConst.GeneWebhookEvent)},
-			ConfigID:     nil,
-			Provider:     "",
-			EventType:    "unknown",
-			Status:       bConst.WebhookEventStatusFailed,
-			Reason:       "token_not_found",
-			ResponseCode: http.StatusNotFound,
-			ReceivedAt:   now,
-		}
-		created, createErr := l.repo.webhookEvent.Create(ctx, event)
-		if createErr != nil {
-			l.log.Error(ctx, "HandleWebhookPush - 审计事件落库失败(token_not_found)", slog.Any("err", createErr))
-			return nil, xErr
-		}
-		processedAt := time.Now()
-		_ = l.repo.webhookEvent.UpdateStatus(ctx, created.ID, bConst.WebhookEventStatusFailed, "token_not_found", 0, http.StatusNotFound, &processedAt)
-		return created, xErr
+		// Token 无效：直接返回，不落库审计行
+		// （防止未认证攻击者以任意随机 token 泛洪，造成 DB 写放大与表无限增长）
+		return nil, xErr
 	}
 
 	// Step 2: 立即创建 status=received 事件记录

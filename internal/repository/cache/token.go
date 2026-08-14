@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/redis/go-redis/v9"
+
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
@@ -152,4 +154,21 @@ func (c *RefreshTokenCache) Delete(ctx context.Context, token string) *xError.Er
 		return xError.NewError(ctx, xError.CacheError, "删除 RefreshToken 缓存失败", false, err)
 	}
 	return nil
+}
+
+// Consume 原子地消费（GETDEL）RefreshToken，用于令牌旋转防止并发重复兑换。
+//
+// 返回 true 表示成功消费；false 表示 token 不存在或已被并发消费。
+func (c *RefreshTokenCache) Consume(ctx context.Context, token string) (bool, *xError.Error) {
+	if token == "" {
+		return false, xError.NewError(ctx, xError.BadRequest, "刷新令牌标识为空", false)
+	}
+
+	if _, err := c.RDB.GetDel(ctx, bConst.CacheRefreshToken.Get(token).String()).Result(); err != nil {
+		if err == redis.Nil {
+			return false, nil
+		}
+		return false, xError.NewError(ctx, xError.CacheError, "消费 RefreshToken 缓存失败", false, err)
+	}
+	return true, nil
 }

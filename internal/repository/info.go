@@ -146,3 +146,52 @@ func (r *InfoRepo) UpsertValue(ctx context.Context, key, value string) *xError.E
 
 	return nil
 }
+
+// InitializeIfNotInitialized 在事务内原子地检查初始化状态并写入凭据。
+//
+// 通过 SELECT ... FOR UPDATE 行锁锁住初始化标志行，保证「检查-写入」原子，
+// 杜绝并发 TOCTOU（两个请求同时通过 GetInitialStatus 读旧值后重复初始化）。
+//
+// 参数:
+//   - ctx:         上下文对象
+//   - initFlagKey: 初始化状态键名（值为 "true" 表示未初始化，见 prepare 种子）
+//   - kv:          待写入的 key→value 映射（应包含将 initFlagKey 置 "false"）
+//
+// 返回值:
+//   - bool:         true 表示本次成功执行初始化；false 表示已被他人初始化
+//   - *xError.Error: 事务执行过程中的错误
+func (r *InfoRepo) InitializeIfNotInitialized(ctx context.Context, initFlagKey string, kv map[string]string) (bool, *xError.Error) {
+	r.log.Info(ctx, "InitializeIfNotInitialized - 原子初始化")
+
+	var initialized bool
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 行锁读取初始化标志，防止并发重复初始化
+		var info entity.Info
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("\"key\" = ?", initFlagKey).
+			First(&info).Error; err != nil {
+			return err
+		}
+
+		// 已初始化（标志非 "true"）则放弃，交由调用方返回 RepeatOperation
+		if info.Value != "true" {
+			return nil
+		}
+
+		// 未初始化，原子写入全部凭据
+		for key, value := range kv {
+			if err := tx.Model(&entity.Info{}).
+				Where("\"key\" = ?", key).
+				Update("value", value).Error; err != nil {
+				return err
+			}
+		}
+		initialized = true
+		return nil
+	})
+	if err != nil {
+		return false, xError.NewError(ctx, xError.DatabaseError, "事务更新配置项失败", false, err)
+	}
+
+	return initialized, nil
+}

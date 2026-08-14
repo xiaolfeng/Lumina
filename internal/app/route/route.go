@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"github.com/xiaolfeng/Lumina/internal/app/middleware"
 )
 
 type route struct {
@@ -55,7 +56,8 @@ func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) xOption.RouteRegistrar {
 		r.webhookRouter(r.engine)
 
 		r.engine.Use(xMiddle.ResponseMiddleware)
-		r.engine.Use(xMiddle.ReleaseAllCors)
+		r.engine.Use(middleware.SecurityHeaders())
+		r.engine.Use(middleware.Cors())
 		r.engine.Use(xMiddle.AllowOption)
 
 		swaggerRegister(r.engine)

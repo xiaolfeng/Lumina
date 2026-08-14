@@ -40,15 +40,25 @@ interface CardProps {
   children?: ReactNode
 }
 
+// sanitizeHref 过滤危险协议（javascript:/data:/vbscript:），防止 Markdown 卡片 XSS
+function sanitizeHref(href?: string): string | undefined {
+  if (!href) return undefined
+  if (/^(javascript|data|vbscript):/i.test(href.trim())) {
+    return undefined
+  }
+  return href
+}
+
 export function Card({ title, href, children }: CardProps) {
+  const safeHref = sanitizeHref(href)
   const className = cn(
     'my-4 block rounded-lg border border-line bg-surface p-4 transition-colors',
-    href && 'hover:bg-surface-strong',
+    safeHref && 'hover:bg-surface-strong',
   )
 
-  if (href) {
+  if (safeHref) {
     return (
-      <a href={href} className={className}>
+      <a href={safeHref} className={className}>
         {title && (
           <h3 className="mb-2 text-lg font-semibold text-sea-ink">{title}</h3>
         )}

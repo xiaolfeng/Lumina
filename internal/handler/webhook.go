@@ -21,8 +21,9 @@ import (
 // @Success     200  {object}  apiWebhook.WebhookResponse  "处理结果"
 // @Router      /api/v1/webhooks/repowiki/{token} [POST]
 func (h *WebhookHandler) HandleRepoWikiWebhook(ctx *gin.Context) {
-	// 1. Read raw body with 10MB limit
-	body, err := io.ReadAll(io.LimitReader(ctx.Request.Body, 10*1024*1024))
+	// 1. Read raw body with 1MB limit（Git push 事件 payload 通常远小于 1MB，
+	// 收紧上限可降低未认证大体积请求造成的内存/CPU 放大）
+	body, err := io.ReadAll(io.LimitReader(ctx.Request.Body, 1*1024*1024))
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"code": 400, "message": "读取请求体失败"})
 		return

@@ -15,7 +15,7 @@ type SshKey struct {
 	Description        string `gorm:"type:text;comment:密钥描述" json:"description"`                                                  // 密钥描述
 	KeyType            string `gorm:"type:varchar(16);not null;comment:密钥类型(ed25519|rsa)" json:"key_type"`                        // 密钥类型(ed25519|rsa)
 	PublicKey          string `gorm:"type:text;not null;comment:OpenSSH格式公钥" json:"public_key"`                                   // OpenSSH格式公钥
-	PrivateKey         string `gorm:"type:text;not null;comment:PEM格式私钥(明文存储,API永不返回)" json:"-"`                                  // PEM格式私钥(明文存储,API永不返回)
+	PrivateKey         string `gorm:"type:text;not null;comment:PEM格式私钥(AES-256-GCM加密存储,API永不返回)" json:"-"`                             // PEM格式私钥(AES-256-GCM加密存储,API永不返回)
 	Fingerprint        string `gorm:"type:varchar(128);not null;index;comment:SHA256指纹" json:"fingerprint"`                       // SHA256指纹
 	Source             string `gorm:"type:varchar(16);not null;default:generated;comment:密钥来源(generated|imported)" json:"source"` // 密钥来源(generated|imported)
 }

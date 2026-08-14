@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
@@ -264,9 +265,12 @@ func (r *ProjectRepo) FindByAliasName(ctx context.Context, alias string) (*entit
 func (r *ProjectRepo) FindByMatchPath(ctx context.Context, path string) (*entity.Project, *xError.Error) {
 	r.log.Info(ctx, fmt.Sprintf("FindByMatchPath - 根据路径匹配项目 [%s]", path))
 
+	// 转义 LIKE 通配符，防止 %/_ 被当作模式导致路径匹配错配
+	escapedPath := escapeLikePattern(path)
+
 	var project entity.Project
 	if err := r.db.WithContext(ctx).
-		Where("EXISTS (SELECT 1 FROM json_array_elements_text(match_path) AS elem WHERE ? LIKE (elem || '%'))", path).
+		Where("EXISTS (SELECT 1 FROM json_array_elements_text(match_path) AS elem WHERE ? LIKE (elem || '%'))", escapedPath).
 		First(&project).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, xError.NewError(ctx, xError.NotFound, "项目不存在", false, nil)
@@ -275,6 +279,14 @@ func (r *ProjectRepo) FindByMatchPath(ctx context.Context, path string) (*entity
 	}
 
 	return &project, nil
+}
+
+// escapeLikePattern 转义 LIKE 模式中的通配符，防止调用方输入被当作模式匹配。
+func escapeLikePattern(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "%", "\\%")
+	s = strings.ReplaceAll(s, "_", "\\_")
+	return s
 }
 
 // GetByIDs 批量查询项目（WHERE id IN）

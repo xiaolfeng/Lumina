@@ -216,6 +216,15 @@ func (l *QaLogic) PushSupplement(ctx context.Context, sessionID, targetType stri
 		return xError.NewError(ctx, xError.BusinessError, "无效的会话ID", false, nil)
 	}
 
+	// 校验会话存在且活跃（防止向不存在/已归档的假会话写入）
+	session, xErr := l.repo.session.GetByID(ctx, parsedSID)
+	if xErr != nil {
+		return xErr
+	}
+	if session.Status != "active" {
+		return xError.NewError(ctx, xError.BusinessError, "会话不是活跃状态，无法推送补充内容", false, nil)
+	}
+
 	// 生成补充ID
 	sID := xSnowflake.GenerateID(bConst.GeneQaSupplement)
 

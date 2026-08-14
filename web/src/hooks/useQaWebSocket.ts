@@ -128,8 +128,8 @@ export function useQaWebSocket(
     const deviceId = localStorage.getItem('qa_device_id') || generateDeviceId()
     localStorage.setItem('qa_device_id', deviceId)
 
-    const token = getAccessToken()
-    const wsUrl = `${protocol}//${host}/api/v1/qa/ws?session=${sessionHash}&device_id=${deviceId}&token=${token}`
+    // token 通过同源 Cookie 携带（后端 WS 认证优先从 Cookie 读取），避免进入 URL/访问日志
+    const wsUrl = `${protocol}//${host}/api/v1/qa/ws?session=${sessionHash}&device_id=${deviceId}`
 
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
@@ -304,9 +304,4 @@ export function useQaWebSocket(
 
 function generateDeviceId(): string {
   return 'dev_' + Math.random().toString(36).substring(2, 10)
-}
-
-function getAccessToken(): string {
-  const match = document.cookie.match(/(?:^|;\s*)access_token=([^;]*)/)
-  return match ? decodeURIComponent(match[1]) : ''
 }

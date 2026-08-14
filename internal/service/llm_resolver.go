@@ -97,11 +97,19 @@ func (r *LlmResolver) ResolveAgentModel(ctx context.Context, role string, keyPre
 	if xErr != nil {
 		return nil, fmt.Errorf("查询模型失败: %w", xErr)
 	}
+	// 校验模型启用状态（禁用开关应生效，防止本应停用的模型继续出站调用）
+	if !model.IsActive {
+		return nil, fmt.Errorf("模型已禁用: %s", model.ModelName)
+	}
 
 	// 4. 查 Provider
 	provider, xErr := r.providerRepo.GetByID(ctx, model.ProviderID)
 	if xErr != nil {
 		return nil, fmt.Errorf("查询 Provider 失败: %w", xErr)
+	}
+	// 校验 Provider 启用状态（禁用开关应生效）
+	if !provider.IsActive {
+		return nil, fmt.Errorf("Provider 已禁用: %s", provider.Name)
 	}
 
 	// 5. 解密 APIKey

@@ -1,6 +1,8 @@
 package logic
 
 import (
+	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -107,8 +109,25 @@ func jsonOrNull(data datatypes.JSON) any {
 	return data
 }
 
-// generateSessionHash 基于雪花 ID 生成 16 位 hex 哈希标识
+// sessionHashSecret 会话 hash 的进程级随机 HMAC 密钥。
+//
+// 使 hash 不可由可枚举的雪花 ID 离线推导，同时保持同进程内
+// 「同一 ID → 同一 hash」的确定性，兼容调用方的碰撞检测重试逻辑。
+var sessionHashSecret = func() []byte {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return []byte("lumina-session-hash-fallback")
+	}
+	return buf
+}()
+
+// generateSessionHash 基于雪花 ID 生成 32 位 hex HMAC 哈希标识。
+//
+// 使用进程级随机密钥对 ID 做 HMAC-SHA256（截断 128 bit），杜绝原实现
+// hex(SHA256(id))[:16] 因雪花 ID 时间有序、低 12 bit sequence 可枚举而导致的
+// 会话标识可预测/可枚举（越权读其它会话的根因）。
 func generateSessionHash(id xSnowflake.SnowflakeID) string {
-	sum := sha256.Sum256([]byte(id.String()))
-	return hex.EncodeToString(sum[:])[:16]
+	mac := hmac.New(sha256.New, sessionHashSecret)
+	mac.Write([]byte(id.String()))
+	return hex.EncodeToString(mac.Sum(nil))[:32]
 }

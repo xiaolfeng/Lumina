@@ -131,13 +131,19 @@ func (l *SshKeyLogic) CreateSshKey(ctx context.Context, req CreateSshKeyRequest)
 			xError.ErrMessage(fmt.Sprintf("SSH 密钥已存在（指纹 %s，名称: %s）", fingerprint, existing.Name)), false, nil)
 	}
 
+	// 私钥 AES-256-GCM 加密后落库，禁止明文存储（复用 LLM_ENCRYPT_SECRET 密钥种子）
+	encryptedPrivateKey, encErr := service.EncryptSSHPrivateKey(privateKey)
+	if encErr != nil {
+		return nil, xError.NewError(ctx, xError.ServerInternalError, "加密 SSH 私钥失败", false, encErr)
+	}
+
 	sshKey := &entity.SshKey{
 		BaseEntity:  xModels.BaseEntity{ID: xSnowflake.GenerateID(bConst.GeneSSHKey)},
 		Name:        req.Name,
 		Description: req.Description,
 		KeyType:     keyType,
 		PublicKey:   publicKey,
-		PrivateKey:  privateKey,
+		PrivateKey:  encryptedPrivateKey,
 		Fingerprint: fingerprint,
 		Source:      req.Source,
 	}

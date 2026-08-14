@@ -31,6 +31,12 @@ func ApikeyAuth(ctx context.Context) gin.HandlerFunc {
 			return
 		}
 
+		// 长度校验：apiKey[:8] 要求至少 8 字符，防止短前缀（如 "lumi_"）触发切片越界 panic
+		if len(apiKey) < 8 {
+			xResult.AbortError(c, xError.TokenInvalid, "API Key 格式无效", false)
+			return
+		}
+
 		keyPrefix := apiKey[:8]
 
 		errCode, errMsg := apikeyLogic.ValidateAPIKey(c.Request.Context(), keyPrefix, apiKey)

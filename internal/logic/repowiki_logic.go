@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -864,6 +865,13 @@ func (l *RepoWikiLogic) QueryWiki(ctx context.Context, wikiID int64, page, query
 // 并强制追加 .mdx 扩展名（与 Wiki Reader 的 BREAKING 约定一致，无 .md 回退）。
 // 返回页面正文 Markdown；frontmatter 的 title 作为一级标题前缀，便于 Agent 识别页面。
 func (l *RepoWikiLogic) readWikiPage(ctx context.Context, wikiPath, page string) (string, *xError.Error) {
+	// 跨版本/跨目录路径穿越防护：page 解析后必须仍位于当前版本 wikiPath 内，
+	// 防止 page="../../<otherVersionID>/wiki/..." 绕过版本隔离读取其它版本 .mdx
+	if !isWithinDir(wikiPath, page) {
+		return "", xError.NewError(ctx, xError.BadRequest,
+			xError.ErrMessage("无效的页面路径: "+page), false, nil)
+	}
+
 	safePath, pErr := l.svc.storage.SanitizePath(wikiPath + "/" + page)
 	if pErr != nil {
 		return "", xError.NewError(ctx, xError.BadRequest,
@@ -891,6 +899,26 @@ func (l *RepoWikiLogic) readWikiPage(ctx context.Context, wikiPath, page string)
 		return "# " + title + "\n\n" + content.Body, nil
 	}
 	return content.Body, nil
+}
+
+// isWithinDir 校验「base + sub」解析后的绝对路径仍位于 base 绝对路径内。
+//
+// 用于路径穿越防护：sub 经 filepath.Join 后若逃逸 base 目录（含 ../ 与绝对路径），
+// 返回 false。注意 Join 对「sub 为绝对路径」会忽略 base，故 Rel 校验不可省略。
+func isWithinDir(base, sub string) bool {
+	absBase, err := filepath.Abs(base)
+	if err != nil {
+		return false
+	}
+	absJoined, err := filepath.Abs(filepath.Join(base, sub))
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(absBase, absJoined)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // ──────────────────────────────────────────────────────────────────────

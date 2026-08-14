@@ -37,9 +37,12 @@ func NewQaSupplementRepo(db *gorm.DB) *QaSupplementRepo {
 
 // CreateOrUpdate 创建或更新补充说明（1:1 覆写）
 //
-// 按 (target_type, target_id) 唯一约束进行覆写：
+// 按 (session_id, target_type, target_id) 唯一约束进行覆写：
 //   - 已存在：更新 Content、ContentType、UpdatedAt 字段
 //   - 不存在：创建新记录
+//
+// session_id 参与查找条件，防止跨会话覆写（攻击者持任意 sessionID + 目标 B 的
+// targetID 无法命中 B 会话已存在的 supplement，只会新建孤立记录）。
 //
 // 参数:
 //   - ctx:       上下文对象
@@ -53,7 +56,7 @@ func (r *QaSupplementRepo) CreateOrUpdate(ctx context.Context, supplement *entit
 
 	var existing entity.QaSupplement
 	err := r.db.WithContext(ctx).
-		Where("target_type = ? AND target_id = ?", supplement.TargetType, supplement.TargetID).
+		Where("session_id = ? AND target_type = ? AND target_id = ?", supplement.SessionID, supplement.TargetType, supplement.TargetID).
 		First(&existing).Error
 
 	if err == nil {

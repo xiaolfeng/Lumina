@@ -10,6 +10,7 @@ import (
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	qaQueue "github.com/xiaolfeng/Lumina/internal/qa"
+	"github.com/xiaolfeng/Lumina/internal/service"
 )
 
 // AnswerFormatContext 封装格式化回答所需的 question 级上下文
@@ -166,6 +167,11 @@ func (l *QaLogic) enhanceMediaAnswerWithOTP(ctx context.Context, questionType, s
 		}
 		filePath, _ := itemMap["filePath"].(string)
 		if filePath == "" {
+			continue
+		}
+		// 路径白名单校验：拒绝缓存目录外的 filePath，防止任意文件读取
+		if !service.IsWithinCacheDir(filePath) {
+			l.log.Warn(ctx, fmt.Sprintf("enhanceMediaAnswerWithOTP - 非法文件路径被拒绝 [file=%s]", filePath))
 			continue
 		}
 		filename, _ := itemMap["filename"].(string)

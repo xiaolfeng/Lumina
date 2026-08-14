@@ -423,9 +423,22 @@ func resolveSafeRepoPath(repoPath, relPath string) (string, error) {
 		return "", fmt.Errorf("无法解析文件路径: %v", err)
 	}
 
-	// 确保 absPath 在 absRepo 内部（允许 absPath == absRepo 仅当 relPath 为 "."）
-	if absPath != absRepo {
-		if !strings.HasPrefix(absPath, absRepo+string(filepath.Separator)) {
+	// 解析符号链接，防止仓库内 symlink 指向宿主机文件导致沙箱逃逸
+	resolvedRepo := absRepo
+	if eval, eErr := filepath.EvalSymlinks(absRepo); eErr == nil {
+		resolvedRepo = eval
+	}
+	resolvedPath := absPath
+	if eval, eErr := filepath.EvalSymlinks(absPath); eErr == nil {
+		resolvedPath = eval
+	} else if dirEval, dErr := filepath.EvalSymlinks(filepath.Dir(absPath)); dErr == nil {
+		// 目标文件本身不存在（EvalSymlinks 失败），解析父目录以捕获父级 symlink
+		resolvedPath = filepath.Join(dirEval, filepath.Base(absPath))
+	}
+
+	// 确保解析后的真实路径仍位于仓库根目录内部
+	if resolvedPath != resolvedRepo {
+		if !strings.HasPrefix(resolvedPath, resolvedRepo+string(filepath.Separator)) {
 			return "", fmt.Errorf("路径越界: %s", relPath)
 		}
 	}

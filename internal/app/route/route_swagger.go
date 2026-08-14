@@ -9,6 +9,11 @@ import (
 )
 
 func swaggerRegister(r gin.IRouter) {
+	// 仅在 XLF_DEBUG=true 时注册 Swagger UI，避免生产环境暴露完整 API 文档与接口结构
+	if !xEnv.GetEnvBool(xEnv.Debug, false) {
+		return
+	}
+
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	docs.SwaggerInfo.Title = "Lumina · 微明"
 	docs.SwaggerInfo.Description = "Lumina API 文档 — AI 深度代码认知与长期记忆知识中枢"

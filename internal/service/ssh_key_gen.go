@@ -22,7 +22,7 @@ import (
 //   - GenerateEd25519KeyPair：生成 Ed25519 密钥对，返回 OpenSSH 公钥、PEM 私钥、SHA256 指纹
 //   - ImportPrivateKey：解析 PEM 私钥，返回 OpenSSH 公钥、SHA256 指纹、密钥类型
 //
-// 私钥以明文 PEM 格式返回（用户决策：明文存储，不再 AES 加密）。
+// 私钥以 PEM 格式返回，由 Logic 层经 AES-256-GCM 加密后落库，禁止明文存储。
 
 // GenerateEd25519KeyPair 生成 Ed25519 SSH 密钥对
 //

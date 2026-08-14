@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
@@ -34,6 +36,55 @@ import (
 
 // 确保 apiCommon 包被编译器识别（swag 注释依赖此导入）
 var _ = apiCommon.BaseResponse{}
+
+// ── Wiki 密码暴力破解限流 ──
+//
+// 内存级失败计数限流（Lumina 为单实例单用户部署，内存态即可），
+// 对每个 Wiki 配置的密码认证失败次数计数，超过阈值后锁定一段时间。
+const (
+	wikiAuthMaxFailures  = 10               // 最大连续失败次数
+	wikiAuthLockDuration = 15 * time.Minute // 失败锁定窗口
+)
+
+type wikiAuthLimiter struct {
+	mu       sync.Mutex
+	failures map[int64]int      // configID → 连续失败次数
+	lockedAt map[int64]time.Time // configID → 锁定截止时间
+}
+
+var wikiAuthLimit = &wikiAuthLimiter{
+	failures: make(map[int64]int),
+	lockedAt: make(map[int64]time.Time),
+}
+
+// allow 返回该配置是否允许继续尝试密码认证
+func (l *wikiAuthLimiter) allow(configID int64) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if t, ok := l.lockedAt[configID]; ok && time.Now().Before(t) {
+		return false
+	}
+	return true
+}
+
+// recordFailure 记录一次失败，累计达到阈值则锁定
+func (l *wikiAuthLimiter) recordFailure(configID int64) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.failures[configID]++
+	if l.failures[configID] >= wikiAuthMaxFailures {
+		l.lockedAt[configID] = time.Now().Add(wikiAuthLockDuration)
+		l.failures[configID] = 0
+	}
+}
+
+// reset 认证成功后清零计数
+func (l *wikiAuthLimiter) reset(configID int64) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.failures, configID)
+	delete(l.lockedAt, configID)
+}
 
 // ──────────────────────────────────────────────────────────────────────
 // WikiReaderHandler
@@ -308,11 +359,19 @@ func (h *WikiReaderHandler) WikiAuth(ctx *gin.Context) {
 		return
 	}
 
+	// 暴力破解限流：锁定期间拒绝尝试
+	if !wikiAuthLimit.allow(configID) {
+		xResult.AbortError(ctx, xError.Unauthorized, "尝试次数过多，请稍后再试", false)
+		return
+	}
+
 	// 校验密码
 	if !h.logic.VerifyWikiPassword(config, req.Password) {
+		wikiAuthLimit.recordFailure(configID)
 		xResult.AbortError(ctx, xError.Unauthorized, "Wiki 密码错误", false)
 		return
 	}
+	wikiAuthLimit.reset(configID)
 
 	// 生成 HMAC Token 并设置 Cookie
 	token, err := h.logic.GenerateWikiToken(configID, req.Password)
@@ -327,7 +386,7 @@ func (h *WikiReaderHandler) WikiAuth(ctx *gin.Context) {
 		bConst.RepoWikiCookieMaxAge,           // maxAge (7200s = 2h)
 		"/",                                   // path
 		"",                                    // domain
-		false,                                 // secure（生产环境建议 true）
+		ctx.Request.TLS != nil,                // secure：HTTPS 请求时标记，防止明文传输
 		true,                                  // httpOnly
 	)
 

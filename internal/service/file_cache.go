@@ -83,11 +83,41 @@ func (s *FileCacheService) SaveBase64File(
 //
 // 调用方负责关闭返回的 io.ReadCloser
 func (s *FileCacheService) ReadFile(ctx context.Context, filePath string) (io.ReadCloser, *xError.Error) {
+	// 路径白名单校验：仅允许读取缓存根目录内的文件，防止任意文件读取
+	if !IsWithinCacheDir(filePath) {
+		return nil, xError.NewError(ctx, xError.FileReadError, "非法文件路径", false, nil)
+	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.FileReadError, "打开缓存文件失败", false, err)
 	}
 	return file, nil
+}
+
+// IsWithinCacheDir 校验 filePath 是否位于缓存根目录（LUMINA_CACHE_DIR）内。
+//
+// 通过绝对路径 + filepath.Rel 前缀校验防止路径穿越与符号链接逃逸，
+// 供下载令牌生成与文件读取两处 sink 复用，杜绝任意文件读取。
+func IsWithinCacheDir(filePath string) bool {
+	if filePath == "" {
+		return false
+	}
+
+	baseDir, err := filepath.Abs(getCacheBaseDir())
+	if err != nil {
+		return false
+	}
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return false
+	}
+
+	rel, err := filepath.Rel(baseDir, absPath)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // CleanSession 清理指定会话的所有缓存文件

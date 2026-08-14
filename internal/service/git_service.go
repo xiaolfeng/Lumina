@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -56,6 +58,11 @@ func NewGitCloneService() *GitCloneService {
 // 返回值:
 //   - error: 克隆过程中的错误
 func (s *GitCloneService) CloneRepo(ctx context.Context, gitURL, branch, privateKey, destPath string) error {
+	// 协议白名单校验：拒绝 file:// 等危险协议，仅允许 https/http/ssh/git
+	if err := validateGitURL(gitURL); err != nil {
+		return err
+	}
+
 	opts := &git.CloneOptions{
 		URL:   gitURL,
 		Depth: 0, // 完整克隆，支持 checkout 到任意历史 hash
@@ -76,15 +83,47 @@ func (s *GitCloneService) CloneRepo(ctx context.Context, gitURL, branch, private
 	}
 
 	if _, err := git.PlainCloneContext(ctx, destPath, false, opts); err != nil {
-		return fmt.Errorf("克隆仓库失败 [%s]: %w", gitURL, err)
+		return fmt.Errorf("克隆仓库失败 [%s]: %w", sanitizeGitURL(gitURL), err)
 	}
 
 	s.log.Info(ctx, "仓库克隆成功",
-		slog.String("url", gitURL),
+		slog.String("url", sanitizeGitURL(gitURL)),
 		slog.String("branch", branch),
 		slog.String("dest", destPath),
 	)
 	return nil
+}
+
+// validateGitURL 校验仓库地址协议白名单，拒绝危险协议（如 file://）与无协议地址。
+//
+// 仅允许 https/http/ssh/git 四种远程协议，防止本地文件克隆或协议混淆。
+func validateGitURL(gitURL string) error {
+	if strings.TrimSpace(gitURL) == "" {
+		return fmt.Errorf("仓库地址不能为空")
+	}
+	u, err := url.Parse(gitURL)
+	if err != nil {
+		return fmt.Errorf("仓库地址格式无效: %w", err)
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "http", "https", "ssh", "git":
+		return nil
+	default:
+		return fmt.Errorf("不支持的仓库协议: %s（仅支持 https/http/ssh/git）", u.Scheme)
+	}
+}
+
+// sanitizeGitURL 脱敏仓库地址中的内嵌凭据（https://user:token@host → https://host），
+// 防止含 PAT/token 的私有仓库地址明文写入日志或错误信息。
+func sanitizeGitURL(gitURL string) string {
+	u, err := url.Parse(gitURL)
+	if err != nil {
+		return gitURL
+	}
+	if u.User != nil {
+		u.User = nil
+	}
+	return u.String()
 }
 
 // GetCommitHash 返回仓库 HEAD 的 commit hash（40 字符十六进制）

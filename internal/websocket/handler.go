@@ -111,6 +111,13 @@ func CreateMessageHandler(db *gorm.DB, mediaSvc *service.MediaAnswerService) Mes
 	return func(ctx context.Context, conn *Connection, msg *Message) {
 		log.Info(ctx, "收到消息", slog.String("type", string(msg.Type)), slog.String("session", conn.sessionID))
 
+		// 连接类型门控：仅 Q&A 连接可触发业务写处理器；公开的 Preview 连接（Kind=preview）
+		// 与 Q&A 共享全局 Hub，若不隔离，未认证预览连接可伪造 answer_submit/skip 越权写 Q&A 数据。
+		if conn.Kind != "qa" {
+			log.Warn(ctx, "非 Q&A 连接消息被忽略", slog.String("kind", conn.Kind), slog.String("type", string(msg.Type)))
+			return
+		}
+
 		switch msg.Type {
 		case MsgAnswerSubmit:
 			handleAnswerSubmit(ctx, conn, msg, questionRepo, queue, mediaSvc, log)
@@ -153,6 +160,14 @@ func handleAnswerSubmit(ctx context.Context, conn *Connection, msg *Message, que
 	question, qErr := questionRepo.GetByID(ctx, qID)
 	if qErr != nil {
 		log.Warn(ctx, "查询问题失败", slog.String("error", qErr.Error()))
+		return
+	}
+
+	// 归属校验：问题必须属于当前连接会话，防止跨会话越权写
+	if question.SessionID.String() != conn.sessionID {
+		log.Warn(ctx, "问题不属于当前会话，拒绝提交",
+			slog.String("question_session", question.SessionID.String()),
+			slog.String("conn_session", conn.sessionID))
 		return
 	}
 
@@ -218,6 +233,25 @@ func handleRequestSupplement(ctx context.Context, conn *Connection, msg *Message
 	}
 
 	questionIDStr, _ := data["question_id"].(string)
+
+	// 解析问题雪花 ID 并校验归属，防止跨会话越权请求补充
+	qID, err := xSnowflake.ParseSnowflakeID(questionIDStr)
+	if err != nil {
+		log.Warn(ctx, "解析 question_id 失败", slog.String("question_id", questionIDStr))
+		return
+	}
+	question, qErr := questionRepo.GetByID(ctx, qID)
+	if qErr != nil {
+		log.Warn(ctx, "查询问题失败", slog.String("error", qErr.Error()))
+		return
+	}
+	if question.SessionID.String() != conn.sessionID {
+		log.Warn(ctx, "问题不属于当前会话，拒绝补充请求",
+			slog.String("question_session", question.SessionID.String()),
+			slog.String("conn_session", conn.sessionID))
+		return
+	}
+
 	note, _ := data["note"].(string)
 	withOptions, _ := data["with_options"].(bool)
 
@@ -305,6 +339,19 @@ func handleSkip(ctx context.Context, conn *Connection, msg *Message, questionRep
 	qID, err := xSnowflake.ParseSnowflakeID(questionIDStr)
 	if err != nil {
 		log.Warn(ctx, "解析 question_id 失败", slog.String("question_id", questionIDStr))
+		return
+	}
+
+	// 查询问题并校验归属，防止跨会话越权跳过
+	question, qErr := questionRepo.GetByID(ctx, qID)
+	if qErr != nil {
+		log.Warn(ctx, "查询问题失败", slog.String("error", qErr.Error()))
+		return
+	}
+	if question.SessionID.String() != conn.sessionID {
+		log.Warn(ctx, "问题不属于当前会话，拒绝跳过",
+			slog.String("question_session", question.SessionID.String()),
+			slog.String("conn_session", conn.sessionID))
 		return
 	}
 

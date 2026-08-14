@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
 	"github.com/gin-gonic/gin"
@@ -99,6 +100,10 @@ func (h *PreviewHandler) GetFile(ctx *gin.Context) {
 
 	// 禁止缓存预览文件（内容可能随 WS 实时变更，需保证 iframe 每次加载最新版本）
 	ctx.Header("Cache-Control", "no-cache")
+	// 对可执行 MIME 施加 sandbox，防止上传的恶意 HTML/SVG 在 Lumina 同源下执行脚本窃取令牌
+	if mime := strings.ToLower(file.MimeType); mime == "text/html" || mime == "image/svg+xml" || strings.Contains(mime, "javascript") {
+		ctx.Header("Content-Security-Policy", "sandbox allow-scripts")
+	}
 	ctx.Data(http.StatusOK, file.MimeType, []byte(file.Content))
 }
 

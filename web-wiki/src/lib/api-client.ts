@@ -184,7 +184,9 @@ export const wikiReaderApi = {
 
   /** 获取页面内容（Task 25 使用） */
   getPage: (wikiId: string, path: string): Promise<PageResponse> =>
-    wikiApi.get(`/wiki/${wikiId}/page/${path}`),
+    wikiApi.get(
+      `/wiki/${wikiId}/page/${path.split('/').map(encodeURIComponent).join('/')}`,
+    ),
 
   /** 获取导航清单（Task 26 使用） */
   getManifest: (wikiId: string): Promise<ManifestResponse> =>

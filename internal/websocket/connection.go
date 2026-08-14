@@ -17,6 +17,9 @@ const (
 	heartbeatPeriod = 5 * time.Second
 	// sendBufSize 发送通道缓冲区大小
 	sendBufSize = 256
+	// maxMessageSize 单条 WebSocket 消息最大字节数（10MB，覆盖 base64 文件上传），
+	// 防止未认证预览连接发送超大帧导致内存耗尽 DoS
+	maxMessageSize = 10 * 1024 * 1024
 )
 
 // Connection WebSocket 连接封装
@@ -58,6 +61,8 @@ func (c *Connection) ReadPump() {
 	}()
 
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	// 限制单条消息最大字节数，防止超大帧耗尽内存
+	c.conn.SetReadLimit(maxMessageSize)
 
 	for {
 		msgType, data, err := c.conn.ReadMessage()

@@ -2,9 +2,10 @@ package bConst
 
 // WebAuthn 环境变量键名
 const (
-	EnvBiometricRPID   = "XLF_BIOMETRIC_RP_ID"   // WebAuthn RP ID
-	EnvBiometricRPName = "XLF_BIOMETRIC_RP_NAME" // WebAuthn RP 名称
-	EnvBiometricOrigin = "XLF_BIOMETRIC_ORIGIN"  // WebAuthn Origin
+	EnvBiometricRPID           = "XLF_BIOMETRIC_RP_ID"           // WebAuthn RP ID
+	EnvBiometricRPName         = "XLF_BIOMETRIC_RP_NAME"         // WebAuthn RP 名称
+	EnvBiometricOrigin         = "XLF_BIOMETRIC_ORIGIN"          // WebAuthn Origin
+	EnvBiometricAllowedOrigins = "XLF_BIOMETRIC_ALLOWED_ORIGINS" // WebAuthn 动态推导域名白名单（逗号分隔，非空时启用）
 )
 
 // WebAuthn 默认值

@@ -510,7 +510,25 @@ func (l *BiometricLogic) resolveWebAuthn(ctx context.Context) *webauthn.WebAuthn
 		return l.webAuthn
 	}
 
-	rpID := l.resolveRPID(strings.ToLower(u.Hostname()))
+	hostname := strings.ToLower(u.Hostname())
+
+	// 可选域名白名单：仅当配置了 XLF_BIOMETRIC_ALLOWED_ORIGINS 时校验，
+	// 未配置保持自动推导（向后兼容动态推导能力）。配置白名单后，
+	// DNS-rebinding 使 RPID 绑定恶意域名即被阻止（WebAuthn 抗钓鱼绑定增强）。
+	var allowedOrigins []string
+	for _, o := range strings.Split(xEnv.GetEnvString(bConst.EnvBiometricAllowedOrigins, ""), ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			allowedOrigins = append(allowedOrigins, o)
+		}
+	}
+	if len(allowedOrigins) > 0 && !isAllowedRPOrigin(allowedOrigins, hostname) {
+		if l.log != nil {
+			l.log.Warn(ctx, fmt.Sprintf("resolveWebAuthn - 请求 Origin 不在白名单，回退静态配置 [hostname=%s]", hostname))
+		}
+		return l.webAuthn
+	}
+
+	rpID := l.resolveRPID(hostname)
 	if rpID == "" {
 		return l.webAuthn
 	}
@@ -556,6 +574,19 @@ func appendWebAuthnOrigins(configured []string, origin string) []string {
 		origins = append(origins, origin)
 	}
 	return origins
+}
+
+// isAllowedRPOrigin 校验 hostname 是否在允许的 Origin 白名单（RPOrigins）内。
+//
+// 用于阻止未配置域名的请求做动态 RPID 推导，防止 DNS-rebinding 攻击
+// 将 WebAuthn 凭证绑定到攻击者可控域名。
+func isAllowedRPOrigin(configured []string, hostname string) bool {
+	for _, o := range configured {
+		if u, err := url.Parse(o); err == nil && strings.EqualFold(u.Hostname(), hostname) {
+			return true
+		}
+	}
+	return false
 }
 
 // getWebAuthnTimeout 读取安全设置中的 ceremony 超时，并限制在安全范围内。

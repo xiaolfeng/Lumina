@@ -10,6 +10,7 @@ import (
 	"io"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
+	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
 )
 
 // gcmNonceSize AES-GCM 标准 Nonce 长度（12 字节）
@@ -127,4 +128,24 @@ func DecryptAPIKey(encrypted string, secret string) (string, *xError.Error) {
 	}
 
 	return string(plaintext), nil
+}
+
+// ── SSH 私钥 AES-GCM 加解密 ──
+//
+// SSH 私钥与 LLM API Key 同为高敏感数据，禁止明文落库。复用 LLM_ENCRYPT_SECRET
+// 作为加密密钥种子，通过 EncryptAPIKey/DecryptAPIKey 完成 AES-256-GCM 加解密。
+
+// EncryptSSHPrivateKey 加密 SSH 私钥（复用 LLM_ENCRYPT_SECRET 密钥种子）
+func EncryptSSHPrivateKey(privateKey string) (string, *xError.Error) {
+	return EncryptAPIKey(privateKey, sshEncryptSecret())
+}
+
+// DecryptSSHPrivateKey 解密 SSH 私钥
+func DecryptSSHPrivateKey(encrypted string) (string, *xError.Error) {
+	return DecryptAPIKey(encrypted, sshEncryptSecret())
+}
+
+// sshEncryptSecret 读取 SSH 私钥加密密钥（复用 LLM_ENCRYPT_SECRET 环境变量）
+func sshEncryptSecret() string {
+	return xEnv.GetEnvString("LLM_ENCRYPT_SECRET", "")
 }

@@ -26,10 +26,17 @@ func Auth(ctx context.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		log.Info(c, "Auth - 验证访问令牌")
 
-		// 优先从 Authorization 头提取，兼容 WebSocket 浏览器端无法设置 Header 的场景从 query 获取
+		// 优先从 Authorization 头提取；WebSocket 升级请求无法设置 Header，从 Cookie 读取
+		// （同源 WS 自动携带 Cookie），避免 access_token 明文进入 URL/访问日志；保留 query 回退
 		accessToken, err := xHttp.GetAuthorization(c)
 		if err != nil {
-			accessToken = c.Query("token")
+			if c.IsWebsocket() {
+				if cookie, cErr := c.Cookie("access_token"); cErr == nil && cookie != "" {
+					accessToken = cookie
+				} else {
+					accessToken = c.Query("token")
+				}
+			}
 			if accessToken == "" {
 				xResult.AbortError(c, xError.TokenMissing, "未提供访问令牌", false)
 				return

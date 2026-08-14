@@ -116,7 +116,12 @@ func (r *RepoWikiConfigRepo) GetByID(ctx context.Context, id xSnowflake.Snowflak
 //   - *entity.RepoWikiConfig: 查询到的配置实体
 //   - *xError.Error:           查询过程中的错误
 func (r *RepoWikiConfigRepo) GetByWebhookToken(ctx context.Context, token string) (*entity.RepoWikiConfig, *xError.Error) {
-	r.log.Info(ctx, fmt.Sprintf("GetByWebhookToken - 通过 Webhook Token 查询配置 [token=%s]", token))
+	// 脱敏日志：仅记录 token 前 8 位，防止完整凭据写入日志
+	maskedToken := token
+	if len(token) > 8 {
+		maskedToken = token[:8] + "***"
+	}
+	r.log.Info(ctx, fmt.Sprintf("GetByWebhookToken - 通过 Webhook Token 查询配置 [token=%s]", maskedToken))
 
 	var config entity.RepoWikiConfig
 	if err := r.db.WithContext(ctx).Where("webhook_token = ?", token).First(&config).Error; err != nil {

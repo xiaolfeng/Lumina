@@ -37,3 +37,8 @@ const (
 	InfoKeyOwnerBiometricEnabled = "owner.biometric-enabled" // 站主生物特征是否启用
 	InfoKeyAuthIsInitial         = "auth.is-initial"         // 系统是否已初始化（true=未初始化）
 )
+
+// ── 认证环境变量键名 ──
+const (
+	EnvInitializeToken = "XLF_INITIALIZE_TOKEN" // 一次性初始化令牌（非空时初始化必须携带匹配值）
+)

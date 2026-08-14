@@ -24,6 +24,7 @@ import (
 
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
+	"github.com/xiaolfeng/Lumina/internal/service"
 )
 
 // ──────────────────────────────────────────────────────────────────────
@@ -180,7 +181,17 @@ func (p *AnalysisPipeline) Execute(
 			updateStatus(bConst.RepoWikiStatusFailed, "", errMsg)
 			return xError.NewError(ctx, xError.NotFound, xError.ErrMessage(errMsg), false, nil)
 		}
-		privateKey = sshKey.PrivateKey
+		// 解密 SSH 私钥（DB 中为 AES-256-GCM 密文，禁止明文落库）
+		decrypted, decErr := service.DecryptSSHPrivateKey(sshKey.PrivateKey)
+		if decErr != nil {
+			p.log.Error(ctx, "解密 SSH 私钥失败",
+				slog.Int64("versionID", versionID),
+				slog.Int64("sshKeyID", config.SSHKeyID.Int64()),
+				slog.String("err", decErr.Error()))
+			updateStatus(bConst.RepoWikiStatusFailed, "", decErr.Error())
+			return decErr
+		}
+		privateKey = decrypted
 	}
 
 	// 幂等克隆：已存在则跳过

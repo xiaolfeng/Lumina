@@ -2,11 +2,13 @@ package service
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -21,11 +23,39 @@ type WikiAuthTokenService struct {
 	hmacSecret string // HMAC 签名密钥
 }
 
+// 进程级 HMAC 密钥单例（环境变量为空时生成随机密钥，避免默认可伪造）
+var (
+	wikiAuthSecretOnce sync.Once
+	wikiAuthSecret     string
+)
+
+// ensureWikiAuthSecret 返回进程级 HMAC 签名密钥。
+//
+// 优先读取环境变量 REPOWIKI_HMAC_SECRET；为空时生成 32 字节随机密钥，
+// 杜绝「默认空密钥导致 Cookie 可离线伪造」的认证绕过。随机密钥在进程
+// 重启后变化，会使已签发的 Wiki 访问 Cookie 失效，属安全优先的可接受行为。
+func ensureWikiAuthSecret() string {
+	wikiAuthSecretOnce.Do(func() {
+		secret := xEnv.GetEnvString("REPOWIKI_HMAC_SECRET", "")
+		if secret == "" {
+			buf := make([]byte, 32)
+			if _, err := rand.Read(buf); err == nil {
+				secret = hex.EncodeToString(buf)
+			} else {
+				// 熵源异常兜底：以纳秒时间戳保证非空且非固定，避免退化为空密钥
+				secret = fmt.Sprintf("lumina-%d", time.Now().UnixNano())
+			}
+		}
+		wikiAuthSecret = secret
+	})
+	return wikiAuthSecret
+}
+
 // NewWikiAuthTokenService 创建 WikiAuthTokenService 实例
-// 从环境变量 REPOWIKI_HMAC_SECRET 读取签名密钥，默认空字符串。
+// 从环境变量 REPOWIKI_HMAC_SECRET 读取签名密钥；为空时自动生成进程级随机密钥。
 func NewWikiAuthTokenService() *WikiAuthTokenService {
 	return &WikiAuthTokenService{
-		hmacSecret: xEnv.GetEnvString("REPOWIKI_HMAC_SECRET", ""),
+		hmacSecret: ensureWikiAuthSecret(),
 	}
 }
 

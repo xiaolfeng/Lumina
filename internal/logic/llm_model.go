@@ -325,10 +325,10 @@ func (l *LlmModelLogic) GetAgentModelsConfig(ctx context.Context, module string,
 		modelIDInt, err := strconv.ParseInt(modelIDStr, 10, 64)
 		if err != nil {
 			l.log.Warn(ctx, "GetAgentModelsConfig - Agent模型配置值无效 ["+role+"]: "+modelIDStr)
-			idVal := xSnowflake.SnowflakeID(modelIDInt)
+			// 配置损坏：返回未分配（与空值分支一致），避免返回 model_id=0 的脏数据
 			assignments = append(assignments, apiLlm.AgentModelAssignment{
 				Role:      role,
-				ModelID:   &idVal,
+				ModelID:   nil,
 				ModelName: nil,
 			})
 			continue
