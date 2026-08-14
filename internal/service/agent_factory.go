@@ -5,6 +5,8 @@ import (
 	"github.com/bamboo-services/bamboo-agent/agent"
 	"github.com/bamboo-services/bamboo-agent/tool"
 	"github.com/bamboo-services/bamboo-messages/bamboo"
+
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
 const (
@@ -15,12 +17,15 @@ const (
 )
 
 // roleMaxIterations 不同 Agent 角色的最大 ReAct 迭代次数
+//
+// key 复用 bConst.AgentRoleRepoWiki* 常量，保证与 orchestrator 传入的 role 一致，
+// 否则永远命中不了 map，只能依赖默认值兜底。
 var roleMaxIterations = map[string]int{
-	"repowiki:coordinator": 128,
-	"repowiki:explore":     128,
-	"repowiki:architect":   128,
-	"repowiki:write":       128,
-	"repowiki:validator":   128,
+	bConst.AgentRoleRepoWikiCoordinator: 128,
+	bConst.AgentRoleRepoWikiExplore:     128,
+	bConst.AgentRoleRepoWikiArchitect:   128,
+	bConst.AgentRoleRepoWikiWrite:       128,
+	bConst.AgentRoleRepoWikiValidator:   128,
 }
 
 // NewRepoWikiAgentFromModel 构建用于分析代码库并生成 Wiki 的 Agent（使用数据库模型参数）
