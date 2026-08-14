@@ -55,7 +55,7 @@ func NewPinLogic(ctx context.Context) *PinLogic {
 //
 // 双模式调度策略：
 //  1. 优先尝试将输入解析为雪花 ID，命中则直接按 ID 查询
-//  2. 解析失败时降级为别名查询（输入转小写以匹配 JSON @> 的区分大小写特性）
+//  2. 解析失败时降级为别名查询（输入转小写，与 FindByAliasName 的 LOWER 大小写不敏感匹配对齐）
 //  3. 两种方式均未命中时返回 NotFound 错误
 //
 // 导出方法供 MCP 工具处理器复用项目别名/ID 解析能力（如 pin_consume 工具

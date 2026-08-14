@@ -221,7 +221,8 @@ func (r *ProjectRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID) *xE
 
 // FindByAliasName 根据别名查询项目
 //
-// 使用 PostgreSQL JSON 包含查询（@>）匹配 AliasName 数组中的指定别名。
+// AliasName 为 varchar(255) 单值字段，使用大小写不敏感的精确匹配（LOWER 比较），
+// 兼容 Pin 逻辑中先将输入转小写、以及直接传入原始别名的两种调用方式。
 //
 // 参数:
 //   - ctx:  上下文对象
@@ -235,7 +236,7 @@ func (r *ProjectRepo) FindByAliasName(ctx context.Context, alias string) (*entit
 
 	var project entity.Project
 	if err := r.db.WithContext(ctx).
-		Where("alias_name @> ?", fmt.Sprintf(`["%s"]`, alias)).
+		Where("LOWER(alias_name) = LOWER(?)", alias).
 		First(&project).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, xError.NewError(ctx, xError.NotFound, "项目不存在", false, nil)
@@ -248,8 +249,9 @@ func (r *ProjectRepo) FindByAliasName(ctx context.Context, alias string) (*entit
 
 // FindByMatchPath 根据路径匹配查询项目
 //
-// 使用 PostgreSQL JSON 展开：检查 MatchPath 数组中是否有任一元素是
-// 查询路径的前缀（即项目路径是查询路径的父目录或匹配路径）。
+// MatchPath 列为 PostgreSQL JSON 类型（type:json），使用 json_array_elements_text
+// 展开：检查 MatchPath 数组中是否有任一元素是查询路径的前缀（即项目路径是查询
+// 路径的父目录或匹配路径）。
 // 例如：MatchPath=["/home/user/Lumina"] 可以匹配 "/home/user/Lumina/src/main.go"
 //
 // 参数:
@@ -264,7 +266,7 @@ func (r *ProjectRepo) FindByMatchPath(ctx context.Context, path string) (*entity
 
 	var project entity.Project
 	if err := r.db.WithContext(ctx).
-		Where("EXISTS (SELECT 1 FROM jsonb_array_elements_text(match_path) AS elem WHERE ? LIKE (elem || '%'))", path).
+		Where("EXISTS (SELECT 1 FROM json_array_elements_text(match_path) AS elem WHERE ? LIKE (elem || '%'))", path).
 		First(&project).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, xError.NewError(ctx, xError.NotFound, "项目不存在", false, nil)
