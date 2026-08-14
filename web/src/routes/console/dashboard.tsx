@@ -68,36 +68,41 @@ const modules = [
   },
 ] as const
 
-/* ─── 蜡烛 glyph（静烛意象）─────────────────────────── */
+/* ─── 月·微光 glyph（微明意象）────────────────────────── */
 
-function CandleGlyph() {
+function MoonGlyph() {
   return (
     <svg
       viewBox="0 0 100 200"
       width="90"
       height="180"
-      className="drop-shadow-[0_6px_20px_rgba(201,136,58,0.18)]"
+      className="drop-shadow-[0_6px_20px_rgba(201,136,58,0.14)]"
       aria-hidden
     >
-      <path
-        d="M50 20 C58 34 63 42 63 50 a13 13 0 0 1-26 0 C37 42 42 34 50 20Z"
-        fill="#c9883a"
-      />
-      <path
-        d="M50 34 C55 42 57 47 57 52 a7 7 0 0 1-14 0 C43 47 45 42 50 34Z"
-        fill="#faf7f1"
-      />
-      <rect x="46" y="50" width="8" height="40" fill="#2b2018" />
-      <rect
-        x="40"
-        y="90"
-        width="20"
-        height="96"
-        fill="#f4efe6"
-        stroke="#2b2018"
-        strokeWidth="1"
-      />
-      <line x1="40" y1="90" x2="40" y2="186" stroke="rgba(43,32,24,.1)" />
+      <defs>
+        <radialGradient id="moon-glow" cx="50%" cy="42%" r="55%">
+          <stop offset="0%" stopColor="#c9883a" stopOpacity="0.2" />
+          <stop offset="55%" stopColor="#c9883a" stopOpacity="0.07" />
+          <stop offset="100%" stopColor="#c9883a" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="moon-fill" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#d69a4a" />
+          <stop offset="100%" stopColor="#c9883a" />
+        </linearGradient>
+      </defs>
+      <motion.g
+        animate={{ opacity: [0.45, 0.95, 0.45] }}
+        transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <circle cx="46" cy="76" r="54" fill="url(#moon-glow)" />
+      </motion.g>
+      <circle cx="44" cy="74" r="30" fill="url(#moon-fill)" />
+      <circle cx="58" cy="65" r="28" fill="#faf7f1" />
+      <circle cx="26" cy="42" r="1.8" fill="#b5a896" />
+      <circle cx="76" cy="30" r="1.3" fill="#b5a896" />
+      <circle cx="18" cy="72" r="1.1" fill="#b5a896" opacity="0.7" />
+      <circle cx="82" cy="56" r="1" fill="#b5a896" opacity="0.55" />
+      <line x1="36" y1="168" x2="64" y2="168" stroke="#b5a896" strokeWidth="1" opacity="0.6" />
     </svg>
   )
 }
@@ -152,7 +157,7 @@ function DashboardPage() {
             </div>
           </div>
           <div className="hidden shrink-0 sm:block">
-            <CandleGlyph />
+            <MoonGlyph />
           </div>
         </div>
       </motion.div>

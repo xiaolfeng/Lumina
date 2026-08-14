@@ -99,12 +99,11 @@ export function AppSidebar() {
 									asChild
 									className="hover:bg-link-bg-hover"
 								>
-									<Link to="/console/dashboard" className="flex flex-col gap-1 px-1">
-										<span className="flex items-center gap-2.5">
-											<span className="size-2.5 shrink-0 rounded-full bg-lagoon shadow-[0_0_0_3px_rgba(201,136,58,0.16)]" />
-											<span className="display-title text-base font-semibold text-sea-ink">微明</span>
-										</span>
-										<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sea-ink-soft">
+									<Link to="/console/dashboard" className="flex items-baseline gap-2 px-1">
+										<span className="size-[9px] shrink-0 self-center rounded-full bg-lagoon shadow-[0_0_0_3px_rgba(201,136,58,0.16)]" />
+										<span className="display-title text-[17px] font-semibold tracking-[0.5px] text-sea-ink">微明</span>
+										<span className="h-[13px] w-px shrink-0 self-center bg-sea-ink-soft/30" />
+										<span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-sea-ink-soft">
 											Lumina Console
 										</span>
 									</Link>
