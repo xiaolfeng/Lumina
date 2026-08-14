@@ -201,7 +201,7 @@ export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
 								<span>指纹：{result.fingerprint}</span>
 							</div>
 							<div className="rounded-md bg-muted p-4">
-								<pre className="overflow-x-auto break-all text-sm font-mono">
+								<pre className="max-h-52 overflow-auto whitespace-pre text-xs font-mono leading-relaxed">
 									{result.public_key}
 								</pre>
 							</div>
