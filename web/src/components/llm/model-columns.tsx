@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@lumina/components/ui/dropdown-menu'
-import type { Model } from '#/lib/models/response/llm'
+import type { Model, Provider } from '#/lib/models/response/llm'
 
 interface ModelColumnActions {
   onEdit: (item: Model) => void
@@ -17,6 +17,7 @@ interface ModelColumnActions {
 
 export function getModelColumns(
   actions: ModelColumnActions,
+  providers: Provider[],
 ): ColumnDef<Model>[] {
   return [
     {
@@ -36,6 +37,20 @@ export function getModelColumns(
           {row.getValue('display_name')}
         </span>
       ),
+    },
+    {
+      accessorKey: 'provider_id',
+      header: 'Provider',
+      cell: ({ row }) => {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+        const pid = row.getValue('provider_id') as string
+        const provider = providers.find((p) => p.id === pid)
+        return provider ? (
+          <span className="font-medium">{provider.name}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )
+      },
     },
     {
       accessorKey: 'max_tokens',

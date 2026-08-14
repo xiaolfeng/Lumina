@@ -6607,6 +6607,10 @@ const docTemplate = `{
                     "description": "模型标识",
                     "type": "string"
                 },
+                "provider_id": {
+                    "description": "关联Provider ID",
+                    "type": "integer"
+                },
                 "temperature": {
                     "description": "生成温度",
                     "type": "number"

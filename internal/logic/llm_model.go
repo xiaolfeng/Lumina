@@ -159,6 +159,13 @@ func (l *LlmModelLogic) Update(ctx context.Context, id string, req *apiLlm.Updat
 		return xErr
 	}
 
+	if req.ProviderID != nil {
+		// 校验目标 Provider 存在后更新归属
+		if _, xErr := l.repo.provider.GetByID(ctx, *req.ProviderID); xErr != nil {
+			return xErr
+		}
+		model.ProviderID = *req.ProviderID
+	}
 	if req.ModelName != nil {
 		model.ModelName = *req.ModelName
 	}

@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@lumina/components/ui/select'
 import { useCreateModel, useProviders } from '#/hooks/useLlmConfig'
+import { ProviderOption } from '#/components/llm/provider-option'
 import { toast } from 'sonner'
 
 interface ModelCreateDialogProps {
@@ -96,7 +97,7 @@ export function ModelCreateDialog({
               <SelectContent>
                 {providers.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.name}
+                    <ProviderOption provider={p} />
                   </SelectItem>
                 ))}
               </SelectContent>

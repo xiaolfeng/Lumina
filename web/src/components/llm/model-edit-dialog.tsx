@@ -19,6 +19,7 @@ import {
 } from '@lumina/components/ui/select'
 import { Switch } from '@lumina/components/ui/switch'
 import { useUpdateModel, useProviders } from '#/hooks/useLlmConfig'
+import { ProviderOption } from '#/components/llm/provider-option'
 import type { Model } from '#/lib/models/response/llm'
 import { toast } from 'sonner'
 
@@ -66,6 +67,7 @@ export function ModelEditDialog({
       {
         id: item.id,
         data: {
+          provider_id: providerId,
           model_name: modelName.trim(),
           display_name: displayName.trim(),
           max_tokens: parseInt(maxTokens, 10) || 32000,
@@ -106,7 +108,7 @@ export function ModelEditDialog({
               <SelectContent>
                 {providers.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.name}
+                    <ProviderOption provider={p} />
                   </SelectItem>
                 ))}
               </SelectContent>

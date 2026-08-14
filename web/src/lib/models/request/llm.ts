@@ -28,6 +28,7 @@ export interface CreateModelRequest {
 }
 
 export interface UpdateModelRequest {
+  provider_id?: string
   model_name?: string
   display_name?: string
   max_tokens?: number

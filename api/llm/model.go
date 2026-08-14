@@ -16,14 +16,15 @@ type CreateModelRequest struct {
 
 // UpdateModelRequest 更新 LLM 模型请求
 type UpdateModelRequest struct {
-	ModelName      *string  `json:"model_name"`      // 模型标识
-	DisplayName    *string  `json:"display_name"`    // 显示名称
-	MaxTokens      *int64   `json:"max_tokens"`      // 单次响应最大输出Token数
-	ContextWindow  *int64   `json:"context_window"`  // 模型上下文窗口大小
-	Temperature    *float64 `json:"temperature"`     // 生成温度
-	ThinkingEffort *string  `json:"thinking_effort"` // 思考强度(none/low/medium/high,空=不启用)
-	IsActive       *bool    `json:"is_active"`       // 是否启用
-	Description    *string  `json:"description"`     // 描述说明
+	ProviderID     *xSnowflake.SnowflakeID `json:"provider_id"`      // 关联Provider ID
+	ModelName      *string                 `json:"model_name"`       // 模型标识
+	DisplayName    *string                 `json:"display_name"`     // 显示名称
+	MaxTokens      *int64                  `json:"max_tokens"`       // 单次响应最大输出Token数
+	ContextWindow  *int64                  `json:"context_window"`   // 模型上下文窗口大小
+	Temperature    *float64                `json:"temperature"`      // 生成温度
+	ThinkingEffort *string                 `json:"thinking_effort"`  // 思考强度(none/low/medium/high,空=不启用)
+	IsActive       *bool                   `json:"is_active"`        // 是否启用
+	Description    *string                 `json:"description"`      // 描述说明
 }
 
 // ModelDetailResponse 模型详情响应

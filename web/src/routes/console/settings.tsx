@@ -66,16 +66,19 @@ function SettingsPage() {
     },
   })
 
-  const modelColumns = getModelColumns({
-    onEdit: (item) => {
-      setSelectedModel(item)
-      setEditModelOpen(true)
+  const modelColumns = getModelColumns(
+    {
+      onEdit: (item) => {
+        setSelectedModel(item)
+        setEditModelOpen(true)
+      },
+      onDelete: (item) => {
+        setSelectedModel(item)
+        setDeleteModelOpen(true)
+      },
     },
-    onDelete: (item) => {
-      setSelectedModel(item)
-      setDeleteModelOpen(true)
-    },
-  })
+    providerItems,
+  )
 
   return (
     <motion.div
