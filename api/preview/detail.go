@@ -9,6 +9,7 @@ type PreviewSessionResponse struct {
 	Title     string                 `json:"title"`      // 会话标题
 	Hash      string                 `json:"hash"`       // 访问哈希标识
 	Status    string                 `json:"status"`     // 会话状态
+	FileCount int64                  `json:"file_count"` // 文件数量
 	CreatedAt string                 `json:"created_at"` // 创建时间
 	UpdatedAt string                 `json:"updated_at"` // 更新时间
 }

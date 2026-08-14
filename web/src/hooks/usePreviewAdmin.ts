@@ -10,6 +10,20 @@ export function usePreviewSessionList(params?: PreviewSessionListParams) {
   })
 }
 
+export function useCreatePreviewSession() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: api.createPreviewSession,
+    onSuccess: () => {
+      toast.success('预览会话已创建')
+      queryClient.invalidateQueries({ queryKey: ['preview', 'sessions'] })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || '创建失败')
+    },
+  })
+}
+
 export function useDeletePreviewSession() {
   const queryClient = useQueryClient()
   return useMutation({

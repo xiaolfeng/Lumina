@@ -12,6 +12,36 @@ import (
 // 确保 apiCommon 包被编译器识别（swag 注释依赖此导入）
 var _ = apiCommon.BaseResponse{}
 
+// CreateSession 创建预览会话（管理端）
+//
+// @Summary     [管理] 创建预览会话
+// @Description 提交关联项目 ID 与会话标题创建预览会话，返回会话元数据与访问哈希
+// @Tags        Preview接口
+// @Accept      json
+// @Produce     json
+// @Param       Authorization  header    string                        true  "Bearer Access Token"
+// @Param       request        body      apiPreview.CreateSessionRequest  true  "创建会话请求"
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiPreview.PreviewSessionResponse}  "创建成功"
+// @Failure     400  {object}  apiCommon.BaseResponse  "请求参数错误"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Router      /api/v1/preview/sessions [POST]
+func (h *PreviewHandler) CreateSession(ctx *gin.Context) {
+	h.log.Info(ctx, "CreateSession - 创建预览会话")
+
+	var req apiPreview.CreateSessionRequest
+	if !BindJSON(ctx, &req) {
+		return
+	}
+
+	resp, xErr := h.service.previewLogic.CreateSession(ctx.Request.Context(), req.ProjectID, req.Title)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	xResult.SuccessHasData(ctx, "创建成功", resp)
+}
+
 // GetSession 获取预览会话详情与文件列表（公开，hash 鉴权）
 //
 // @Summary     [公开] 获取预览会话详情

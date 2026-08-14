@@ -407,6 +407,51 @@ func (r *WikiVersionRepo) ListByConfigIDAndStatus(ctx context.Context, configID 
 	return versions, nil
 }
 
+// VersionStatusCounts 按配置 ID 统计已完成与生成中（非终态）的版本数。
+//
+// 用一条 GROUP BY 查询聚合各状态计数，供版本概览 KPI 使用。
+//
+// 参数:
+//   - ctx:      上下文对象
+//   - configID: 配置雪花 ID
+//
+// 返回值:
+//   - int64:         已完成版本数
+//   - int64:         生成中版本数（pending/cloning/scanning/analyzing/assembling）
+//   - *xError.Error: 查询过程中的错误
+func (r *WikiVersionRepo) VersionStatusCounts(ctx context.Context, configID xSnowflake.SnowflakeID) (int64, int64, *xError.Error) {
+	type statusRow struct {
+		Status string `gorm:"column:status"`
+		Count  int64  `gorm:"column:count"`
+	}
+
+	rows := make([]statusRow, 0)
+	if err := r.db.WithContext(ctx).
+		Model(&entity.WikiVersion{}).
+		Select("status, COUNT(*) AS count").
+		Where("config_id = ?", configID).
+		Group("status").
+		Scan(&rows).Error; err != nil {
+		r.log.Warn(ctx, err.Error())
+		return 0, 0, xError.NewError(ctx, xError.DatabaseError, "统计版本状态失败", false, err)
+	}
+
+	var completed, generating int64
+	for _, row := range rows {
+		switch row.Status {
+		case bConst.RepoWikiStatusCompleted:
+			completed = row.Count
+		case bConst.RepoWikiStatusPending,
+			bConst.RepoWikiStatusCloning,
+			bConst.RepoWikiStatusScanning,
+			bConst.RepoWikiStatusAnalyzing,
+			bConst.RepoWikiStatusAssembling:
+			generating += row.Count
+		}
+	}
+	return completed, generating, nil
+}
+
 // DeleteVersionStatusCache 清除指定版本的状态缓存（供 logic 层级联删除时调用）
 //
 // 委托 cache 子层执行 Redis DEL，不报错（best-effort）。

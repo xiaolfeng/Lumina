@@ -104,8 +104,11 @@ function LoginPage() {
       >
         {/* Email */}
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email" className="text-sm font-medium">
-            邮箱
+          <Label
+            htmlFor="email"
+            className="text-[10px] font-bold uppercase tracking-[0.2em] text-sea-ink-soft"
+          >
+            账号
           </Label>
           <Input
             ref={emailInputRef}
@@ -121,6 +124,7 @@ function LoginPage() {
               if (errors.email)
                 setErrors((prev) => ({ ...prev, email: undefined }))
             }}
+            className="border-0 border-b border-input rounded-none bg-transparent px-0 py-2 shadow-none focus-visible:border-sea-ink focus-visible:ring-0"
             style={{ touchAction: 'manipulation' }}
           />
           {errors.email && (
@@ -132,7 +136,10 @@ function LoginPage() {
 
         {/* Password */}
         <div className="flex flex-col gap-2">
-          <Label htmlFor="password" className="text-sm font-medium">
+          <Label
+            htmlFor="password"
+            className="text-[10px] font-bold uppercase tracking-[0.2em] text-sea-ink-soft"
+          >
             密码
           </Label>
           <div className="relative">
@@ -149,7 +156,7 @@ function LoginPage() {
                 if (errors.password)
                   setErrors((prev) => ({ ...prev, password: undefined }))
               }}
-              className="pr-10"
+              className="border-0 border-b border-input rounded-none bg-transparent px-0 py-2 pr-8 shadow-none focus-visible:border-sea-ink focus-visible:ring-0"
               style={{ touchAction: 'manipulation' }}
             />
             <button

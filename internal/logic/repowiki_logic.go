@@ -793,6 +793,11 @@ func (l *RepoWikiLogic) ListVersions(ctx context.Context, configID xSnowflake.Sn
 	return l.repo.version.ListByConfigID(ctx, configID, int(pageReq.Page), int(pageReq.Size))
 }
 
+// VersionStats 统计指定配置的已完成与生成中版本数（供版本概览 KPI）。
+func (l *RepoWikiLogic) VersionStats(ctx context.Context, configID xSnowflake.SnowflakeID) (int64, int64, *xError.Error) {
+	return l.repo.version.VersionStatusCounts(ctx, configID)
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Wiki 查询方法（MCP 工具入口）
 // ──────────────────────────────────────────────────────────────────────

@@ -265,6 +265,34 @@ export function VersionList({ configId, selectedVersionId }: VersionListProps) {
 
 	return (
 		<div className="space-y-4">
+			{/* 版本概览 KPI · 发丝线分栏 */}
+			<div className="grid grid-cols-3 border-b border-line">
+				<div className="border-r border-line py-6 md:px-5 md:first:pl-0">
+					<p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
+						版本总数
+					</p>
+					<p className="display-title mt-3 text-5xl font-medium tracking-tight text-sea-ink">
+						{total}
+					</p>
+				</div>
+				<div className="border-r border-line py-6 md:px-5">
+					<p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
+						已完成
+					</p>
+					<p className="display-title mt-3 text-5xl font-medium tracking-tight text-sea-ink">
+						{data?.completed_count ?? 0}
+					</p>
+				</div>
+				<div className="py-6 md:px-5">
+					<p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
+						生成中
+					</p>
+					<p className="display-title mt-3 text-5xl font-medium tracking-tight text-sea-ink">
+						{data?.generating_count ?? 0}
+					</p>
+				</div>
+			</div>
+
 			<div className="rounded-lg border overflow-hidden">
 				<Table>
 					<TableHeader>

@@ -40,8 +40,10 @@ type VersionStatusResponse struct {
 
 // VersionListResponse 版本列表响应（分页）
 type VersionListResponse struct {
-	Total int64                   `json:"total"` // 总数
-	Items []VersionStatusResponse `json:"items"` // 版本列表
+	Total           int64                   `json:"total"`            // 总数
+	CompletedCount  int64                   `json:"completed_count"`  // 已完成数量
+	GeneratingCount int64                   `json:"generating_count"` // 生成中数量
+	Items           []VersionStatusResponse `json:"items"`            // 版本列表
 }
 
 // CleanFailedVersionsResponse 清理失败版本响应

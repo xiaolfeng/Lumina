@@ -907,6 +907,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/dashboard/overview": {
+            "get": {
+                "description": "聚合返回令牌、项目、问答、预览与 RepoWiki 的计数统计及最近预览列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "看板接口"
+                ],
+                "summary": "[管理] 获取看板概览统计",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dashboard.OverviewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/health/ping": {
             "get": {
                 "description": "探测服务存活状态，返回应用版本、数据库与 Redis 就绪情况",
@@ -2340,6 +2390,69 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "提交关联项目 ID 与会话标题创建预览会话，返回会话元数据与访问哈希",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Preview接口"
+                ],
+                "summary": "[管理] 创建预览会话",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "创建会话请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/preview.CreateSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/preview.PreviewSessionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
                         }
                     },
                     "401": {
@@ -5997,6 +6110,159 @@ const docTemplate = `{
                 }
             }
         },
+        "dashboard.OverviewResponse": {
+            "type": "object",
+            "properties": {
+                "preview": {
+                    "description": "预览统计",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dashboard.PreviewStats"
+                        }
+                    ]
+                },
+                "projects": {
+                    "description": "项目总数",
+                    "type": "integer"
+                },
+                "qa": {
+                    "description": "问答统计",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dashboard.QaStats"
+                        }
+                    ]
+                },
+                "recent_previews": {
+                    "description": "最近预览列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dashboard.RecentPreviewItem"
+                    }
+                },
+                "repowiki": {
+                    "description": "RepoWiki 统计",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dashboard.RepoWikiStats"
+                        }
+                    ]
+                },
+                "tokens": {
+                    "description": "令牌统计",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dashboard.TokenStats"
+                        }
+                    ]
+                }
+            }
+        },
+        "dashboard.PreviewStats": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "description": "活跃会话",
+                    "type": "integer"
+                },
+                "files": {
+                    "description": "文件总数",
+                    "type": "integer"
+                },
+                "total": {
+                    "description": "预览会话总数",
+                    "type": "integer"
+                }
+            }
+        },
+        "dashboard.QaStats": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "description": "活跃会话",
+                    "type": "integer"
+                },
+                "deleted": {
+                    "description": "已删除会话",
+                    "type": "integer"
+                },
+                "expired": {
+                    "description": "已归档（过期）会话",
+                    "type": "integer"
+                },
+                "pending_questions": {
+                    "description": "待回答问题总数",
+                    "type": "integer"
+                },
+                "total": {
+                    "description": "会话总数",
+                    "type": "integer"
+                }
+            }
+        },
+        "dashboard.RecentPreviewItem": {
+            "type": "object",
+            "properties": {
+                "file_count": {
+                    "description": "文件数",
+                    "type": "integer"
+                },
+                "hash": {
+                    "description": "访问哈希",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "会话ID",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "会话状态",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "会话标题",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.RepoWikiStats": {
+            "type": "object",
+            "properties": {
+                "completed": {
+                    "description": "已完成版本数",
+                    "type": "integer"
+                },
+                "configs": {
+                    "description": "配置总数",
+                    "type": "integer"
+                },
+                "generating": {
+                    "description": "生成中版本数",
+                    "type": "integer"
+                },
+                "versions": {
+                    "description": "版本总数",
+                    "type": "integer"
+                }
+            }
+        },
+        "dashboard.TokenStats": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "description": "活跃令牌数",
+                    "type": "integer"
+                },
+                "total": {
+                    "description": "令牌总数",
+                    "type": "integer"
+                }
+            }
+        },
         "health.PingResponse": {
             "type": "object",
             "properties": {
@@ -6493,6 +6759,22 @@ const docTemplate = `{
                 }
             }
         },
+        "preview.CreateSessionRequest": {
+            "type": "object",
+            "required": [
+                "project_id"
+            ],
+            "properties": {
+                "project_id": {
+                    "description": "关联项目ID",
+                    "type": "integer"
+                },
+                "title": {
+                    "description": "会话标题 (可选)",
+                    "type": "string"
+                }
+            }
+        },
         "preview.PreviewFileDetailResponse": {
             "type": "object",
             "properties": {
@@ -6605,6 +6887,10 @@ const docTemplate = `{
                 "created_at": {
                     "description": "创建时间",
                     "type": "string"
+                },
+                "file_count": {
+                    "description": "文件数量",
+                    "type": "integer"
                 },
                 "hash": {
                     "description": "访问哈希标识",
@@ -6988,6 +7274,10 @@ const docTemplate = `{
                     "description": "Agent名称",
                     "type": "string"
                 },
+                "answered_count": {
+                    "description": "已回答数",
+                    "type": "integer"
+                },
                 "created_at": {
                     "description": "创建时间",
                     "type": "string"
@@ -7016,6 +7306,10 @@ const docTemplate = `{
                     "description": "关联项目名称",
                     "type": "string"
                 },
+                "question_count": {
+                    "description": "问题总数",
+                    "type": "integer"
+                },
                 "status": {
                     "description": "active/expired/deleted",
                     "type": "string"
@@ -7042,7 +7336,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "content_type": {
-                    "description": "markdown/html",
+                    "description": "markdown/html/preview",
                     "type": "string"
                 },
                 "created_at": {
@@ -7343,6 +7637,14 @@ const docTemplate = `{
         "repowiki.VersionListResponse": {
             "type": "object",
             "properties": {
+                "completed_count": {
+                    "description": "已完成数量",
+                    "type": "integer"
+                },
+                "generating_count": {
+                    "description": "生成中数量",
+                    "type": "integer"
+                },
                 "items": {
                     "description": "版本列表",
                     "type": "array",

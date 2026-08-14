@@ -6,6 +6,8 @@ export interface SessionItem {
   type: 'temporary' | 'permanent'
   status: 'active' | 'expired' | 'deleted'
   online_devices: number
+  question_count: number
+  answered_count: number
   expires_at: string
   created_at: string
   updated_at: string

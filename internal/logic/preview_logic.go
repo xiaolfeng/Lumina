@@ -77,7 +77,7 @@ func (l *PreviewLogic) CreateSession(ctx context.Context, projectID xSnowflake.S
 	return toPreviewSessionResponse(session), nil
 }
 
-// ListSessions 分页获取预览会话列表（projectID 为零值时不过滤）
+// ListSessions 分页获取预览会话列表（projectID 为零值时不过滤），并批量填充各会话文件数。
 func (l *PreviewLogic) ListSessions(ctx context.Context, projectID xSnowflake.SnowflakeID, page, size int) (*apiPreview.PreviewSessionListResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("ListSessions - 分页获取预览会话列表 [projectID=%d, page=%d, size=%d]", projectID.Int64(), page, size))
 
@@ -86,9 +86,21 @@ func (l *PreviewLogic) ListSessions(ctx context.Context, projectID xSnowflake.Sn
 		return nil, xErr
 	}
 
+	// 批量统计文件数，避免 N+1 查询
+	sessionIDs := make([]xSnowflake.SnowflakeID, 0, len(sessions))
+	for _, s := range sessions {
+		sessionIDs = append(sessionIDs, s.ID)
+	}
+	fileCounts, xErr := l.repo.file.CountBySessions(ctx, sessionIDs)
+	if xErr != nil {
+		return nil, xErr
+	}
+
 	items := make([]apiPreview.PreviewSessionResponse, 0, len(sessions))
 	for _, s := range sessions {
-		items = append(items, *toPreviewSessionResponse(s))
+		resp := toPreviewSessionResponse(s)
+		resp.FileCount = fileCounts[s.ID.Int64()]
+		items = append(items, *resp)
 	}
 
 	return &apiPreview.PreviewSessionListResponse{

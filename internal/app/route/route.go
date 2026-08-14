@@ -76,6 +76,7 @@ func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) xOption.RouteRegistrar {
 		r.sshRouter(apiRouter)
 		r.wikiReaderRouter(apiRouter)
 		r.previewRouter(apiRouter)
+		r.dashboardRouter(apiRouter)
 		r.wsRouter(apiRouter)
 
 		if r.frontendFS != nil {

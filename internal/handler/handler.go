@@ -21,6 +21,7 @@ type service struct {
 	llmModelLogic    *logic.LlmModelLogic
 	settingsLogic    *logic.SettingsLogic
 	previewLogic     *logic.PreviewLogic
+	dashboardLogic   *logic.DashboardLogic
 }
 
 type handler struct {
@@ -61,6 +62,7 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 			llmModelLogic:    logic.NewLlmModelLogic(ctx),
 			settingsLogic:    logic.NewSettingsLogic(ctx),
 			previewLogic:     logic.NewPreviewLogic(ctx),
+			dashboardLogic:   logic.NewDashboardLogic(ctx),
 		},
 	}
 }
@@ -92,3 +94,5 @@ type LlmHandler handler
 type SettingsHandler handler
 
 type PreviewHandler handler
+
+type DashboardHandler handler

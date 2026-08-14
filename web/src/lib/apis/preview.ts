@@ -1,8 +1,10 @@
 import { apiClient } from './client'
 import type { BaseResponse } from '../models/response/common'
 import type {
+  CreatePreviewSessionRequest,
   PreviewSessionDetailResponse,
   PreviewSessionListResponse,
+  PreviewSessionItem,
   PreviewFileDetailResponse,
 } from '../models/response/preview'
 
@@ -28,6 +30,12 @@ export function getPreviewSessions(
   params?: PreviewSessionListParams,
 ): Promise<BaseResponse<PreviewSessionListResponse>> {
   return apiClient.get('/api/v1/preview/sessions', { params })
+}
+
+export function createPreviewSession(
+  data: CreatePreviewSessionRequest,
+): Promise<BaseResponse<PreviewSessionItem>> {
+  return apiClient.post('/api/v1/preview/sessions', data)
 }
 
 export function deletePreviewSession(id: string): Promise<BaseResponse> {

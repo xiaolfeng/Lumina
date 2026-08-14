@@ -537,14 +537,22 @@ func (h *RepoWikiHandler) ListVersions(ctx *gin.Context) {
 		return
 	}
 
+	completed, generating, xErr := h.service.repoWikiLogic.VersionStats(ctx.Request.Context(), configID)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
 	items := make([]apiRepowiki.VersionStatusResponse, 0, len(versions))
 	for _, v := range versions {
 		items = append(items, *versionToStatusResponse(v))
 	}
 
 	xResult.SuccessHasData(ctx, "获取成功", apiRepowiki.VersionListResponse{
-		Total: total,
-		Items: items,
+		Total:           total,
+		CompletedCount:  completed,
+		GeneratingCount: generating,
+		Items:           items,
 	})
 }
 

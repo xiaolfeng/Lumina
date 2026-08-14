@@ -19,6 +19,7 @@ func (r *route) previewRouter(route gin.IRouter) {
 	// 管理路由（Bearer Token 认证）
 	adminGroup := route.Group("/preview")
 	adminGroup.Use(middleware.Auth(r.context))
+	adminGroup.POST("/sessions", previewHandler.CreateSession)
 	adminGroup.GET("/sessions", previewHandler.ListSessions)
 	adminGroup.DELETE("/sessions/:id", previewHandler.DeleteSession)
 	adminGroup.DELETE("/files/:id", previewHandler.DeleteFile)

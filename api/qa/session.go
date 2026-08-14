@@ -28,6 +28,8 @@ type SessionResponse struct {
 	Type          string                 `json:"type"`           // temporary/permanent
 	Status        string                 `json:"status"`         // active/expired/deleted
 	OnlineDevices int                    `json:"online_devices"` // 在线设备数
+	QuestionCount int64                  `json:"question_count"` // 问题总数
+	AnsweredCount int64                  `json:"answered_count"` // 已回答数
 	ExpiresAt     string                 `json:"expires_at"`     // 过期时间（永久为空）
 	CreatedAt     string                 `json:"created_at"`     // 创建时间
 	UpdatedAt     string                 `json:"updated_at"`     // 更新时间

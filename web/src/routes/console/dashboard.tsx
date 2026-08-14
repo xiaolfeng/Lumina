@@ -2,121 +2,335 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Button } from '@lumina/components/ui/button'
 import { Skeleton } from '@lumina/components/ui/skeleton'
-import { useApikeyList } from '#/hooks/useApikey'
-import { Plus } from 'lucide-react'
+import {
+  ArrowRight,
+  Brain,
+  ExternalLink,
+  GitBranch,
+  KeyRound,
+  MapPin,
+  MessageCircle,
+  Monitor,
+  Plus,
+} from 'lucide-react'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
-import { PageHeader } from '#/components/page-header'
+import { useDashboardOverview } from '#/hooks/useDashboard'
+import { useAuth } from '#/hooks/useAuth'
 
 export const Route = createFileRoute('/console/dashboard')({
   component: DashboardPage,
 })
 
-function DashboardPage() {
-  const { data, isLoading } = useApikeyList({ page: 1, size: 1 })
+/* ─── 功能模块 bento 数据 ─────────────────────────────── */
 
-  const totalCount = data?.data?.total_items ?? 0
-  const items = data?.data?.items ?? []
-  const activeCount = items.filter((item) => item.is_active).length
-  const latestCreated = items.length > 0 ? items[0].created_at : null
+const modules = [
+  {
+    icon: Monitor,
+    name: '预览管理',
+    desc: '前端可视化预览会话与文件，Agent 生成代码后实时推送。',
+    tag: 'NEW',
+    to: '/console/preview',
+  },
+  {
+    icon: MessageCircle,
+    name: '交互问答',
+    desc: 'Agent 与用户的富交互式问答通道，WebSocket 实时推送。',
+    tag: '',
+    to: '/console/qa',
+  },
+  {
+    icon: MapPin,
+    name: 'Pin 管理',
+    desc: '跨项目依赖约束传递，点对点定向推送与 FIFO 队列消费。',
+    tag: '',
+    to: '/console/pin',
+  },
+  {
+    icon: GitBranch,
+    name: 'RepoWiki',
+    desc: '克隆项目并通过 5 角色协作生成结构化 Wiki 文档。',
+    tag: '',
+    to: '/console/project',
+  },
+  {
+    icon: KeyRound,
+    name: 'SSH 密钥',
+    desc: '密钥对生成与私钥加密存储，ed25519 / rsa 双算法。',
+    tag: '',
+    to: '/console/ssh',
+  },
+  {
+    icon: Brain,
+    name: 'LLM 配置',
+    desc: 'Provider / Model 热配置，Agent 角色分派不同模型。',
+    tag: '',
+    to: '/console/settings',
+  },
+] as const
+
+/* ─── 蜡烛 glyph（静烛意象）─────────────────────────── */
+
+function CandleGlyph() {
+  return (
+    <svg
+      viewBox="0 0 100 200"
+      width="90"
+      height="180"
+      className="drop-shadow-[0_6px_20px_rgba(201,136,58,0.18)]"
+      aria-hidden
+    >
+      <path
+        d="M50 20 C58 34 63 42 63 50 a13 13 0 0 1-26 0 C37 42 42 34 50 20Z"
+        fill="#c9883a"
+      />
+      <path
+        d="M50 34 C55 42 57 47 57 52 a7 7 0 0 1-14 0 C43 47 45 42 50 34Z"
+        fill="#faf7f1"
+      />
+      <rect x="46" y="50" width="8" height="40" fill="#2b2018" />
+      <rect
+        x="40"
+        y="90"
+        width="20"
+        height="96"
+        fill="#f4efe6"
+        stroke="#2b2018"
+        strokeWidth="1"
+      />
+      <line x1="40" y1="90" x2="40" y2="186" stroke="rgba(43,32,24,.1)" />
+    </svg>
+  )
+}
+
+function DashboardPage() {
+  const { data, isLoading } = useDashboardOverview()
+  const { currentUser } = useAuth()
+
+  const overview = data?.data
+  const username = currentUser.data?.data?.username ?? '管理员'
 
   return (
     <motion.div
-      className="space-y-10"
       initial="hidden"
       animate="visible"
       variants={staggerContainer}
+      className="mx-auto max-w-5xl"
     >
-      <PageHeader title="看板" description="Lumina Console 概览" />
-
-      {/* 欢迎 · 静烛 Hero */}
+      {/* ─── Hero ─── */}
       <motion.div variants={staggerItem}>
-        <div className="flex items-end justify-between gap-6 border-b border-line pb-8">
+        <div className="flex items-end justify-between gap-8 border-b border-line pb-12 pt-2">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-lagoon-deep">
+            <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-lagoon-deep">
               烛照幽微 · 知识中枢
             </p>
-            <h2 className="display-title mt-4 text-3xl font-medium text-sea-ink">
-              欢迎回来，管理员
+            <h2 className="display-title mt-5 text-5xl font-medium leading-tight tracking-tight text-sea-ink">
+              欢迎回来，<em className="italic text-lagoon">{username}</em>
             </h2>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-sea-ink-soft">
-              这是你的 Lumina 管理面板，在这里管理项目、令牌和系统配置。
+            <p className="mt-5 max-w-md text-sm leading-relaxed text-sea-ink-soft">
+              赋予 AI 深度代码认知与长期记忆。项目、令牌、问答与预览工作区，皆于此安放。
             </p>
+            <div className="mt-7 flex gap-3.5">
+              <Button
+                asChild
+                className="bg-sea-ink text-foam hover:bg-lagoon-deep"
+              >
+                <Link to="/console/preview">
+                  <Plus className="size-4" />
+                  新建预览
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="border-input text-sea-ink hover:border-sea-ink hover:bg-transparent"
+              >
+                <Link to="/console/qa">
+                  查看问答
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
-          {!isLoading && totalCount > 0 && (
-            <Button
-              asChild
-              className="shrink-0 bg-sea-ink text-foam hover:bg-lagoon-deep"
+          <div className="hidden shrink-0 sm:block">
+            <CandleGlyph />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ─── KPI band ─── */}
+      <motion.div variants={staggerItem}>
+        <div className="grid grid-cols-2 border-b border-line md:grid-cols-4">
+          <Kpi
+            label="令牌总数"
+            value={overview?.tokens.total}
+            unit="个"
+            delta={overview ? `${overview.tokens.active} 个活跃` : undefined}
+            loading={isLoading}
+          />
+          <Kpi
+            label="活跃项目"
+            value={overview?.projects}
+            unit="个"
+            loading={isLoading}
+          />
+          <Kpi
+            label="问答会话"
+            value={overview?.qa.total}
+            unit="次"
+            delta={overview ? `${overview.qa.active} 个活跃` : undefined}
+            loading={isLoading}
+          />
+          <Kpi
+            label="预览会话"
+            value={overview?.preview.total}
+            unit="个"
+            delta={overview ? `${overview.preview.active} 个活跃` : undefined}
+            loading={isLoading}
+            last
+          />
+        </div>
+      </motion.div>
+
+      {/* ─── 功能模块 ─── */}
+      <motion.div variants={staggerItem} className="mt-14">
+        <h3 className="display-title mb-6 text-lg font-semibold text-sea-ink">
+          功能模块
+          <span className="ml-1 text-lagoon">──</span>
+        </h3>
+        <div className="grid grid-cols-1 border border-line sm:grid-cols-2 lg:grid-cols-3">
+          {modules.map((mod) => (
+            <Link
+              key={mod.name}
+              to={mod.to}
+              className="group relative border-line p-6 transition-colors hover:bg-chip-bg sm:border-r sm:border-b lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-child(n+4)]:border-b-0"
             >
-              <Link to="/console/apikey">
-                <Plus className="size-4" />
-                创建新令牌
-              </Link>
-            </Button>
+              {mod.tag && (
+                <span className="absolute right-6 top-6 text-[9px] font-bold uppercase tracking-[0.16em] text-lagoon-deep">
+                  {mod.tag}
+                </span>
+              )}
+              <span className="inline-block size-1.5 rounded-full bg-lagoon" />
+              <h4 className="display-title mt-4 text-base font-semibold text-sea-ink">
+                {mod.name}
+              </h4>
+              <p className="mt-2 text-xs leading-relaxed text-sea-ink-soft">
+                {mod.desc}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ─── 最近预览 ─── */}
+      <motion.div variants={staggerItem} className="mt-14 pb-4">
+        <h3 className="display-title mb-2 text-lg font-semibold text-sea-ink">
+          最近预览
+          <span className="ml-1 text-lagoon">──</span>
+        </h3>
+        <div className="border-t border-line">
+          {isLoading ? (
+            <div className="space-y-2 py-6">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : overview && overview.recent_previews.length > 0 ? (
+            overview.recent_previews.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-4 border-b border-line px-1 py-4 transition-colors hover:bg-chip-bg"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-sea-ink">
+                    {item.title}
+                  </p>
+                  <p className="mt-1 text-xs text-sea-ink-soft">
+                    {item.file_count} 个文件 · {relativeTime(item.updated_at)}
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 border border-green-600/40 px-2.5 py-0.5 text-[10.5px] font-semibold text-green-700">
+                  <span className="inline-block size-1.5 rounded-full bg-green-600" />
+                  活跃
+                </span>
+                <Link
+                  to="/console/preview"
+                  className="grid size-7 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
+                  aria-label={`打开 ${item.title}`}
+                >
+                  <ExternalLink className="size-3.5" />
+                </Link>
+              </div>
+            ))
+          ) : (
+            <div className="border border-line px-8 py-16 text-center">
+              <p className="display-title text-xl font-semibold text-sea-ink">
+                暂无预览会话
+              </p>
+              <p className="mt-2.5 text-sm text-sea-ink-soft">
+                创建第一个预览会话，可视化你的前端原型。
+              </p>
+            </div>
           )}
         </div>
       </motion.div>
-
-      {/* KPI · 发丝线分栏 */}
-      <motion.div variants={staggerItem}>
-        <div className="grid grid-cols-3 border-b border-line">
-          <div className="border-r border-line py-7 pr-6">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
-              令牌总数
-            </p>
-            {isLoading ? (
-              <Skeleton className="mt-3 h-8 w-16" />
-            ) : (
-              <p className="display-title mt-3 text-4xl font-medium tracking-tight text-sea-ink">
-                {totalCount}
-              </p>
-            )}
-          </div>
-          <div className="border-r border-line px-6 py-7">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
-              活跃令牌
-            </p>
-            {isLoading ? (
-              <Skeleton className="mt-3 h-8 w-16" />
-            ) : (
-              <p className="display-title mt-3 text-4xl font-medium tracking-tight text-sea-ink">
-                {activeCount}
-              </p>
-            )}
-          </div>
-          <div className="py-7 pl-6">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
-              最近创建
-            </p>
-            {isLoading ? (
-              <Skeleton className="mt-3 h-8 w-28" />
-            ) : latestCreated ? (
-              <p className="display-title mt-3 text-3xl font-medium tracking-tight text-sea-ink">
-                {new Date(latestCreated).toLocaleDateString('zh-CN')}
-              </p>
-            ) : (
-              <p className="mt-4 text-sm text-sea-ink-soft">暂无令牌</p>
-            )}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* 快速操作 · 空态 */}
-      {!isLoading && totalCount === 0 && (
-        <motion.div variants={staggerItem}>
-          <div className="border border-dashed border-chip-line py-10 text-center">
-            <p className="text-sm text-sea-ink-soft">还没有创建任何 API 令牌</p>
-            <Button
-              asChild
-              className="mt-4 bg-sea-ink text-foam hover:bg-lagoon-deep"
-            >
-              <Link to="/console/apikey">
-                <Plus className="mr-2 size-4" />
-                去创建
-              </Link>
-            </Button>
-          </div>
-        </motion.div>
-      )}
     </motion.div>
   )
+}
+
+/* ─── KPI 单元 ─────────────────────────────────────────── */
+
+function Kpi({
+  label,
+  value,
+  unit,
+  delta,
+  loading,
+  last,
+}: {
+  label: string
+  value?: number
+  unit?: string
+  delta?: string
+  loading?: boolean
+  last?: boolean
+}) {
+  return (
+    <div
+      className={`border-line py-7 ${
+        last ? '' : 'border-r'
+      } first:pl-0 md:px-5 md:first:pl-0`}
+    >
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
+        {label}
+      </p>
+      {loading ? (
+        <Skeleton className="mt-3 h-11 w-16" />
+      ) : (
+        <p className="display-title mt-3 text-5xl font-medium tracking-tight text-sea-ink">
+          {value ?? 0}
+          {unit && (
+            <span className="ml-0.5 text-lg text-sea-ink-soft">{unit}</span>
+          )}
+        </p>
+      )}
+      {delta && (
+        <p className="mt-2 text-[11.5px] text-sea-ink-soft">{delta}</p>
+      )}
+    </div>
+  )
+}
+
+/* ─── 相对时间 ─────────────────────────────────────────── */
+
+function relativeTime(iso: string): string {
+  const time = new Date(iso).getTime()
+  if (Number.isNaN(time)) return ''
+  const diff = Date.now() - time
+  const min = Math.floor(diff / 60000)
+  if (min < 1) return '刚刚'
+  if (min < 60) return `${min} 分钟前`
+  const hour = Math.floor(min / 60)
+  if (hour < 24) return `${hour} 小时前`
+  const day = Math.floor(hour / 24)
+  return `${day} 天前`
 }

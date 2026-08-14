@@ -36,6 +36,48 @@ func NewQaQuestionRepo(db *gorm.DB) *QaQuestionRepo {
 	}
 }
 
+// CountBySessions 批量统计各会话的问题总数与已回答数（按 session_id 分组）。
+//
+// 用于列表场景一次性填充问题数/已答数，避免 N+1 逐会话查询。
+//
+// 参数:
+//   - ctx:        上下文对象
+//   - sessionIDs: 会话雪花 ID 切片（空切片安全，返回空 map）
+//
+// 返回值:
+//   - map[int64]int64: 会话 ID → 问题总数映射
+//   - map[int64]int64: 会话 ID → 已回答数映射
+//   - *xError.Error:   查询过程中的错误
+func (r *QaQuestionRepo) CountBySessions(ctx context.Context, sessionIDs []xSnowflake.SnowflakeID) (map[int64]int64, map[int64]int64, *xError.Error) {
+	totalMap := make(map[int64]int64)
+	answeredMap := make(map[int64]int64)
+	if len(sessionIDs) == 0 {
+		return totalMap, answeredMap, nil
+	}
+
+	type countRow struct {
+		SessionID int64 `gorm:"column:session_id"`
+		Total     int64 `gorm:"column:total"`
+		Answered  int64 `gorm:"column:answered"`
+	}
+
+	rows := make([]countRow, 0)
+	if err := r.db.WithContext(ctx).
+		Model(&entity.QaQuestion{}).
+		Select("session_id, COUNT(*) AS total, SUM(CASE WHEN status = 'answered' THEN 1 ELSE 0 END) AS answered").
+		Where("session_id IN ?", sessionIDs).
+		Group("session_id").
+		Scan(&rows).Error; err != nil {
+		return nil, nil, xError.NewError(ctx, xError.DatabaseError, "批量统计QA问题数量失败", false, err)
+	}
+
+	for _, row := range rows {
+		totalMap[row.SessionID] = row.Total
+		answeredMap[row.SessionID] = row.Answered
+	}
+	return totalMap, answeredMap, nil
+}
+
 // Create 创建QA问题记录
 //
 // 参数:

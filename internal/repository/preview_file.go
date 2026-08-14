@@ -152,6 +152,44 @@ func (r *PreviewFileRepo) ListBySession(ctx context.Context, sessionID xSnowflak
 	return files, nil
 }
 
+// CountBySessions 批量统计各会话的文件数量（按 session_id 分组）。
+//
+// 用于列表场景一次性填充文件数，避免 N+1 逐会话查询。
+//
+// 参数:
+//   - ctx:        上下文对象
+//   - sessionIDs: 会话雪花 ID 切片（空切片安全，返回空 map）
+//
+// 返回值:
+//   - map[int64]int64: 会话 ID → 文件数映射
+//   - *xError.Error:   查询过程中的错误
+func (r *PreviewFileRepo) CountBySessions(ctx context.Context, sessionIDs []xSnowflake.SnowflakeID) (map[int64]int64, *xError.Error) {
+	result := make(map[int64]int64)
+	if len(sessionIDs) == 0 {
+		return result, nil
+	}
+
+	type countRow struct {
+		SessionID int64 `gorm:"column:session_id"`
+		Count     int64 `gorm:"column:count"`
+	}
+
+	rows := make([]countRow, 0)
+	if err := r.db.WithContext(ctx).
+		Model(&entity.PreviewFile{}).
+		Select("session_id, COUNT(*) AS count").
+		Where("session_id IN ?", sessionIDs).
+		Group("session_id").
+		Scan(&rows).Error; err != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "批量统计预览文件数量失败", false, err)
+	}
+
+	for _, row := range rows {
+		result[row.SessionID] = row.Count
+	}
+	return result, nil
+}
+
 // DeleteBySession 物理删除指定会话的全部预览文件（级联清理用）
 //
 // 参数:

@@ -44,6 +44,8 @@ export interface RepoWikiConfigListResponse {
 export interface RepoWikiVersionListResponse {
 	items: RepoWikiVersionItem[]
 	total: number
+	completed_count: number
+	generating_count: number
 }
 
 export interface CleanFailedVersionsResponse {

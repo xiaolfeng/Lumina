@@ -93,10 +93,23 @@ func (l *QaLogic) ListSessions(ctx context.Context, req *qa.ListSessionRequest) 
 		return nil, xErr
 	}
 
+	// 批量统计问题数/已答数，避免 N+1 查询
+	sessionIDs := make([]xSnowflake.SnowflakeID, 0, len(sessions))
+	for _, s := range sessions {
+		sessionIDs = append(sessionIDs, s.ID)
+	}
+	questionTotal, answeredTotal, xErr := l.repo.question.CountBySessions(ctx, sessionIDs)
+	if xErr != nil {
+		return nil, xErr
+	}
+
 	// 映射响应
 	items := make([]qa.SessionResponse, 0, len(sessions))
 	for _, s := range sessions {
-		items = append(items, toSessionResponse(s))
+		resp := toSessionResponse(s)
+		resp.QuestionCount = questionTotal[s.ID.Int64()]
+		resp.AnsweredCount = answeredTotal[s.ID.Int64()]
+		items = append(items, resp)
 	}
 
 	return &qa.SessionListResponse{
