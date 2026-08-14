@@ -281,3 +281,56 @@
   max-width: 100%;
   height: auto;
 }
+
+/* ─── 全局滚动条 · 微明主题 ─────────────────────────── */
+/* 墨褐骨 + 琥珀点睛，静烛直角为骨。双写兼容：标准属性（Firefox/新版
+   Chromium）+ WebKit 伪元素（Safari/旧版）。主题切换随 CSS 变量联动。 */
+
+:root {
+  /* 滚动条变量 · 静烛 */
+  --sb-thumb: rgba(43, 32, 24, 0.18); /* 墨褐 · 默认拇指 */
+  --sb-thumb-hover: #c9883a; /* 琥珀 · 悬停点睛 */
+  --sb-track: transparent; /* 轨道 · 透明承纸 */
+  --sb-size: 10px;
+}
+
+.dark {
+  --sb-thumb: rgba(236, 226, 212, 0.16);
+  --sb-thumb-hover: #e8a855;
+}
+
+/* ① 标准属性 —— Firefox / 新版 Chrome / Edge */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sb-thumb) var(--sb-track);
+}
+*:hover {
+  scrollbar-color: var(--sb-thumb-hover) var(--sb-track);
+}
+
+/* ② WebKit 伪元素 —— Safari / Chrome / Edge */
+::-webkit-scrollbar {
+  width: var(--sb-size);
+  height: var(--sb-size);
+}
+::-webkit-scrollbar-track {
+  background: var(--sb-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--sb-thumb);
+  border-radius: var(--radius);
+  transition: background 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sb-thumb-hover);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ─── 分割条 · 微明主题 ─────────────────────────────── */
+/* Splitter 组件使用的命中区变量，可被覆盖以调整手感 */
+:root {
+  --splitter-hit-size: 14px;
+}
+
