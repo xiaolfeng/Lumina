@@ -8,10 +8,6 @@ import (
 	"time"
 
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
-	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
-	"github.com/xiaolfeng/Lumina/internal/entity"
-	"github.com/xiaolfeng/Lumina/internal/repository"
-	"gorm.io/gorm"
 )
 
 // MessageHandler 消息处理回调函数
@@ -29,18 +25,18 @@ const heartbeatTimeout = 15 * time.Second
 //
 // 管理所有活跃的 WebSocket 连接，按 sessionID → deviceID 二级索引组织。
 // 通过 register/unregister 通道实现并发安全的连接生命周期管理。
-// 新连接注册时自动推送该会话下所有待回答问题（用于前端重连恢复）。
+// 业务连接生命周期逻辑（如 QA 的会话历史推送、在线设备同步）由上层通过
+// [Hub.AddRegisterHook] / [Hub.AddUnregisterHook] 注入，Hub 自身保持领域中立，
+// 可同时承载 QA、Preview 等多种连接类型。
 type Hub struct {
-	sessions       map[string]map[string]*Connection // sessionID → deviceID → Connection
-	register       chan *Connection                  // 注册通道
-	unregister     chan *Connection                  // 注销通道
-	mu             sync.RWMutex                      // sessions 读写锁
-	log            *xLog.LogNamedLogger              // 日志记录器
-	handler        MessageHandler                    // 消息处理回调
-	sessionRepo    *repository.QaSessionRepo         // QA 会话仓库
-	questionRepo   *repository.QaQuestionRepo        // QA 问题仓库（用于连接时推送 pending 问题）
-	supplementRepo *repository.QaSupplementRepo      // QA 补充仓库（用于连接时推送已存在 supplement）
-	db             *gorm.DB                          // 数据库实例（用于异步更新 OnlineDevices）
+	sessions        map[string]map[string]*Connection // sessionID → deviceID → Connection
+	register        chan *Connection                  // 注册通道
+	unregister      chan *Connection                  // 注销通道
+	mu              sync.RWMutex                      // sessions 读写锁
+	log             *xLog.LogNamedLogger              // 日志记录器
+	handler         MessageHandler                    // 消息处理回调
+	registerHooks   []func(*Connection)               // 连接注册钩子（异步执行）
+	unregisterHooks []func(*Connection)               // 连接注销钩子（异步执行）
 }
 
 // 全局单例 Hub 实例
@@ -51,12 +47,18 @@ var (
 
 // GetHub 获取或创建全局 Hub 单例
 //
-// 首次调用时使用传入的参数创建 Hub 实例，后续调用忽略参数。
-// 当 handler 为 nil 时，收到的客户端消息仅记录日志不做处理。
-func GetHub(handler MessageHandler, sessionRepo *repository.QaSessionRepo, db *gorm.DB) *Hub {
+// 首次调用时使用传入的 handler 创建 Hub 实例，后续调用复用已有单例。
+// 若单例已存在且本次传入的 handler 非 nil，则覆盖单例的 handler，
+// 保证无论 wsRouter / previewRouter 的注册顺序如何，Q&A 业务消息处理器最终生效。
+func GetHub(handler MessageHandler) *Hub {
 	hubOnce.Do(func() {
-		globalHub = NewHub(handler, sessionRepo, db)
+		globalHub = NewHub(handler)
 	})
+
+	// 单例已存在且本次传入 handler 非 nil 时覆盖，确保业务消息处理器最终生效
+	if handler != nil {
+		globalHub.handler = handler
+	}
 	return globalHub
 }
 
@@ -70,18 +72,30 @@ func GetGlobalHub() *Hub {
 }
 
 // NewHub 创建 Hub 实例
-func NewHub(handler MessageHandler, sessionRepo *repository.QaSessionRepo, db *gorm.DB) *Hub {
+func NewHub(handler MessageHandler) *Hub {
 	return &Hub{
-		sessions:       make(map[string]map[string]*Connection),
-		register:       make(chan *Connection),
-		unregister:     make(chan *Connection),
-		log:            xLog.WithName(xLog.NamedCONT, "WebSocketHub"),
-		handler:        handler,
-		sessionRepo:    sessionRepo,
-		questionRepo:   repository.NewQaQuestionRepo(db),
-		supplementRepo: repository.NewQaSupplementRepo(db),
-		db:             db,
+		sessions:   make(map[string]map[string]*Connection),
+		register:   make(chan *Connection),
+		unregister: make(chan *Connection),
+		log:        xLog.WithName(xLog.NamedCONT, "WebSocketHub"),
+		handler:    handler,
 	}
+}
+
+// AddRegisterHook 注册连接注册钩子
+//
+// 钩子在连接成功注册到 sessions 映射后异步执行（go fn(conn)）。
+// 由上层业务注入连接建立时的生命周期逻辑（如 QA 会话历史推送）。
+func (h *Hub) AddRegisterHook(fn func(*Connection)) {
+	h.registerHooks = append(h.registerHooks, fn)
+}
+
+// AddUnregisterHook 注册连接注销钩子
+//
+// 钩子在连接从 sessions 映射移除后异步执行（go fn(conn)）。
+// 由上层业务注入连接断开时的生命周期逻辑（如 QA 在线设备同步）。
+func (h *Hub) AddUnregisterHook(fn func(*Connection)) {
+	h.unregisterHooks = append(h.unregisterHooks, fn)
 }
 
 // Run 启动 Hub 主循环
@@ -211,6 +225,7 @@ func (h *Hub) registerConn(conn *Connection) {
 	h.log.Info(nil, "设备上线",
 		slog.String("sessionID", conn.sessionID),
 		slog.String("deviceID", conn.deviceID),
+		slog.String("kind", conn.Kind),
 		slog.Int("online", deviceCount+1),
 	)
 
@@ -232,11 +247,10 @@ func (h *Hub) registerConn(conn *Connection) {
 		}
 	}
 
-	// 异步同步 OnlineDevices 到数据库
-	go h.syncOnlineDevices(conn.sessionID, deviceCount+1)
-
-	// 向新连接推送该会话的全部问题历史及补充内容
-	go h.pushSessionHistory(conn)
+	// 异步执行全部注册钩子
+	for _, hook := range h.registerHooks {
+		go hook(conn)
+	}
 }
 
 // unregisterConn 从 sessions 映射中移除连接
@@ -245,6 +259,8 @@ func (h *Hub) unregisterConn(conn *Connection) {
 	devices, ok := h.sessions[conn.sessionID]
 	if !ok {
 		h.mu.Unlock()
+		// 异步执行全部注销钩子
+		h.runUnregisterHooks(conn)
 		return
 	}
 
@@ -257,6 +273,7 @@ func (h *Hub) unregisterConn(conn *Connection) {
 		h.log.Info(nil, "设备离线",
 			slog.String("sessionID", conn.sessionID),
 			slog.String("deviceID", conn.deviceID),
+			slog.String("kind", conn.Kind),
 			slog.Bool("voluntary", conn.isVoluntary),
 			slog.Int("remaining", remainingCount),
 		)
@@ -284,13 +301,19 @@ func (h *Hub) unregisterConn(conn *Connection) {
 			h.mu.RUnlock()
 		}
 
-		// 异步同步 OnlineDevices 到数据库
-		go h.syncOnlineDevices(conn.sessionID, remainingCount)
-
-		// 注：临时会话不再由 WS 断连触发硬删除，仅由 ExpiresAt（48h）自然过期。
-		// expireCheck 在会话被读取时自动将过期 active 会话转为 expired。
+		// 异步执行全部注销钩子
+		h.runUnregisterHooks(conn)
 	} else {
 		h.mu.Unlock()
+		// 异步执行全部注销钩子
+		h.runUnregisterHooks(conn)
+	}
+}
+
+// runUnregisterHooks 异步执行全部注销钩子
+func (h *Hub) runUnregisterHooks(conn *Connection) {
+	for _, hook := range h.unregisterHooks {
+		go hook(conn)
 	}
 }
 
@@ -327,94 +350,5 @@ func (h *Hub) shutdownAll() {
 			h.log.Info(nil, "关闭连接", slog.String("sessionID", sessionID), slog.String("deviceID", deviceID))
 		}
 		delete(h.sessions, sessionID)
-	}
-}
-
-// syncOnlineDevices 异步更新数据库中的 OnlineDevices 字段
-func (h *Hub) syncOnlineDevices(sessionID string, count int) {
-	sid, err := xSnowflake.ParseSnowflakeID(sessionID)
-	if err != nil {
-		return
-	}
-	h.db.Model(&entity.QaSession{}).Where("id = ?", sid).Update("online_devices", count)
-}
-
-// pushSessionHistory 向新连接推送该会话的全部问题历史及补充内容
-//
-// 连接建立时调用。按问题状态区分推送方式：
-//   - pending 问题 → question_push（前端视为待回答的活跃问题）
-//   - 已回答/已跳过 → history_question（前端仅作历史展示，不激活交互）
-//
-// 补充内容（supplement_push）仅推送给目标问题仍为 pending 的内容，
-// 已回答/已跳过的问题无需恢复补充面板，避免前端布局异常。
-func (h *Hub) pushSessionHistory(conn *Connection) {
-	sid, err := xSnowflake.ParseSnowflakeID(conn.sessionID)
-	if err != nil {
-		return
-	}
-
-	// 查询该会话全部问题（含已回答/已跳过/待回答）
-	questions, xErr := h.questionRepo.GetBySessionID(context.Background(), sid)
-	if xErr != nil {
-		h.log.Warn(nil, "推送会话历史失败", slog.String("error", xErr.Error()))
-		return
-	}
-
-	// 按状态区分推送
-	pendingIDs := make(map[string]bool, len(questions))
-	for _, q := range questions {
-		msgType := MsgHistoryQuestion
-		if q.Status == "pending" {
-			msgType = MsgQuestionPush
-			pendingIDs[q.ID.String()] = true
-		}
-		msg := &Message{
-			Type:      msgType,
-			SessionID: conn.sessionID,
-			Data:      q,
-			Timestamp: time.Now().UnixMilli(),
-		}
-		_ = conn.SendMessage(msg)
-	}
-
-	// 构建 optionID → questionID 映射，用于判断 option 级 supplement 所属问题状态
-	optionToQuestion := make(map[string]string)
-	for _, q := range questions {
-		if q.Options != nil {
-			var opts []map[string]interface{}
-			if json.Unmarshal(q.Options, &opts) == nil {
-				for _, opt := range opts {
-					if optID, ok := opt["id"].(string); ok && optID != "" {
-						optionToQuestion[optID] = q.ID.String()
-					}
-				}
-			}
-		}
-	}
-
-	// 推送该会话所有 supplement（仅目标问题仍为 pending 的才推送）
-	supplements, sErr := h.supplementRepo.GetBySessionID(context.Background(), sid)
-	if sErr != nil {
-		h.log.Warn(nil, "查询会话补充内容失败", slog.String("error", sErr.Error()))
-		return
-	}
-	for _, s := range supplements {
-		var belongsToPending bool
-		if s.TargetType == "question" {
-			belongsToPending = pendingIDs[s.TargetID.String()]
-		} else if s.TargetType == "option" {
-			qid := optionToQuestion[s.TargetID.String()]
-			belongsToPending = pendingIDs[qid]
-		}
-		if !belongsToPending {
-			continue
-		}
-		msg := &Message{
-			Type:      MsgSupplementPush,
-			SessionID: conn.sessionID,
-			Data:      s,
-			Timestamp: time.Now().UnixMilli(),
-		}
-		_ = conn.SendMessage(msg)
 	}
 }

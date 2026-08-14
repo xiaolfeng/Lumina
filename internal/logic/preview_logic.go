@@ -32,6 +32,11 @@ type PreviewLogic struct {
 	repo previewRepo
 }
 
+// OnPreviewChanged 预览内容变更后的回调钩子，由 WebSocket 层设置以广播 preview_sync 到在线设备
+//
+// eventType 取值：upload（文件上传/覆写）、delete（文件删除）、delete_session（会话删除）
+var OnPreviewChanged func(sessionID string, eventType string)
+
 // NewPreviewLogic 创建 PreviewLogic 实例
 //
 // 通过上下文获取 db，构造 PreviewSessionRepo 与 PreviewFileRepo 注入到 previewRepo 聚合结构。
@@ -166,6 +171,16 @@ func (l *PreviewLogic) UploadFile(ctx context.Context, sessionID xSnowflake.Snow
 		return nil, xErr
 	}
 
+	// 触摸会话更新时间，使会话 updated_at 与内容变更保持一致
+	if xErr := l.repo.session.TouchUpdatedAt(ctx, sessionID); xErr != nil {
+		return nil, xErr
+	}
+
+	// 广播预览同步（上传/覆写均为内容变更）
+	if OnPreviewChanged != nil {
+		OnPreviewChanged(sessionID.String(), "upload")
+	}
+
 	return toPreviewFileResponse(result), nil
 }
 
@@ -196,6 +211,31 @@ func (l *PreviewLogic) GetSessionByHash(ctx context.Context, hash string) (*apiP
 	}
 
 	return toPreviewSessionResponse(session), nil
+}
+
+// GetSessionDetailByID 根据会话 ID 获取预览会话详情（含文件列表）
+//
+// 组合 GetSessionByID 与 ListFiles 逻辑，并填充 FileCount，
+// 供 WebSocket 连接快照与内容变更广播一次性返回完整会话状态。
+func (l *PreviewLogic) GetSessionDetailByID(ctx context.Context, sessionID xSnowflake.SnowflakeID) (*apiPreview.PreviewSessionDetailResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("GetSessionDetailByID - 获取预览会话详情 [sessionID=%d]", sessionID.Int64()))
+
+	session, xErr := l.GetSessionByID(ctx, sessionID)
+	if xErr != nil {
+		return nil, xErr
+	}
+
+	files, xErr := l.ListFiles(ctx, sessionID)
+	if xErr != nil {
+		return nil, xErr
+	}
+
+	session.FileCount = int64(len(files))
+
+	return &apiPreview.PreviewSessionDetailResponse{
+		Session: *session,
+		Files:   files,
+	}, nil
 }
 
 // GetFileContent 根据访问哈希与文件名获取预览文件完整内容（serve 接口专用）
@@ -277,13 +317,43 @@ func (l *PreviewLogic) DeleteSession(ctx context.Context, sessionID xSnowflake.S
 	}
 
 	// 删除会话
-	return l.repo.session.Delete(ctx, sessionID)
+	if xErr := l.repo.session.Delete(ctx, sessionID); xErr != nil {
+		return xErr
+	}
+
+	// 广播预览同步（会话删除后前端跳转关闭）
+	if OnPreviewChanged != nil {
+		OnPreviewChanged(sessionID.String(), "delete_session")
+	}
+
+	return nil
 }
 
 // DeleteFile 删除单个预览文件
 func (l *PreviewLogic) DeleteFile(ctx context.Context, fileID xSnowflake.SnowflakeID) *xError.Error {
 	l.log.Info(ctx, fmt.Sprintf("DeleteFile - 删除预览文件 [%d]", fileID.Int64()))
-	return l.repo.file.Delete(ctx, fileID)
+
+	// 先查询文件获取关联会话 ID（删除成功后需广播同步）
+	file, xErr := l.repo.file.GetByID(ctx, fileID)
+	if xErr != nil {
+		return xErr
+	}
+
+	if xErr := l.repo.file.Delete(ctx, fileID); xErr != nil {
+		return xErr
+	}
+
+	// 触摸会话更新时间，使会话 updated_at 与内容变更保持一致
+	if xErr := l.repo.session.TouchUpdatedAt(ctx, file.SessionID); xErr != nil {
+		return xErr
+	}
+
+	// 广播预览同步（文件删除为内容变更）
+	if OnPreviewChanged != nil {
+		OnPreviewChanged(file.SessionID.String(), "delete")
+	}
+
+	return nil
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────

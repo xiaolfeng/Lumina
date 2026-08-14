@@ -97,6 +97,8 @@ func (h *PreviewHandler) GetFile(ctx *gin.Context) {
 		return
 	}
 
+	// 禁止缓存预览文件（内容可能随 WS 实时变更，需保证 iframe 每次加载最新版本）
+	ctx.Header("Cache-Control", "no-cache")
 	ctx.Data(http.StatusOK, file.MimeType, []byte(file.Content))
 }
 

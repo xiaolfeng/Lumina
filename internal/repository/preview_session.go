@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
@@ -160,6 +161,29 @@ func (r *PreviewSessionRepo) Delete(ctx context.Context, id xSnowflake.Snowflake
 	}
 	if result.RowsAffected == 0 {
 		return xError.NewError(ctx, xError.NotFound, "预览会话不存在", false, nil)
+	}
+	return nil
+}
+
+// TouchUpdatedAt 触摸预览会话更新时间（文件变更后同步会话 updated_at）
+//
+// 文件上传/覆写/删除后调用，使会话 updated_at 与内容变更保持一致，
+// 供前端预览页以会话时间为变更依据刷新缓存。
+//
+// 参数:
+//   - ctx:       上下文对象
+//   - sessionID: 预览会话雪花 ID
+//
+// 返回值:
+//   - *xError.Error: 更新过程中的错误
+func (r *PreviewSessionRepo) TouchUpdatedAt(ctx context.Context, sessionID xSnowflake.SnowflakeID) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("TouchUpdatedAt - 更新预览会话更新时间 [%d]", sessionID.Int64()))
+
+	if err := r.db.WithContext(ctx).Model(&entity.PreviewSession{}).
+		Where("id = ?", sessionID).
+		Update("updated_at", time.Now()).Error; err != nil {
+		r.log.Warn(ctx, err.Error())
+		return xError.NewError(ctx, xError.DatabaseError, "更新预览会话时间失败", false, err)
 	}
 	return nil
 }

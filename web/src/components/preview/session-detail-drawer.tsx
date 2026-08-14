@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { ExternalLink, FileCode2, Trash2 } from 'lucide-react'
 import {
   Sheet,
@@ -8,13 +8,22 @@ import {
   SheetTitle,
 } from '@lumina/components/ui/sheet'
 import { Button } from '@lumina/components/ui/button'
-import { getPreviewSessionByHash } from '#/lib/apis/preview'
+import { usePreviewWebSocket } from '#/hooks/usePreviewWebSocket'
 import { useDeletePreviewFile } from '#/hooks/usePreviewAdmin'
-import type { PreviewSessionItem } from '#/lib/models/response/preview'
+import type {
+  PreviewFileItem,
+  PreviewSessionItem,
+} from '#/lib/models/response/preview'
 
 interface PreviewSessionDetailDrawerProps {
   session: PreviewSessionItem | null
   onClose: () => void
+}
+
+/** preview_sync 消息的 data 结构（{ session, files }，字段 snake_case） */
+interface PreviewSyncData {
+  session: PreviewSessionItem
+  files: PreviewFileItem[]
 }
 
 export function PreviewSessionDetailDrawer({
@@ -23,12 +32,25 @@ export function PreviewSessionDetailDrawer({
 }: PreviewSessionDetailDrawerProps) {
   const deleteFileMutation = useDeletePreviewFile()
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['preview', 'session-detail', session?.hash],
-    queryFn: () => getPreviewSessionByHash(session!.hash),
-    enabled: !!session?.hash,
+  const hash = session?.hash ?? null
+  const [detail, setDetail] = useState<PreviewSyncData | null>(null)
+
+  // WS 实时同步：详情与文件列表由 preview_sync 消息驱动（连接快照 / 文件变更推送）
+  const { status } = usePreviewWebSocket(hash, {
+    onSync: (data) => {
+      if (!data?.session) return
+      const syncData = data as PreviewSyncData
+      setDetail(syncData)
+    },
   })
-  const detail = data?.data
+
+  // 会话切换或抽屉关闭时重置详情缓存，避免展示上一会话的残留数据
+  useEffect(() => {
+    setDetail(null)
+  }, [hash])
+
+  // WS 状态驱动加载态：idle / connecting 视为加载中
+  const isLoading = status === 'idle' || status === 'connecting'
 
   return (
     <Sheet
@@ -47,11 +69,15 @@ export function PreviewSessionDetailDrawer({
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          {isLoading ? (
+          {status === 'rejected' ? (
+            <div className="py-12 text-center text-muted-foreground">
+              会话不存在
+            </div>
+          ) : isLoading || !detail ? (
             <div className="py-12 text-center text-muted-foreground">
               加载中...
             </div>
-          ) : detail ? (
+          ) : (
             <div className="space-y-6">
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
@@ -128,10 +154,6 @@ export function PreviewSessionDetailDrawer({
                   </ul>
                 )}
               </div>
-            </div>
-          ) : (
-            <div className="py-12 text-center text-muted-foreground">
-              会话不存在
             </div>
           )}
         </div>

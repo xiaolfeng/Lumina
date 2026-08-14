@@ -1,14 +1,23 @@
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { FileCode2, FolderOpen } from 'lucide-react'
 
 import { PreviewFrame } from '#/components/interact/primitives/preview-frame'
-import { getPreviewSessionByHash } from '#/lib/apis/preview'
-import type { PreviewFileItem } from '#/lib/models/response/preview'
+import { usePreviewWebSocket } from '#/hooks/usePreviewWebSocket'
+import type {
+  PreviewFileItem,
+  PreviewSessionItem,
+} from '#/lib/models/response/preview'
 
 interface PreviewSearch {
   session?: string
   file?: string
+}
+
+/** preview_sync 消息的 data 结构（{ session, files }，字段 snake_case） */
+interface PreviewSyncData {
+  session: PreviewSessionItem
+  files: PreviewFileItem[]
 }
 
 export const Route = createFileRoute('/preview/')({
@@ -28,55 +37,64 @@ function PreviewPage() {
   const [files, setFiles] = useState<PreviewFileItem[]>([])
   const [activeFile, setActiveFile] = useState('')
   const [sessionTitle, setSessionTitle] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
   const hash = search.session
 
-  // 首次加载会话：拉取文件列表并确定激活文件（URL file 参数优先，否则首个 HTML 文件）
-  useEffect(() => {
-    if (!hash) return
-    setIsLoading(true)
-    setError('')
-    ;(async () => {
-      try {
-        const res = await getPreviewSessionByHash(hash)
-        const data = res.data
-        if (!data) {
-          setError('预览会话不存在')
-          return
-        }
-        setSessionTitle(data.session.title)
-        setFiles(data.files)
+  // WS 实时同步：连接快照 / 文件变更均通过 preview_sync 消息驱动，替代单次 REST 拉取
+  const handleSync = useCallback(
+    (data: any) => {
+      if (!data?.session) return
+      const syncData = data as PreviewSyncData
+      setSessionTitle(syncData.session.title)
+      setFiles(syncData.files)
 
-        const htmlFile = data.files.find(
+      // 文件变更时若当前激活文件仍存在则保留，否则按 深链参数 → 首个 HTML → 首个文件 回退
+      let next = ''
+      if (activeFile && syncData.files.some((f) => f.filename === activeFile)) {
+        next = activeFile
+      } else if (
+        search.file &&
+        syncData.files.some((f) => f.filename === search.file)
+      ) {
+        next = search.file
+      } else {
+        const htmlFile = syncData.files.find(
           (f) => f.filename.endsWith('.html') || f.filename.endsWith('.htm'),
         )
-        let initial = ''
-        if (search.file && data.files.some((f) => f.filename === search.file)) {
-          initial = search.file
-        } else if (htmlFile) {
-          initial = htmlFile.filename
-        } else if (data.files.length > 0) {
-          initial = data.files[0].filename
-        }
-        setActiveFile(initial)
+        next = htmlFile ? htmlFile.filename : (syncData.files[0]?.filename ?? '')
+      }
 
-        // 同步 URL 深链
-        if (initial && initial !== search.file) {
+      if (next !== activeFile) {
+        setActiveFile(next)
+        // 同步 URL 深链（首次选择或文件回退时）
+        if (next && next !== search.file) {
           navigate({
             to: '/preview',
-            search: { session: hash, file: initial },
+            search: { session: hash, file: next },
             replace: true,
           })
         }
-      } catch {
-        setError('加载预览会话失败')
-      } finally {
-        setIsLoading(false)
       }
-    })()
-  }, [hash])
+    },
+    [activeFile, search.file, hash, navigate],
+  )
+
+  const { status } = usePreviewWebSocket(hash ?? null, {
+    onSync: handleSync,
+  })
+
+  // WS 状态驱动错误态：rejected 表示会话不存在，连接中/已连接时清除错误
+  useEffect(() => {
+    if (status === 'rejected') {
+      setError('预览会话不存在')
+    } else if (status === 'connecting' || status === 'connected') {
+      setError('')
+    }
+  }, [status])
+
+  // 加载态由 WS 状态驱动：idle / connecting 视为加载中
+  const isLoading = status === 'idle' || status === 'connecting'
 
   const selectFile = (filename: string) => {
     setActiveFile(filename)
@@ -97,8 +115,11 @@ function PreviewPage() {
     )
   }
 
+  // iframe src 追加 cache-buster（当前激活文件的 updated_at），文件变更后强制刷新预览
+  const activeUpdatedAt =
+    files.find((f) => f.filename === activeFile)?.updated_at ?? ''
   const src = activeFile
-    ? `/api/v1/preview/sessions/${hash}/files/${activeFile}`
+    ? `/api/v1/preview/sessions/${hash}/files/${activeFile}?v=${encodeURIComponent(activeUpdatedAt)}`
     : ''
 
   return (
@@ -143,6 +164,10 @@ function PreviewPage() {
         {error ? (
           <div className="flex flex-1 items-center justify-center">
             <p className="text-sm text-red-500">{error}</p>
+          </div>
+        ) : isLoading ? (
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-sm text-sea-ink-soft/50">加载中…</p>
           </div>
         ) : src ? (
           <PreviewFrame src={src} className="flex-1" />

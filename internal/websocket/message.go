@@ -10,6 +10,7 @@ const (
 	MsgSupplementPush  MessageType = "supplement_push"  // 推送补充内容
 	MsgAnswerSync      MessageType = "answer_sync"      // 回答同步（跨设备）
 	MsgHeartbeat       MessageType = "heartbeat"        // 心跳
+	MsgPreviewSync     MessageType = "preview_sync"     // 预览同步（连接快照 / 文件变更推送）
 	MsgSessionEnd      MessageType = "session_end"      // 会话结束通知
 	MsgQuestionCancel  MessageType = "question_cancel"  // 问题取消通知（单个或全部）
 

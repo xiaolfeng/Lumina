@@ -75,9 +75,11 @@ func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) xOption.RouteRegistrar {
 		r.repowikiRouter(apiRouter)
 		r.sshRouter(apiRouter)
 		r.wikiReaderRouter(apiRouter)
+		// wsRouter（Q&A，带 msgHandler）必须先于 previewRouter 注册，
+		// 使 Hub 单例优先以 Q&A 业务消息处理器创建，保证业务消息最终生效
+		r.wsRouter(apiRouter)
 		r.previewRouter(apiRouter)
 		r.dashboardRouter(apiRouter)
-		r.wsRouter(apiRouter)
 
 		if r.frontendFS != nil {
 			r.frontendRouter()

@@ -85,8 +85,9 @@ func WSHandler(hub *Hub, sessionRepo *repository.QaSessionRepo) gin.HandlerFunc 
 			slog.String("deviceID", deviceID),
 		)
 
-		// 5. 创建连接封装并注册到 Hub
+		// 5. 创建连接封装并注册到 Hub（标记 Kind 为 qa，供业务钩子按类型分发）
 		wsConn := NewConnection(conn, sessionID, deviceID, hub)
+		wsConn.Kind = "qa"
 		wsConn.sessionHash = sessionHash
 		hub.Register(wsConn)
 

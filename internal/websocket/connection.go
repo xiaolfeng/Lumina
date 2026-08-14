@@ -26,6 +26,7 @@ type Connection struct {
 	sessionID   string          // QA 会话 ID（雪花 ID 字符串）
 	sessionHash string          // 会话 Hash 标识，用于跨设备通知和主动离开判断
 	deviceID    string          // 设备唯一标识
+	Kind        string          // 连接类型："qa" / "preview"（同包内直接赋值，如 wsConn.Kind = "qa"）
 	send        chan []byte     // 待发送消息缓冲通道
 	mu          sync.Mutex      // 写锁，防止并发写入
 	lastPing    time.Time       // 最后一次收到心跳响应的时间
