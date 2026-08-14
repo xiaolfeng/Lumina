@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -135,7 +136,8 @@ func (l *BiometricLogic) RegisterStart(ctx context.Context, req *apiBiometric.Re
 	exclusions := webauthn.Credentials(user.WebAuthnCredentials()).CredentialDescriptors()
 
 	// 生成注册选项与会话数据
-	creation, sessionData, err := l.webAuthn.BeginRegistration(
+	wa := l.resolveWebAuthn(ctx)
+	creation, sessionData, err := wa.BeginRegistration(
 		user,
 		webauthn.WithExclusions(exclusions),
 		withRegistrationTimeout(timeout),
@@ -211,7 +213,8 @@ func (l *BiometricLogic) RegisterFinish(ctx context.Context, req *apiBiometric.R
 	}
 
 	// 服务端验证凭证（签名、challenge、origin 等）
-	credential, err := l.webAuthn.CreateCredential(user, sessionData, parsedResponse)
+	wa := l.resolveWebAuthn(ctx)
+	credential, err := wa.CreateCredential(user, sessionData, parsedResponse)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.ServerInternalError, "凭证验证失败", false, err)
 	}
@@ -255,7 +258,8 @@ func (l *BiometricLogic) LoginStart(ctx context.Context) (*apiBiometric.LoginSta
 	timeout := l.getWebAuthnTimeout(ctx)
 
 	// 生成登录选项与会话数据
-	assertion, sessionData, err := l.webAuthn.BeginLogin(
+	wa := l.resolveWebAuthn(ctx)
+	assertion, sessionData, err := wa.BeginLogin(
 		user,
 		webauthn.WithUserVerification(protocol.VerificationRequired),
 		withLoginTimeout(timeout),
@@ -340,7 +344,8 @@ func (l *BiometricLogic) LoginFinish(ctx context.Context, req *apiBiometric.Logi
 	}
 
 	// 验证断言（签名、challenge、origin 等）
-	credential, err := l.webAuthn.ValidateLogin(user, sessionData, parsedResponse)
+	wa := l.resolveWebAuthn(ctx)
+	credential, err := wa.ValidateLogin(user, sessionData, parsedResponse)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.LoginFailed, "生物特征验证失败", false, err)
 	}
@@ -477,6 +482,78 @@ func parseWebAuthnOrigins(value string) []string {
 	}
 	if len(origins) == 0 {
 		return []string{"http://localhost:8080"}
+	}
+	return origins
+}
+
+// resolveWebAuthn 按请求动态解析 WebAuthn RP 配置并构造实例
+//
+// WebAuthn 要求 rp.id 为当前域的可注册域后缀（或相等），否则浏览器在
+// navigator.credentials.create()/get() 阶段即拒绝（典型错误：
+// 「The relying party ID is not a registrable domain suffix of, nor equal to
+// the current domain」）。启动期静态配置无法感知部署域名，这里根据
+// middleware.WebAuthnOrigin 注入的浏览器 Origin 推导：
+//
+//   - RPID: 优先使用 XLF_BIOMETRIC_RP_ID（当其合法时）；否则取 Origin 的
+//     Hostname（等价于当前域，必然合法）
+//   - RPOrigins: 环境变量配置与请求 Origin 取并集（服务端 origin 校验必达）
+//
+// 解析失败或非 HTTP 调用场景回退到启动期静态实例。
+func (l *BiometricLogic) resolveWebAuthn(ctx context.Context) *webauthn.WebAuthn {
+	origin, _ := ctx.Value(bConst.WebAuthnOriginContextKey).(string)
+	if origin == "" {
+		return l.webAuthn
+	}
+
+	u, err := url.Parse(origin)
+	if err != nil || u.Hostname() == "" {
+		return l.webAuthn
+	}
+
+	rpID := l.resolveRPID(strings.ToLower(u.Hostname()))
+	if rpID == "" {
+		return l.webAuthn
+	}
+
+	// 基于启动期配置复制，仅覆盖请求相关的 RPID/RPOrigins
+	config := *l.webAuthn.Config
+	config.RPID = rpID
+	config.RPOrigins = appendWebAuthnOrigins(config.RPOrigins, origin)
+
+	wa, err := webauthn.New(&config)
+	if err != nil {
+		l.log.Warn(ctx, fmt.Sprintf("resolveWebAuthn - 动态构建 WebAuthn 实例失败，回退静态配置: %v", err))
+		return l.webAuthn
+	}
+	return wa
+}
+
+// resolveRPID 推导当前请求的 RPID
+//
+// 规则:
+//   - XLF_BIOMETRIC_RP_ID 已设置且为请求 Hostname 的可注册域后缀
+//     （相等或点后缀）时使用配置值，支持子域共享凭证场景
+//   - 否则取请求 Hostname 本身（rp.id 等于当前域必然合法）
+func (l *BiometricLogic) resolveRPID(hostname string) string {
+	configured := xEnv.GetEnvString(bConst.EnvBiometricRPID, bConst.DefaultBiometricRPID)
+	if configured != "" && (configured == hostname || strings.HasSuffix(hostname, "."+configured)) {
+		return configured
+	}
+	return hostname
+}
+
+// appendWebAuthnOrigins 在配置的 Origin 基础上补充请求 Origin（去重，保持顺序）。
+func appendWebAuthnOrigins(configured []string, origin string) []string {
+	origins := make([]string, 0, len(configured)+1)
+	seen := make(map[string]struct{}, len(configured)+1)
+	for _, o := range configured {
+		if _, ok := seen[o]; !ok {
+			seen[o] = struct{}{}
+			origins = append(origins, o)
+		}
+	}
+	if _, ok := seen[origin]; !ok {
+		origins = append(origins, origin)
 	}
 	return origins
 }

@@ -17,6 +17,7 @@ func (r *route) authPublicRouter(route gin.IRouter) {
 	authGroup.GET("/status", authHandler.Status)
 
 	biometricGroup := authGroup.Group("/biometric")
+	biometricGroup.Use(middleware.WebAuthnOrigin())
 	biometricGroup.GET("/availability", biometricHandler.Availability)
 	biometricGroup.POST("/login/start", biometricHandler.LoginStart)
 	biometricGroup.POST("/login/finish", biometricHandler.LoginFinish)
@@ -31,6 +32,7 @@ func (r *route) authProtectedRouter(route gin.IRouter) {
 	authGroup.POST("/logout", authHandler.Logout)
 
 	biometricGroup := authGroup.Group("/biometric")
+	biometricGroup.Use(middleware.WebAuthnOrigin())
 	biometricGroup.POST("/register/start", biometricHandler.RegisterStart)
 	biometricGroup.POST("/register/finish", biometricHandler.RegisterFinish)
 }
