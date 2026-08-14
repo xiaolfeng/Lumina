@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
 import { Badge } from '@lumina/components/ui/badge'
 import type { QuestionSummary, SupplementItem } from '#/lib/models/response/qa-admin'
-import { Markdown, SandboxFrame, PreviewSupplement } from '#/components/interact/primitives'
+import { Markdown, proseHint, SandboxFrame, PreviewSupplement } from '#/components/interact/primitives'
 import { formatAnswer, type AnswerOption } from '#/lib/format-answer'
 
 interface QuestionCardProps {
@@ -78,7 +78,9 @@ export function QuestionCard({ question }: QuestionCardProps) {
                         ) : s.content_type === 'preview' ? (
                           <PreviewSupplement content={s.content} />
                         ) : (
-                          <Markdown>{s.content}</Markdown>
+                          <div className={proseHint}>
+                            <Markdown>{s.content}</Markdown>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -103,7 +105,9 @@ export function QuestionCard({ question }: QuestionCardProps) {
                 ) : s.content_type === 'preview' ? (
                   <PreviewSupplement content={s.content} />
                 ) : (
-                  <Markdown>{s.content}</Markdown>
+                  <div className={proseHint}>
+                    <Markdown>{s.content}</Markdown>
+                  </div>
                 )}
               </div>
             ))}

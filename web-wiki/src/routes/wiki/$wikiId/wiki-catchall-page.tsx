@@ -3,9 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { PasswordGate } from '#/components/password-gate'
 import { DocsPage } from '#/components/docs-page'
+import { MarkdownRenderer } from '#/components/markdown-renderer'
 import { wikiReaderApi } from '#/lib/api-client'
 import { buildPageTree } from '#/lib/source'
-import { Markdown } from '@lumina/components/markdown'
 
 export default function WikiCatchAllPage() {
   const { wikiId = '', _splat = '' } = useParams({ strict: false })
@@ -55,7 +55,7 @@ export default function WikiCatchAllPage() {
       </div>
     )
   } else if (pageData) {
-    body = <Markdown>{pageData.content}</Markdown>
+    body = <MarkdownRenderer content={pageData.content} />
   }
 
   return (

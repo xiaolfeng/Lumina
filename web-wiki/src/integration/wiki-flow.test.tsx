@@ -102,11 +102,11 @@ function makeManifest(): ManifestResponse {
             icon: 'Code',
             description: 'API 接口',
           },
-          // separator 节点
+          // separator 节点（后端已剥离 --- 定界符）
           {
             title: '',
             path: '',
-            separator: '---Advanced---',
+            separator: 'Advanced',
           },
           {
             title: 'Database',
@@ -257,8 +257,10 @@ describe('Wiki Reader end-to-end flow', () => {
 
     // 等待 manifest 加载完成（子项出现表示已渲染）
     await screen.findAllByText('Database')
-    const separators = document.querySelectorAll('[data-sidebar="separator"]')
-    expect(separators.length).toBeGreaterThan(0)
+    const groupLabels = document.querySelectorAll(
+      '[data-sidebar="group-label"]',
+    )
+    expect(groupLabels.length).toBeGreaterThan(0)
   })
 
   it('renders breadcrumb and prev/next from pageData', async () => {

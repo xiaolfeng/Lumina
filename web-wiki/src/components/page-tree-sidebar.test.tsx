@@ -55,9 +55,10 @@ function makeManifest(): ManifestResponse {
             icon: 'Code',
           },
           {
+            // 与后端 buildNavFromMeta 剥离 --- 定界符后的真实 manifest 数据一致
             title: '',
             path: '',
-            separator: '---Advanced---',
+            separator: 'Advanced',
           },
           {
             title: 'Database',
@@ -121,12 +122,14 @@ describe('PageTreeSidebar', () => {
     expect(screen.queryAllByText('Database').length).toBeGreaterThan(0)
   })
 
-  it('renders separator nodes', () => {
+  it('renders separator group labels with their text', () => {
     renderWithProvider(<PageTreeSidebar wikiId="test-wiki" />)
-    const separators = document.querySelectorAll(
-      '[data-sidebar="separator"]',
+    const groupLabels = document.querySelectorAll(
+      '[data-sidebar="group-label"]',
     )
-    expect(separators.length).toBeGreaterThan(0)
+    expect(groupLabels.length).toBeGreaterThan(0)
+    // 分组标题渲染原始文字（manifest 已剥离 --- 定界符）
+    expect(screen.queryAllByText('Advanced').length).toBeGreaterThan(0)
   })
 
   it('highlights the current page path', () => {

@@ -53,3 +53,7 @@ design-demos/
 .omo/
 docs/superpowers/
 .mcp.json
+
+# worktree 会话符号链接（指向主仓库 node_modules）
+node_modules
+components/node_modules

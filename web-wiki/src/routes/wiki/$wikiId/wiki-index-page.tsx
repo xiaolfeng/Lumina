@@ -3,9 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { PasswordGate } from '#/components/password-gate'
 import { DocsPage } from '#/components/docs-page'
+import { MarkdownRenderer } from '#/components/markdown-renderer'
 import { wikiReaderApi } from '#/lib/api-client'
 import { buildPageTree, getIcon } from '#/lib/source'
-import { Markdown } from '@lumina/components/markdown'
 
 export default function WikiIndexPage() {
   const { wikiId = '' } = useParams({ strict: false })
@@ -55,7 +55,7 @@ export default function WikiIndexPage() {
       </div>
     )
   } else if (homePageData) {
-    body = <Markdown>{homePageData.content}</Markdown>
+    body = <MarkdownRenderer content={homePageData.content} />
   } else if (tree) {
     body = (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

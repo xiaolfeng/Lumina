@@ -47,7 +47,7 @@ export function QuestionReview({
 					<p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
 						上下文
 					</p>
-					<div className="prose prose-sm mt-1 max-w-none [&_p]:mb-0 [&_p]:text-xs [&_p]:leading-relaxed [&_p]:text-amber-600 dark:[&_p]:text-amber-300 [&_code]:rounded [&_code]:bg-lagoon/8 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-xs [&_code]:text-lagoon-deep">
+					<div className="prose prose-sm mt-1 max-w-none [&_p]:mb-0 [&_p]:text-xs [&_p]:leading-relaxed [&_p]:text-amber-600 dark:[&_p]:text-amber-300 [&_code]:rounded [&_code]:bg-lagoon/8 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-xs [&_code]:text-lagoon-deep [&_pre]:rounded [&_pre]:border [&_pre]:border-line [&_pre]:bg-white [&_pre]:p-2 [&_pre]:text-xs [&_pre]:leading-relaxed [&_pre]:font-mono [&_pre]:text-gray-800 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-inherit">
 						<Markdown>{context}</Markdown>
 					</div>
 				</div>

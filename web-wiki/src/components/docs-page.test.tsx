@@ -28,6 +28,13 @@ vi.mock('#/components/search', () => ({
   ),
 }))
 
+// Mock MarkdownRenderer：验证 DocsPage 布局层不再叠加 prose-slate（黑底回归守卫）
+vi.mock('#/components/markdown-renderer', () => ({
+  MarkdownRenderer: ({ content }: { content: string }) => (
+    <div data-testid="mock-markdown">{content}</div>
+  ),
+}))
+
 // Mock use-mobile hook
 vi.mock('@lumina/components/hooks/use-mobile', () => ({
   useIsMobile: () => false,
@@ -156,5 +163,25 @@ describe('DocsPage', () => {
 
     expect(screen.getByText('Previous Page')).toBeDefined()
     expect(screen.getByText('Next Page')).toBeDefined()
+  })
+
+  it('body 容器不叠加 prose-slate（黑底回归守卫）', () => {
+    // 回归守卫：若 docs-page 布局层重新叠加 'prose prose-slate'，
+    // typography 默认深色 --tw-prose-pre-bg 会漏给代码块，重现黑底 bug
+    const pageData: PageResponse = makePageData({
+      content: '```js\nconst x = 1\n```',
+    })
+
+    render(
+      <DocsPage wikiId="wiki-1" pageData={pageData}>
+        <div>Content</div>
+      </DocsPage>,
+    )
+
+    const body = screen.getByTestId('docs-body')
+    expect(body).toBeDefined()
+    // 布局层保持纯布局类，排版交由 MarkdownRenderer 的 proseArticle 负责
+    expect(body.className).not.toContain('prose')
+    expect(body.className).toContain('min-w-0')
   })
 })

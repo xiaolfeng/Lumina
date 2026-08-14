@@ -103,8 +103,9 @@ export function DocsPage({ wikiId, tree, pageData, children }: DocsPageProps) {
                   </div>
                 </header>
 
-                {/* Body */}
-                <div className="prose prose-slate max-w-none">
+                {/* Body：排版由内容组件自带（MarkdownRenderer 用 proseArticle），
+                    布局层不再叠加 prose，避免双重 typography 样式 */}
+                <div className="min-w-0" data-testid="docs-body">
                   {children}
                 </div>
 

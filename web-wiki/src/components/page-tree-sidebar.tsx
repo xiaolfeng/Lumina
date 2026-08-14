@@ -5,9 +5,10 @@
  * - 从 manifest API 获取导航结构，经 buildPageTree 转为 PageTree
  * - 使用 shadcn/ui Sidebar variant="inset"
  * - 整块淡入（sidebarBlockFade）—— 避免逐项交错动画在路由切换时重放
- * - 递归渲染：目录节点（可展开/折叠）+ 叶子节点（Link 导航）+ 分隔符节点
+ * - 递归渲染：目录节点（可展开/折叠）+ 叶子节点（Link 导航）+ 分组标签节点
  * - 当前页面路径高亮
  * - 展开状态持久化到 localStorage
+ * - 子菜单竖线对齐父级展开图标中心，体现层级递进关系
  * - 底部 Powered-by Lumina
  */
 import { useEffect, useRef, useState } from 'react'
@@ -33,7 +34,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
 } from '@lumina/components/ui/sidebar'
 import { cn } from '@lumina/components/utils'
 import { sidebarBlockFade } from '@lumina/components/motion'
@@ -167,7 +167,18 @@ export function PageTreeSidebar({
     const Icon = getIcon(node.icon)
 
     if (node.separator) {
-      return <SidebarSeparator key={`sep-${index}`} />
+      // manifest 的 ---文本--- 分隔符：渲染为分组小标题（带原文文字），
+      // 而非裸横线 —— 裸横线容易误读为子页面的 border-bottom
+      return (
+        <SidebarMenuItem key={`sep-${index}`} className="my-1">
+          <div
+            data-sidebar="group-label"
+            className="flex h-6 min-w-0 items-center rounded-sm px-2 text-[11px] font-medium tracking-wide text-sea-ink-soft/70"
+          >
+            <span className="truncate">{node.separator}</span>
+          </div>
+        </SidebarMenuItem>
+      )
     }
 
     return (
@@ -230,7 +241,11 @@ export function PageTreeSidebar({
             className={cn(
               depth > 0 && 'text-[13px]',
               isActive
-                ? 'bg-chip-bg text-lagoon border border-chip-line font-medium'
+                ? cn(
+                    'bg-chip-bg text-lagoon border border-chip-line font-medium',
+                    // 嵌套叶子左侧让位给 16px guide 竖线，避免 chip 左框线与之近平行
+                    depth > 0 && 'border-l-transparent',
+                  )
                 : depth === 0
                   ? ''
                   : 'text-sea-ink-soft',
@@ -252,7 +267,9 @@ export function PageTreeSidebar({
         )}
 
         {isExpanded && node.children && node.children.length > 0 && (
-          <SidebarMenu className="mt-0.5 min-w-0 gap-0 overflow-hidden border-l border-line/60 pl-1.5 [&>li]:min-w-0">
+          // ml-4(16px) = 父级按钮 p-2(8px) + Chevron 一半(8px) 的图标中心，
+          // 使竖线与展开图标对齐表达层级递进；每层嵌套递推 16px 保持自洽
+          <SidebarMenu className="mt-0.5 ml-4 min-w-0 gap-0 overflow-hidden border-l border-line/60 pl-1.5 [&>li]:min-w-0">
             {node.children.map((child, i) =>
               renderNode(child, depth + 1, i),
             )}
