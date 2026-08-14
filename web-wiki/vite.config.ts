@@ -30,6 +30,11 @@ const config = defineConfig({
     outDir: '../resources/web-wiki/dist',
     emptyOutDir: true,
     chunkSizeWarningLimit: 700,
+    modulePreload: {
+      // mermaid 应随 Markdown 的 ```mermaid 代码块按需加载，禁止在入口首屏 preload
+      resolveDependencies: (_filename, deps) =>
+        deps.filter((dep) => !dep.includes('vendor-mermaid')),
+    },
     rolldownOptions: {
       output: {
         codeSplitting: {
@@ -40,19 +45,21 @@ const config = defineConfig({
               priority: 20,
             },
             {
-              name: 'vendor-mermaid',
-              test: /node_modules[/](mermaid)/,
-              priority: 15,
-            },
-            {
-              name: 'vendor-markdown',
-              test: /node_modules[/](react-markdown|remark-|rehype-|unified|micromark|highlight\.js)/,
-              priority: 12,
-            },
-            {
               name: 'vendor-orama',
               test: /node_modules[/]@orama/,
               priority: 18,
+            },
+            {
+              // 完整捕获 mermaid 生态（含 rehype-mermaid/cytoscape/dagre/d3 等），
+              // priority 高于 vendor-markdown，避免被 rehype- 规则抢走导致拆分碎片化
+              name: 'vendor-mermaid',
+              test: /node_modules[/](rehype-mermaid|mermaid|cytoscape|dagre|d3|elkjs|khroma|web-worker)/,
+              priority: 16,
+            },
+            {
+              name: 'vendor-markdown',
+              test: /node_modules[/](react-markdown|remark-|rehype-(?!mermaid)|unified|micromark|highlight\.js)/,
+              priority: 12,
             },
           ],
         },
