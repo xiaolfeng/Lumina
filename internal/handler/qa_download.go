@@ -42,11 +42,12 @@ func (h *QaHandler) Download(ctx *gin.Context) {
 	}
 	defer reader.Close()
 
-	// 设置响应头（清洗文件名，防止 CRLF 响应头注入）
+	// 设置响应头（清洗文件名与 MIME，防止 CRLF 响应头注入）
 	safeFilename := strings.NewReplacer("\r", "", "\n", "").Replace(info.Filename)
 	ctx.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, safeFilename))
 	if info.MimeType != "" {
-		ctx.Header("Content-Type", info.MimeType)
+		safeMimeType := strings.NewReplacer("\r", "", "\n", "").Replace(info.MimeType)
+		ctx.Header("Content-Type", safeMimeType)
 	}
 	ctx.Status(200)
 

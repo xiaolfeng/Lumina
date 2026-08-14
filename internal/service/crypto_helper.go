@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"io"
+	"strings"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
@@ -140,8 +141,14 @@ func EncryptSSHPrivateKey(privateKey string) (string, *xError.Error) {
 	return EncryptAPIKey(privateKey, sshEncryptSecret())
 }
 
-// DecryptSSHPrivateKey 解密 SSH 私钥
+// DecryptSSHPrivateKey 解密 SSH 私钥。
+//
+// 向后兼容：存量明文 PEM（以 "-----BEGIN" 开头）直接返回，不做解密，
+// 避免历史明文私钥因本加密改造而无法使用。
 func DecryptSSHPrivateKey(encrypted string) (string, *xError.Error) {
+	if strings.HasPrefix(strings.TrimSpace(encrypted), "-----BEGIN") {
+		return encrypted, nil
+	}
 	return DecryptAPIKey(encrypted, sshEncryptSecret())
 }
 

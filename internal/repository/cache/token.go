@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/redis/go-redis/v9"
-
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
@@ -156,7 +154,18 @@ func (c *RefreshTokenCache) Delete(ctx context.Context, token string) *xError.Er
 	return nil
 }
 
-// Consume 原子地消费（GETDEL）RefreshToken，用于令牌旋转防止并发重复兑换。
+// consumeRefreshTokenLua 原子消费脚本：GET 命中则 DEL 并返回 1，否则返回 0。
+// 兼容所有 Redis 版本（GETDEL 需 Redis 6.2+，Lua 脚本无版本限制）。
+const consumeRefreshTokenLua = `
+local v = redis.call('GET', KEYS[1])
+if v then
+  redis.call('DEL', KEYS[1])
+  return 1
+end
+return 0
+`
+
+// Consume 原子地消费（GET+DEL Lua）RefreshToken，用于令牌旋转防止并发重复兑换。
 //
 // 返回 true 表示成功消费；false 表示 token 不存在或已被并发消费。
 func (c *RefreshTokenCache) Consume(ctx context.Context, token string) (bool, *xError.Error) {
@@ -164,11 +173,9 @@ func (c *RefreshTokenCache) Consume(ctx context.Context, token string) (bool, *x
 		return false, xError.NewError(ctx, xError.BadRequest, "刷新令牌标识为空", false)
 	}
 
-	if _, err := c.RDB.GetDel(ctx, bConst.CacheRefreshToken.Get(token).String()).Result(); err != nil {
-		if err == redis.Nil {
-			return false, nil
-		}
+	result, err := c.RDB.Eval(ctx, consumeRefreshTokenLua, []string{bConst.CacheRefreshToken.Get(token).String()}).Int()
+	if err != nil {
 		return false, xError.NewError(ctx, xError.CacheError, "消费 RefreshToken 缓存失败", false, err)
 	}
-	return true, nil
+	return result == 1, nil
 }

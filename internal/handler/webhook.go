@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	"github.com/gin-gonic/gin"
 	apiWebhook "github.com/xiaolfeng/Lumina/api/webhook"
 )
@@ -45,10 +46,12 @@ func (h *WebhookHandler) HandleRepoWikiWebhook(ctx *gin.Context) {
 
 	// 4. Build response — use ctx.JSON directly (no xResult, ResponseMiddleware bypassed)
 	if xErr != nil {
-		// Error case — event still logged in logic
+		// Error case — 无效 token（NotFound）返回 404（与修复前语义一致），其余错误 500
 		statusCode := http.StatusInternalServerError
 		if event != nil {
 			statusCode = event.ResponseCode
+		} else if xErr.GetErrorCode() == xError.NotFound {
+			statusCode = http.StatusNotFound
 		}
 		ctx.JSON(statusCode, apiWebhook.WebhookResponse{
 			Status:  "failed",

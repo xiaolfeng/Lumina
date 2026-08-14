@@ -97,7 +97,7 @@ func (s *FileCacheService) ReadFile(ctx context.Context, filePath string) (io.Re
 
 // IsWithinCacheDir 校验 filePath 是否位于缓存根目录（LUMINA_CACHE_DIR）内。
 //
-// 通过绝对路径 + filepath.Rel 前缀校验防止路径穿越与符号链接逃逸，
+// 通过绝对路径 + 符号链接解析 + filepath.Rel 前缀校验，防止路径穿越与符号链接逃逸，
 // 供下载令牌生成与文件读取两处 sink 复用，杜绝任意文件读取。
 func IsWithinCacheDir(filePath string) bool {
 	if filePath == "" {
@@ -113,7 +113,20 @@ func IsWithinCacheDir(filePath string) bool {
 		return false
 	}
 
-	rel, err := filepath.Rel(baseDir, absPath)
+	// 解析符号链接，防止缓存目录内 symlink 指向目录外
+	resolvedBase := baseDir
+	if eval, eErr := filepath.EvalSymlinks(baseDir); eErr == nil {
+		resolvedBase = eval
+	}
+	resolvedPath := absPath
+	if eval, eErr := filepath.EvalSymlinks(absPath); eErr == nil {
+		resolvedPath = eval
+	} else if dirEval, dErr := filepath.EvalSymlinks(filepath.Dir(absPath)); dErr == nil {
+		// 目标文件本身不存在（EvalSymlinks 失败），解析父目录以捕获父级 symlink
+		resolvedPath = filepath.Join(dirEval, filepath.Base(absPath))
+	}
+
+	rel, err := filepath.Rel(resolvedBase, resolvedPath)
 	if err != nil {
 		return false
 	}

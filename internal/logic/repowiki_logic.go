@@ -904,7 +904,8 @@ func (l *RepoWikiLogic) readWikiPage(ctx context.Context, wikiPath, page string)
 // isWithinDir 校验「base + sub」解析后的绝对路径仍位于 base 绝对路径内。
 //
 // 用于路径穿越防护：sub 经 filepath.Join 后若逃逸 base 目录（含 ../ 与绝对路径），
-// 返回 false。注意 Join 对「sub 为绝对路径」会忽略 base，故 Rel 校验不可省略。
+// 返回 false。注意 filepath.Join 会将绝对路径 sub 拼接为相对分量（而非重置到根），
+// 故 Rel 校验不可省略。
 func isWithinDir(base, sub string) bool {
 	absBase, err := filepath.Abs(base)
 	if err != nil {

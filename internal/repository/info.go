@@ -167,22 +167,29 @@ func (r *InfoRepo) InitializeIfNotInitialized(ctx context.Context, initFlagKey s
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 行锁读取初始化标志，防止并发重复初始化
 		var info entity.Info
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		readErr := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("\"key\" = ?", initFlagKey).
-			First(&info).Error; err != nil {
-			return err
+			First(&info).Error
+
+		switch {
+		case readErr == gorm.ErrRecordNotFound:
+			// 种子行缺失：视为未初始化，继续写入（下方 Upsert 会补全）
+		case readErr != nil:
+			return readErr
+		default:
+			// 已初始化（标志非 "true"）则放弃，交由调用方返回 RepeatOperation
+			if info.Value != "true" {
+				return nil
+			}
 		}
 
-		// 已初始化（标志非 "true"）则放弃，交由调用方返回 RepeatOperation
-		if info.Value != "true" {
-			return nil
-		}
-
-		// 未初始化，原子写入全部凭据
+		// 未初始化，用 Upsert 原子写入全部凭据（幂等，兼容 owner 种子行缺失）
 		for key, value := range kv {
-			if err := tx.Model(&entity.Info{}).
-				Where("\"key\" = ?", key).
-				Update("value", value).Error; err != nil {
+			item := entity.Info{Key: key, Value: value}
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "key"}},
+				DoUpdates: clause.AssignmentColumns([]string{"value"}),
+			}).Create(&item).Error; err != nil {
 				return err
 			}
 		}

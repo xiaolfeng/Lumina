@@ -96,17 +96,23 @@ func (s *GitCloneService) CloneRepo(ctx context.Context, gitURL, branch, private
 
 // validateGitURL 校验仓库地址协议白名单，拒绝危险协议（如 file://）与无协议地址。
 //
-// 仅允许 https/http/ssh/git 四种远程协议，防止本地文件克隆或协议混淆。
+// 仅允许 https/http/ssh/git 四种远程协议。scp 风格地址（git@host:path）无法被
+// url.Parse 解析（返回错误），但 go-git 原生支持，故显式放行，避免误拒 SSH 克隆。
 func validateGitURL(gitURL string) error {
 	if strings.TrimSpace(gitURL) == "" {
 		return fmt.Errorf("仓库地址不能为空")
 	}
 	u, err := url.Parse(gitURL)
 	if err != nil {
+		// url.Parse 失败通常是 scp 风格（git@host:path）：含 @ 与 : 且不含 "://"，
+		// go-git 的 transport 会按 scp-like 解析，予以放行；其余视为格式错误。
+		if strings.Contains(gitURL, "@") && strings.Contains(gitURL, ":") && !strings.Contains(gitURL, "://") {
+			return nil
+		}
 		return fmt.Errorf("仓库地址格式无效: %w", err)
 	}
 	switch strings.ToLower(u.Scheme) {
-	case "http", "https", "ssh", "git":
+	case "http", "https", "ssh", "git", "":
 		return nil
 	default:
 		return fmt.Errorf("不支持的仓库协议: %s（仅支持 https/http/ssh/git）", u.Scheme)
