@@ -91,8 +91,10 @@ export function usePreviewWebSocket(
     // /api/v1/preview/ws 为公开端点（hash 鉴权），无需携带 token
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    const deviceId = localStorage.getItem('preview_device_id') || generateDeviceId()
-    localStorage.setItem('preview_device_id', deviceId)
+    // 每次建连生成全新 device_id，不持久化：localStorage 在同源所有标签页共享，
+    // 复用同一 device_id 会让后打开的标签页覆盖 Hub 中旧连接的映射，关闭旧标签页
+    // 时误删存活连接（孤儿连接注销问题）
+    const deviceId = generateDeviceId()
 
     const wsUrl = `${protocol}//${host}/api/v1/preview/ws?session=${sessionHash}&device_id=${deviceId}`
 
@@ -102,6 +104,8 @@ export function usePreviewWebSocket(
     // ── Open ──
 
     ws.onopen = () => {
+      // 代际保护：旧连接的 open/close 晚到时已被新连接替换，忽略不再操作共享状态
+      if (wsRef.current !== ws) return
       setStatus('connected')
       everConnectedRef.current = true
       reconnectAttemptRef.current = 0
@@ -144,6 +148,9 @@ export function usePreviewWebSocket(
     // ── Close ──
 
     ws.onclose = () => {
+      // 代际保护：若当前 wsRef 已指向更新连接（新连接建立、或 disconnect 置空），
+      // 本连接为被替换的旧连接，其关闭事件不再改动共享状态/触发重连判断
+      if (wsRef.current !== ws) return
       setStatus('disconnected')
       optionsRef.current.onStatusChange?.('disconnected')
       clearTimers()
@@ -221,5 +228,10 @@ export function usePreviewWebSocket(
 // ── Helpers ──
 
 function generateDeviceId(): string {
-  return 'dev_' + Math.random().toString(36).substring(2, 10)
+  // crypto.randomUUID 需安全上下文（https/localhost），不可用时回退 Math.random
+  const uuid =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).substring(2, 10)
+  return 'dev_' + uuid
 }

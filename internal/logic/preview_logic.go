@@ -57,7 +57,7 @@ func NewPreviewLogic(ctx context.Context) *PreviewLogic {
 
 // CreateSession 创建预览会话（活动工作区，1:N 多工作区）
 //
-// 生成雪花 ID 与 16 位访问哈希后持久化，title 为空时回退为「未命名预览」。
+// 生成雪花 ID 与访问哈希后持久化，title 为空时回退为「未命名预览」。
 func (l *PreviewLogic) CreateSession(ctx context.Context, projectID xSnowflake.SnowflakeID, title string) (*apiPreview.PreviewSessionResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("CreateSession - 创建预览会话 [projectID=%d, title=%s]", projectID.Int64(), title))
 
@@ -114,7 +114,7 @@ func (l *PreviewLogic) ListSessions(ctx context.Context, projectID xSnowflake.Sn
 	}, nil
 }
 
-// GetSessionByID 根据会话 ID 获取预览会话。
+// GetSessionByID 根据会话 ID 获取预览会话（填充文件数）。
 func (l *PreviewLogic) GetSessionByID(ctx context.Context, sessionID xSnowflake.SnowflakeID) (*apiPreview.PreviewSessionResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("GetSessionByID - 获取预览会话 [sessionID=%d]", sessionID.Int64()))
 
@@ -123,7 +123,15 @@ func (l *PreviewLogic) GetSessionByID(ctx context.Context, sessionID xSnowflake.
 		return nil, xErr
 	}
 
-	return toPreviewSessionResponse(session), nil
+	// 填充文件数，保证 MCP 上传/列表工具返回的 session.file_count 反映真实数量
+	counts, xErr := l.repo.file.CountBySessions(ctx, []xSnowflake.SnowflakeID{sessionID})
+	if xErr != nil {
+		return nil, xErr
+	}
+
+	resp := toPreviewSessionResponse(session)
+	resp.FileCount = counts[sessionID.Int64()]
+	return resp, nil
 }
 
 // BuildSessionURL 构造面向用户的预览会话访问地址。
@@ -171,9 +179,9 @@ func (l *PreviewLogic) UploadFile(ctx context.Context, sessionID xSnowflake.Snow
 		return nil, xErr
 	}
 
-	// 触摸会话更新时间，使会话 updated_at 与内容变更保持一致
+	// 触摸会话更新时间，使会话 updated_at 与内容变更保持一致（失败降级为警告，文件已落库不应标失败）
 	if xErr := l.repo.session.TouchUpdatedAt(ctx, sessionID); xErr != nil {
-		return nil, xErr
+		l.log.Warn(ctx, xErr.Error())
 	}
 
 	// 广播预览同步（上传/覆写均为内容变更）
@@ -302,22 +310,12 @@ func (l *PreviewLogic) GetFileByID(ctx context.Context, fileID xSnowflake.Snowfl
 	}, nil
 }
 
-// DeleteSession 删除预览会话（级联删除其下全部预览文件）
+// DeleteSession 删除预览会话（事务级联删除其下全部预览文件）
 func (l *PreviewLogic) DeleteSession(ctx context.Context, sessionID xSnowflake.SnowflakeID) *xError.Error {
 	l.log.Info(ctx, fmt.Sprintf("DeleteSession - 删除预览会话 [%d]", sessionID.Int64()))
 
-	// 校验会话存在
-	if _, xErr := l.repo.session.GetByID(ctx, sessionID); xErr != nil {
-		return xErr
-	}
-
-	// 级联删除文件
-	if xErr := l.repo.file.DeleteBySession(ctx, sessionID); xErr != nil {
-		return xErr
-	}
-
-	// 删除会话
-	if xErr := l.repo.session.Delete(ctx, sessionID); xErr != nil {
+	// 事务内级联删除文件与会话本体，避免孤儿文件
+	if xErr := l.repo.session.DeleteCascade(ctx, sessionID); xErr != nil {
 		return xErr
 	}
 
@@ -343,9 +341,9 @@ func (l *PreviewLogic) DeleteFile(ctx context.Context, fileID xSnowflake.Snowfla
 		return xErr
 	}
 
-	// 触摸会话更新时间，使会话 updated_at 与内容变更保持一致
+	// 触摸会话更新时间，使会话 updated_at 与内容变更保持一致（失败降级为警告，文件已删除不应标失败）
 	if xErr := l.repo.session.TouchUpdatedAt(ctx, file.SessionID); xErr != nil {
-		return xErr
+		l.log.Warn(ctx, xErr.Error())
 	}
 
 	// 广播预览同步（文件删除为内容变更）

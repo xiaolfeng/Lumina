@@ -85,7 +85,7 @@ func (r *PreviewSessionRepo) GetByID(ctx context.Context, id xSnowflake.Snowflak
 //
 // 参数:
 //   - ctx:  上下文对象
-//   - hash: 预览会话访问哈希（16 位 hex）
+//   - hash: 预览会话访问哈希（32 位 hex）
 //
 // 返回值:
 //   - *entity.PreviewSession: 查询到的预览会话实体
@@ -165,17 +165,47 @@ func (r *PreviewSessionRepo) Delete(ctx context.Context, id xSnowflake.Snowflake
 	return nil
 }
 
-// TouchUpdatedAt 触摸预览会话更新时间（文件变更后同步会话 updated_at）
+// DeleteCascade 事务级联删除预览会话及其下全部预览文件
 //
-// 文件上传/覆写/删除后调用，使会话 updated_at 与内容变更保持一致，
-// 供前端预览页以会话时间为变更依据刷新缓存。
+// 在同一数据库事务内先删除会话下全部文件，再删除会话本体；
+// 会话不存在时（RowsAffected==0）返回 NotFound，避免遗留孤儿文件。
 //
 // 参数:
-//   - ctx:       上下文对象
-//   - sessionID: 预览会话雪花 ID
+//   - ctx: 上下文对象
+//   - id:  待删除的预览会话雪花 ID
 //
 // 返回值:
-//   - *xError.Error: 更新过程中的错误
+//   - *xError.Error: 删除过程中的错误
+func (r *PreviewSessionRepo) DeleteCascade(ctx context.Context, id xSnowflake.SnowflakeID) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("DeleteCascade - 事务级联删除预览会话及其文件 [%d]", id.Int64()))
+
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 先删除会话下全部文件，避免外键关联孤儿
+		if err := tx.Where("session_id = ?", id).Delete(&entity.PreviewFile{}).Error; err != nil {
+			return err
+		}
+
+		// 再删除会话本体；RowsAffected==0 表示会话不存在，回滚事务
+		result := tx.Where("id = ?", id).Delete(&entity.PreviewSession{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return xError.NewError(ctx, xError.NotFound, "预览会话不存在", false, nil)
+		}
+		r.log.Warn(ctx, err.Error())
+		return xError.NewError(ctx, xError.DatabaseError, "删除预览会话失败", false, err)
+	}
+	return nil
+}
+
+// TouchUpdatedAt 触摸预览会话更新时间（文件变更后同步会话 updated_at）
 func (r *PreviewSessionRepo) TouchUpdatedAt(ctx context.Context, sessionID xSnowflake.SnowflakeID) *xError.Error {
 	r.log.Info(ctx, fmt.Sprintf("TouchUpdatedAt - 更新预览会话更新时间 [%d]", sessionID.Int64()))
 

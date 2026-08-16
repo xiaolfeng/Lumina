@@ -44,7 +44,16 @@ function PreviewPage() {
   // WS 实时同步：连接快照 / 文件变更均通过 preview_sync 消息驱动，替代单次 REST 拉取
   const handleSync = useCallback(
     (data: any) => {
-      if (!data?.session) return
+      if (!data?.session) {
+        // 会话删除事件：后端仅广播 event_type=delete_session（无 session/files），关闭预览内容
+        if (data?.event_type === 'delete_session') {
+          setFiles([])
+          setActiveFile('')
+          setSessionTitle('')
+          setError('预览会话已被删除')
+        }
+        return
+      }
       const syncData = data as PreviewSyncData
       setSessionTitle(syncData.session.title)
       setFiles(syncData.files)
@@ -116,10 +125,11 @@ function PreviewPage() {
   }
 
   // iframe src 追加 cache-buster（当前激活文件的 updated_at），文件变更后强制刷新预览
+  // filename 含 # / ? & 等 URL 保留字符时必须 encodeURIComponent，否则会截断路径/并入 query
   const activeUpdatedAt =
     files.find((f) => f.filename === activeFile)?.updated_at ?? ''
   const src = activeFile
-    ? `/api/v1/preview/sessions/${hash}/files/${activeFile}?v=${encodeURIComponent(activeUpdatedAt)}`
+    ? `/api/v1/preview/sessions/${hash}/files/${encodeURIComponent(activeFile)}?v=${encodeURIComponent(activeUpdatedAt)}`
     : ''
 
   return (

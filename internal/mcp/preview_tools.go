@@ -110,7 +110,7 @@ var previewToolDefs = []previewToolDef{
 
 限制：文件名只能是扁平单层名称，禁止 /、\\ 和 ..；最长 255 字符；content 按 UTF-8 字节计最大 256 KiB。它不支持目录、二进制附件、构建命令或 npm 依赖安装，也不会修改 Agent 当前工作区的真实源文件。
 
-副作用：可能创建新文件，也可能覆盖既有内容；同参数重试后的最终文件内容相同，但覆盖前应确认会话属于当前任务。返回 file_id 与文件深链；会话已有 HTML 入口时，qa_supplement.content 才会返回可直接传给 qa_push_supplement 的非空引用 JSON。
+副作用：可能创建新文件，也可能覆盖既有内容；同参数重试后的最终文件内容相同，但覆盖前应确认会话属于当前任务。返回 file_id；preview_url 指向当前可预览文件——会话已有 HTML 入口时指向入口文件，否则指向本次上传的文件；仅当存在 HTML 入口时，qa_supplement.content 才会返回可直接传给 qa_push_supplement 的非空引用 JSON。
 
 下一步：仍有依赖文件时继续上传；全部上传后必须调用 preview_file_list 核对。只有最终清单包含可渲染 HTML 入口且依赖齐全时，才打开/分享 preview_url 或挂载到 Q&A。`,
 		inputSchema: map[string]any{
@@ -212,7 +212,7 @@ func previewSessionSchema() map[string]any {
 		"id":          map[string]any{"type": "string", "description": "Preview 会话雪花 ID。"},
 		"project_id":  map[string]any{"type": "string", "description": "关联项目雪花 ID。"},
 		"title":       map[string]any{"type": "string", "description": "会话标题。"},
-		"hash":        map[string]any{"type": "string", "description": "网页访问哈希；不可替代 Q&A file_id 引用。"},
+		"hash":        map[string]any{"type": "string", "pattern": "^[0-9a-f]{32}$", "description": "网页访问哈希（32 位 hex）；不可替代 Q&A file_id 引用。"},
 		"status":      map[string]any{"type": "string", "description": "会话状态。"},
 		"file_count":  map[string]any{"type": "integer", "minimum": 0, "description": "会话内文件数量（批量统计，避免 Agent 逐会话轮询）。"},
 		"created_at":  map[string]any{"type": "string", "description": "RFC 3339 创建时间。"},
@@ -306,7 +306,8 @@ func previewFileGetOutputSchema() map[string]any {
 			"filename":   map[string]any{"type": "string"},
 			"mime_type":  map[string]any{"type": "string"},
 			"size":       map[string]any{"type": "integer", "minimum": 0},
-		}, "session_id", "filename", "mime_type", "size"),
+			"content":    map[string]any{"type": "string", "description": "文件完整源码；为控制结构化结果体积，较大内容同时以响应的第二段文本消息返回。"},
+		}, "session_id", "filename", "mime_type", "size", "content"),
 		"workflow": previewWorkflowSchema(),
 	}, "status", "message", "file", "workflow")
 }
@@ -646,6 +647,7 @@ func handlePreviewFileGet(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 			"filename":   resp.Filename,
 			"mime_type":  resp.MimeType,
 			"size":       len(resp.Content),
+			"content":    resp.Content,
 		},
 		"workflow": map[string]any{
 			"state":     "source_loaded",

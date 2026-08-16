@@ -32,11 +32,27 @@ export interface SandboxFrameProps {
 /** 高度回传消息类型 —— 与 iframe 内注入脚本约定 */
 const HEIGHT_MSG_TYPE = 'lumina:frame-height';
 
-/** 收集根元素上的全部 CSS 自定义属性（主题变量） */
+/**
+ * 注入 iframe 的主题 CSS 变量白名单（微明主题语义前缀）。
+ * 仅收集主题命名空间变量，避免把父页面 `:root` 上其它可能携带敏感值的
+ * `--*` 自定义属性（如动态注入的 token / 密钥）一并交给沙箱内不可信内容脚本读取。
+ */
+const THEME_VAR_PREFIXES = [
+	'--sea-',
+	'--lagoon',
+	'--palm',
+	'--sand',
+	'--foam',
+	'--line',
+];
+
+/** 收集根元素上主题命名空间的 CSS 自定义属性（仅主题变量） */
 function collectThemeVariables(): string {
 	const styles = getComputedStyle(document.documentElement);
 	return Array.from({ length: styles.length }, (_, i) => styles.item(i))
-		.filter((name) => name.startsWith('--'))
+		.filter((name) =>
+			THEME_VAR_PREFIXES.some((prefix) => name.startsWith(prefix)),
+		)
 		.map((name) => `${name}: ${styles.getPropertyValue(name).trim()};`)
 		.join('\n');
 }

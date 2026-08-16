@@ -34,7 +34,7 @@ func (l *QaLogic) CreateSession(ctx context.Context, title, agent, sessionType, 
 	// 生成雪花ID
 	id := xSnowflake.GenerateID(bConst.GeneQaSession)
 
-	// 生成 Hash（SHA256 前 16 位 hex，碰撞检测重试）
+	// 生成 Hash（HMAC-SHA256 前 32 位 hex，碰撞检测重试）
 	hash := generateSessionHash(id)
 	for {
 		// 碰撞检测

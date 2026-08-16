@@ -73,7 +73,6 @@ func (r *route) previewRouter(route gin.IRouter) {
 	publicGroup := route.Group("/preview")
 	publicGroup.GET("/sessions/:hash", previewHandler.GetSession)
 	publicGroup.GET("/sessions/:hash/files/:filename", previewHandler.GetFile)
-	publicGroup.GET("/files/:id", previewHandler.GetFileByID)
 	publicGroup.GET("/ws", websocket.PreviewWSHandler(hub, previewSessionRepo))
 
 	// 管理路由（Bearer Token 认证）
@@ -82,5 +81,6 @@ func (r *route) previewRouter(route gin.IRouter) {
 	adminGroup.POST("/sessions", previewHandler.CreateSession)
 	adminGroup.GET("/sessions", previewHandler.ListSessions)
 	adminGroup.DELETE("/sessions/:id", previewHandler.DeleteSession)
+	adminGroup.GET("/files/:id", previewHandler.GetFileByID)
 	adminGroup.DELETE("/files/:id", previewHandler.DeleteFile)
 }

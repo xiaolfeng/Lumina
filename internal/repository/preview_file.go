@@ -10,6 +10,7 @@ import (
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // PreviewFileRepo 预览文件数据访问层，提供按 (session, filename) 覆写写入与按会话查询能力。
@@ -38,6 +39,8 @@ func NewPreviewFileRepo(db *gorm.DB) *PreviewFileRepo {
 
 // CreateOrUpdate 创建或覆写预览文件（按 (session_id, filename) 唯一约束）
 //
+// 使用数据库级 upsert（clause.OnConflict）原子完成创建/覆写，替代先查后写，
+// 避免并发上传同一 (session_id, filename) 时出现 check-then-act 竞态触发唯一约束冲突。
 //   - 已存在：更新 MimeType、Content、Size、UpdatedAt 字段
 //   - 不存在：创建新记录
 //
@@ -51,35 +54,16 @@ func NewPreviewFileRepo(db *gorm.DB) *PreviewFileRepo {
 func (r *PreviewFileRepo) CreateOrUpdate(ctx context.Context, file *entity.PreviewFile) (*entity.PreviewFile, *xError.Error) {
 	r.log.Info(ctx, fmt.Sprintf("CreateOrUpdate - 创建或覆写预览文件 [%d/%s]", file.SessionID.Int64(), file.Filename))
 
-	var existing entity.PreviewFile
-	err := r.db.WithContext(ctx).
-		Where("session_id = ? AND filename = ?", file.SessionID, file.Filename).
-		First(&existing).Error
-
-	if err == nil {
-		// 已存在 → 覆写
-		existing.MimeType = file.MimeType
-		existing.Content = file.Content
-		existing.Size = file.Size
-		if saveErr := r.db.WithContext(ctx).Save(&existing).Error; saveErr != nil {
-			r.log.Warn(ctx, saveErr.Error())
-			return nil, xError.NewError(ctx, xError.DatabaseError, "更新预览文件失败", false, saveErr)
-		}
-		return &existing, nil
+	if err := r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "session_id"}, {Name: "filename"}},
+			DoUpdates: clause.AssignmentColumns([]string{"mime_type", "content", "size", "updated_at"}),
+		}).
+		Create(file).Error; err != nil {
+		r.log.Warn(ctx, err.Error())
+		return nil, xError.NewError(ctx, xError.DatabaseError, "创建预览文件失败", false, err)
 	}
-
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		// 不存在 → 创建
-		if createErr := r.db.WithContext(ctx).Create(file).Error; createErr != nil {
-			r.log.Warn(ctx, createErr.Error())
-			return nil, xError.NewError(ctx, xError.DatabaseError, "创建预览文件失败", false, createErr)
-		}
-		return file, nil
-	}
-
-	// 其他数据库错误
-	r.log.Warn(ctx, err.Error())
-	return nil, xError.NewError(ctx, xError.DatabaseError, "查询预览文件失败", false, err)
+	return file, nil
 }
 
 // GetByID 根据 ID 获取预览文件

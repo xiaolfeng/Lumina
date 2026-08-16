@@ -101,20 +101,23 @@ func (h *PreviewHandler) GetFile(ctx *gin.Context) {
 	// 禁止缓存预览文件（内容可能随 WS 实时变更，需保证 iframe 每次加载最新版本）
 	ctx.Header("Cache-Control", "no-cache")
 	// 对可执行 MIME 施加 sandbox，防止上传的恶意 HTML/SVG 在 Lumina 同源下执行脚本窃取令牌
-	if mime := strings.ToLower(file.MimeType); mime == "text/html" || mime == "image/svg+xml" || strings.Contains(mime, "javascript") {
+	// 存储的 HTML MIME 为常量 PreviewMimeHTML（"text/html; charset=utf-8"），故用 HasPrefix 匹配
+	if mime := strings.ToLower(file.MimeType); strings.HasPrefix(mime, "text/html") || mime == "image/svg+xml" || strings.Contains(mime, "javascript") {
 		ctx.Header("Content-Security-Policy", "sandbox allow-scripts")
 	}
 	ctx.Data(http.StatusOK, file.MimeType, []byte(file.Content))
 }
 
-// GetFileByID 获取预览文件详情（公开，按 file_id，含会话哈希）
+// GetFileByID 获取预览文件详情（管理端，按 file_id，含会话哈希）
 //
-// @Summary     [公开] 获取预览文件详情
+// @Summary     [管理] 获取预览文件详情
 // @Description 根据文件 ID 查询预览文件详情与关联会话哈希，供 Q&A supplement preview 类型渲染解析 serve 地址
 // @Tags        Preview接口
 // @Produce     json
-// @Param       id  path  string  true  "预览文件 ID"
+// @Param       Authorization  header  string  true  "Bearer Access Token"
+// @Param       id             path    string  true  "预览文件 ID"
 // @Success     200  {object}  apiCommon.BaseResponse{data=apiPreview.PreviewFileDetailResponse}  "查询成功"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
 // @Failure     404  {object}  apiCommon.BaseResponse  "预览文件不存在"
 // @Router      /api/v1/preview/files/{id} [GET]
 func (h *PreviewHandler) GetFileByID(ctx *gin.Context) {

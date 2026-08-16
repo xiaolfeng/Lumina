@@ -124,7 +124,7 @@ func (r *QaSessionRepo) GetByID(ctx context.Context, id xSnowflake.SnowflakeID) 
 //
 // 参数:
 //   - ctx:  上下文对象
-//   - hash: 会话哈希标识（16位字符串）
+//   - hash: 会话哈希标识（32位字符串）
 //
 // 返回值:
 //   - *entity.QaSession: 查询到的QA会话实体
