@@ -154,6 +154,10 @@ definitions:
         maxLength: 64
         minLength: 6
         type: string
+      setup_token:
+        description: 一次性初始化令牌（对应 XLF_INITIALIZE_TOKEN，可选）
+        maxLength: 128
+        type: string
       username:
         description: 用户名
         maxLength: 32

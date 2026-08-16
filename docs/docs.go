@@ -5905,6 +5905,11 @@ const docTemplate = `{
                     "maxLength": 64,
                     "minLength": 6
                 },
+                "setup_token": {
+                    "description": "一次性初始化令牌（对应 XLF_INITIALIZE_TOKEN，可选）",
+                    "type": "string",
+                    "maxLength": 128
+                },
                 "username": {
                     "description": "用户名",
                     "type": "string",
