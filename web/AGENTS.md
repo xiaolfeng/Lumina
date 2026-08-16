@@ -34,7 +34,7 @@ web/
     │   ├── console.tsx         # 控制台布局（Sidebar + Breadcrumb + 认证守卫）
     │   ├── console/
     │   │   ├── index.tsx       # 控制台入口（重定向到 dashboard）
-    │   │   ├── dashboard.tsx   # 仪表盘
+    │   │   ├── dashboard.tsx   # 仪表盘（KPI 分栏 + 功能模块 bento grid + 最近预览）
     │   │   ├── apikey.tsx      # API Key 管理
     │   │   ├── project.tsx     # 项目管理（含项目列表 + 跳转到子页面）
     │   │   ├── project/        # 项目子路由
@@ -47,13 +47,18 @@ web/
     │   │   ├── qa.tsx          # Q&A 会话管理（状态筛选 + 分页列表 + 删除）
     │   │   ├── qa/             # Q&A 子路由
     │   │   │   └── $sessionId.tsx  # Q&A 会话详情（问题列表）
+    │   │   ├── preview/        # Preview 管理端
+    │   │   │   └── index.tsx   # 预览会话列表（KPI + 列表 + 新建/删除/详情抽屉）
     │   │   ├── ssh.tsx         # SSH Key 管理
     │   │   ├── settings.tsx    # 系统设置（站点/安全/Q&A/RepoWiki 多标签页）
     │   │   └── profile.tsx     # 个人资料（资料/密码/生物认证三标签页）
-    │   └── interact.tsx        # Interact 交互布局（品牌栏 + 三栏主体）
-    │       └── interact/
-    │           ├── index.tsx   # Interact 交互主页（WebSocket 连接 + 问题展示）
-    │           └── thank.tsx   # Interact 结束感谢页
+    │   ├── interact.tsx        # Interact 交互布局（品牌栏 + 三栏主体）
+    │   │   └── interact/
+    │   │       ├── index.tsx   # Interact 交互主页（WebSocket 连接 + 问题展示）
+    │   │       └── thank.tsx   # Interact 结束感谢页
+    │   ├── preview.tsx         # Preview 对外页布局（品牌栏 + Outlet，非 console 布局）
+    │   └── preview/
+    │       └── index.tsx       # 对外预览主体（文件列表 + iframe 预览，WebSocket 实时驱动）
     ├── components/             # 组件
     │   ├── Navbar.tsx          # 公开页面导航栏
     │   ├── Footer.tsx          # 公开页面页脚
@@ -80,11 +85,16 @@ web/
     │   ├── qa/                 # Q&A 管理业务组件
     │   │   ├── columns.tsx     # 会话列表列定义
     │   │   ├── question-card.tsx   # 问题卡片展示
-    │   │   └── session-detail.tsx  # 会话详情组件
+    │   │   ├── session-detail.tsx  # 会话详情组件
+    │   │   └── session-detail-drawer.tsx # 会话详情抽屉
+    │   ├── preview/            # Preview 业务组件
+    │   │   ├── columns.tsx             # 预览会话列表列定义
+    │   │   └── session-detail-drawer.tsx # 会话详情抽屉（WebSocket 实时 + 文件删除）
     │   ├── llm/                # LLM 配置业务组件
     │   │   ├── provider-columns.tsx       # Provider 表格列定义
     │   │   ├── provider-create-dialog.tsx # Provider 创建对话框
     │   │   ├── provider-edit-dialog.tsx   # Provider 编辑对话框
+    │   │   ├── provider-option.tsx        # Provider 下拉选项
     │   │   ├── model-columns.tsx          # Model 表格列定义
     │   │   ├── model-create-dialog.tsx   # Model 创建对话框
     │   │   ├── model-edit-dialog.tsx      # Model 编辑对话框
@@ -142,7 +152,8 @@ web/
     │           ├── index.ts          # 原语导出入口
     │           ├── kicker.tsx        # 小标题标签
     │           ├── panel-card.tsx    # 面板卡片容器
-    │           ├── sandbox-frame.tsx # iframe sandbox HTML 沙盒渲染器（安全隔离）
+    │           ├── sandbox-frame.tsx # iframe sandbox HTML 沙盒渲染器（opaque origin 隔离）
+    │           ├── preview-frame.tsx # 预览 iframe（src 指向后端 serve 接口）+ PreviewSupplement
     │           └── state-views.tsx   # 状态视图（空/加载/错误）
     ├── hooks/                  # React Hooks
     │   ├── useAuth.ts          # 认证 Hook（登录/登出/刷新/初始化/自动续期/WebAuthn）
@@ -159,9 +170,13 @@ web/
     │   ├── useRepoWiki.ts      # RepoWiki Hook（配置/版本/分析触发/Webhook 事件）
     │   ├── useWebhook.ts       # Webhook 数据 Hook（事件列表 + 状态查询）
     │   ├── useSettings.ts      # 系统设置 Hook（分组配置读写）
+    │   ├── useDashboard.ts     # 看板统计 Hook（useDashboardOverview，多页复用 KPI）
+    │   ├── usePreviewAdmin.ts  # Preview 管理 Hook（会话/文件 CRUD）
+    │   ├── usePreviewWebSocket.ts # Preview WebSocket Hook（preview_sync 实时同步 + 重连）
     │   └── useSidebarOpen.ts   # 侧边栏开合状态 Hook
     └── lib/
         ├── utils.ts            # cn() 工具（clsx + tailwind-merge）
+        ├── format-answer.ts    # 题型 answer 格式化（各题型 → 可读字符串，跨 QA/interact 复用）
         ├── auth/
         │   └── cookie-utils.ts # Cookie 操作工具（AT/RT/expires_at 读写）
         ├── webauthn/
@@ -179,7 +194,9 @@ web/
         │   ├── ssh.ts          # SSH Key API（CRUD + 分页 + 公钥导出）
         │   ├── repowiki.ts     # RepoWiki API（配置/版本/分析触发）
         │   ├── webhook.ts      # Webhook API（事件列表 + 配置查询）
-        │   └── settings.ts     # 系统设置 API（分组配置读写）
+        │   ├── settings.ts     # 系统设置 API（分组配置读写）
+        │   ├── dashboard.ts    # Dashboard API（概览统计）
+        │   └── preview.ts      # Preview API（会话/文件 CRUD）
         └── models/             # TypeScript 类型定义
             ├── request/        # 请求 DTO
             │   ├── auth.ts
@@ -204,7 +221,9 @@ web/
                 ├── qa-admin.ts # Q&A 响应类型
                 ├── llm.ts      # LLM 响应（Provider/Model 详情/分页）
                 ├── ssh.ts      # SSH Key 响应（详情/分页/公钥）
-                └── repowiki.ts # RepoWiki 响应（配置/版本/状态）
+                ├── repowiki.ts # RepoWiki 响应（配置/版本/状态）
+                ├── dashboard.ts # Dashboard 响应（Overview 六类指标）
+                └── preview.ts  # Preview 响应（会话/文件详情/分页）
 ```
 
 ## 导航指南
@@ -215,12 +234,14 @@ web/
 | 新增控制台子页面 | `src/routes/console/` | 在 `console.tsx` 布局下添加，自动继承 Sidebar + Breadcrumb |
 | 新增项目级子页面 | `src/routes/console/project/$projectId/` | 按模块划分子目录（如 `repowiki/`） |
 | 新增 Interact 子页面 | `src/routes/interact/` | 在 `interact.tsx` 布局下添加 |
+| 新增对外预览页 | `src/routes/preview.tsx` + `preview/` | 公开分享页，非 console 布局，WebSocket 实时驱动 |
+| 新增 Preview 管理页 | `src/routes/console/preview/` | 管理端预览会话列表 |
 | 新增布局路由 | `src/routes/<name>.tsx` | 含 `Outlet` 的布局组件 |
 | 新增通用组件 | `src/components/` | 全局级组件（Navbar/Footer/Sidebar/通用对话框/骨架屏等） |
 | 新增首页落地页区块 | `src/components/landing/` | 首页拆分为 hero/features/tech 等区块组件 |
-| 新增业务组件 | `src/components/<domain>/` | 按业务域组织（apikey/、project/、pin/、profile/、qa/、interact/、llm/、ssh/、repowiki/、settings/） |
+| 新增业务组件 | `src/components/<domain>/` | 按业务域组织（apikey/、project/、pin/、profile/、qa/、preview/、interact/、llm/、ssh/、repowiki/、settings/） |
 | 新增题型组件 | `src/components/interact/question-*.tsx` | 遵循 `question-<type>.tsx` 命名，通过 `question-card.tsx` 分发 |
-| 新增交互原语 | `src/components/interact/primitives/` | 可复用的展示原语（Kicker/PanelCard/SandboxFrame 等）；Markdown 原语由 `@lumina/components` 提供 |
+| 新增交互原语 | `src/components/interact/primitives/` | 可复用的展示原语（Kicker/PanelCard/SandboxFrame/PreviewFrame 等）；Markdown 原语由 `@lumina/components` 提供 |
 | 新增 LLM 配置组件 | `src/components/llm/` | Provider/Model CRUD + Agent 角色模型分配 |
 | 新增 SSH Key 组件 | `src/components/ssh/` | CRUD 对话框 + 密钥生成入口 |
 | 新增 RepoWiki 组件 | `src/components/repowiki/` | 配置表单/版本管理/分析触发/Webhook 配置 |
@@ -230,7 +251,8 @@ web/
 | 新增数据 Hook | `src/hooks/` | 基于 TanStack Query 的 useMutation/useQuery |
 | 新增类型定义 | `src/lib/models/` | 按 request/response 子目录组织 |
 | 新增 WebAuthn 辅助函数 | `src/lib/webauthn/helpers.ts` | 浏览器端 base64 编解码、选项解析 |
-| 修改全局主题色 | `src/styles.css` | 仅修改 CSS 变量和 `@theme inline` |
+| 新增题型格式化 | `src/lib/format-answer.ts` | 各题型 answer → 可读字符串，跨 QA/interact 复用 |
+| 修改全局主题色 | `components/src/styles/theme.css` | 主题色盘已迁到共享包（静烛 v1） |
 | 修改路由配置 | `src/router.tsx` | 预加载策略、滚动恢复等 |
 | 修改动画配置 | `components/src/motion/` | 缓动函数和全局动画变体（共享包） |
 | 工具函数 | `src/lib/` 或 `components/src/lib/` | 通用工具（如 `cn()`） |
@@ -251,7 +273,7 @@ web/
 - **shadcn/ui 管理**：组件通过 `pnpm dlx shadcn@latest add <component>` 添加到 `@lumina/components` 共享包，禁止在 `web/src` 下手动创建 ui 组件文件。
 - **CSS 架构**：`styles.css` 仅负责 CSS 变量定义、`@theme inline` 映射、body 基础样式、`@layer base` 全局约束、`prefers-reduced-motion` 降级。组件级样式由组件自身通过 Tailwind 类管理。
 - **动画库**：使用 `motion`（Framer Motion 的轻量版）实现动画；缓动函数和变体统一定义在 `@lumina/components` 的 `motion/` 模块。
-- **主题配色**：微明色盘（烛光暖褐系），亮/暗模式通过 `:root` / `.dark` CSS 变量切换；主题 CSS 由 `@lumina/components` 的 `theme.css` 提供，shadcn/ui 变量已兼容主题。
+- **主题配色**：静烛 v1 设计语言，色盘为静烛/微明意象（`--sea-ink` 墨褐、`--lagoon` 琥珀、`--palm` 余烬橙、`--sand` 暖纸、`--foam` 纸白），`--radius:0px` 全平直角；亮/暗模式通过 `:root` / `.dark` CSS 变量切换；主题 CSS 由 `@lumina/components` 的 `theme.css` 提供。
 - **Toast 通知**：使用 `sonner`（shadcn/ui 集成），在 `console.tsx` 布局中挂载 `<Toaster />`。
 - **前端嵌入**：构建产物输出到 `resources/web/dist`（由 `web/vite.config.ts` 的 `build.outDir` 指定），通过 `go:embed` 嵌入 Go 二进制实现单文件部署。
 - **代码拆分**：`vite.config.ts` 配置了 Vite 代码拆分策略，Mermaid 等大型库懒加载以减小首屏体积。
@@ -259,7 +281,9 @@ web/
 - **Q&A 管理端**：Console Q&A 页面通过 REST API 管理会话，使用 `useQaAdmin` Hook。
 - **题型组件**：Interact 页面每种题型对应独立的 `question-<type>.tsx` 组件，通过 `question-card.tsx` 统一分发渲染，`question-shell.tsx` 提供统一外壳布局。
 - **交互原语**：`interact/primitives/` 包含可复用的展示原语组件，通过 `index.ts` 统一导出；文件名统一使用 **kebab-case**（如 `kicker.tsx`、`panel-card.tsx`），禁止使用 PascalCase 命名。Markdown 渲染原语（markdown/markdown-lite/markdown-mermaid/prose）已迁入 `@lumina/components`。
-- **HTML 沙盒**：`sandbox-frame.tsx` 使用 iframe sandbox（`allow-scripts` 不配 `allow-same-origin`）隔离不可信 HTML/CSS/JS 渲染，禁止直接使用 `dangerouslySetInnerHTML`。
+- **HTML 沙盒**：`sandbox-frame.tsx` 使用 iframe `sandbox="allow-scripts"`（刻意不加 `allow-same-origin`）实现 opaque origin 隔离渲染不可信 HTML/CSS/JS，主题变量注入 iframe `:root`，高度经 `postMessage` 回传自适应；禁止直接使用 `dangerouslySetInnerHTML`。
+- **Preview 对外页**：`routes/preview/index.tsx` 通过 `?session=<hash>` 深链公开分享，`PreviewFrame`（iframe src 指向后端 serve 接口）渲染，`usePreviewWebSocket` 驱动 `preview_sync` 实时同步；管理端在 `console/preview/`。
+- **Dashboard 看板**：`console/dashboard.tsx` 通过 `useDashboardOverview`（queryKey `['dashboard','overview']`）展示 KPI 分栏 + 功能模块 bento grid；该 Hook 同时被 `console/qa` 与 `console/preview` 复用 KPI。
 - **WebAuthn 集成**：浏览器端通过 `lib/webauthn/helpers.ts` 处理 ArrayBuffer/Base64 编解码，`useBiometric` Hook 管理注册/登录/凭证 CRUD 流程。
 - **个人资料管理**：`console/profile.tsx` 页面包含三个标签页（资料/密码/生物认证），分别对应 `profile/` 下的三个组件。
 - **首页模块化**：`routes/_public/index.tsx` 已拆分为 `components/landing/` 下的区块组件（hero/features/tech），禁止在路由文件中内联大段 JSX。
@@ -308,3 +332,6 @@ web/
 17. RepoWiki 版本切换无效 → 检查 `useRepoWiki.ts` 的切换 mutation + `components/repowiki/version-list.tsx` 的选中逻辑。
 18. Webhook 事件不刷新 → 检查 `useWebhook.ts` queryKey + `components/repowiki/webhook-events.tsx` 轮询配置。
 19. 系统设置保存后未生效 → 检查 `useSettings.ts` mutation 失效策略 + `components/settings/*-form.tsx` 表单初始值。
+20. Preview 对外页无法打开 → 检查 URL 的 `?session=<hash>` 是否正确 + `usePreviewWebSocket.ts` 连接状态（idle/connecting/connected/disconnected/rejected）。
+21. Preview 管理页列表为空 → 检查 `usePreviewAdmin.ts` queryKey + 后端 `route_preview.go` 的 Bearer 鉴权。
+22. Dashboard KPI 不刷新 → 检查 `useDashboardOverview` queryKey（`['dashboard','overview']`）+ `lib/apis/dashboard.ts` 请求路径。
