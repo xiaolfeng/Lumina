@@ -35,6 +35,7 @@ import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import type { PreviewSessionItem } from '#/lib/models/response/preview'
 
 export const Route = createFileRoute('/console/preview/')({
+  staticData: { crumb: '预览管理' },
   component: PreviewPage,
 })
 
@@ -142,27 +143,28 @@ function PreviewPage() {
                     <StatusDot active={item.status === 'active'} />
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setViewTarget(item)}
+                  className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
+                  aria-label={`打开 ${item.title} 详情`}
+                >
+                  <Eye className="size-3.5" />
+                </button>
                 <Link
                   to="/preview"
                   search={{ session: item.hash }}
                   target="_blank"
-                  className="grid size-7 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
-                  aria-label={`查看 ${item.title}`}
+                  rel="noopener noreferrer"
+                  className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
+                  aria-label={`打开 ${item.title} 预览`}
                 >
-                  <Eye className="size-3.5" />
+                  <ExternalLink className="size-3.5" />
                 </Link>
                 <button
                   type="button"
-                  onClick={() => setViewTarget(item)}
-                  className="grid size-7 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
-                  aria-label={`打开 ${item.title} 详情`}
-                >
-                  <ExternalLink className="size-3.5" />
-                </button>
-                <button
-                  type="button"
                   onClick={() => setDeleteTarget(item)}
-                  className="grid size-7 place-items-center text-sea-ink-soft transition-colors hover:text-destructive"
+                  className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-destructive"
                   aria-label={`删除 ${item.title}`}
                 >
                   <Trash2 className="size-3.5" />

@@ -1,5 +1,4 @@
-import { createFileRoute, Link, Outlet, redirect, useLocation } from '@tanstack/react-router'
-import { useState } from 'react'
+import { createFileRoute, Outlet, redirect, useLocation } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   SidebarProvider,
@@ -7,12 +6,7 @@ import {
   SidebarTrigger,
 } from '@lumina/components/ui/sidebar'
 import { AppSidebar } from '#/components/app-sidebar'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-} from '@lumina/components/ui/breadcrumb'
+import { ConsoleBreadcrumb } from '#/components/console-breadcrumb'
 import { Toaster } from '@lumina/components/ui/sonner'
 import Cookies from 'js-cookie'
 import { ease } from '@lumina/components/motion'
@@ -43,54 +37,45 @@ const headerVariants = {
 
 function ConsoleLayout() {
   const location = useLocation()
-  const [headerDone, setHeaderDone] = useState(false)
 
   return (
     <SidebarProvider>
-      {/* Sidebar 自身入场 — 动画在 AppSidebar 内部控制 */}
+      <a
+        href="#console-main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:text-sea-ink"
+      >
+        跳到主内容
+      </a>
       <AppSidebar />
 
-      {/* Main 区域 */}
-      <SidebarInset>
-        {/* Header 入场 — 最先出现 */}
+      <SidebarInset className="min-w-0">
         <motion.div
           className="flex h-16 shrink-0 items-center gap-2 px-4"
           initial="hidden"
           animate="visible"
           variants={headerVariants}
-          onAnimationComplete={() => setHeaderDone(true)}
         >
           <SidebarTrigger className="-ml-1 transition-colors hover:text-lagoon" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  asChild
-                  className="text-sea-ink-soft transition-colors hover:text-lagoon"
-                >
-                  <Link to="/console/dashboard">Console</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+          <ConsoleBreadcrumb />
         </motion.div>
 
-        {/* 页面切换动画 — Header 完成后才开始 */}
-        <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div
+          id="console-main"
+          className="flex min-w-0 flex-1 flex-col gap-4 p-4 pt-0"
+        >
           <AnimatePresence mode="wait">
-            {headerDone && (
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -15 }}
-                transition={{ duration: 0.3, ease }}
-              >
-                <Outlet />
-              </motion.div>
-            )}
+            <motion.div
+              key={location.pathname}
+              className="min-w-0"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -15 }}
+              transition={{ duration: 0.3, ease }}
+            >
+              <Outlet />
+            </motion.div>
           </AnimatePresence>
-        </main>
+        </div>
       </SidebarInset>
 
       <Toaster />

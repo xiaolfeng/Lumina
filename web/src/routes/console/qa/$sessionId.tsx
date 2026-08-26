@@ -5,6 +5,7 @@ import { QuestionCard } from '#/components/qa/question-card'
 import type { QuestionSummary } from '#/lib/models/response/qa-admin'
 
 export const Route = createFileRoute('/console/qa/$sessionId')({
+  staticData: { crumb: '会话' },
   component: SessionDetailPage,
 })
 
@@ -13,7 +14,7 @@ function SessionDetailPage() {
   const { data, isLoading } = useSessionDetail(sessionId)
 
   if (isLoading) {
-    return <div className="text-center py-12 text-muted-foreground">加载中...</div>
+    return <div className="text-center py-12 text-muted-foreground">加载中…</div>
   }
 
   const session = data?.data

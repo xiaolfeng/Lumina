@@ -12,6 +12,7 @@ import { Button } from '@lumina/components/ui/button'
 import { useWebhookEvents } from '#/hooks/useWebhook'
 import { SkeletonTable } from '#/components/skeleton-table'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { formatDateTime } from '#/lib/format-date'
 
 interface WebhookEventsProps {
 	configId: string
@@ -63,7 +64,7 @@ export function WebhookEvents({ configId }: WebhookEventsProps) {
 
 	return (
 		<div className="space-y-3">
-			<div className="rounded-lg border overflow-hidden">
+			<div className="min-w-0 overflow-hidden rounded-lg border">
 				<Table>
 					<TableHeader>
 						<TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -83,7 +84,7 @@ export function WebhookEvents({ configId }: WebhookEventsProps) {
 							return (
 								<TableRow key={event.id}>
 									<TableCell className="text-sm text-muted-foreground">
-										{new Date(event.received_at).toLocaleString()}
+										{formatDateTime(event.received_at)}
 									</TableCell>
 									<TableCell className="text-sm">{event.provider}</TableCell>
 									<TableCell className="text-sm font-mono">{event.branch ?? '-'}</TableCell>
@@ -108,8 +109,10 @@ export function WebhookEvents({ configId }: WebhookEventsProps) {
 					<Button
 						variant="outline"
 						size="sm"
+						className="size-11"
 						onClick={() => setPage((p) => Math.max(1, p - 1))}
 						disabled={page <= 1}
+						aria-label="上一页"
 					>
 						<ChevronLeft className="size-4" />
 					</Button>
@@ -119,8 +122,10 @@ export function WebhookEvents({ configId }: WebhookEventsProps) {
 					<Button
 						variant="outline"
 						size="sm"
+						className="size-11"
 						onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
 						disabled={page >= totalPages}
+						aria-label="下一页"
 					>
 						<ChevronRight className="size-4" />
 					</Button>

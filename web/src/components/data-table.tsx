@@ -30,7 +30,7 @@ export function DataTable<TData, TValue>({
   })
 
   return (
-    <div className="rounded-card border border-line bg-surface shadow-[0_1px_3px_rgba(51,39,28,0.04),0_8px_24px_-12px_rgba(51,39,28,0.10)]">
+    <div className="min-w-0 overflow-hidden rounded-card border border-line bg-surface shadow-[0_1px_3px_rgba(51,39,28,0.04),0_8px_24px_-12px_rgba(51,39,28,0.10)]">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (

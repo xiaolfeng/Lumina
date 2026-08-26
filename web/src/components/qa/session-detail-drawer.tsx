@@ -24,7 +24,7 @@ export function SessionDetailDrawer({ sessionId, onClose }: SessionDetailDrawerP
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {isLoading ? (
-            <div className="py-12 text-center text-muted-foreground">加载中...</div>
+            <div className="py-12 text-center text-muted-foreground">加载中…</div>
           ) : session ? (
             <div className="space-y-6">
               <SessionDetail session={session} />

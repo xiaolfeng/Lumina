@@ -97,7 +97,7 @@ function QaPage() {
                 <button
                   type="button"
                   onClick={() => setViewTarget(item.id)}
-                  className="grid size-7 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
+                  className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
                   aria-label={`查看 ${item.title} 详情`}
                 >
                   <Eye className="size-3.5" />
@@ -105,7 +105,7 @@ function QaPage() {
                 <button
                   type="button"
                   onClick={() => setDeleteTarget(item)}
-                  className="grid size-7 place-items-center text-sea-ink-soft transition-colors hover:text-destructive"
+                  className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-destructive"
                   aria-label={`删除 ${item.title}`}
                 >
                   <Trash2 className="size-3.5" />

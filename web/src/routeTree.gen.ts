@@ -36,6 +36,7 @@ import { Route as ConsoleQaIndexRouteImport } from './routes/console/qa/index'
 import { Route as ConsoleProjectIndexRouteImport } from './routes/console/project/index'
 import { Route as ConsolePreviewIndexRouteImport } from './routes/console/preview/index'
 import { Route as ConsoleQaSessionIdRouteImport } from './routes/console/qa/$sessionId'
+import { Route as ConsoleProjectProjectIdRepowikiRouteImport } from './routes/console/project/$projectId/repowiki'
 import { Route as ConsoleProjectProjectIdRepowikiIndexRouteImport } from './routes/console/project/$projectId/repowiki/index'
 import { Route as ConsoleProjectProjectIdRepowikiCreateRouteImport } from './routes/console/project/$projectId/repowiki/create'
 
@@ -173,17 +174,23 @@ const ConsoleQaSessionIdRoute = ConsoleQaSessionIdRouteImport.update({
   path: '/$sessionId',
   getParentRoute: () => ConsoleQaRoute,
 } as any)
+const ConsoleProjectProjectIdRepowikiRoute =
+  ConsoleProjectProjectIdRepowikiRouteImport.update({
+    id: '/$projectId/repowiki',
+    path: '/$projectId/repowiki',
+    getParentRoute: () => ConsoleProjectRoute,
+  } as any)
 const ConsoleProjectProjectIdRepowikiIndexRoute =
   ConsoleProjectProjectIdRepowikiIndexRouteImport.update({
-    id: '/$projectId/repowiki/',
-    path: '/$projectId/repowiki/',
-    getParentRoute: () => ConsoleProjectRoute,
+    id: '/',
+    path: '/',
+    getParentRoute: () => ConsoleProjectProjectIdRepowikiRoute,
   } as any)
 const ConsoleProjectProjectIdRepowikiCreateRoute =
   ConsoleProjectProjectIdRepowikiCreateRouteImport.update({
-    id: '/$projectId/repowiki/create',
-    path: '/$projectId/repowiki/create',
-    getParentRoute: () => ConsoleProjectRoute,
+    id: '/create',
+    path: '/create',
+    getParentRoute: () => ConsoleProjectProjectIdRepowikiRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -213,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/console/preview/': typeof ConsolePreviewIndexRoute
   '/console/project/': typeof ConsoleProjectIndexRoute
   '/console/qa/': typeof ConsoleQaIndexRoute
+  '/console/project/$projectId/repowiki': typeof ConsoleProjectProjectIdRepowikiRouteWithChildren
   '/console/project/$projectId/repowiki/create': typeof ConsoleProjectProjectIdRepowikiCreateRoute
   '/console/project/$projectId/repowiki/': typeof ConsoleProjectProjectIdRepowikiIndexRoute
 }
@@ -270,6 +278,7 @@ export interface FileRoutesById {
   '/console/preview/': typeof ConsolePreviewIndexRoute
   '/console/project/': typeof ConsoleProjectIndexRoute
   '/console/qa/': typeof ConsoleQaIndexRoute
+  '/console/project/$projectId/repowiki': typeof ConsoleProjectProjectIdRepowikiRouteWithChildren
   '/console/project/$projectId/repowiki/create': typeof ConsoleProjectProjectIdRepowikiCreateRoute
   '/console/project/$projectId/repowiki/': typeof ConsoleProjectProjectIdRepowikiIndexRoute
 }
@@ -302,6 +311,7 @@ export interface FileRouteTypes {
     | '/console/preview/'
     | '/console/project/'
     | '/console/qa/'
+    | '/console/project/$projectId/repowiki'
     | '/console/project/$projectId/repowiki/create'
     | '/console/project/$projectId/repowiki/'
   fileRoutesByTo: FileRoutesByTo
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/console/preview/'
     | '/console/project/'
     | '/console/qa/'
+    | '/console/project/$projectId/repowiki'
     | '/console/project/$projectId/repowiki/create'
     | '/console/project/$projectId/repowiki/'
   fileRoutesById: FileRoutesById
@@ -561,19 +572,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsoleQaSessionIdRouteImport
       parentRoute: typeof ConsoleQaRoute
     }
+    '/console/project/$projectId/repowiki': {
+      id: '/console/project/$projectId/repowiki'
+      path: '/$projectId/repowiki'
+      fullPath: '/console/project/$projectId/repowiki'
+      preLoaderRoute: typeof ConsoleProjectProjectIdRepowikiRouteImport
+      parentRoute: typeof ConsoleProjectRoute
+    }
     '/console/project/$projectId/repowiki/': {
       id: '/console/project/$projectId/repowiki/'
-      path: '/$projectId/repowiki'
+      path: '/'
       fullPath: '/console/project/$projectId/repowiki/'
       preLoaderRoute: typeof ConsoleProjectProjectIdRepowikiIndexRouteImport
-      parentRoute: typeof ConsoleProjectRoute
+      parentRoute: typeof ConsoleProjectProjectIdRepowikiRoute
     }
     '/console/project/$projectId/repowiki/create': {
       id: '/console/project/$projectId/repowiki/create'
-      path: '/$projectId/repowiki/create'
+      path: '/create'
       fullPath: '/console/project/$projectId/repowiki/create'
       preLoaderRoute: typeof ConsoleProjectProjectIdRepowikiCreateRouteImport
-      parentRoute: typeof ConsoleProjectRoute
+      parentRoute: typeof ConsoleProjectProjectIdRepowikiRoute
     }
   }
 }
@@ -605,18 +623,33 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
-interface ConsoleProjectRouteChildren {
-  ConsoleProjectIndexRoute: typeof ConsoleProjectIndexRoute
+interface ConsoleProjectProjectIdRepowikiRouteChildren {
   ConsoleProjectProjectIdRepowikiCreateRoute: typeof ConsoleProjectProjectIdRepowikiCreateRoute
   ConsoleProjectProjectIdRepowikiIndexRoute: typeof ConsoleProjectProjectIdRepowikiIndexRoute
 }
 
+const ConsoleProjectProjectIdRepowikiRouteChildren: ConsoleProjectProjectIdRepowikiRouteChildren =
+  {
+    ConsoleProjectProjectIdRepowikiCreateRoute:
+      ConsoleProjectProjectIdRepowikiCreateRoute,
+    ConsoleProjectProjectIdRepowikiIndexRoute:
+      ConsoleProjectProjectIdRepowikiIndexRoute,
+  }
+
+const ConsoleProjectProjectIdRepowikiRouteWithChildren =
+  ConsoleProjectProjectIdRepowikiRoute._addFileChildren(
+    ConsoleProjectProjectIdRepowikiRouteChildren,
+  )
+
+interface ConsoleProjectRouteChildren {
+  ConsoleProjectIndexRoute: typeof ConsoleProjectIndexRoute
+  ConsoleProjectProjectIdRepowikiRoute: typeof ConsoleProjectProjectIdRepowikiRouteWithChildren
+}
+
 const ConsoleProjectRouteChildren: ConsoleProjectRouteChildren = {
   ConsoleProjectIndexRoute: ConsoleProjectIndexRoute,
-  ConsoleProjectProjectIdRepowikiCreateRoute:
-    ConsoleProjectProjectIdRepowikiCreateRoute,
-  ConsoleProjectProjectIdRepowikiIndexRoute:
-    ConsoleProjectProjectIdRepowikiIndexRoute,
+  ConsoleProjectProjectIdRepowikiRoute:
+    ConsoleProjectProjectIdRepowikiRouteWithChildren,
 }
 
 const ConsoleProjectRouteWithChildren = ConsoleProjectRoute._addFileChildren(

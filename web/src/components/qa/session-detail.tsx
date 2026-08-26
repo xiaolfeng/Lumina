@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
 import { Badge } from '@lumina/components/ui/badge'
+import { formatDateTime } from '#/lib/format-date'
 import type { SessionDetailResponse } from '#/lib/models/response/qa-admin'
 
 interface SessionDetailProps {
@@ -36,15 +37,15 @@ export function SessionDetail({ session }: SessionDetailProps) {
           </div>
           <div>
             <span className="text-muted-foreground">在线设备</span>
-            <p className="font-medium">{session.online_devices}</p>
+            <p className="font-medium tabular-nums">{session.online_devices}</p>
           </div>
           <div>
             <span className="text-muted-foreground">创建时间</span>
-            <p className="font-medium">{new Date(session.created_at).toLocaleString()}</p>
+            <p className="font-medium">{formatDateTime(session.created_at)}</p>
           </div>
           <div>
             <span className="text-muted-foreground">过期时间</span>
-            <p className="font-medium">{session.expires_at ? new Date(session.expires_at).toLocaleString() : '永久有效'}</p>
+            <p className="font-medium">{session.expires_at ? formatDateTime(session.expires_at) : '永久有效'}</p>
           </div>
         </div>
       </CardContent>

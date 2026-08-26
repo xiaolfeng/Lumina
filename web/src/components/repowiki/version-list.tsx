@@ -29,6 +29,7 @@ import {
 	ACTIVE_STATUSES,
 } from '#/hooks/useRepoWiki'
 import { buildWikiReaderUrl } from '#/lib/utils'
+import { formatDateTime } from '#/lib/format-date'
 import {
 	Play,
 	RefreshCw,
@@ -293,7 +294,7 @@ export function VersionList({ configId, selectedVersionId }: VersionListProps) {
 				</div>
 			</div>
 
-			<div className="rounded-lg border overflow-hidden">
+			<div className="min-w-0 overflow-hidden rounded-lg border">
 				<Table>
 					<TableHeader>
 						<TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -371,7 +372,7 @@ export function VersionList({ configId, selectedVersionId }: VersionListProps) {
 										</div>
 									</TableCell>
 									<TableCell className="text-sm text-muted-foreground">
-										{new Date(version.created_at).toLocaleString()}
+										{formatDateTime(version.created_at)}
 									</TableCell>
 									<TableCell className="text-right">
 										{isCompleted && (

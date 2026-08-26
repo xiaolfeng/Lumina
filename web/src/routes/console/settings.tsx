@@ -28,11 +28,36 @@ import {
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import type { Provider, Model } from '#/lib/models/response/llm'
 
+const SETTINGS_TABS = [
+  'site',
+  'qa',
+  'repowiki',
+  'security',
+  'provider',
+  'model',
+  'agent',
+] as const
+
+type SettingsTab = (typeof SETTINGS_TABS)[number]
+
+function isSettingsTab(value: unknown): value is SettingsTab {
+  return (
+    typeof value === 'string' &&
+    (SETTINGS_TABS as readonly string[]).includes(value)
+  )
+}
+
 export const Route = createFileRoute('/console/settings')({
+  staticData: { crumb: '系统设置' },
+  validateSearch: (search: Record<string, unknown>): { tab?: SettingsTab } => ({
+    tab: isSettingsTab(search.tab) ? search.tab : undefined,
+  }),
   component: SettingsPage,
 })
 
 function SettingsPage() {
+  const { tab = 'site' } = Route.useSearch()
+  const navigate = Route.useNavigate()
   // Provider dialog state
   const [createProviderOpen, setCreateProviderOpen] = useState(false)
   const [editProviderOpen, setEditProviderOpen] = useState(false)
@@ -92,8 +117,15 @@ function SettingsPage() {
         description="管理 LLM 配置、站点信息、模块运行参数和安全策略"
       />
 
-      <Tabs defaultValue="site" className="space-y-4">
-        <TabsList variant="line" className="gap-6">
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          if (!isSettingsTab(value)) return
+          void navigate({ search: { tab: value }, replace: true })
+        }}
+        className="min-w-0 space-y-4"
+      >
+        <TabsList variant="line" className="w-full justify-start gap-6">
           <TabsTrigger value="site">站点信息</TabsTrigger>
           <TabsTrigger value="qa">Q&A 配置</TabsTrigger>
           <TabsTrigger value="repowiki">RepoWiki</TabsTrigger>

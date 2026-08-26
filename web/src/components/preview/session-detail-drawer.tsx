@@ -10,6 +10,7 @@ import {
 import { Button } from '@lumina/components/ui/button'
 import { usePreviewWebSocket } from '#/hooks/usePreviewWebSocket'
 import { useDeletePreviewFile } from '#/hooks/usePreviewAdmin'
+import { formatDateTime } from '#/lib/format-date'
 import type {
   PreviewFileItem,
   PreviewSessionItem,
@@ -75,7 +76,7 @@ export function PreviewSessionDetailDrawer({
             </div>
           ) : isLoading || !detail ? (
             <div className="py-12 text-center text-muted-foreground">
-              加载中...
+              加载中…
             </div>
           ) : (
             <div className="space-y-6">
@@ -95,7 +96,7 @@ export function PreviewSessionDetailDrawer({
                 <div className="flex items-center justify-between">
                   <span className="text-sea-ink-soft">创建时间</span>
                   <span className="font-medium text-sea-ink">
-                    {new Date(detail.session.created_at).toLocaleString()}
+                    {formatDateTime(detail.session.created_at)}
                   </span>
                 </div>
               </div>

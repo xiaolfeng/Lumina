@@ -48,16 +48,34 @@ import { AnalyzeDialog } from '#/components/repowiki/analyze-dialog'
 import { ConfirmDeleteDialog } from '#/components/confirm-delete-dialog'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { buildWikiReaderUrl } from '#/lib/utils'
+import { formatDateTime } from '#/lib/format-date'
 import { toast } from 'sonner'
 import type { UpdateRepoWikiConfigRequest } from '#/lib/models/request/repowiki'
 import type { RepoWikiConfigItem } from '#/lib/models/response/repowiki'
 
+const REPOWIKI_TABS = ['versions', 'webhook', 'config', 'settings'] as const
+
+type RepoWikiTab = (typeof REPOWIKI_TABS)[number]
+
+function isRepoWikiTab(value: unknown): value is RepoWikiTab {
+	return (
+		typeof value === 'string' &&
+		(REPOWIKI_TABS as readonly string[]).includes(value)
+	)
+}
+
 export const Route = createFileRoute('/console/project/$projectId/repowiki/')({
+	validateSearch: (
+		search: Record<string, unknown>,
+	): { tab?: RepoWikiTab } => ({
+		tab: isRepoWikiTab(search.tab) ? search.tab : undefined,
+	}),
 	component: RepoWikiDetailPage,
 })
 
 function RepoWikiDetailPage() {
 	const { projectId } = Route.useParams()
+	const { tab = 'versions' } = Route.useSearch()
 	const navigate = useNavigate()
 
 	const { data, isLoading } = useRepoWikiConfigByProjectId(projectId)
@@ -67,7 +85,7 @@ function RepoWikiDetailPage() {
 	if (isLoading) {
 		return (
 			<motion.div className="space-y-4" initial="hidden" animate="visible" variants={staggerContainer}>
-				<PageHeader title="Wiki 管理" description="加载中..." />
+				<PageHeader title="Wiki 管理" description="加载中…" />
 				<div className="grid gap-4">
 					{[1, 2, 3].map((i) => (
 						<motion.div key={i} variants={staggerItem}>
@@ -178,8 +196,20 @@ function RepoWikiDetailPage() {
 
 			{/* Tabs：版本管理 / Webhook / 配置详情（只读）/ 设置（可编辑） */}
 			<motion.div variants={staggerItem}>
-				<Tabs defaultValue="versions" className="gap-3">
-					<TabsList variant="line" className="gap-6">
+				<Tabs
+					value={tab}
+					onValueChange={(value) => {
+						if (!isRepoWikiTab(value)) return
+						void navigate({
+							to: '/console/project/$projectId/repowiki',
+							params: { projectId },
+							search: { tab: value },
+							replace: true,
+						})
+					}}
+					className="min-w-0 gap-3"
+				>
+					<TabsList variant="line" className="w-full justify-start gap-6">
 						<TabsTrigger value="versions" className="gap-1.5">
 							<FileText className="size-3.5" />
 							版本管理
@@ -244,7 +274,7 @@ function OverviewBar({ config }: { config: RepoWikiConfigItem }) {
 	}
 
 	const lastAccessed = config.last_accessed_at
-		? new Date(config.last_accessed_at).toLocaleString('zh-CN')
+		? formatDateTime(config.last_accessed_at)
 		: null
 
 	return (
@@ -259,7 +289,7 @@ function OverviewBar({ config }: { config: RepoWikiConfigItem }) {
 					size="icon"
 					onClick={handleCopyUrl}
 					aria-label="复制仓库地址"
-					className="size-7 shrink-0"
+					className="size-11 shrink-0"
 				>
 					{copied ? (
 						<Check className="size-3.5 text-emerald-500" />
@@ -355,12 +385,12 @@ function ConfigDetails({ config }: { config: RepoWikiConfigItem }) {
 		{
 			label: '最后访问',
 			value: config.last_accessed_at
-				? new Date(config.last_accessed_at).toLocaleString('zh-CN')
+				? formatDateTime(config.last_accessed_at)
 				: '—',
 		},
 		{
 			label: '创建时间',
-			value: new Date(config.created_at).toLocaleString('zh-CN'),
+			value: formatDateTime(config.created_at),
 		},
 	]
 

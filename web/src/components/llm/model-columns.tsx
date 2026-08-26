@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@lumina/components/ui/dropdown-menu'
+import { formatDate } from '#/lib/format-date'
 import type { Model, Provider } from '#/lib/models/response/llm'
 
 interface ModelColumnActions {
@@ -59,7 +60,7 @@ export function getModelColumns(
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         const val = row.getValue('max_tokens') as number
         return (
-          <span className="text-muted-foreground">
+          <span className="tabular-nums text-muted-foreground">
             {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
             {val?.toLocaleString() || '-'}
           </span>
@@ -73,7 +74,7 @@ export function getModelColumns(
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         const val = row.getValue('context_window') as number
         return (
-          <span className="text-muted-foreground">
+          <span className="tabular-nums text-muted-foreground">
             {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
             {val?.toLocaleString() || '-'}
           </span>
@@ -123,11 +124,7 @@ export function getModelColumns(
     {
       accessorKey: 'created_at',
       header: '创建时间',
-      cell: ({ row }) => {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-        const val = row.getValue('created_at') as string
-        return val ? new Date(val).toLocaleDateString('zh-CN') : '-'
-      },
+      cell: ({ row }) => formatDate(row.getValue('created_at')),
     },
     {
       id: 'actions',
@@ -137,7 +134,12 @@ export function getModelColumns(
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11"
+                aria-label="打开操作菜单"
+              >
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>

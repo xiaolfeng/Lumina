@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatDateTime } from '#/lib/format-date'
 import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
 import { Button } from '@lumina/components/ui/button'
 import { Input } from '@lumina/components/ui/input'
@@ -126,7 +127,7 @@ export function BiometricTab() {
                     <p className="text-sm font-medium text-sea-ink">{cred.device_name}</p>
                     <p className="text-xs text-sea-ink-soft">
                       {cred.last_used_at
-                        ? `最后使用：${new Date(cred.last_used_at * 1000).toLocaleString()}`
+                        ? `最后使用：${formatDateTime(cred.last_used_at * 1000)}`
                         : '从未使用'}
                     </p>
                   </div>

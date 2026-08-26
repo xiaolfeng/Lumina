@@ -8,6 +8,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from '@lumina/components/ui/dropdown-menu'
+import { formatDate } from '#/lib/format-date'
 import type { SshKeyItem } from '#/lib/models/response/ssh'
 import { getSshPublicKey } from '#/lib/apis/ssh'
 import { toast } from 'sonner'
@@ -62,7 +63,7 @@ export function getColumns(actions: ColumnActions): ColumnDef<SshKeyItem>[] {
 			cell: ({ row }) => {
 				const fp = row.getValue('fingerprint') as string
 				return (
-					<span className="max-w-[280px] truncate font-mono text-xs text-muted-foreground" title={fp}>
+					<span className="block max-w-[280px] truncate font-mono text-xs text-muted-foreground" title={fp}>
 						{fp}
 					</span>
 				)
@@ -84,8 +85,7 @@ export function getColumns(actions: ColumnActions): ColumnDef<SshKeyItem>[] {
 			accessorKey: 'created_at',
 			header: '创建时间',
 			cell: ({ row }) => {
-				const val = row.getValue('created_at') as string
-				return val ? new Date(val).toLocaleDateString('zh-CN') : '-'
+				return formatDate(row.getValue('created_at'))
 			},
 		},
 		{
@@ -96,7 +96,12 @@ export function getColumns(actions: ColumnActions): ColumnDef<SshKeyItem>[] {
 				return (
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="icon">
+							<Button
+								variant="ghost"
+								size="icon"
+								className="size-11"
+								aria-label="打开操作菜单"
+							>
 								<MoreHorizontal className="size-4" />
 							</Button>
 						</DropdownMenuTrigger>

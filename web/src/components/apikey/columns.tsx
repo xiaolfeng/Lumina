@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@lumina/components/ui/dropdown-menu'
+import { formatDate } from '#/lib/format-date'
 import type { ApikeyItem } from '#/lib/models/response/apikey'
 
 interface ColumnActions {
@@ -62,8 +63,7 @@ export function getColumns(actions: ColumnActions): ColumnDef<ApikeyItem>[] {
       accessorKey: 'created_at',
       header: '创建时间',
       cell: ({ row }) => {
-        const val = row.getValue('created_at') as string
-        return val ? new Date(val).toLocaleDateString('zh-CN') : '-'
+        return formatDate(row.getValue('created_at'))
       },
     },
     {
@@ -74,7 +74,12 @@ export function getColumns(actions: ColumnActions): ColumnDef<ApikeyItem>[] {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11"
+                aria-label="打开操作菜单"
+              >
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>

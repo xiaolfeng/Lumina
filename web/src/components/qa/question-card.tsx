@@ -3,6 +3,7 @@ import { Badge } from '@lumina/components/ui/badge'
 import type { QuestionSummary, SupplementItem } from '#/lib/models/response/qa-admin'
 import { Markdown, proseHint, SandboxFrame, PreviewSupplement } from '#/components/interact/primitives'
 import { formatAnswer, type AnswerOption } from '#/lib/format-answer'
+import { formatDateTime } from '#/lib/format-date'
 
 interface QuestionCardProps {
   question: QuestionSummary
@@ -115,8 +116,8 @@ export function QuestionCard({ question }: QuestionCardProps) {
         )}
 
         <div className="text-xs text-muted-foreground">
-          创建: {new Date(question.created_at).toLocaleString()}
-          {question.answered_at && ` | 回答: ${new Date(question.answered_at).toLocaleString()}`}
+          创建: {formatDateTime(question.created_at)}
+          {question.answered_at && ` | 回答: ${formatDateTime(question.answered_at)}`}
         </div>
       </CardContent>
     </Card>

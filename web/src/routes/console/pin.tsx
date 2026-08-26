@@ -16,6 +16,7 @@ import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { PageHeader } from '#/components/page-header'
 
 export const Route = createFileRoute('/console/pin')({
+  staticData: { crumb: 'Pin 管理' },
   component: PinPage,
 })
 
@@ -104,8 +105,14 @@ function PinPage() {
         {/* 筛选工具栏 */}
         <div className="mb-3 flex flex-wrap gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">状态</span>
+            <label
+              htmlFor="pin-status-filter"
+              className="text-sm text-muted-foreground"
+            >
+              状态
+            </label>
             <select
+              id="pin-status-filter"
               value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
               className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
@@ -118,8 +125,14 @@ function PinPage() {
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">分类</span>
+            <label
+              htmlFor="pin-category-filter"
+              className="text-sm text-muted-foreground"
+            >
+              分类
+            </label>
             <select
+              id="pin-category-filter"
               value={categoryFilter}
               onChange={(e) => handleCategoryChange(e.target.value)}
               className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"

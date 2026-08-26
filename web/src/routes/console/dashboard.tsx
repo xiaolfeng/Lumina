@@ -19,6 +19,7 @@ import { useDashboardOverview } from '#/hooks/useDashboard'
 import { useAuth } from '#/hooks/useAuth'
 
 export const Route = createFileRoute('/console/dashboard')({
+  staticData: { crumb: '看板' },
   component: DashboardPage,
 })
 
@@ -278,9 +279,12 @@ function DashboardPage() {
                   活跃
                 </span>
                 <Link
-                  to="/console/preview"
-                  className="grid size-7 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
-                  aria-label={`打开 ${item.title}`}
+                  to="/preview"
+                  search={{ session: item.hash }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
+                  aria-label={`打开 ${item.title} 预览`}
                 >
                   <ExternalLink className="size-3.5" />
                 </Link>

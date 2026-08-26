@@ -18,6 +18,7 @@ import { PageHeader } from '#/components/page-header'
 import { useMcpEndpoint } from '#/hooks/useMcpEndpoint'
 
 export const Route = createFileRoute('/console/apikey')({
+  staticData: { crumb: '令牌管理' },
   component: ApikeyPage,
 })
 

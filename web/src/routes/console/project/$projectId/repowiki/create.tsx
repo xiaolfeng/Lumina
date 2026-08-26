@@ -9,6 +9,7 @@ import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { PageHeader } from '#/components/page-header'
 
 export const Route = createFileRoute('/console/project/$projectId/repowiki/create')({
+	staticData: { crumb: '新建配置' },
 	component: CreateConfigPage,
 })
 

@@ -8,6 +8,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@lumina/components/ui/dropdown-menu'
+import { useProjectNameMap } from '#/hooks/useProject'
+import { formatDate } from '#/lib/format-date'
 import type { PinItem } from '#/lib/models/response/pin'
 
 // ── 分类 Badge 映射 ──
@@ -96,21 +98,15 @@ export function getColumns(actions?: ColumnActions): ColumnDef<PinItem>[] {
     {
       accessorKey: 'from_project_id',
       header: '来源项目',
-      cell: ({ row }) => {
-        const id = row.getValue('from_project_id') as string
-        return (
-          <span className={id ? '' : 'text-muted-foreground'}>
-            {id || '-'}
-          </span>
-        )
-      },
+      cell: ({ row }) => (
+        <FromProjectCell id={row.getValue('from_project_id')} />
+      ),
     },
     {
       accessorKey: 'created_at',
       header: '创建时间',
       cell: ({ row }) => {
-        const val = row.getValue('created_at') as string
-        return val ? new Date(val).toLocaleDateString('zh-CN') : '-'
+        return formatDate(row.getValue('created_at'))
       },
     },
     ...(actions
@@ -123,7 +119,12 @@ export function getColumns(actions?: ColumnActions): ColumnDef<PinItem>[] {
               return (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-11"
+                      aria-label="打开操作菜单"
+                    >
                       <MoreHorizontal className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -145,4 +146,15 @@ export function getColumns(actions?: ColumnActions): ColumnDef<PinItem>[] {
         ]
       : []),
   ]
+}
+
+function FromProjectCell({ id }: { id: unknown }) {
+  const { names, isLoading } = useProjectNameMap()
+  if (typeof id !== 'string' || !id) {
+    return <span className="text-muted-foreground">-</span>
+  }
+  if (isLoading && !names[id]) {
+    return <span className="text-muted-foreground">…</span>
+  }
+  return <span>{names[id] ?? id}</span>
 }

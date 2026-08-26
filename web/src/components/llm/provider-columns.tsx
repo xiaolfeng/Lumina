@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@lumina/components/ui/dropdown-menu'
+import { formatDate } from '#/lib/format-date'
 import type { Provider } from '#/lib/models/response/llm'
 
 interface ProviderColumnActions {
@@ -42,7 +43,10 @@ export function getProviderColumns(
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         const val = row.getValue('base_url') as string
         return (
-          <span className="text-muted-foreground">
+          <span
+            className="block max-w-[320px] truncate text-muted-foreground"
+            title={val || undefined}
+          >
             {val || '-'}
           </span>
         )
@@ -90,11 +94,7 @@ export function getProviderColumns(
     {
       accessorKey: 'created_at',
       header: '创建时间',
-      cell: ({ row }) => {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-        const val = row.getValue('created_at') as string
-        return val ? new Date(val).toLocaleDateString('zh-CN') : '-'
-      },
+      cell: ({ row }) => formatDate(row.getValue('created_at')),
     },
     {
       id: 'actions',
@@ -104,7 +104,12 @@ export function getProviderColumns(
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11"
+                aria-label="打开操作菜单"
+              >
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>

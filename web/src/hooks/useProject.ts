@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import * as api from '#/lib/apis/project'
@@ -7,11 +8,32 @@ import type {
   ProjectListParams,
 } from '#/lib/models/request/project'
 
+const projectNameListParams = { page: 1, size: 200 } as const
+
 export function useProjectList(params?: ProjectListParams) {
   return useQuery({
     queryKey: ['project', 'list', params],
     queryFn: () => api.getProjectList(params),
   })
+}
+
+export function useProjectNameMap(options?: { enabled?: boolean }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['project', 'list', projectNameListParams],
+    queryFn: () => api.getProjectList(projectNameListParams),
+    enabled: options?.enabled ?? true,
+    staleTime: 60_000,
+  })
+
+  const names = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const project of data?.data?.items ?? []) {
+      map[project.id] = project.name
+    }
+    return map
+  }, [data])
+
+  return { names, isLoading }
 }
 
 export function useCreateProject() {

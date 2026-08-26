@@ -10,6 +10,7 @@ import { ToolCatalog, WorkflowList } from '#/components/mcp/tool-catalog'
 import { useMcpEndpoint } from '#/hooks/useMcpEndpoint'
 
 export const Route = createFileRoute('/console/connect')({
+  staticData: { crumb: '接入指南' },
   component: ConnectPage,
 })
 

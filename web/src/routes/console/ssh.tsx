@@ -16,6 +16,7 @@ import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { PageHeader } from '#/components/page-header'
 
 export const Route = createFileRoute('/console/ssh')({
+	staticData: { crumb: 'SSH 密钥' },
 	component: SshPage,
 })
 

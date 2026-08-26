@@ -50,7 +50,6 @@ const navGroups: NavGroup[] = [
         title: '交互问答',
         to: '/interact',
         icon: MessageCircle,
-        external: true,
       },
     ],
   },
@@ -174,18 +173,24 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <motion.div variants={sidebarItem}>
-                <SidebarMenuButton size="lg" className="hover:bg-link-bg-hover">
-                  <div className="flex size-8 shrink-0 items-center justify-center border border-line text-sm font-bold text-lagoon-deep">
-                    {fallbackInitial}
-                  </div>
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="text-sm font-medium text-sea-ink">
-                      {displayName}
-                    </span>
-                    <span className="text-xs text-sea-ink-soft">
-                      {subtitle}
-                    </span>
-                  </div>
+                <SidebarMenuButton
+                  size="lg"
+                  asChild
+                  className="hover:bg-link-bg-hover"
+                >
+                  <Link to="/console/profile">
+                    <div className="flex size-8 shrink-0 items-center justify-center border border-line text-sm font-bold text-lagoon-deep">
+                      {fallbackInitial}
+                    </div>
+                    <div className="flex flex-col gap-0.5 leading-none">
+                      <span className="text-sm font-medium text-sea-ink">
+                        {displayName}
+                      </span>
+                      <span className="text-xs text-sea-ink-soft">
+                        {subtitle}
+                      </span>
+                    </div>
+                  </Link>
                 </SidebarMenuButton>
               </motion.div>
             </SidebarMenuItem>

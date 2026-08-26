@@ -209,6 +209,7 @@
 /* ── 排版工具类（全局约定，非组件样式） ── */
 .display-title {
   font-family: 'Fraunces', Georgia, serif;
+  text-wrap: balance;
 }
 
 /* ─── 代码高亮 · 微明主题（覆盖 highlight.js 默认） ─────── */

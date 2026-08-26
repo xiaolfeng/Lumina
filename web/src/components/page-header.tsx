@@ -10,10 +10,10 @@ interface PageHeaderProps {
 export function PageHeader({ title, description, action }: PageHeaderProps) {
   return (
     <motion.div
-      className="flex items-center justify-between pl-1"
+      className="flex flex-wrap items-center justify-between gap-3 pl-1"
       variants={staggerItemLeft}
     >
-      <div>
+      <div className="min-w-0">
         <h1 className="display-title text-2xl font-semibold tracking-tight text-sea-ink">
           {title}
         </h1>
