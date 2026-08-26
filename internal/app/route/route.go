@@ -64,6 +64,7 @@ func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) xOption.RouteRegistrar {
 
 		apiRouter := r.engine.Group("/api/v1")
 		r.healthRouter(apiRouter)
+		r.pluginRouter(apiRouter)
 		r.authPublicRouter(apiRouter)
 		r.authProtectedRouter(apiRouter)
 		r.apikeyRouter(apiRouter)

@@ -25,3 +25,16 @@ var FrontendDist embed.FS
 //
 //go:embed all:web-wiki/dist
 var WikiFrontendDist embed.FS
+
+// AIPluginFS 内嵌 AI 插件与技能文件（resources/ai-plugin 目录）。
+//
+// 文件布局：
+//
+//	ai-plugin/.claude-plugin/plugin.json
+//	ai-plugin/skills/<skill-name>/SKILL.md
+//
+// 运行时由 service.AIPluginService 按标准 zip 打包，无需预先生成产物。
+// all: 前缀会把以 . 开头的目录（如 .claude-plugin）一并嵌入。
+//
+//go:embed all:ai-plugin
+var AIPluginFS embed.FS

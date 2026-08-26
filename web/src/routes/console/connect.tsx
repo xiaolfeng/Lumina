@@ -5,6 +5,7 @@ import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { ChannelBand, ChannelKicker } from '#/components/mcp/channel-band'
 import { ClientConfigPanel } from '#/components/mcp/client-config-panel'
 import { EndpointCard } from '#/components/mcp/endpoint-card'
+import { PluginInstallPanel } from '#/components/mcp/plugin-install-panel'
 import { ToolCatalog, WorkflowList } from '#/components/mcp/tool-catalog'
 import { useMcpEndpoint } from '#/hooks/useMcpEndpoint'
 
@@ -55,12 +56,18 @@ function ConnectPage() {
 
       <motion.div variants={staggerItem}>
         <ChannelBand index={3}>
-          <ToolCatalog />
+          <PluginInstallPanel origin={origin} />
         </ChannelBand>
       </motion.div>
 
       <motion.div variants={staggerItem}>
         <ChannelBand index={4} alt>
+          <ToolCatalog />
+        </ChannelBand>
+      </motion.div>
+
+      <motion.div variants={staggerItem}>
+        <ChannelBand index={5}>
           <WorkflowList />
         </ChannelBand>
       </motion.div>

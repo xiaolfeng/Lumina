@@ -22,6 +22,7 @@ type service struct {
 	settingsLogic    *logic.SettingsLogic
 	previewLogic     *logic.PreviewLogic
 	dashboardLogic   *logic.DashboardLogic
+	aiPluginLogic    *logic.AIPluginLogic
 }
 
 type handler struct {
@@ -63,6 +64,7 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 			settingsLogic:    logic.NewSettingsLogic(ctx),
 			previewLogic:     logic.NewPreviewLogic(ctx),
 			dashboardLogic:   logic.NewDashboardLogic(ctx),
+			aiPluginLogic:    logic.NewAIPluginLogic(ctx),
 		},
 	}
 }
@@ -96,3 +98,5 @@ type SettingsHandler handler
 type PreviewHandler handler
 
 type DashboardHandler handler
+
+type AIPluginHandler handler

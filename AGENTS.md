@@ -179,7 +179,7 @@
 │           ├── breadcrumb.tsx      # 面包屑导航
 │           ├── prev-next.tsx       # 上一页/下一页
 │           └── search.tsx          # 客户端全文搜索（Orama）
-└── .agent/skills/              # 项目专属技能（swagger-writer、entity-build、project-style、mcp-qa-test）
+└── .agents/skills/             # 项目专属技能（lumina-qa、lumina-preview、lumina-pin、lumina-repowiki、mcp-qa-test、swagger-writer、entity-build、project-style 及 _shared/ 规范）
 ```
 
 ## 导航指南
@@ -443,7 +443,7 @@ Preview 对外页（web/ /preview）──REST + WebSocket──▶ 后端（/pr
 - **日志命名**：遵循模块标签（`NamedMAIN`、`NamedINIT`、`NamedCONT`、`NamedLOGC`、`NamedREPO`、`NamedMIDE`、`NamedCRON`）。
 - **启动种子阶段**：显式通过 `xCtx.Exec` 节点执行，并隔离在 `prepare/` 目录中。
 - **实体 ID 基因策略**：实体级别需绑定基因类型（`GeneProject = 32` ~ `GenePreviewFile = 46`），定义在 `constant/gene_number.go`。
-- **项目技能**：`.agent/skills/` 包含项目专属技能：`swagger-writer`、`entity-build`、`project-style`、`mcp-qa-test`。
+- **项目技能**：`.agents/skills/` 包含项目专属技能：`lumina-qa`、`lumina-preview`、`lumina-pin`、`lumina-repowiki`、`mcp-qa-test`、`swagger-writer`、`entity-build`、`project-style` 及 `_shared/` 共享规范。
 - **双通道暴露**：每个模块同时提供 REST API 和 MCP Tool。
 - **MCP 编排**：Lumina 不做跨模块编排，由 Agent 端自行决定调用顺序和组合。
 - **泛型 Handler 构造**：`NewHandler[T]` 统一注入所有 logic 实例（14 个 Logic）。

@@ -1,0 +1,13 @@
+{
+  "name": "lumina",
+  "version": "0.1.1",
+  "description": "Lumina · 微明：赋予 AI 深度代码认知与长期记忆的知识中枢。通过 MCP 编排 Q&A、Preview、Pin、RepoWiki 协作。",
+  "author": {
+    "name": "筱锋",
+    "url": "https://github.com/xiaolfeng"
+  },
+  "homepage": "https://github.com/xiaolfeng/Lumina",
+  "repository": "https://github.com/xiaolfeng/Lumina",
+  "license": "MIT",
+  "keywords": ["lumina", "mcp", "qa", "preview", "pin", "repowiki"]
+}
