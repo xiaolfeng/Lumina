@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 
+import { Toaster } from '@lumina/components/ui/sonner'
 import { Navbar } from '#/components/Navbar'
 import { Footer } from '#/components/Footer'
 
@@ -13,6 +14,7 @@ function PublicLayout() {
       <Navbar />
       <Outlet />
       <Footer />
+      <Toaster />
     </div>
   )
 }

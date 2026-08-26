@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Monitor,
   Plus,
+  Plug,
 } from 'lucide-react'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { useDashboardOverview } from '#/hooks/useDashboard'
@@ -102,7 +103,15 @@ function MoonGlyph() {
       <circle cx="76" cy="30" r="1.3" fill="#b5a896" />
       <circle cx="18" cy="72" r="1.1" fill="#b5a896" opacity="0.7" />
       <circle cx="82" cy="56" r="1" fill="#b5a896" opacity="0.55" />
-      <line x1="36" y1="168" x2="64" y2="168" stroke="#b5a896" strokeWidth="1" opacity="0.6" />
+      <line
+        x1="36"
+        y1="168"
+        x2="64"
+        y2="168"
+        stroke="#b5a896"
+        strokeWidth="1"
+        opacity="0.6"
+      />
     </svg>
   )
 }
@@ -132,9 +141,10 @@ function DashboardPage() {
               欢迎回来，<em className="italic text-lagoon">{username}</em>
             </h2>
             <p className="mt-5 max-w-md text-sm leading-relaxed text-sea-ink-soft">
-              赋予 AI 深度代码认知与长期记忆。项目、令牌、问答与预览工作区，皆于此安放。
+              赋予 AI
+              深度代码认知与长期记忆。项目、令牌、问答与预览工作区，皆于此安放。
             </p>
-            <div className="mt-7 flex gap-3.5">
+            <div className="mt-7 flex flex-wrap gap-3.5">
               <Button
                 asChild
                 className="bg-sea-ink text-foam hover:bg-lagoon-deep"
@@ -152,6 +162,16 @@ function DashboardPage() {
                 <Link to="/console/qa">
                   查看问答
                   <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="border-input text-sea-ink hover:border-sea-ink hover:bg-transparent"
+              >
+                <Link to="/console/connect">
+                  <Plug className="size-4" />
+                  接入 MCP
                 </Link>
               </Button>
             </div>
@@ -318,9 +338,7 @@ function Kpi({
           )}
         </p>
       )}
-      {delta && (
-        <p className="mt-2 text-[11.5px] text-sea-ink-soft">{delta}</p>
-      )}
+      {delta && <p className="mt-2 text-[11.5px] text-sea-ink-soft">{delta}</p>}
     </div>
   )
 }

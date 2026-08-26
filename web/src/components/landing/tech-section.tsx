@@ -1,16 +1,12 @@
 import { motion } from 'motion/react'
 
-import {
-  fadeUp,
-  sectionStagger,
-  viewportOnce,
-} from '@lumina/components/motion'
+import { fadeUp, sectionStagger, viewportOnce } from '@lumina/components/motion'
 
 const channels = [
   {
     kicker: '对外通道',
     name: 'MCP Server',
-    description: 'Streamable MCP 协议，20+ 工具供 Agent 编排调用。',
+    description: 'Streamable HTTP 协议，25 个工具供 Agent 编排调用。',
   },
   {
     kicker: '对外通道',

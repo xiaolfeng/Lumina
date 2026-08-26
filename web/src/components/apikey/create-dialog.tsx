@@ -10,10 +10,10 @@ import {
 } from '@lumina/components/ui/dialog'
 import { Input } from '@lumina/components/ui/input'
 import { Label } from '@lumina/components/ui/label'
+import { CreatedKeyPanel } from '#/components/mcp/created-key-panel'
 import { useCreateApikey } from '#/hooks/useApikey'
+import { useMcpEndpoint } from '#/hooks/useMcpEndpoint'
 import type { ApikeyCreateResponse } from '#/lib/models/response/apikey'
-import { Copy, Check } from 'lucide-react'
-import { toast } from 'sonner'
 
 interface CreateDialogProps {
   open: boolean
@@ -24,7 +24,7 @@ export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [result, setResult] = useState<ApikeyCreateResponse | null>(null)
-  const [copied, setCopied] = useState(false)
+  const { mcpUrl } = useMcpEndpoint()
 
   const createMutation = useCreateApikey()
 
@@ -40,25 +40,20 @@ export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
     )
   }
 
-  const handleCopy = async () => {
-    if (!result?.key) return
-    await navigator.clipboard.writeText(result.key)
-    setCopied(true)
-    toast.success('已复制到剪贴板')
-    setTimeout(() => setCopied(false), 2000)
-  }
-
   const handleClose = () => {
     setName('')
     setDescription('')
     setResult(null)
-    setCopied(false)
     onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={result ? undefined : onOpenChange}>
       <DialogContent
+        className={
+          result ? 'sm:max-w-2xl max-h-[85vh] overflow-y-auto' : undefined
+        }
+        showCloseButton={!result}
         onPointerDownOutside={result ? (e) => e.preventDefault() : undefined}
       >
         {!result ? (
@@ -66,8 +61,7 @@ export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
             <DialogHeader>
               <DialogTitle>创建令牌</DialogTitle>
               <DialogDescription>
-                创建一个新的 API
-                令牌，创建后将显示完整密钥（仅此一次）。
+                创建一个新的 API 令牌，创建后将显示完整密钥（仅此一次）。
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -107,33 +101,14 @@ export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
             <DialogHeader>
               <DialogTitle>密钥已创建</DialogTitle>
               <DialogDescription>
-                请立即复制并安全保存此密钥，关闭后将无法再次查看。
+                请立即复制密钥，并按下方模板接入 MCP。关闭后无法再查看完整密钥。
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="rounded-md bg-muted p-4">
-                <code className="break-all text-sm font-mono">
-                  {result.key}
-                </code>
-              </div>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleCopy}
-              >
-                {copied ? (
-                  <Check className="mr-2 size-4" />
-                ) : (
-                  <Copy className="mr-2 size-4" />
-                )}
-                {copied ? '已复制' : '复制到剪贴板'}
-              </Button>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleClose} className="w-full">
-                我已安全保存
-              </Button>
-            </DialogFooter>
+            <CreatedKeyPanel
+              apiKey={result.key}
+              mcpUrl={mcpUrl}
+              onDismiss={handleClose}
+            />
           </>
         )}
       </DialogContent>

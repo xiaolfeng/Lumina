@@ -26,17 +26,15 @@ export function HeroSection() {
         className="display-title mt-7 text-5xl leading-[1.1] font-medium tracking-tight text-sea-ink sm:text-6xl"
       >
         赋予 AI 深度代码认知
-        <br />
-        与<em className="text-lagoon italic">长期记忆</em>
+        <br />与<em className="text-lagoon italic">长期记忆</em>
       </motion.h1>
 
       <motion.p
         variants={fadeUp}
         className="mx-auto mt-7 max-w-xl text-base leading-relaxed text-sea-ink-soft"
       >
-        微明 Lumina 是一套面向 AI Agent
-        的知识中枢，通过 RepoWiki、Memory、Q&A 与 Pin
-        四大模块，为模型注入可检索的代码认知与跨会话记忆。
+        微明 Lumina 是一套面向 AI Agent 的知识中枢。通过 Streamable HTTP MCP
+        开放 RepoWiki、Q&A、Pin 与 Preview，把代码认知接到模型工作流里。
       </motion.p>
 
       <motion.div

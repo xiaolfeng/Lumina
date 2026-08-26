@@ -8,12 +8,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@lumina/components/ui/dialog'
+import { CreatedKeyPanel } from '#/components/mcp/created-key-panel'
 import { useResetApikey } from '#/hooks/useApikey'
+import { useMcpEndpoint } from '#/hooks/useMcpEndpoint'
 import type {
   ApikeyItem,
   ApikeyResetResponse,
 } from '#/lib/models/response/apikey'
-import { Copy, Check, AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface ResetDialogProps {
@@ -24,7 +26,7 @@ interface ResetDialogProps {
 
 export function ResetDialog({ open, onOpenChange, item }: ResetDialogProps) {
   const [result, setResult] = useState<ApikeyResetResponse | null>(null)
-  const [copied, setCopied] = useState(false)
+  const { mcpUrl } = useMcpEndpoint()
 
   const resetMutation = useResetApikey()
 
@@ -38,23 +40,20 @@ export function ResetDialog({ open, onOpenChange, item }: ResetDialogProps) {
     })
   }
 
-  const handleCopy = async () => {
-    if (!result?.key) return
-    await navigator.clipboard.writeText(result.key)
-    setCopied(true)
-    toast.success('已复制到剪贴板')
-    setTimeout(() => setCopied(false), 2000)
-  }
-
   const handleClose = () => {
     setResult(null)
-    setCopied(false)
     onOpenChange(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={result ? undefined : handleClose}>
+      <DialogContent
+        className={
+          result ? 'sm:max-w-2xl max-h-[85vh] overflow-y-auto' : undefined
+        }
+        showCloseButton={!result}
+        onPointerDownOutside={result ? (e) => e.preventDefault() : undefined}
+      >
         {!result ? (
           <>
             <DialogHeader>
@@ -67,19 +66,14 @@ export function ResetDialog({ open, onOpenChange, item }: ResetDialogProps) {
               <AlertTriangle className="mt-0.5 size-5 text-amber-600" />
               <div className="text-sm text-amber-800 dark:text-amber-200">
                 <p className="font-medium">警告</p>
-                <p>
-                  重置后旧密钥将立即失效，所有使用旧密钥的服务将无法访问。
-                </p>
+                <p>重置后旧密钥将立即失效，所有使用旧密钥的服务将无法访问。</p>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={handleClose}>
                 取消
               </Button>
-              <Button
-                onClick={handleReset}
-                disabled={resetMutation.isPending}
-              >
+              <Button onClick={handleReset} disabled={resetMutation.isPending}>
                 {resetMutation.isPending ? '重置中...' : '确认重置'}
               </Button>
             </DialogFooter>
@@ -89,33 +83,14 @@ export function ResetDialog({ open, onOpenChange, item }: ResetDialogProps) {
             <DialogHeader>
               <DialogTitle>密钥已重置</DialogTitle>
               <DialogDescription>
-                请立即复制并安全保存此新密钥，关闭后将无法再次查看。
+                请立即复制新密钥，并按下方模板更新客户端配置。关闭后无法再查看。
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="rounded-md bg-muted p-4">
-                <code className="break-all text-sm font-mono">
-                  {result.key}
-                </code>
-              </div>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleCopy}
-              >
-                {copied ? (
-                  <Check className="mr-2 size-4" />
-                ) : (
-                  <Copy className="mr-2 size-4" />
-                )}
-                {copied ? '已复制' : '复制到剪贴板'}
-              </Button>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleClose} className="w-full">
-                我已安全保存
-              </Button>
-            </DialogFooter>
+            <CreatedKeyPanel
+              apiKey={result.key}
+              mcpUrl={mcpUrl}
+              onDismiss={handleClose}
+            />
           </>
         )}
       </DialogContent>

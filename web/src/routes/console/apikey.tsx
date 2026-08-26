@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Plus } from 'lucide-react'
 import { Button } from '@lumina/components/ui/button'
@@ -15,6 +15,7 @@ import { SkeletonTable } from '#/components/skeleton-table'
 import type { ApikeyItem } from '#/lib/models/response/apikey'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { PageHeader } from '#/components/page-header'
+import { useMcpEndpoint } from '#/hooks/useMcpEndpoint'
 
 export const Route = createFileRoute('/console/apikey')({
   component: ApikeyPage,
@@ -31,6 +32,7 @@ function ApikeyPage() {
 
   const { data, isLoading } = useApikeyList({ page, size: pageSize })
   const deleteMutation = useDeleteApikey()
+  const { mcpUrl } = useMcpEndpoint()
 
   const items = data?.data?.items ?? []
   const totalPages = data?.data?.total_pages ?? 1
@@ -71,6 +73,25 @@ function ApikeyPage() {
           </Button>
         }
       />
+
+      <motion.div variants={staggerItem}>
+        <div className="flex flex-col gap-3 bg-chip-bg px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-lagoon-deep">
+              接入 MCP
+            </p>
+            <p className="mt-1.5 text-sm text-sea-ink">
+              令牌作为{' '}
+              <code className="font-mono text-xs">Authorization: Bearer</code>{' '}
+              使用。端点{' '}
+              <code className="font-mono text-xs">{mcpUrl || '解析中…'}</code>
+            </p>
+          </div>
+          <Button asChild variant="outline">
+            <Link to="/console/connect">打开接入指南</Link>
+          </Button>
+        </div>
+      </motion.div>
 
       {/* 表格区域 */}
       <motion.div variants={staggerItem}>

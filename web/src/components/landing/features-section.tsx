@@ -1,11 +1,7 @@
 import { motion } from 'motion/react'
-import { GitBranch, Brain, MessageCircle, Pin } from 'lucide-react'
+import { GitBranch, Brain, MessageCircle, MonitorPlay, Pin } from 'lucide-react'
 
-import {
-  fadeUp,
-  sectionStagger,
-  viewportOnce,
-} from '@lumina/components/motion'
+import { fadeUp, sectionStagger, viewportOnce } from '@lumina/components/motion'
 
 const modules = [
   {
@@ -13,12 +9,6 @@ const modules = [
     name: 'RepoWiki',
     description: '克隆项目，5 角色协作生成结构化 Wiki 文档。',
     tag: '已实现',
-  },
-  {
-    icon: Brain,
-    name: 'Memory',
-    description: 'AI 的长期决策记忆，MCP 端主动推送构建。',
-    tag: '设计中',
   },
   {
     icon: MessageCircle,
@@ -32,17 +22,33 @@ const modules = [
     description: '跨项目依赖约束传递，FIFO 队列定向消费。',
     tag: '已实现',
   },
+  {
+    icon: MonitorPlay,
+    name: 'Preview',
+    description: '前端预览会话与文件，Agent 推送后实时同步评审。',
+    tag: '已实现',
+  },
+  {
+    icon: Brain,
+    name: 'Memory',
+    description: '长期决策记忆仍在设计，当前 MCP 未暴露 memory 工具。',
+    tag: '设计中',
+  },
 ] as const
 
 export function FeaturesSection() {
   return (
-    <section id="modules" className="page-wrap px-6 py-16" aria-label="核心模块">
+    <section
+      id="modules"
+      className="page-wrap px-6 py-16"
+      aria-label="核心模块"
+    >
       <motion.div
         initial="hidden"
         whileInView="visible"
         viewport={viewportOnce}
         variants={sectionStagger}
-        className="grid grid-cols-1 gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-4"
+        className="grid grid-cols-1 gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-5"
       >
         {modules.map((mod) => (
           <motion.article

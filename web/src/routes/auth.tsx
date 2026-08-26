@@ -1,9 +1,11 @@
 import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
-import { motion, type Variants } from 'motion/react'
+import { motion } from 'motion/react'
+import type { Variants } from 'motion/react'
 import {
   BookOpen,
-  Brain,
   MessageCircle,
+  MonitorPlay,
+  Pin,
   Sparkles,
   ArrowLeft,
 } from 'lucide-react'
@@ -65,8 +67,9 @@ const rightItemVariants: Variants = {
 
 const highlights = [
   { icon: BookOpen, label: 'RepoWiki' },
-  { icon: Brain, label: 'Memory' },
   { icon: MessageCircle, label: 'Q&A' },
+  { icon: Pin, label: 'Pin' },
+  { icon: MonitorPlay, label: 'Preview' },
 ] as const
 
 /* ─── Layout Component ─────────────────────────────────── */
@@ -120,8 +123,8 @@ function AuthLayout() {
             style={{ color: 'rgba(231, 240, 232, 0.72)' }}
             variants={itemVariants}
           >
-            赋予 AI 深度代码认知与长期记忆的知识中枢。 通过 MCP 协议开放
-            RepoWiki、Memory、Q&A 三大核心能力，让知识自由流动。
+            赋予 AI 深度代码认知与长期记忆的知识中枢。通过 Streamable HTTP MCP
+            开放 RepoWiki、Q&A、Pin 与 Preview，让知识接到 Agent 工作流里。
           </motion.p>
 
           <motion.div className="flex flex-wrap gap-3" variants={itemVariants}>
