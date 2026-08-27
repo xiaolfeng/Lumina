@@ -30,6 +30,11 @@ export function buildClaudePluginInstall(): string {
   return `claude plugin install ${PLUGIN_NAME}@${MARKETPLACE_NAME}`
 }
 
+export function buildClaudePluginEnv(apiKey?: string | null): string {
+  const value = apiKey?.trim() || '<api-key>'
+  return `export LUMINA_API_KEY='${value}'`
+}
+
 export function buildNpxSkillsAddZip(origin: string): string {
   return `npx skills add ${buildPluginZipUrl(origin)}`
 }
@@ -39,10 +44,15 @@ export function buildNpxSkillsAddHost(origin: string): string {
   return base ? `npx skills add ${base}` : 'npx skills add <origin>'
 }
 
-export function buildClaudePluginSnippet(origin: string): string {
-  return [buildClaudeMarketplaceAdd(origin), buildClaudePluginInstall()].join(
-    '\n',
-  )
+export function buildClaudePluginSnippet(
+  origin: string,
+  apiKey?: string | null,
+): string {
+  return [
+    buildClaudePluginEnv(apiKey),
+    buildClaudeMarketplaceAdd(origin),
+    buildClaudePluginInstall(),
+  ].join('\n')
 }
 
 export function buildNpxSkillsSnippet(origin: string): string {

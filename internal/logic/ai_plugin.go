@@ -45,10 +45,11 @@ func (l *AIPluginLogic) MarketplaceJSON(ctx context.Context, requestBaseURL stri
 	return data, nil
 }
 
-// Zip 返回内存中的插件 ZIP 与其 SHA-256。
-func (l *AIPluginLogic) Zip(ctx context.Context) ([]byte, string, *xError.Error) {
+// Zip 返回带当前实例 MCP 地址的插件 ZIP 与其 SHA-256。
+func (l *AIPluginLogic) Zip(ctx context.Context, requestBaseURL string) ([]byte, string, *xError.Error) {
 	l.log.Info(ctx, "Zip - 打包 AI 插件")
-	bundle, err := l.plugin.Bundle()
+	baseURL := l.resolveBaseURL(ctx, requestBaseURL)
+	bundle, err := l.plugin.BundleForInstance(baseURL)
 	if err != nil {
 		return nil, "", xError.NewError(ctx, xError.ServerInternalError, "插件资源打包失败", false, err)
 	}

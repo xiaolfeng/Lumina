@@ -5,9 +5,9 @@ license: MIT
 compatibility: Requires Lumina MCP (Streamable HTTP) and network access to the Lumina instance.
 metadata:
   author: lumina
-  version: "0.1.0"
+  version: "0.1.1"
 argument-hint: [ question-type | session-id ]
-allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__project_create, mcp__lumina__qa_session_create, mcp__lumina__qa_session_list, mcp__lumina__qa_session_get, mcp__lumina__qa_session_archive, mcp__lumina__qa_what_question, mcp__lumina__qa_push_question, mcp__lumina__qa_push_supplement, mcp__lumina__qa_get_answer, mcp__lumina__qa_reget_answer, mcp__lumina__qa_cancel_question
+allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__project_create, mcp__lumina__qa_session_create, mcp__lumina__qa_session_list, mcp__lumina__qa_session_get, mcp__lumina__qa_session_archive, mcp__lumina__qa_what_question, mcp__lumina__qa_push_question, mcp__lumina__qa_push_supplement, mcp__lumina__qa_get_answer, mcp__lumina__qa_reget_answer, mcp__lumina__qa_cancel_question, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__project_create, mcp__plugin_lumina_lumina__qa_session_create, mcp__plugin_lumina_lumina__qa_session_list, mcp__plugin_lumina_lumina__qa_session_get, mcp__plugin_lumina_lumina__qa_session_archive, mcp__plugin_lumina_lumina__qa_what_question, mcp__plugin_lumina_lumina__qa_push_question, mcp__plugin_lumina_lumina__qa_push_supplement, mcp__plugin_lumina_lumina__qa_get_answer, mcp__plugin_lumina_lumina__qa_reget_answer, mcp__plugin_lumina_lumina__qa_cancel_question
 ---
 
 # Lumina Q&A 富交互问答与决策协同指南 (lumina-qa)

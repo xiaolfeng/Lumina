@@ -12,6 +12,7 @@ const (
 
 	AIPluginMarketplacePath = "/api/v1/plugins/marketplace.json"
 	AIPluginZipPath         = "/api/v1/plugins/lumina.zip"
+	AIPluginMCPPath         = "/api/v1/mcp"
 	AIPluginWellKnownPath   = "/.well-known/skills"
 
 	AIPluginEmbedRoot = "ai-plugin"            // go:embed 顶层目录名

@@ -4,9 +4,9 @@ import { ChannelKicker } from './channel-band'
 export function ToolCatalog() {
   return (
     <div>
-      <ChannelKicker>能力</ChannelKicker>
+      <ChannelKicker>可以做什么</ChannelKicker>
       <h2 className="display-title mt-2 text-[22px] font-medium text-sea-ink">
-        25 个工具 · 按任务编排
+        五组能力，覆盖日常项目协作
       </h2>
       <div className="mt-4">
         {MCP_TOOL_MODULES.map((module) => (
@@ -48,9 +48,9 @@ export function ToolCatalog() {
 export function WorkflowList() {
   return (
     <div>
-      <ChannelKicker>顺序</ChannelKicker>
+      <ChannelKicker>用起来更顺手</ChannelKicker>
       <h2 className="display-title mt-2 text-[22px] font-medium text-sea-ink">
-        协作不要跳步
+        一次完整协作通常这样展开
       </h2>
       <ol className="mt-4">
         {MCP_WORKFLOW_STEPS.map((item) => (

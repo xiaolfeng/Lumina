@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -25,6 +26,7 @@ import (
 
 const (
 	pluginManifestPath = ".claude-plugin/plugin.json"
+	pluginMCPPath      = ".mcp.json"
 	pluginSkillsDir    = "skills"
 	skillMarkdownName  = "SKILL.md"
 	wellKnownSkillMD   = "skill-md"
@@ -92,9 +94,29 @@ func (s *AIPluginService) Bundle() (*PluginBundle, error) {
 	return bundle, nil
 }
 
+// BundleForInstance 返回带当前 Lumina 地址的插件 ZIP。
+// Claude Code 安装插件后会自动读取根目录的 .mcp.json，无需再次手动添加 MCP。
+func (s *AIPluginService) BundleForInstance(baseURL string) (*PluginBundle, error) {
+	bundle, err := s.Bundle()
+	if err != nil {
+		return nil, err
+	}
+	zipBytes, err := packZipWithMCP(bundle.Zip, buildPluginMCPConfig(baseURL))
+	if err != nil {
+		return nil, err
+	}
+	sum := sha256.Sum256(zipBytes)
+	return &PluginBundle{
+		Zip:      zipBytes,
+		SHA256:   hex.EncodeToString(sum[:]),
+		Manifest: bundle.Manifest,
+		Skills:   bundle.Skills,
+	}, nil
+}
+
 // MarketplaceJSON 按给定站点根地址渲染 Claude Code marketplace.json。
 func (s *AIPluginService) MarketplaceJSON(baseURL string) ([]byte, *PluginBundle, error) {
-	bundle, err := s.Bundle()
+	bundle, err := s.BundleForInstance(baseURL)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -348,6 +370,82 @@ func packZip(fsys fs.FS) ([]byte, error) {
 		return nil, fmt.Errorf("关闭 zip 失败: %w", err)
 	}
 	return buf.Bytes(), nil
+}
+
+func packZipWithMCP(sourceZip, mcpConfig []byte) ([]byte, error) {
+	reader, err := zip.NewReader(bytes.NewReader(sourceZip), int64(len(sourceZip)))
+	if err != nil {
+		return nil, fmt.Errorf("打开插件 zip 失败: %w", err)
+	}
+
+	var buf bytes.Buffer
+	writer := zip.NewWriter(&buf)
+	for _, file := range reader.File {
+		if file.Name == pluginMCPPath {
+			continue
+		}
+		data, readErr := readZipFile(file)
+		if readErr != nil {
+			_ = writer.Close()
+			return nil, readErr
+		}
+		if writeErr := writeZipFile(writer, file.Name, data); writeErr != nil {
+			_ = writer.Close()
+			return nil, writeErr
+		}
+	}
+	if err := writeZipFile(writer, pluginMCPPath, mcpConfig); err != nil {
+		_ = writer.Close()
+		return nil, err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("关闭实例插件 zip 失败: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+func buildPluginMCPConfig(baseURL string) []byte {
+	config := map[string]any{
+		bConst.AIPluginName: map[string]any{
+			"type": "http",
+			"url":  joinURL(baseURL, bConst.AIPluginMCPPath),
+			"headers": map[string]string{
+				"Authorization": "Bearer ${LUMINA_API_KEY}",
+			},
+		},
+	}
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return nil
+	}
+	return append(data, '\n')
+}
+
+func readZipFile(file *zip.File) ([]byte, error) {
+	reader, err := file.Open()
+	if err != nil {
+		return nil, fmt.Errorf("打开 zip 条目 %s 失败: %w", file.Name, err)
+	}
+	defer func() { _ = reader.Close() }()
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("读取 zip 条目 %s 失败: %w", file.Name, err)
+	}
+	return data, nil
+}
+
+func writeZipFile(writer *zip.Writer, name string, data []byte) error {
+	header := &zip.FileHeader{Name: name, Method: zip.Deflate}
+	header.Modified = time.Unix(0, 0).UTC()
+	header.SetMode(0o644)
+	entry, err := writer.CreateHeader(header)
+	if err != nil {
+		return fmt.Errorf("写入 zip 条目 %s 失败: %w", name, err)
+	}
+	if _, err := entry.Write(data); err != nil {
+		return fmt.Errorf("写入 zip 内容 %s 失败: %w", name, err)
+	}
+	return nil
 }
 
 func skipZipEntry(name string) bool {

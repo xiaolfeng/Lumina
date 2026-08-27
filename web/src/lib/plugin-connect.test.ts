@@ -5,6 +5,7 @@ import {
   PLUGIN_NAME,
   PLUGIN_ZIP_PATH,
   buildClaudeMarketplaceAdd,
+  buildClaudePluginEnv,
   buildClaudePluginInstall,
   buildClaudePluginSnippet,
   buildNpxSkillsAddHost,
@@ -32,11 +33,16 @@ describe('install snippets', () => {
     expect(buildClaudeMarketplaceAdd(origin)).toBe(
       `claude plugin marketplace add ${origin}${PLUGIN_MARKETPLACE_PATH}`,
     )
+    expect(buildClaudePluginEnv('lumi_test')).toBe(
+      "export LUMINA_API_KEY='lumi_test'",
+    )
+    expect(buildClaudePluginEnv()).toBe("export LUMINA_API_KEY='<api-key>'")
     expect(buildClaudePluginInstall()).toBe(
       `claude plugin install ${PLUGIN_NAME}@${MARKETPLACE_NAME}`,
     )
-    expect(buildClaudePluginSnippet(origin)).toBe(
+    expect(buildClaudePluginSnippet(origin, 'lumi_test')).toBe(
       [
+        "export LUMINA_API_KEY='lumi_test'",
         `claude plugin marketplace add ${origin}${PLUGIN_MARKETPLACE_PATH}`,
         `claude plugin install ${PLUGIN_NAME}@${MARKETPLACE_NAME}`,
       ].join('\n'),

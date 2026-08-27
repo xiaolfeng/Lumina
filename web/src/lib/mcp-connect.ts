@@ -240,7 +240,7 @@ export const MCP_CLIENTS: McpClientDef[] = [
     name: 'Claude Code',
     fileHint: '终端命令',
     language: 'bash',
-    note: '执行后可用 claude mcp list 确认。',
+    note: '这是独立 MCP 接入方式。安装 Lumina 插件时无需执行；手动接入后可用 claude mcp list 确认。',
     build: claudeCodeSnippet,
   },
   {
@@ -264,7 +264,7 @@ export const MCP_CLIENTS: McpClientDef[] = [
     name: '通用 HTTP',
     fileHint: '任意支持 Streamable HTTP 的客户端',
     language: 'text',
-    note: 'Q&A 实时通道是 WebSocket，与 MCP 传输无关。不要再配独立的 SSE 服务。',
+    note: '适用于支持 Streamable HTTP 的客户端。Q&A 的实时页面由 Lumina 自己通过 WebSocket 更新，无需另配实时服务。',
     build: genericSnippet,
   },
 ]
@@ -285,17 +285,19 @@ export const MCP_TOOL_MODULES: McpToolModule[] = [
   {
     id: 'project',
     name: 'Project',
-    summary: '把代码库注册到微明，后续问答和预览都挂在 project_id 上。',
+    summary:
+      '先认出当前代码库，让问答、预览和跨项目协作都落在正确的项目上下文中。',
     tools: [
-      { name: 'project_get', summary: '按 ID、名称或路径解析已有项目' },
-      { name: 'project_list', summary: '列出项目，可用当前工作目录过滤' },
-      { name: 'project_create', summary: '仅在确认尚未注册且任务需要时创建' },
+      { name: 'project_get', summary: '按 ID、名称或路径找到已有项目' },
+      { name: 'project_list', summary: '浏览项目，也能按当前目录筛选' },
+      { name: 'project_create', summary: '当前代码库首次接入时创建项目' },
     ],
   },
   {
     id: 'qa',
     name: 'Q&A',
-    summary: '向用户提问并等待回答。实时推送走 WebSocket，不是 SSE。',
+    summary:
+      '遇到方案分支或需要补充材料时，Agent 可以把问题送到交互页，等你确认后再继续。',
     tools: [
       { name: 'qa_session_list', summary: '复用已有活跃会话' },
       { name: 'qa_session_create', summary: '创建会话，必须带 project_id' },
@@ -312,7 +314,8 @@ export const MCP_TOOL_MODULES: McpToolModule[] = [
   {
     id: 'preview',
     name: 'Preview',
-    summary: '把 HTML/CSS/JS 原型推给用户评审，不能替代改真实仓库。',
+    summary:
+      '把 HTML、CSS 和 JavaScript 原型放进安全沙盒，先看见真实效果，再决定怎样落到项目里。',
     tools: [
       { name: 'preview_session_list', summary: '复用当前任务的预览会话' },
       { name: 'preview_session_create', summary: '创建空会话，不会生成代码' },
@@ -325,7 +328,7 @@ export const MCP_TOOL_MODULES: McpToolModule[] = [
     id: 'repowiki',
     name: 'RepoWiki',
     summary:
-      '只读查询已生成的 Wiki。更新由 Git Webhook 触发，MCP 不能分析仓库。',
+      '随时翻阅已经生成的项目 Wiki，快速找到架构、模块和实现说明。Wiki 会随 Git Webhook 更新。',
     note: '只读',
     tools: [
       { name: 'repoWiki_list', summary: '列出已完成的 Wiki 版本' },
@@ -335,7 +338,8 @@ export const MCP_TOOL_MODULES: McpToolModule[] = [
   {
     id: 'pin',
     name: 'Pin',
-    summary: '跨项目约束的点对点推送与 FIFO 消费，不要拿来当普通备忘。',
+    summary:
+      '把依赖升级、接口变化等约束定向交给另一个项目，并按到达顺序逐条处理。',
     tools: [
       { name: 'pin_peek', summary: '预览队首约束，不消费' },
       { name: 'pin_list', summary: '列出目标项目的约束' },
@@ -353,14 +357,14 @@ export const MCP_TOOL_NAMES: string[] = MCP_TOOL_MODULES.flatMap((module) =>
 export const MCP_WORKFLOW_STEPS: McpWorkflowStep[] = [
   {
     step: 1,
-    title: '解析项目',
-    body: '先用 project_get（优先 match_path）或 project_list 找到 project_id。确认尚未注册且任务确实需要时，才 project_create。',
+    title: '先找到当前项目',
+    body: 'Agent 会先按当前目录查找已有项目。第一次接入的代码库，确认没有重复记录后再创建。',
     tools: ['project_get', 'project_list', 'project_create'],
   },
   {
     step: 2,
-    title: '向用户提问',
-    body: 'qa_session_list / create → qa_what_question → qa_push_question。需要补充时先 qa_push_supplement，再 qa_get_answer。不要用猜测代替用户决策。',
+    title: '需要你决定时，直接来问',
+    body: '方案有分支、信息不完整或需要文件时，Agent 会把结构化问题送到交互页，并在收到回答后继续工作。',
     tools: [
       'qa_session_list',
       'qa_session_create',
@@ -372,8 +376,8 @@ export const MCP_WORKFLOW_STEPS: McpWorkflowStep[] = [
   },
   {
     step: 3,
-    title: '可视化评审',
-    body: 'preview_session_list / create 后逐个 preview_file_upload，最后 preview_file_list 核对。Preview 是沟通媒介，不能代替改真实项目文件。',
+    title: '界面想法先放进预览',
+    body: '涉及页面或交互时，可以先上传一个可操作的沙盒原型。核对文件清单后，再把预览交给你体验。',
     tools: [
       'preview_session_list',
       'preview_session_create',
@@ -383,20 +387,20 @@ export const MCP_WORKFLOW_STEPS: McpWorkflowStep[] = [
   },
   {
     step: 4,
-    title: '把预览交给用户',
-    body: '优先打开返回的绝对 preview_url。作为问答补充时，qa_push_supplement 的 content 必须原样使用 Preview 返回的 qa_supplement.content。hash 只用于网页 URL。',
+    title: '把预览带回同一次讨论',
+    body: 'Agent 可以直接打开预览链接，也可以把预览作为问答补充发到交互页，让设计和反馈留在同一个会话里。',
     tools: ['qa_push_supplement', 'qa_get_answer'],
   },
   {
     step: 5,
-    title: '查阅 Wiki',
-    body: 'RepoWiki MCP 只读。用 repoWiki_list 找完成版本，再用 repoWiki_query 读页面。仓库分析由 Git Webhook 驱动。',
+    title: '需要全局视野时翻阅 Wiki',
+    body: '先找到已完成的 Wiki 版本，再读取相关页面。版本更新由仓库的 Git Webhook 自动触发。',
     tools: ['repoWiki_list', 'repoWiki_query'],
   },
   {
     step: 6,
-    title: '跨项目约束',
-    body: 'Pin 只用于明确的跨项目约束。消费前可先 pin_peek / pin_list 核对，再 pin_push 或 pin_consume。',
+    title: '跨项目变化及时传递',
+    body: '接口变化或依赖升级会影响其他代码库时，先查看目标项目的待处理约束，再推送或消费对应记录。',
     tools: ['pin_peek', 'pin_list', 'pin_push', 'pin_consume'],
   },
 ]

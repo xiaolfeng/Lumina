@@ -5,9 +5,9 @@ license: MIT
 compatibility: Requires Lumina MCP (Streamable HTTP) and network access to the Lumina instance.
 metadata:
   author: lumina
-  version: "0.1.0"
+  version: "0.1.1"
 argument-hint: [ project-name | pin-id ]
-allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__pin_push, mcp__lumina__pin_consume, mcp__lumina__pin_list, mcp__lumina__pin_peek, mcp__lumina__pin_update
+allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__pin_push, mcp__lumina__pin_consume, mcp__lumina__pin_list, mcp__lumina__pin_peek, mcp__lumina__pin_update, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__pin_push, mcp__plugin_lumina_lumina__pin_consume, mcp__plugin_lumina_lumina__pin_list, mcp__plugin_lumina_lumina__pin_peek, mcp__plugin_lumina_lumina__pin_update
 ---
 
 # Lumina 跨项目约束与队列管理指南 (lumina-pin)

@@ -76,6 +76,70 @@ func TestPluginBundleContainsManifestAndSkills(t *testing.T) {
 	}
 }
 
+func TestPluginBundleForInstanceContainsAutomaticMCPConfig(t *testing.T) {
+	const base = "https://lumina.example"
+	bundle, err := NewAIPluginService().BundleForInstance(base)
+	if err != nil {
+		t.Fatalf("实例插件打包失败: %v", err)
+	}
+
+	reader, err := zip.NewReader(bytes.NewReader(bundle.Zip), int64(len(bundle.Zip)))
+	if err != nil {
+		t.Fatalf("打开实例插件 ZIP 失败: %v", err)
+	}
+	var mcpConfig []byte
+	for _, file := range reader.File {
+		if file.Name != pluginMCPPath {
+			continue
+		}
+		mcpConfig, err = readZipFile(file)
+		if err != nil {
+			t.Fatalf("读取 %s 失败: %v", pluginMCPPath, err)
+		}
+		break
+	}
+	if len(mcpConfig) == 0 {
+		t.Fatalf("实例插件 ZIP 缺少 %s", pluginMCPPath)
+	}
+
+	var config map[string]struct {
+		Type    string            `json:"type"`
+		URL     string            `json:"url"`
+		Headers map[string]string `json:"headers"`
+	}
+	if err := json.Unmarshal(mcpConfig, &config); err != nil {
+		t.Fatalf("解析 %s 失败: %v\n%s", pluginMCPPath, err, mcpConfig)
+	}
+	server, ok := config[bConst.AIPluginName]
+	if !ok {
+		t.Fatalf("%s 缺少 %s server", pluginMCPPath, bConst.AIPluginName)
+	}
+	if server.Type != "http" {
+		t.Fatalf("MCP type = %q, want http", server.Type)
+	}
+	if want := base + bConst.AIPluginMCPPath; server.URL != want {
+		t.Fatalf("MCP url = %q, want %q", server.URL, want)
+	}
+	if want := "Bearer ${LUMINA_API_KEY}"; server.Headers["Authorization"] != want {
+		t.Fatalf("MCP Authorization = %q, want %q", server.Headers["Authorization"], want)
+	}
+}
+
+func TestPluginBundleForInstanceDeterministic(t *testing.T) {
+	const base = "https://lumina.example"
+	first, err := NewAIPluginService().BundleForInstance(base)
+	if err != nil {
+		t.Fatalf("第一次实例打包失败: %v", err)
+	}
+	second, err := NewAIPluginService().BundleForInstance(base)
+	if err != nil {
+		t.Fatalf("第二次实例打包失败: %v", err)
+	}
+	if first.SHA256 != second.SHA256 || !bytes.Equal(first.Zip, second.Zip) {
+		t.Fatal("相同实例地址应生成稳定一致的插件 ZIP")
+	}
+}
+
 func TestPluginBundleDeterministic(t *testing.T) {
 	first, err := NewAIPluginService().Bundle()
 	if err != nil {
@@ -125,6 +189,30 @@ func TestMarketplaceJSONUsesRequestHostAndZipHash(t *testing.T) {
 	if plugin.Source.SHA256 != bundle.SHA256 {
 		t.Fatalf("source.sha256 = %q, want %q", plugin.Source.SHA256, bundle.SHA256)
 	}
+	mcpConfig := readZipEntryForTest(t, bundle.Zip, pluginMCPPath)
+	if !bytes.Contains(mcpConfig, []byte(base+bConst.AIPluginMCPPath)) {
+		t.Fatalf("市场清单指向的 ZIP 未绑定当前实例 MCP 地址: %s", mcpConfig)
+	}
+}
+
+func readZipEntryForTest(t *testing.T, zipBytes []byte, name string) []byte {
+	t.Helper()
+	reader, err := zip.NewReader(bytes.NewReader(zipBytes), int64(len(zipBytes)))
+	if err != nil {
+		t.Fatalf("打开 ZIP 失败: %v", err)
+	}
+	for _, file := range reader.File {
+		if file.Name != name {
+			continue
+		}
+		data, err := readZipFile(file)
+		if err != nil {
+			t.Fatalf("读取 ZIP 条目 %s 失败: %v", name, err)
+		}
+		return data
+	}
+	t.Fatalf("ZIP 缺少 %s", name)
+	return nil
 }
 
 func TestWellKnownJSONListsEmbeddedSkills(t *testing.T) {

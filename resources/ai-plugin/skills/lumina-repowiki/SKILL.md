@@ -5,9 +5,9 @@ license: MIT
 compatibility: Requires Lumina MCP (Streamable HTTP) and network access to the Lumina instance.
 metadata:
   author: lumina
-  version: "0.1.0"
+  version: "0.1.1"
 argument-hint: [ wiki-id | page-path ]
-allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__repoWiki_list, mcp__lumina__repoWiki_query
+allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__repoWiki_list, mcp__lumina__repoWiki_query, mcp__plugin_lumina_lumina__repoWiki_list, mcp__plugin_lumina_lumina__repoWiki_query
 ---
 
 # Lumina 代码库架构知识库检索指南 (lumina-repowiki)

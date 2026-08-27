@@ -25,6 +25,7 @@ import {
   buildClientSnippet,
   buildMcpUrl,
 } from '#/lib/mcp-connect'
+import { buildClaudePluginSnippet } from '#/lib/plugin-connect'
 
 export const Route = createFileRoute('/_public/start')({
   component: StartPage,
@@ -101,6 +102,9 @@ function StartPage() {
   }, [])
 
   const cursorSnippet = buildClientSnippet('cursor', { mcpUrl })
+  const pluginSnippet = buildClaudePluginSnippet(
+    mcpUrl.slice(0, -MCP_PATH.length),
+  )
 
   return (
     <>
@@ -134,8 +138,8 @@ function StartPage() {
             className="mx-auto max-w-lg text-base leading-relaxed text-sea-ink-soft md:text-lg"
             variants={fadeUp}
           >
-            先把服务跑起来，再用 API Key 把当前站点接到 AI Agent。MCP 已内嵌在
-            HTTP 服务里。
+            服务启动后，选择最适合你的接入方式。Claude Code
+            可以直接安装插件，其他客户端也能通过 MCP 连接当前 Lumina。
           </motion.p>
         </motion.div>
       </section>
@@ -249,66 +253,81 @@ function StartPage() {
         </motion.div>
       </section>
 
-      <section className="page-wrap px-4 pb-20" aria-label="接入 MCP">
+      <section className="page-wrap px-4 pb-20" aria-label="接入 Lumina">
         <motion.div
-          className="mx-auto max-w-2xl"
+          className="mx-auto max-w-4xl"
           initial="hidden"
           whileInView="visible"
           viewport={viewportOnce}
           variants={sectionStagger}
         >
-          <SectionKicker>接入 MCP</SectionKicker>
+          <SectionKicker>连接你的 AI 助手</SectionKicker>
           <motion.h2
-            className="display-title mb-6 text-center text-2xl font-bold text-sea-ink sm:text-3xl"
+            className="display-title mb-3 text-center text-2xl font-bold text-sea-ink sm:text-3xl"
             variants={fadeUp}
           >
-            接到你的 AI Agent
+            插件优先，独立 MCP 也一直保留
           </motion.h2>
-          <motion.article className={`${shellBase} p-6`} variants={fadeUp}>
-            <div className="mb-4 flex items-center gap-2">
-              <Plug className="h-4 w-4 text-lagoon" aria-hidden />
-              <h3 className="text-lg font-semibold text-sea-ink">
-                Streamable HTTP
-              </h3>
-            </div>
-            <p className="mb-4 text-sm leading-relaxed text-sea-ink-soft">
-              MCP 端点就是当前 Lumina 进程上的 HTTP 路径，不是单独的 CLI。Q&A
-              实时通道使用 WebSocket。鉴权格式为{' '}
-              <code className="font-mono text-xs text-sea-ink">
+          <motion.p
+            className="mx-auto mb-7 max-w-2xl text-center text-sm leading-relaxed text-sea-ink-soft"
+            variants={fadeUp}
+          >
+            两种方式连接的是同一个 Lumina。Claude Code
+            用户安装插件最省事；Cursor、Windsurf、VS Code、Codex、Grok
+            等客户端可以直接配置 MCP。
+          </motion.p>
+
+          <div className="grid gap-px bg-line md:grid-cols-2">
+            <motion.article className="bg-surface p-6" variants={fadeUp}>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-lagoon" aria-hidden />
+                  <h3 className="text-lg font-semibold text-sea-ink">
+                    Claude Code 插件
+                  </h3>
+                </div>
+                <span className="bg-lagoon px-2 py-1 text-[10px] font-bold tracking-wider text-foam">
+                  推荐
+                </span>
+              </div>
+              <p className="mb-4 text-sm leading-relaxed text-sea-ink-soft">
+                插件同时带来 Lumina 技能和 MCP
+                配置。安装后会自动连接当前站点，无需再执行{' '}
+                <code>claude mcp add</code>
+                。登录控制台生成令牌后，把占位值替换掉即可。
+              </p>
+              <CopyBlock filename="Claude Code 插件" code={pluginSnippet} />
+            </motion.article>
+
+            <motion.article className="bg-chip-bg p-6" variants={fadeUp}>
+              <div className="mb-4 flex items-center gap-2">
+                <Plug className="h-4 w-4 text-lagoon" aria-hidden />
+                <h3 className="text-lg font-semibold text-sea-ink">
+                  独立 MCP 配置
+                </h3>
+              </div>
+              <p className="mb-4 text-sm leading-relaxed text-sea-ink-soft">
+                适合其他支持 Streamable HTTP 的客户端，也可用于不安装插件的
+                Claude Code 环境。下面先以 Cursor 为例。
+              </p>
+              <CopyBlock filename="~/.cursor/mcp.json" code={cursorSnippet} />
+              <p className="mt-3 font-mono text-[11px] break-all text-sea-ink-soft">
                 {buildAuthorizationHeader()}
-              </code>
-              。
-            </p>
-            <CopyBlock
-              filename="MCP 端点"
-              code={[
-                '传输：Streamable HTTP',
-                `端点：${mcpUrl}`,
-                buildAuthorizationHeader(),
-              ].join('\n')}
-            />
-            <p className="mt-5 mb-3 text-sm text-sea-ink-soft">
-              Cursor 示例（登录控制台生成令牌后，把{' '}
-              <code className="font-mono">&lt;api-key&gt;</code>{' '}
-              换成真实密钥）：
-            </p>
-            <CopyBlock filename="~/.cursor/mcp.json" code={cursorSnippet} />
-            <p className="mt-4 text-sm text-sea-ink-soft">
-              Windsurf、VS Code、Cline、Claude Desktop、Codex、Grok
-              的字段并不相同。登录控制台后可按客户端一键复制，并写入刚生成的密钥。
-            </p>
-            <div className="mt-5">
-              <Button
-                asChild
-                className="bg-sea-ink text-foam hover:bg-lagoon-deep"
-              >
-                <Link to="/auth/login">
-                  登录后生成配置
-                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
-                </Link>
-              </Button>
-            </div>
-          </motion.article>
+              </p>
+            </motion.article>
+          </div>
+
+          <motion.div className="mt-5 text-center" variants={fadeUp}>
+            <Button
+              asChild
+              className="bg-sea-ink text-foam hover:bg-lagoon-deep"
+            >
+              <Link to="/auth/login">
+                登录后生成令牌与完整配置
+                <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
+              </Link>
+            </Button>
+          </motion.div>
         </motion.div>
       </section>
 
@@ -380,7 +399,7 @@ function StartPage() {
                 </span>
               </div>
               <p className="text-sm leading-relaxed text-sea-ink-soft">
-                长期决策记忆仍在设计，当前 MCP 未暴露 memory_* 工具。
+                长期决策记忆正在设计中，后续会作为新的工具组加入 Lumina。
               </p>
             </motion.article>
           </div>
@@ -408,13 +427,13 @@ function StartPage() {
             className="display-title mb-4 text-2xl font-bold text-sea-ink sm:text-3xl"
             variants={fadeUp}
           >
-            准备好了吗？
+            服务已经就绪，下一步交给 Lumina
           </motion.h2>
           <motion.p
             className="mb-8 text-sm text-sea-ink-soft"
             variants={fadeUp}
           >
-            登录控制台创建令牌，即可把 25 个工具接到 Agent。
+            登录控制台生成接入令牌，插件命令与各客户端配置会自动带入它。
           </motion.p>
           <motion.div
             className="flex flex-col items-center justify-center gap-3 sm:flex-row"

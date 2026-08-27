@@ -50,7 +50,7 @@ func (h *AIPluginHandler) GetMarketplace(ctx *gin.Context) {
 func (h *AIPluginHandler) DownloadZip(ctx *gin.Context) {
 	h.log.Info(ctx, "DownloadZip - 下载插件 ZIP")
 
-	zipBytes, sha256sum, xErr := h.service.aiPluginLogic.Zip(ctx.Request.Context())
+	zipBytes, sha256sum, xErr := h.service.aiPluginLogic.Zip(ctx.Request.Context(), requestBaseURL(ctx))
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return

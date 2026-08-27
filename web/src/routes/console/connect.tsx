@@ -27,6 +27,12 @@ function ConnectPage() {
     >
       <motion.div variants={staggerItem}>
         <ChannelBand index={1}>
+          <PluginInstallPanel origin={origin} apiKey={apiKey} />
+        </ChannelBand>
+      </motion.div>
+
+      <motion.div variants={staggerItem}>
+        <ChannelBand index={2} alt>
           <EndpointCard
             mcpUrl={mcpUrl}
             origin={origin}
@@ -38,26 +44,22 @@ function ConnectPage() {
       </motion.div>
 
       <motion.div variants={staggerItem}>
-        <ChannelBand index={2} alt>
-          <ChannelKicker>客户端</ChannelKicker>
+        <ChannelBand index={3}>
+          <ChannelKicker>其他方案</ChannelKicker>
           <h2 className="display-title mt-2 text-[22px] font-medium text-sea-ink">
-            一键复制
+            独立配置 MCP
           </h2>
-          <p className="mt-1 mb-4 text-[13px] leading-relaxed text-sea-ink-soft">
-            字段名各不相同。默认
-            Cursor；点名称切换片段。配置格式以客户端当前文档为准。
+          <p className="mt-2 mb-4 max-w-[48em] text-[13px] leading-relaxed text-sea-ink-soft">
+            Cursor、Windsurf、VS Code、Codex、Grok 与其他支持 Streamable HTTP
+            的客户端，可以直接连接
+            Lumina。选择你的客户端，复制对应片段即可。Claude Code
+            也保留手动接入方式，适合不安装插件的环境。
           </p>
           {mcpUrl ? (
             <ClientConfigPanel mcpUrl={mcpUrl} apiKey={apiKey} />
           ) : (
-            <p className="text-sm text-sea-ink-soft">正在解析接入地址…</p>
+            <p className="text-sm text-sea-ink-soft">正在准备 MCP 地址…</p>
           )}
-        </ChannelBand>
-      </motion.div>
-
-      <motion.div variants={staggerItem}>
-        <ChannelBand index={3}>
-          <PluginInstallPanel origin={origin} />
         </ChannelBand>
       </motion.div>
 
