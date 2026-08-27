@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/url"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
+	"golang.org/x/net/publicsuffix"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
@@ -136,7 +138,10 @@ func (l *BiometricLogic) RegisterStart(ctx context.Context, req *apiBiometric.Re
 	exclusions := webauthn.Credentials(user.WebAuthnCredentials()).CredentialDescriptors()
 
 	// 生成注册选项与会话数据
-	wa := l.resolveWebAuthn(ctx)
+	wa, xErr := l.resolveWebAuthn(ctx)
+	if xErr != nil {
+		return nil, xErr
+	}
 	creation, sessionData, err := wa.BeginRegistration(
 		user,
 		webauthn.WithExclusions(exclusions),
@@ -212,8 +217,12 @@ func (l *BiometricLogic) RegisterFinish(ctx context.Context, req *apiBiometric.R
 		return nil, xError.NewError(ctx, xError.ParameterError, "解析凭证数据失败", false, err)
 	}
 
-	// 服务端验证凭证（签名、challenge、origin 等）
-	wa := l.resolveWebAuthn(ctx)
+	// 服务端验证凭证（签名、challenge、origin 等），
+	// RP ID 必须与 Start 阶段写入 SessionData 的值一致
+	wa, xErr := l.resolveWebAuthnForFinish(ctx, sessionData.RelyingPartyID)
+	if xErr != nil {
+		return nil, xErr
+	}
 	credential, err := wa.CreateCredential(user, sessionData, parsedResponse)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.ServerInternalError, "凭证验证失败", false, err)
@@ -258,7 +267,10 @@ func (l *BiometricLogic) LoginStart(ctx context.Context) (*apiBiometric.LoginSta
 	timeout := l.getWebAuthnTimeout(ctx)
 
 	// 生成登录选项与会话数据
-	wa := l.resolveWebAuthn(ctx)
+	wa, xErr := l.resolveWebAuthn(ctx)
+	if xErr != nil {
+		return nil, xErr
+	}
 	assertion, sessionData, err := wa.BeginLogin(
 		user,
 		webauthn.WithUserVerification(protocol.VerificationRequired),
@@ -343,8 +355,12 @@ func (l *BiometricLogic) LoginFinish(ctx context.Context, req *apiBiometric.Logi
 		hydrateLegacyCredentialFlags(user, parsedResponse.RawID, parsedResponse.Response.AuthenticatorData.Flags)
 	}
 
-	// 验证断言（签名、challenge、origin 等）
-	wa := l.resolveWebAuthn(ctx)
+	// 验证断言（签名、challenge、origin 等），
+	// RP ID 必须与 Start 阶段写入 SessionData 的值一致
+	wa, xErr := l.resolveWebAuthnForFinish(ctx, sessionData.RelyingPartyID)
+	if xErr != nil {
+		return nil, xErr
+	}
 	credential, err := wa.ValidateLogin(user, sessionData, parsedResponse)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.LoginFailed, "生物特征验证失败", false, err)
@@ -494,70 +510,139 @@ func parseWebAuthnOrigins(value string) []string {
 // the current domain」）。启动期静态配置无法感知部署域名，这里根据
 // middleware.WebAuthnOrigin 注入的浏览器 Origin 推导：
 //
-//   - RPID: 优先使用 XLF_BIOMETRIC_RP_ID（当其合法时）；否则取 Origin 的
-//     Hostname（等价于当前域，必然合法）
+//   - RPID: XLF_BIOMETRIC_RP_ID 未配置时自动取 Origin 的 Hostname；
+//     已配置且为可注册域后缀时使用配置值，否则返回配置错误
+//     （禁止静默生成会被浏览器拒绝的 rp.id）
 //   - RPOrigins: 环境变量配置与请求 Origin 取并集（服务端 origin 校验必达）
 //
-// 解析失败或非 HTTP 调用场景回退到启动期静态实例。
-func (l *BiometricLogic) resolveWebAuthn(ctx context.Context) *webauthn.WebAuthn {
+// 仅无 Origin 注入的场景回退启动期静态实例；其余失败一律返回显式错误，
+// 避免把 localhost 等静态 rp.id 下发给线上页面。
+func (l *BiometricLogic) resolveWebAuthn(ctx context.Context) (*webauthn.WebAuthn, *xError.Error) {
 	origin, _ := ctx.Value(bConst.WebAuthnOriginContextKey).(string)
 	if origin == "" {
-		return l.webAuthn
+		return l.webAuthn, nil
 	}
 
 	u, err := url.Parse(origin)
 	if err != nil || u.Hostname() == "" {
-		return l.webAuthn
+		return nil, xError.NewError(ctx, xError.ConfigError,
+			xError.ErrMessage(fmt.Sprintf("无法识别访问 Origin [%s]，请检查反向代理是否透传 Origin/Referer/Host", origin)), true)
 	}
 
-	hostname := strings.ToLower(u.Hostname())
+	reqOrigin, ok := normalizeOrigin(origin)
+	if !ok {
+		return nil, xError.NewError(ctx, xError.ConfigError,
+			xError.ErrMessage(fmt.Sprintf("非法的访问 Origin [%s]", origin)), true)
+	}
 
-	// 可选域名白名单：仅当配置了 XLF_BIOMETRIC_ALLOWED_ORIGINS 时校验，
-	// 未配置保持自动推导（向后兼容动态推导能力）。配置白名单后，
-	// DNS-rebinding 使 RPID 绑定恶意域名即被阻止（WebAuthn 抗钓鱼绑定增强）。
+	hostname := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+
+	// 可选域名白名单：仅当配置了 XLF_BIOMETRIC_ALLOWED_ORIGINS 时校验。
+	// 配置白名单后，不在名单内的请求被直接拒绝，防止 DNS-rebinding 使凭证
+	// 绑定到攻击者可控域名。校验基于归一化完整 Origin（scheme://host[:port]），
+	// scheme 或端口不同即为不同 Origin，不接受仅 hostname 匹配。
 	var allowedOrigins []string
 	for _, o := range strings.Split(xEnv.GetEnvString(bConst.EnvBiometricAllowedOrigins, ""), ",") {
 		if o = strings.TrimSpace(o); o != "" {
 			allowedOrigins = append(allowedOrigins, o)
 		}
 	}
-	if len(allowedOrigins) > 0 && !isAllowedRPOrigin(allowedOrigins, hostname) {
+	if len(allowedOrigins) > 0 && !isAllowedRPOrigin(allowedOrigins, reqOrigin) {
 		if l.log != nil {
-			l.log.Warn(ctx, fmt.Sprintf("resolveWebAuthn - 请求 Origin 不在白名单，回退静态配置 [hostname=%s]", hostname))
+			l.log.Warn(ctx, fmt.Sprintf("resolveWebAuthn - 访问 Origin 不在白名单 [origin=%s]", reqOrigin))
 		}
-		return l.webAuthn
+		return nil, xError.NewError(ctx, xError.Forbidden,
+			xError.ErrMessage(fmt.Sprintf("访问 Origin [%s] 不在 XLF_BIOMETRIC_ALLOWED_ORIGINS 白名单内", reqOrigin)), true)
 	}
 
-	rpID := l.resolveRPID(hostname)
-	if rpID == "" {
-		return l.webAuthn
+	rpID, xErr := l.resolveRPID(ctx, hostname)
+	if xErr != nil || rpID == "" {
+		return nil, xErr
 	}
 
-	// 基于启动期配置复制，仅覆盖请求相关的 RPID/RPOrigins
+	// 基于启动期配置复制，仅覆盖请求相关的 RPID/RPOrigins。
+	// 追加归一化后的 Origin：浏览器 clientData 的 origin 恒为规范形式
+	// （不携带默认端口），用原始请求串会造成 Finish 阶段比对失败或重复项。
 	config := *l.webAuthn.Config
 	config.RPID = rpID
-	config.RPOrigins = appendWebAuthnOrigins(config.RPOrigins, origin)
+	config.RPOrigins = appendWebAuthnOrigins(config.RPOrigins, reqOrigin)
 
 	wa, err := webauthn.New(&config)
 	if err != nil {
-		l.log.Warn(ctx, fmt.Sprintf("resolveWebAuthn - 动态构建 WebAuthn 实例失败，回退静态配置: %v", err))
-		return l.webAuthn
+		if l.log != nil {
+			l.log.Warn(ctx, fmt.Sprintf("resolveWebAuthn - 动态构建 WebAuthn 实例失败: %v", err))
+		}
+		return nil, xError.NewError(ctx, xError.ServerInternalError, "构建 WebAuthn 实例失败", true, err)
 	}
-	return wa
+	return wa, nil
+}
+
+// resolveWebAuthnForFinish 构建 Finish 阶段的验证实例。
+//
+// Start 阶段的 SessionData.RelyingPartyID 已随 Challenge 固化进 Redis，
+// Finish 阶段必须以同一 RP ID 计算 rpIdHash 才能通过校验；按请求头二次推导
+// 在部署域名变更、多域名入口等场景下会产生偏差。sessionRPID 为空（历史数据）
+// 时退化为按当前请求推导。
+func (l *BiometricLogic) resolveWebAuthnForFinish(ctx context.Context, sessionRPID string) (*webauthn.WebAuthn, *xError.Error) {
+	wa, xErr := l.resolveWebAuthn(ctx)
+	if xErr != nil || sessionRPID == "" || sessionRPID == wa.Config.RPID {
+		return wa, xErr
+	}
+
+	// Config.validate() 带 validated 记忆化，浅拷贝启动配置会让动态 New()
+	// 跳过 RP ID 合法性校验，这里对会话固化值显式补验后再构建
+	if err := protocol.ValidateRPID(sessionRPID); err != nil {
+		return nil, xError.NewError(ctx, xError.ConfigError,
+			xError.ErrMessage(fmt.Sprintf("会话中的 RP ID 非法 [%s]", sessionRPID)), true, err)
+	}
+
+	config := *wa.Config
+	config.RPID = sessionRPID
+	finishWa, err := webauthn.New(&config)
+	if err != nil {
+		return nil, xError.NewError(ctx, xError.ServerInternalError, "构建 WebAuthn 验证实例失败", true, err)
+	}
+	return finishWa, nil
 }
 
 // resolveRPID 推导当前请求的 RPID
 //
 // 规则:
-//   - XLF_BIOMETRIC_RP_ID 已设置且为请求 Hostname 的可注册域后缀
-//     （相等或点后缀）时使用配置值，支持子域共享凭证场景
-//   - 否则取请求 Hostname 本身（rp.id 等于当前域必然合法）
-func (l *BiometricLogic) resolveRPID(hostname string) string {
-	configured := xEnv.GetEnvString(bConst.EnvBiometricRPID, bConst.DefaultBiometricRPID)
-	if configured != "" && (configured == hostname || strings.HasSuffix(hostname, "."+configured)) {
-		return configured
+//   - XLF_BIOMETRIC_RP_ID 为空或等于内置默认值（视为未配置）时，
+//     使用请求 Hostname 自动推导（rp.id 等于当前域必然合法）
+//   - 配置值与 Hostname 相等时使用配置值
+//   - 配置值为 Hostname 后缀时，必须是可注册域后缀（eTLD+1）才允许，
+//     支持子域共享凭证；co.uk/com 等公共后缀会被浏览器直接拒绝，返回配置错误
+//   - 其余情况均返回配置错误，交由管理员修正部署域名或 RP ID 配置
+func (l *BiometricLogic) resolveRPID(ctx context.Context, hostname string) (string, *xError.Error) {
+	configured := strings.TrimSpace(xEnv.GetEnvString(bConst.EnvBiometricRPID, ""))
+	autoDerive := configured == "" || configured == bConst.DefaultBiometricRPID
+
+	// IP 主机只能以自身作为 rp.id（浏览器侧限制）
+	if ip := net.ParseIP(hostname); ip != nil {
+		if autoDerive || strings.EqualFold(configured, hostname) {
+			return hostname, nil
+		}
+		return "", xError.NewError(ctx, xError.ConfigError,
+			xError.ErrMessage(fmt.Sprintf("XLF_BIOMETRIC_RP_ID=%s 与访问地址 %s 不匹配", configured, hostname)), true)
 	}
-	return hostname
+
+	switch {
+	case autoDerive:
+		return hostname, nil
+	case strings.EqualFold(configured, hostname):
+		return strings.ToLower(configured), nil
+	case strings.HasSuffix(hostname, "."+strings.ToLower(configured)):
+		etdp1, err := publicsuffix.EffectiveTLDPlusOne(hostname)
+		if err == nil && strings.EqualFold(etdp1, configured) {
+			return strings.ToLower(configured), nil
+		}
+		return "", xError.NewError(ctx, xError.ConfigError,
+			xError.ErrMessage(fmt.Sprintf("XLF_BIOMETRIC_RP_ID=%s 不是 %s 的可注册域后缀（不允许 com/co.uk 等公共后缀）", configured, hostname)), true)
+	default:
+		return "", xError.NewError(ctx, xError.ConfigError,
+			xError.ErrMessage(fmt.Sprintf("XLF_BIOMETRIC_RP_ID=%s 与访问域名 %s 不匹配，如需自动推导请清除该配置", configured, hostname)), true)
+	}
 }
 
 // appendWebAuthnOrigins 在配置的 Origin 基础上补充请求 Origin（去重，保持顺序）。
@@ -576,17 +661,66 @@ func appendWebAuthnOrigins(configured []string, origin string) []string {
 	return origins
 }
 
-// isAllowedRPOrigin 校验 hostname 是否在允许的 Origin 白名单（RPOrigins）内。
+// isAllowedRPOrigin 校验请求 Origin 是否命中允许的 Origin 白名单。
 //
-// 用于阻止未配置域名的请求做动态 RPID 推导，防止 DNS-rebinding 攻击
-// 将 WebAuthn 凭证绑定到攻击者可控域名。
-func isAllowedRPOrigin(configured []string, hostname string) bool {
-	for _, o := range configured {
-		if u, err := url.Parse(o); err == nil && strings.EqualFold(u.Hostname(), hostname) {
+// 基于归一化后的完整 Origin 精确匹配，不比较裸 hostname：不同 scheme 或端口
+// 的 Origin 在浏览器侧互不相同，宽松匹配会削弱 XLF_BIOMETRIC_ALLOWED_ORIGINS
+// 对 DNS-rebinding 的防护边界。配置项非法时跳过而非放行。
+func isAllowedRPOrigin(configured []string, origin string) bool {
+	target, ok := normalizeOrigin(origin)
+	if !ok {
+		return false
+	}
+	for _, entry := range configured {
+		normalized, ok := normalizeOrigin(entry)
+		if ok && strings.EqualFold(normalized, target) {
 			return true
 		}
 	}
 	return false
+}
+
+// normalizeOrigin 将 Origin 字符串归一化为 scheme://host[:port] 的严格形式。
+//
+// http 与 https、不同端口的 Origin 在 WebAuthn Origin 校验中互不相同；
+// 默认端口（http=80 / https=443）与显式端口视为同一 Origin。
+// 携带 userinfo / path / query / fragment 或非 HTTP(S) 协议的值视为非法，
+// 返回 false 交由调用方拒绝。
+func normalizeOrigin(value string) (string, bool) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", false
+	}
+	u, err := url.Parse(value)
+	if err != nil || u.User != nil ||
+		(u.Path != "" && u.Path != "/") || u.RawQuery != "" ||
+		u.Fragment != "" || u.RawFragment != "" {
+		return "", false
+	}
+
+	scheme := strings.ToLower(u.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return "", false
+	}
+	host := strings.ToLower(u.Hostname())
+	if host == "" {
+		return "", false
+	}
+
+	port := u.Port()
+	switch {
+	case port == "80" && scheme == "http", port == "443" && scheme == "https":
+		port = ""
+	}
+
+	hostPart := host
+	if strings.Contains(host, ":") { // IPv6 地址补回方括号
+		hostPart = "[" + host + "]"
+	}
+	if port != "" {
+		hostPart += ":" + port
+	}
+	return scheme + "://" + hostPart, true
 }
 
 // getWebAuthnTimeout 读取安全设置中的 ceremony 超时，并限制在安全范围内。

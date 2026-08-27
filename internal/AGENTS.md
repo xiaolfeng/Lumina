@@ -301,7 +301,7 @@ internal/
 - **回答队列**：每个 Session 独立的 FIFO 队列，支持 `WaitAndConsume` 阻塞等待新回答。
 - **Pin FIFO 消费**：Pin 模块的 FIFO 消费基于数据库实现（`ConsumeOldestPending` + `ConsumeByID`），不依赖 Redis 队列。
 - **WebAuthn 凭证**：CredentialID 全局唯一，使用 bcrypt 存储公钥；Challenge 通过 Redis 缓存短暂会话（`cache/biometric_credential.go`）。
-- **WebAuthn RPID 动态推导**：按请求 Origin（`middleware.WebAuthnOrigin` 注入）动态推导 RPID/RPOrigins，支持注册域后缀共享凭证；`XLF_BIOMETRIC_ALLOWED_ORIGINS` 白名单阻止 DNS-rebinding。
+- **WebAuthn RPID 动态推导**：按请求 Origin（`middleware.WebAuthnOrigin` 双写 Request.Context 与 Keys 注入）动态推导 RPID/RPOrigins，支持注册域后缀共享凭证（经 publicsuffix 校验）；`XLF_BIOMETRIC_ALLOWED_ORIGINS` 按完整 Origin（scheme://host[:port]）严格匹配阻止 DNS-rebinding。白名单外或配置与访问域名不匹配时直接返回显式错误，禁止静默回退启动期静态配置。
 - **文件下载 Token**：`service/download_token.go` 生成短时效签名 Token，用于 Q&A 文件附件下载鉴权。
 - **文件缓存防护**：`service/file_cache.go` 的 `IsWithinCacheDir` 用绝对路径 + `EvalSymlinks` + `filepath.Rel` 前缀校验，防路径穿越与符号链接逃逸。
 - **Preview 模块**：单文件上限 256KB（`PreviewFileMaxSize`），MIME 类型推断（HTML/CSS/JS/JSON/SVG/Plain），会话通过 16 位 Hash 对外分享，`OnPreviewChanged` 回调驱动 `preview_sync` 实时推送。

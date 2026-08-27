@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -59,5 +60,29 @@ func TestWebAuthnOriginMiddlewareInjectsContext(t *testing.T) {
 	got, ok := c.Request.Context().Value(bConst.WebAuthnOriginContextKey).(string)
 	if !ok || got != "https://lumina.example.com" {
 		t.Fatalf("middleware 未正确注入 Origin: got %q, ok=%v", got, ok)
+	}
+}
+
+// TestWebAuthnOriginReadableViaGinContextValue 复刻生产引擎配置
+// （ContextWithFallback 默认关闭）下的完整读取链路：Handler 直传
+// *gin.Context 时，Logic 层通过 ctx.Value 必须能取到 Origin。
+func TestWebAuthnOriginReadableViaGinContextValue(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	router := gin.New() // 不开启 ContextWithFallback，与生产一致
+	var seen any
+	router.Use(WebAuthnOrigin())
+	router.POST("/", func(c *gin.Context) {
+		seen = c.Value(bConst.WebAuthnOriginContextKey)
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.Header.Set("Origin", "https://lumina.example.com")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if seen != "https://lumina.example.com" {
+		t.Fatalf("gin.Context.Value 未读到 Origin: got %#v, want https://lumina.example.com", seen)
 	}
 }

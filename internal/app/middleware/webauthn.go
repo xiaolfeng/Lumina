@@ -25,7 +25,8 @@ import (
 //  2. Referer 请求头（Origin 缺失时回退）
 //  3. Host 请求头 + scheme 推导（X-Forwarded-Proto / TLS）
 //
-// 解析失败时不阻断请求，仅记录日志；Logic 层会回退到启动期静态配置。
+// 解析失败时不阻断请求，仅记录日志；Logic 层对无 Origin 的调用回退启动期
+// 静态配置，其余场景直接返回配置错误（不会向线上页面下发静态 rp.id）。
 func WebAuthnOrigin() gin.HandlerFunc {
 	log := xLog.WithName(xLog.NamedMIDE, "WebAuthnOrigin")
 
@@ -36,6 +37,10 @@ func WebAuthnOrigin() gin.HandlerFunc {
 			log.Info(c, "WebAuthnOrigin - 解析浏览器 Origin", slog.String("origin", origin))
 			newCtx := context.WithValue(c.Request.Context(), bConst.WebAuthnOriginContextKey, origin)
 			c.Request = c.Request.WithContext(newCtx)
+			// 引擎未开启 ContextWithFallback 时 *gin.Context.Value 不会回退请求
+			// 上下文；键为原生 string，同步写入 Keys 保证 Handler 直传
+			// *gin.Context 到 Logic 层时仍可读取
+			c.Set(bConst.WebAuthnOriginContextKey, origin)
 		}
 
 		c.Next()
