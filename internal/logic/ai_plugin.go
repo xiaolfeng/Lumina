@@ -35,10 +35,12 @@ func NewAIPluginLogic(ctx context.Context) *AIPluginLogic {
 }
 
 // MarketplaceJSON 渲染带当前域名 ZIP 地址与真实 SHA-256 的 marketplace.json。
-func (l *AIPluginLogic) MarketplaceJSON(ctx context.Context, requestBaseURL string) ([]byte, *xError.Error) {
+//
+// userAgent 用于识别 ZCode 客户端并输出兼容的 url+zip 源形态。
+func (l *AIPluginLogic) MarketplaceJSON(ctx context.Context, requestBaseURL, userAgent string) ([]byte, *xError.Error) {
 	l.log.Info(ctx, "MarketplaceJSON - 渲染插件市场清单")
 	baseURL := l.resolveBaseURL(ctx, requestBaseURL)
-	data, _, err := l.plugin.MarketplaceJSON(baseURL)
+	data, _, err := l.plugin.MarketplaceJSON(baseURL, userAgent)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.ServerInternalError, "插件市场清单生成失败", false, err)
 	}

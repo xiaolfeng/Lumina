@@ -19,7 +19,7 @@ var _ = apiPlugin.WellKnownIndex{}
 // GetMarketplace 获取 Claude Code 插件市场清单
 //
 // @Summary     [公开] 插件市场清单
-// @Description 按当前请求域名动态渲染 marketplace.json，内含 ZIP 下载地址与实时 SHA-256
+// @Description 按当前请求域名动态渲染 marketplace.json，内含 ZIP 下载地址与实时 SHA-256；依据 User-Agent 适配客户端——ZCode 返回 url+zip 源，其余返回 archive 源
 // @Tags        插件接口
 // @Produce     json
 // @Success     200  {object}  apiPlugin.Marketplace  "市场清单"
@@ -28,7 +28,7 @@ var _ = apiPlugin.WellKnownIndex{}
 func (h *AIPluginHandler) GetMarketplace(ctx *gin.Context) {
 	h.log.Info(ctx, "GetMarketplace - 输出插件市场清单")
 
-	data, xErr := h.service.aiPluginLogic.MarketplaceJSON(ctx.Request.Context(), requestBaseURL(ctx))
+	data, xErr := h.service.aiPluginLogic.MarketplaceJSON(ctx.Request.Context(), requestBaseURL(ctx), ctx.GetHeader("User-Agent"))
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return

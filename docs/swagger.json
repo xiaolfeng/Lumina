@@ -4,6 +4,73 @@
         "contact": {}
     },
     "paths": {
+        "/.well-known/skills/index.json": {
+            "get": {
+                "description": "输出 /.well-known/skills/index.json，供 npx skills add \u003corigin\u003e 探测本站技能",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件接口"
+                ],
+                "summary": "[公开] 技能发现清单",
+                "responses": {
+                    "200": {
+                        "description": "技能发现清单",
+                        "schema": {
+                            "$ref": "#/definitions/plugin.WellKnownIndex"
+                        }
+                    },
+                    "500": {
+                        "description": "技能发现清单生成失败",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/.well-known/skills/{name}/SKILL.md": {
+            "get": {
+                "description": "按技能标识返回 /.well-known/skills/{name}/SKILL.md，供发现协议按 url 拉取",
+                "produces": [
+                    "text/markdown"
+                ],
+                "tags": [
+                    "插件接口"
+                ],
+                "summary": "[公开] 读取技能原文",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "技能标识",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SKILL.md",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "技能不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "读取技能失败",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/apikey": {
             "get": {
                 "description": "按 page/size 分页查询 API 密钥列表，密钥以脱敏形式展示",
@@ -2224,6 +2291,58 @@
                 }
             }
         },
+        "/api/v1/plugins/lumina.zip": {
+            "get": {
+                "description": "将内嵌的 AI 插件与技能在内存中打包为 zip 流式返回",
+                "produces": [
+                    "application/zip"
+                ],
+                "tags": [
+                    "插件接口"
+                ],
+                "summary": "[公开] 下载插件 ZIP",
+                "responses": {
+                    "200": {
+                        "description": "插件 ZIP",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "500": {
+                        "description": "插件资源打包失败",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/plugins/marketplace.json": {
+            "get": {
+                "description": "按当前请求域名动态渲染 marketplace.json，内含 ZIP 下载地址与实时 SHA-256；依据 User-Agent 适配客户端——ZCode 返回 url+zip 源，其余返回 archive 源",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件接口"
+                ],
+                "summary": "[公开] 插件市场清单",
+                "responses": {
+                    "200": {
+                        "description": "市场清单",
+                        "schema": {
+                            "$ref": "#/definitions/plugin.Marketplace"
+                        }
+                    },
+                    "500": {
+                        "description": "插件资源打包失败",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/preview/files/{id}": {
             "get": {
                 "description": "根据文件 ID 查询预览文件详情与关联会话哈希，供 Q\u0026A supplement preview 类型渲染解析 serve 地址",
@@ -2233,8 +2352,15 @@
                 "tags": [
                     "Preview接口"
                 ],
-                "summary": "[公开] 获取预览文件详情",
+                "summary": "[管理] 获取预览文件详情",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "预览文件 ID",
@@ -2260,6 +2386,12 @@
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
                         }
                     },
                     "404": {
@@ -6753,6 +6885,140 @@
                 },
                 "priority": {
                     "description": "优先级 (可选更新)",
+                    "type": "string"
+                }
+            }
+        },
+        "plugin.Marketplace": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner": {
+                    "$ref": "#/definitions/plugin.MarketplaceOwner"
+                },
+                "plugins": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/plugin.MarketplacePlugin"
+                    }
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "plugin.MarketplaceOwner": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "plugin.MarketplacePlugin": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/plugin.PluginAuthor"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "homepage": {
+                    "type": "string"
+                },
+                "keywords": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "license": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "repository": {
+                    "type": "string"
+                },
+                "source": {
+                    "$ref": "#/definitions/plugin.MarketplaceSource"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "plugin.MarketplaceSource": {
+            "type": "object",
+            "properties": {
+                "sha256": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "plugin.PluginAuthor": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "plugin.WellKnownIndex": {
+            "type": "object",
+            "properties": {
+                "$schema": {
+                    "type": "string"
+                },
+                "skills": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/plugin.WellKnownSkill"
+                    }
+                }
+            }
+        },
+        "plugin.WellKnownSkill": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "digest": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
                     "type": "string"
                 }
             }

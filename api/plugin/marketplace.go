@@ -31,12 +31,16 @@ type MarketplacePlugin struct {
 	Source      MarketplaceSource `json:"source"`
 }
 
-// MarketplaceSource Claude Code archive 源。
+// MarketplaceSource 插件 ZIP 分发源。
 //
-// source 固定为 "archive"；url 指向当前站点的 ZIP 下载地址；
-// sha256 为 ZIP 原始字节的 SHA-256 十六进制摘要。
+// source 固定指向当前站点的 ZIP 下载地址（url），sha256 为 ZIP 原始字节的
+// 十六进制摘要。按客户端输出两种形态（二者字段兼容，仅 kind 不同）：
+//   - Claude Code：source="archive"（要求 v2.1.224+）；
+//   - ZCode：source="url" 且 type="zip"（ZCode 不支持 archive，
+//     其 url 源在 type="zip" 时走内置 HTTPS ZIP 下载器并校验 sha256）。
 type MarketplaceSource struct {
 	Source string `json:"source"`
+	Type   string `json:"type,omitempty"`
 	URL    string `json:"url"`
 	SHA256 string `json:"sha256"`
 }

@@ -114,8 +114,12 @@ func (s *AIPluginService) BundleForInstance(baseURL string) (*PluginBundle, erro
 	}, nil
 }
 
-// MarketplaceJSON 按给定站点根地址渲染 Claude Code marketplace.json。
-func (s *AIPluginService) MarketplaceJSON(baseURL string) ([]byte, *PluginBundle, error) {
+// MarketplaceJSON 按请求客户端渲染 Claude Code marketplace.json。
+//
+// ZCode 不支持 archive 源类型（会报 "Plugin source is invalid or
+// unsupported"），故按 User-Agent 输出其 url+zip 变体；其余客户端
+// 保持 Claude Code 的 archive 形态。
+func (s *AIPluginService) MarketplaceJSON(baseURL, userAgent string) ([]byte, *PluginBundle, error) {
 	bundle, err := s.BundleForInstance(baseURL)
 	if err != nil {
 		return nil, nil, err
@@ -141,11 +145,7 @@ func (s *AIPluginService) MarketplaceJSON(baseURL string) ([]byte, *PluginBundle
 				Repository:  manifest.Repository,
 				License:     manifest.License,
 				Keywords:    manifest.Keywords,
-				Source: apiPlugin.MarketplaceSource{
-					Source: "archive",
-					URL:    joinURL(baseURL, bConst.AIPluginZipPath),
-					SHA256: bundle.SHA256,
-				},
+				Source:      marketplaceSource(baseURL, bundle.SHA256, isZcodeUserAgent(userAgent)),
 			},
 		},
 	}
@@ -156,6 +156,22 @@ func (s *AIPluginService) MarketplaceJSON(baseURL string) ([]byte, *PluginBundle
 	}
 	data = append(data, '\n')
 	return data, bundle, nil
+}
+
+// marketplaceSource 按客户端产出 ZIP 源：ZCode 走 url+zip，
+// Claude Code 及其他客户端走 archive。
+func marketplaceSource(baseURL, sha256 string, zcode bool) apiPlugin.MarketplaceSource {
+	zipURL := joinURL(baseURL, bConst.AIPluginZipPath)
+	if zcode {
+		return apiPlugin.MarketplaceSource{Source: "url", Type: "zip", URL: zipURL, SHA256: sha256}
+	}
+	return apiPlugin.MarketplaceSource{Source: "archive", URL: zipURL, SHA256: sha256}
+}
+
+// isZcodeUserAgent 识别 ZCode 客户端（其 HTTP 请求固定携带
+// "ZCode/<版本>" User-Agent，见 ZCode 客户端 sourceHeaders 实现）。
+func isZcodeUserAgent(userAgent string) bool {
+	return strings.Contains(strings.ToLower(userAgent), "zcode/")
 }
 
 // WellKnownJSON 按 Agent Skills 发现协议渲染 /.well-known/skills/index.json。

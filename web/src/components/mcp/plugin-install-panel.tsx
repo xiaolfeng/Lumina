@@ -48,8 +48,9 @@ export function PluginInstallPanel({
       </div>
 
       <p className="mt-3 max-w-[48em] text-[15px] leading-relaxed text-sea-ink-soft">
-        Claude Code 用户直接安装 Lumina 插件即可。插件会按官方机制读取随包提供的
-        MCP 配置，并连接到当前站点；无需再执行 <code>claude mcp add</code>
+        Claude Code 与 ZCode 用户直接安装 Lumina
+        插件即可。插件会按客户端机制读取随包提供的 MCP
+        配置，并连接到当前站点；无需再执行 <code>claude mcp add</code>
         ，也不用手动编辑 MCP 配置文件。
       </p>
 
@@ -103,6 +104,12 @@ export function PluginInstallPanel({
               Claude Code 插件
             </TabsTrigger>
             <TabsTrigger
+              value="zcode"
+              className="rounded-none px-3 py-2 text-xs data-[state=active]:bg-foam data-[state=active]:text-sea-ink"
+            >
+              ZCode 插件
+            </TabsTrigger>
+            <TabsTrigger
               value="skills"
               className="rounded-none px-3 py-2 text-xs data-[state=active]:bg-foam data-[state=active]:text-sea-ink"
             >
@@ -124,6 +131,21 @@ export function PluginInstallPanel({
                 {marketplaceUrl}
               </span>
               ，其中的 MCP 地址会指向当前 Lumina 站点。
+            </p>
+          </TabsContent>
+          <TabsContent value="zcode" className="space-y-3">
+            <p className="text-[13px] leading-relaxed text-sea-ink-soft">
+              打开 ZCode 的「设置 → 插件管理 → 发现」，点击{' '}
+              <code>+</code>{' '}
+              粘贴下方市场地址并安装 <code>lumina</code>{' '}
+              插件，完成后重启 ZCode。
+            </p>
+            <CopyBlock code={marketplaceUrl} filename="ZCode · 市场地址" />
+            <p className="text-xs leading-relaxed text-sea-ink-soft">
+              ZCode 会拿到与其兼容的 url + zip
+              清单变体，其余客户端拿到 archive 变体，地址无需区分。鉴权沿用{' '}
+              <code>LUMINA_API_KEY</code>{' '}
+              环境变量；若 MCP 未自动连接，使用下方独立 MCP 配置手动添加。
             </p>
           </TabsContent>
           <TabsContent value="skills" className="space-y-3">

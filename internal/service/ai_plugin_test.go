@@ -160,7 +160,7 @@ func TestPluginBundleDeterministic(t *testing.T) {
 func TestMarketplaceJSONUsesRequestHostAndZipHash(t *testing.T) {
 	svc := NewAIPluginService()
 	const base = "http://127.0.0.1:8800"
-	data, bundle, err := svc.MarketplaceJSON(base)
+	data, bundle, err := svc.MarketplaceJSON(base, "claude-cli/2.1.240 (external, cli)")
 	if err != nil {
 		t.Fatalf("渲染 marketplace.json 失败: %v", err)
 	}
@@ -182,6 +182,9 @@ func TestMarketplaceJSONUsesRequestHostAndZipHash(t *testing.T) {
 	if plugin.Source.Source != "archive" {
 		t.Fatalf("source.source = %q, want archive", plugin.Source.Source)
 	}
+	if plugin.Source.Type != "" {
+		t.Fatalf("source.type = %q, want 空", plugin.Source.Type)
+	}
 	wantURL := base + bConst.AIPluginZipPath
 	if plugin.Source.URL != wantURL {
 		t.Fatalf("source.url = %q, want %q", plugin.Source.URL, wantURL)
@@ -193,6 +196,62 @@ func TestMarketplaceJSONUsesRequestHostAndZipHash(t *testing.T) {
 	if !bytes.Contains(mcpConfig, []byte(base+bConst.AIPluginMCPPath)) {
 		t.Fatalf("市场清单指向的 ZIP 未绑定当前实例 MCP 地址: %s", mcpConfig)
 	}
+}
+
+func TestMarketplaceJSONServesZcodeURLZipVariant(t *testing.T) {
+	svc := NewAIPluginService()
+	const base = "https://lumina.example"
+
+	t.Run("zcode user agent", func(t *testing.T) {
+		data, bundle, err := svc.MarketplaceJSON(base, "ZCode/0.5.13")
+		if err != nil {
+			t.Fatalf("渲染 ZCode marketplace.json 失败: %v", err)
+		}
+		var doc apiPlugin.Marketplace
+		if err := json.Unmarshal(data, &doc); err != nil {
+			t.Fatalf("解析 ZCode marketplace.json 失败: %v\n%s", err, data)
+		}
+		source := doc.Plugins[0].Source
+		if source.Source != "url" || source.Type != "zip" {
+			t.Fatalf("source = (%q, %q), want (url, zip)", source.Source, source.Type)
+		}
+		if want := base + bConst.AIPluginZipPath; source.URL != want {
+			t.Fatalf("source.url = %q, want %q", source.URL, want)
+		}
+		if source.SHA256 != bundle.SHA256 {
+			t.Fatalf("source.sha256 = %q, want %q", source.SHA256, bundle.SHA256)
+		}
+	})
+
+	t.Run("case insensitive match", func(t *testing.T) {
+		data, _, err := svc.MarketplaceJSON(base, "zcode/0.5.13")
+		if err != nil {
+			t.Fatalf("渲染 marketplace.json 失败: %v", err)
+		}
+		var doc apiPlugin.Marketplace
+		if err := json.Unmarshal(data, &doc); err != nil {
+			t.Fatalf("解析 marketplace.json 失败: %v", err)
+		}
+		if source := doc.Plugins[0].Source; source.Source != "url" {
+			t.Fatalf("source.source = %q, want url", source.Source)
+		}
+	})
+
+	t.Run("empty and foreign agents keep archive", func(t *testing.T) {
+		for _, ua := range []string{"", "curl/8.7.1"} {
+			data, _, err := svc.MarketplaceJSON(base, ua)
+			if err != nil {
+				t.Fatalf("渲染 marketplace.json 失败 (ua=%q): %v", ua, err)
+			}
+			var doc apiPlugin.Marketplace
+			if err := json.Unmarshal(data, &doc); err != nil {
+				t.Fatalf("解析 marketplace.json 失败 (ua=%q): %v", ua, err)
+			}
+			if source := doc.Plugins[0].Source; source.Source != "archive" {
+				t.Fatalf("ua=%q source.source = %q, want archive", ua, source.Source)
+			}
+		}
+	})
 }
 
 func readZipEntryForTest(t *testing.T, zipBytes []byte, name string) []byte {
