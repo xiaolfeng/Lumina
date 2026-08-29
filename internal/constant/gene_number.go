@@ -18,4 +18,5 @@ const (
 	GeneSSHKey              xSnowflake.Gene = 44 // SSH密钥基因
 	GenePreviewSession      xSnowflake.Gene = 45 // 预览会话基因
 	GenePreviewFile         xSnowflake.Gene = 46 // 预览文件基因
+	GeneOAuthClient         xSnowflake.Gene = 47 // OAuth动态客户端基因
 )

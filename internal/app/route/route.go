@@ -55,6 +55,9 @@ func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) xOption.RouteRegistrar {
 		// Webhook receiver must also be registered before engine.Use() for raw body access
 		r.webhookRouter(r.engine)
 
+		// OAuth 2.1 well-known / authorize / register / token 端点同样需要裸 JSON
+		r.oauthPublicRouter(r.engine)
+
 		r.engine.Use(xMiddle.ResponseMiddleware)
 		r.engine.Use(middleware.SecurityHeaders())
 		r.engine.Use(middleware.Cors())
@@ -83,6 +86,7 @@ func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) xOption.RouteRegistrar {
 		r.wsRouter(apiRouter)
 		r.previewRouter(apiRouter)
 		r.dashboardRouter(apiRouter)
+		r.oauthRouter(apiRouter)
 
 		if r.frontendFS != nil {
 			r.frontendRouter()

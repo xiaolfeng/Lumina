@@ -162,6 +162,27 @@ function claudeDesktopSnippet(ctx: McpConnectContext): string {
   })
 }
 
+/**
+ * OAuth 直连（方案 A）：不带 Authorization 头，由客户端在首次连接时
+ * 发起 OAuth 2.1 登录授权，Lumina 签发并自动续期访问令牌。
+ */
+
+export function buildClaudeOAuthAdd(mcpUrl: string): string {
+  return `claude mcp add --transport http ${MCP_SERVER_NAME} ${mcpUrl}`
+}
+
+export function buildCodexOAuthAdd(mcpUrl: string): string {
+  return `codex mcp add ${MCP_SERVER_NAME} --url ${mcpUrl}`
+}
+
+export function buildGenericOAuthJSON(mcpUrl: string): string {
+  return JSON.stringify(
+    { mcpServers: { [MCP_SERVER_NAME]: { type: 'http', url: mcpUrl } } },
+    null,
+    2,
+  )
+}
+
 function claudeCodeSnippet(ctx: McpConnectContext): string {
   return `claude mcp add --transport http ${MCP_SERVER_NAME} ${ctx.mcpUrl} --header "${buildAuthorizationHeader(ctx.apiKey)}"`
 }

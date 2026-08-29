@@ -32,6 +32,7 @@ import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-passw
 import { Route as AuthNewRouteImport } from './routes/auth/new'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as PublicStartRouteImport } from './routes/_public/start'
+import { Route as PublicOauthRouteImport } from './routes/_public/oauth'
 import { Route as ConsoleQaIndexRouteImport } from './routes/console/qa/index'
 import { Route as ConsoleProjectIndexRouteImport } from './routes/console/project/index'
 import { Route as ConsolePreviewIndexRouteImport } from './routes/console/preview/index'
@@ -154,6 +155,11 @@ const PublicStartRoute = PublicStartRouteImport.update({
   path: '/start',
   getParentRoute: () => PublicRoute,
 } as any)
+const PublicOauthRoute = PublicOauthRouteImport.update({
+  id: '/oauth',
+  path: '/oauth',
+  getParentRoute: () => PublicRoute,
+} as any)
 const ConsoleQaIndexRoute = ConsoleQaIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -199,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/console': typeof ConsoleRouteWithChildren
   '/interact': typeof InteractRouteWithChildren
   '/preview': typeof PreviewRouteWithChildren
+  '/oauth': typeof PublicOauthRoute
   '/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
@@ -226,6 +233,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
+  '/oauth': typeof PublicOauthRoute
   '/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
@@ -256,6 +264,7 @@ export interface FileRoutesById {
   '/console': typeof ConsoleRouteWithChildren
   '/interact': typeof InteractRouteWithChildren
   '/preview': typeof PreviewRouteWithChildren
+  '/_public/oauth': typeof PublicOauthRoute
   '/_public/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/new': typeof AuthNewRoute
@@ -290,6 +299,7 @@ export interface FileRouteTypes {
     | '/console'
     | '/interact'
     | '/preview'
+    | '/oauth'
     | '/start'
     | '/auth/login'
     | '/auth/new'
@@ -317,6 +327,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/oauth'
     | '/start'
     | '/auth/login'
     | '/auth/new'
@@ -346,6 +357,7 @@ export interface FileRouteTypes {
     | '/console'
     | '/interact'
     | '/preview'
+    | '/_public/oauth'
     | '/_public/start'
     | '/auth/login'
     | '/auth/new'
@@ -544,6 +556,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicStartRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_public/oauth': {
+      id: '/_public/oauth'
+      path: '/oauth'
+      fullPath: '/oauth'
+      preLoaderRoute: typeof PublicOauthRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/console/qa/': {
       id: '/console/qa/'
       path: '/'
@@ -597,11 +616,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface PublicRouteChildren {
+  PublicOauthRoute: typeof PublicOauthRoute
   PublicStartRoute: typeof PublicStartRoute
   PublicIndexRoute: typeof PublicIndexRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
+  PublicOauthRoute: PublicOauthRoute,
   PublicStartRoute: PublicStartRoute,
   PublicIndexRoute: PublicIndexRoute,
 }

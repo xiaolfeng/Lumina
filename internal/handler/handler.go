@@ -23,6 +23,7 @@ type service struct {
 	previewLogic     *logic.PreviewLogic
 	dashboardLogic   *logic.DashboardLogic
 	aiPluginLogic    *logic.AIPluginLogic
+	oauthLogic       *logic.OAuthLogic
 }
 
 type handler struct {
@@ -65,6 +66,7 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 			previewLogic:     logic.NewPreviewLogic(ctx),
 			dashboardLogic:   logic.NewDashboardLogic(ctx),
 			aiPluginLogic:    logic.NewAIPluginLogic(ctx),
+			oauthLogic:       logic.NewOAuthLogic(ctx),
 		},
 	}
 }
@@ -100,3 +102,5 @@ type PreviewHandler handler
 type DashboardHandler handler
 
 type AIPluginHandler handler
+
+type OAuthHandler handler

@@ -37,22 +37,22 @@ export function PluginInstallPanel({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <ChannelKicker>推荐方案</ChannelKicker>
+          <ChannelKicker>方案 B · 插件安装</ChannelKicker>
           <h1 className="display-title mt-2 text-[30px] font-medium tracking-tight text-sea-ink sm:text-[34px]">
-            安装插件，一次完成接入
+            安装插件，附加技能包
           </h1>
         </div>
         <span className="inline-flex items-center gap-1.5 bg-lagoon px-3 py-1.5 text-[11px] font-bold tracking-[0.12em] text-foam">
           <Sparkles className="size-3.5" aria-hidden />
-          CLAUDE CODE 推荐
+          完整技能包
         </span>
       </div>
 
       <p className="mt-3 max-w-[48em] text-[15px] leading-relaxed text-sea-ink-soft">
-        Claude Code 与 ZCode 用户直接安装 Lumina
-        插件即可。插件会按客户端机制读取随包提供的 MCP
-        配置，并连接到当前站点；无需再执行 <code>claude mcp add</code>
-        ，也不用手动编辑 MCP 配置文件。
+        相比方案 A
+        的纯直连，插件会随包安装 Q&A、Preview、Pin 与 RepoWiki
+        技能说明，并按客户端机制读取随包提供的 MCP 配置连接到当前站点；无需再执行{' '}
+        <code>claude mcp add</code>，也不用手动编辑 MCP 配置文件。
       </p>
 
       <div className="mt-5 grid gap-px bg-line sm:grid-cols-[1.05fr_0.95fr]">
@@ -152,7 +152,7 @@ export function PluginInstallPanel({
               ZCode 会拿到与其兼容的 url + zip
               清单变体，其余客户端拿到 archive 变体，地址无需区分。鉴权沿用{' '}
               <code>LUMINA_API_KEY</code>{' '}
-              环境变量；若 MCP 未自动连接，使用下方独立 MCP 配置手动添加。
+              环境变量；若 MCP 未自动连接，使用方案 C 的独立 MCP 配置手动添加。
             </p>
           </TabsContent>
           <TabsContent value="codex" className="space-y-3">
@@ -163,8 +163,8 @@ export function PluginInstallPanel({
             <CopyBlock code={buildCodexPluginSnippet()} filename="Codex" />
             <p className="text-xs leading-relaxed text-sea-ink-soft">
               插件提供 Q&A、Preview、Pin 与 RepoWiki
-              技能。Codex 不消费动态插件包内的 MCP 配置，连接 MCP 请使用下方独立
-              MCP 配置并填入本站地址与令牌。
+              技能。Codex 不消费动态插件包内的 MCP 配置，连接 MCP 请使用方案 C
+              的独立 MCP 配置，或改用方案 A 的 OAuth 直连。
             </p>
           </TabsContent>
           <TabsContent value="skills" className="space-y-3">

@@ -15,6 +15,46 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/.well-known/oauth-authorization-server": {
+            "get": {
+                "description": "按 RFC 8414 输出 /.well-known/oauth-authorization-server，含授权/令牌/注册端点与 PKCE 能力",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OAuth接口"
+                ],
+                "summary": "[公开] OAuth 授权服务器元数据",
+                "responses": {
+                    "200": {
+                        "description": "授权服务器元数据",
+                        "schema": {
+                            "$ref": "#/definitions/oauth.AuthorizationServerMetadata"
+                        }
+                    }
+                }
+            }
+        },
+        "/.well-known/oauth-protected-resource": {
+            "get": {
+                "description": "按 RFC 9728 输出 /.well-known/oauth-protected-resource，供 MCP 客户端发现授权服务器",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OAuth接口"
+                ],
+                "summary": "[公开] OAuth 受保护资源元数据",
+                "responses": {
+                    "200": {
+                        "description": "资源元数据",
+                        "schema": {
+                            "$ref": "#/definitions/oauth.ProtectedResourceMetadata"
+                        }
+                    }
+                }
+            }
+        },
         "/.well-known/skills/index.json": {
             "get": {
                 "description": "输出 /.well-known/skills/index.json，供 npx skills add \u003corigin\u003e 探测本站技能",
@@ -1932,6 +1972,115 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "存在关联模型，无法删除",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/oauth/consent": {
+            "get": {
+                "description": "按授权请求 ID 读取待裁决请求的客户端名称与作用域（不消费该请求）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OAuth接口"
+                ],
+                "summary": "[用户] OAuth 授权请求概要",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "授权请求 ID",
+                        "name": "authorize_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/xBase.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/oauth.ConsentDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未登录",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "授权请求不存在或已过期",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "消费授权请求并按用户裁决签发授权码或拒绝，返回客户端回调地址",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OAuth接口"
+                ],
+                "summary": "[用户] OAuth 授权裁决",
+                "parameters": [
+                    {
+                        "description": "授权裁决",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/oauth.ConsentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "裁决完成",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/xBase.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/oauth.ConsentRedirect"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未登录",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "授权请求不存在或已过期",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -5817,6 +5966,202 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/oauth/authorize": {
+            "get": {
+                "description": "校验 client/redirect_uri/PKCE 后暂存请求并重定向到前端授权页 /oauth?authorize_id=...",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "OAuth接口"
+                ],
+                "summary": "[公开] OAuth 授权端点",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "响应类型（code）",
+                        "name": "response_type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "客户端 ID",
+                        "name": "client_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "回调地址",
+                        "name": "redirect_uri",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "PKCE code_challenge",
+                        "name": "code_challenge",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "PKCE 方法（S256）",
+                        "name": "code_challenge_method",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "客户端状态",
+                        "name": "state",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "作用域",
+                        "name": "scope",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "RFC 8707 资源标识",
+                        "name": "resource",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "重定向到前端授权页",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "授权请求无效（无法安全重定向）",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/oauth/register": {
+            "post": {
+                "description": "按 RFC 7591 注册公共客户端，返回 client_id；仅 PKCE 公共流程，无客户端密钥",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OAuth接口"
+                ],
+                "summary": "[公开] OAuth 动态客户端注册",
+                "parameters": [
+                    {
+                        "description": "注册请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/oauth.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "注册成功",
+                        "schema": {
+                            "$ref": "#/definitions/oauth.RegisterResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "注册失败",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oauth/token": {
+            "post": {
+                "description": "接受 authorization_code（含 PKCE 校验）与 refresh_token 两种授权方式，签发 Bearer 访问令牌",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OAuth接口"
+                ],
+                "summary": "[公开] OAuth 令牌端点",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "授权方式（authorization_code / refresh_token）",
+                        "name": "grant_type",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "授权码",
+                        "name": "code",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "PKCE code_verifier",
+                        "name": "code_verifier",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "回调地址",
+                        "name": "redirect_uri",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "客户端 ID",
+                        "name": "client_id",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "刷新令牌",
+                        "name": "refresh_token",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "令牌签发成功",
+                        "schema": {
+                            "$ref": "#/definitions/oauth.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "协议错误",
+                        "schema": {
+                            "$ref": "#/definitions/oauth.TokenErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -6783,6 +7128,260 @@ const docTemplate = `{
                 },
                 "protocol": {
                     "description": "协议类型",
+                    "type": "string"
+                }
+            }
+        },
+        "oauth.AuthorizationServerMetadata": {
+            "type": "object",
+            "properties": {
+                "authorization_endpoint": {
+                    "description": "授权端点",
+                    "type": "string"
+                },
+                "code_challenge_methods_supported": {
+                    "description": "支持的 PKCE 方法",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "grant_types_supported": {
+                    "description": "支持的授权方式",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "issuer": {
+                    "description": "签发者标识（站点根地址）",
+                    "type": "string"
+                },
+                "registration_endpoint": {
+                    "description": "动态注册端点",
+                    "type": "string"
+                },
+                "response_types_supported": {
+                    "description": "支持的响应类型",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "scopes_supported": {
+                    "description": "支持的作用域",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "token_endpoint": {
+                    "description": "令牌端点",
+                    "type": "string"
+                },
+                "token_endpoint_auth_methods_supported": {
+                    "description": "令牌端点认证方式",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "oauth.ConsentDetail": {
+            "type": "object",
+            "properties": {
+                "client_name": {
+                    "description": "请求授权的客户端名称",
+                    "type": "string"
+                },
+                "scope": {
+                    "description": "请求的作用域",
+                    "type": "string"
+                }
+            }
+        },
+        "oauth.ConsentRedirect": {
+            "type": "object",
+            "properties": {
+                "redirect": {
+                    "description": "客户端回调地址",
+                    "type": "string"
+                }
+            }
+        },
+        "oauth.ConsentRequest": {
+            "type": "object",
+            "required": [
+                "authorize_id"
+            ],
+            "properties": {
+                "approve": {
+                    "description": "是否同意授权",
+                    "type": "boolean"
+                },
+                "authorize_id": {
+                    "description": "授权请求 ID",
+                    "type": "string"
+                }
+            }
+        },
+        "oauth.ProtectedResourceMetadata": {
+            "type": "object",
+            "properties": {
+                "authorization_servers": {
+                    "description": "授权服务器 issuer 列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "bearer_methods_supported": {
+                    "description": "Bearer 传递方式",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "resource": {
+                    "description": "资源标识（MCP 端点完整 URL）",
+                    "type": "string"
+                },
+                "resource_documentation": {
+                    "description": "资源文档地址",
+                    "type": "string"
+                },
+                "scopes_supported": {
+                    "description": "支持的作用域",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "oauth.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "redirect_uris"
+            ],
+            "properties": {
+                "client_name": {
+                    "description": "客户端名称",
+                    "type": "string"
+                },
+                "grant_types": {
+                    "description": "请求的授权方式（忽略，恒为 authorization_code）",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "redirect_uris": {
+                    "description": "回调地址列表（精确匹配）",
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "response_types": {
+                    "description": "请求的响应类型（忽略，恒为 code）",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "scope": {
+                    "description": "请求作用域（忽略，恒为 mcp）",
+                    "type": "string"
+                },
+                "token_endpoint_auth_method": {
+                    "description": "令牌端点认证方式（忽略，恒为 none）",
+                    "type": "string"
+                }
+            }
+        },
+        "oauth.RegisterResponse": {
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "description": "客户端 ID（雪花 ID 十进制字符串）",
+                    "type": "string"
+                },
+                "client_id_issued_at": {
+                    "description": "签发时间（Unix 秒）",
+                    "type": "integer"
+                },
+                "client_name": {
+                    "description": "客户端名称",
+                    "type": "string"
+                },
+                "grant_types": {
+                    "description": "授权方式",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "redirect_uris": {
+                    "description": "回调地址列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "response_types": {
+                    "description": "响应类型",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "scope": {
+                    "description": "授予作用域",
+                    "type": "string"
+                },
+                "token_endpoint_auth_method": {
+                    "description": "令牌端点认证方式",
+                    "type": "string"
+                }
+            }
+        },
+        "oauth.TokenErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "错误码（invalid_request / invalid_client / invalid_grant 等）",
+                    "type": "string"
+                },
+                "error_description": {
+                    "description": "错误描述",
+                    "type": "string"
+                }
+            }
+        },
+        "oauth.TokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "description": "访问令牌（lum_at_ 前缀）",
+                    "type": "string"
+                },
+                "expires_in": {
+                    "description": "访问令牌有效期（秒）",
+                    "type": "integer"
+                },
+                "refresh_token": {
+                    "description": "刷新令牌（lum_rt_ 前缀）",
+                    "type": "string"
+                },
+                "scope": {
+                    "description": "授予作用域",
+                    "type": "string"
+                },
+                "token_type": {
+                    "description": "令牌类型，恒为 Bearer",
                     "type": "string"
                 }
             }
@@ -8604,6 +9203,30 @@ const docTemplate = `{
                 },
                 "version_id": {
                     "description": "present when status=accepted",
+                    "type": "integer"
+                }
+            }
+        },
+        "xBase.BaseResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "context": {
+                    "type": "string"
+                },
+                "data": {},
+                "error_message": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "output": {
+                    "type": "string"
+                },
+                "overhead": {
                     "type": "integer"
                 }
             }

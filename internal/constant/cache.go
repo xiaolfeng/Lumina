@@ -39,6 +39,12 @@ const (
 
 	// ── SSH 密钥缓存（Cache-Aside ID→详情，TTL 30 分钟）──
 	CacheSSHKeyByID RedisKey = "ssh:key:%d" // CacheSSHKeyByID SSH 密钥 ID→详情缓存（%d = snowflake ID）
+
+	// ── MCP OAuth 2.1 运行时缓存（短 TTL，值均为 JSON）──
+	CacheOAuthAuthorize    RedisKey = "oauth:authorize:%s" // CacheOAuthAuthorize 授权请求暂存（%s = 随机 ID，TTL 10 分钟）
+	CacheOAuthCode         RedisKey = "oauth:code:%s"      // CacheOAuthCode 授权码（%s = 随机码，TTL 5 分钟，单次消费）
+	CacheOAuthAccessToken  RedisKey = "oauth:at:%s"        // CacheOAuthAccessToken 访问令牌（%s = SHA-256 摘要）
+	CacheOAuthRefreshToken RedisKey = "oauth:rt:%s"        // CacheOAuthRefreshToken 刷新令牌（%s = SHA-256 摘要）
 )
 
 // Get 格式化 Redis 键，自动拼接环境前缀

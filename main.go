@@ -54,6 +54,7 @@ func main() {
 				&entity.WebhookEvent{},
 				&entity.PreviewSession{},
 				&entity.PreviewFile{},
+				&entity.OAuthClient{},
 			),
 		),
 		xOption.WithCache(xOptCache.FromEnv()),
