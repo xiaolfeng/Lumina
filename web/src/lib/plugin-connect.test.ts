@@ -8,6 +8,9 @@ import {
   buildClaudePluginEnv,
   buildClaudePluginInstall,
   buildClaudePluginSnippet,
+  buildCodexMarketplaceAdd,
+  buildCodexPluginAdd,
+  buildCodexPluginSnippet,
   buildNpxSkillsAddHost,
   buildNpxSkillsAddZip,
   buildNpxSkillsSnippet,
@@ -59,6 +62,21 @@ describe('install snippets', () => {
       [
         `npx skills add ${origin}${PLUGIN_ZIP_PATH}`,
         `npx skills add ${origin}`,
+      ].join('\n'),
+    )
+  })
+
+  it('builds codex marketplace add from the project git repo', () => {
+    expect(buildCodexMarketplaceAdd()).toBe(
+      'codex plugin marketplace add xiaolfeng/Lumina',
+    )
+    expect(buildCodexPluginAdd()).toBe(
+      `codex plugin add ${PLUGIN_NAME}@${MARKETPLACE_NAME}`,
+    )
+    expect(buildCodexPluginSnippet()).toBe(
+      [
+        'codex plugin marketplace add xiaolfeng/Lumina',
+        `codex plugin add ${PLUGIN_NAME}@${MARKETPLACE_NAME}`,
       ].join('\n'),
     )
   })

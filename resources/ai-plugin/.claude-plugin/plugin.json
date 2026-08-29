@@ -9,5 +9,6 @@
   "homepage": "https://github.com/xiaolfeng/Lumina",
   "repository": "https://github.com/xiaolfeng/Lumina",
   "license": "MIT",
-  "keywords": ["lumina", "mcp", "qa", "preview", "pin", "repowiki"]
+  "keywords": ["lumina", "mcp", "qa", "preview", "pin", "repowiki"],
+  "skills": "./skills/"
 }

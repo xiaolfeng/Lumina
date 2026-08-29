@@ -9,6 +9,8 @@ export const PLUGIN_MARKETPLACE_PATH = '/api/v1/plugins/marketplace.json'
 export const PLUGIN_ZIP_PATH = '/api/v1/plugins/lumina.zip'
 export const PLUGIN_NAME = 'lumina'
 export const MARKETPLACE_NAME = 'lumina'
+/** Codex 市场只能来自 Git 仓库，清单内置于仓库 .agents/plugins/marketplace.json。 */
+export const CODEX_MARKETPLACE_REPO = 'xiaolfeng/Lumina'
 
 export function buildPluginMarketplaceUrl(origin: string): string {
   const base = trimSlash(origin)
@@ -53,6 +55,18 @@ export function buildClaudePluginSnippet(
     buildClaudeMarketplaceAdd(origin),
     buildClaudePluginInstall(),
   ].join('\n')
+}
+
+export function buildCodexMarketplaceAdd(): string {
+  return `codex plugin marketplace add ${CODEX_MARKETPLACE_REPO}`
+}
+
+export function buildCodexPluginAdd(): string {
+  return `codex plugin add ${PLUGIN_NAME}@${MARKETPLACE_NAME}`
+}
+
+export function buildCodexPluginSnippet(): string {
+  return [buildCodexMarketplaceAdd(), buildCodexPluginAdd()].join('\n')
 }
 
 export function buildNpxSkillsSnippet(origin: string): string {

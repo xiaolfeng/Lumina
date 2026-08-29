@@ -7,6 +7,7 @@ import {
 } from '@lumina/components/ui/tabs'
 import {
   buildClaudePluginSnippet,
+  buildCodexPluginSnippet,
   buildNpxSkillsSnippet,
   buildPluginMarketplaceUrl,
   buildPluginZipUrl,
@@ -110,6 +111,12 @@ export function PluginInstallPanel({
               ZCode 插件
             </TabsTrigger>
             <TabsTrigger
+              value="codex"
+              className="rounded-none px-3 py-2 text-xs data-[state=active]:bg-foam data-[state=active]:text-sea-ink"
+            >
+              Codex 插件
+            </TabsTrigger>
+            <TabsTrigger
               value="skills"
               className="rounded-none px-3 py-2 text-xs data-[state=active]:bg-foam data-[state=active]:text-sea-ink"
             >
@@ -146,6 +153,18 @@ export function PluginInstallPanel({
               清单变体，其余客户端拿到 archive 变体，地址无需区分。鉴权沿用{' '}
               <code>LUMINA_API_KEY</code>{' '}
               环境变量；若 MCP 未自动连接，使用下方独立 MCP 配置手动添加。
+            </p>
+          </TabsContent>
+          <TabsContent value="codex" className="space-y-3">
+            <p className="text-[13px] leading-relaxed text-sea-ink-soft">
+              Codex 的市场只能来自 Git
+              仓库，不支持直接粘贴清单地址。复制运行下面两行命令，从项目仓库内置的市场清单安装。
+            </p>
+            <CopyBlock code={buildCodexPluginSnippet()} filename="Codex" />
+            <p className="text-xs leading-relaxed text-sea-ink-soft">
+              插件提供 Q&A、Preview、Pin 与 RepoWiki
+              技能。Codex 不消费动态插件包内的 MCP 配置，连接 MCP 请使用下方独立
+              MCP 配置并填入本站地址与令牌。
             </p>
           </TabsContent>
           <TabsContent value="skills" className="space-y-3">

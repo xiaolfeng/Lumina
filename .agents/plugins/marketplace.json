@@ -1,0 +1,21 @@
+{
+  "name": "lumina",
+  "interface": {
+    "displayName": "Lumina · 微明"
+  },
+  "plugins": [
+    {
+      "name": "lumina",
+      "description": "Lumina · 微明：赋予 AI 深度代码认知与长期记忆的知识中枢。通过 MCP 编排 Q&A、Preview、Pin、RepoWiki 协作。",
+      "source": {
+        "source": "local",
+        "path": "./resources/ai-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
