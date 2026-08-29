@@ -1,4 +1,4 @@
-import { Link, useLocation } from '@tanstack/react-router'
+import { Link, useLocation, useRouter } from '@tanstack/react-router'
 import {
   ExternalLink,
   FileKey,
@@ -6,14 +6,27 @@ import {
   KeyRound,
   Pin,
   LayoutDashboard,
+  LogOut,
   MessageCircle,
   MessageCircleQuestion,
   MonitorPlay,
   Plug,
   Settings,
   User,
+  UserRound,
 } from 'lucide-react'
 import { motion } from 'motion/react'
+import Cookies from 'js-cookie'
+import { toast } from 'sonner'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@lumina/components/ui/dropdown-menu'
 import {
   Sidebar,
   SidebarContent,
@@ -26,7 +39,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@lumina/components/ui/sidebar'
-import { useAuth } from '#/hooks/useAuth'
+import { useAuth, useLogout } from '#/hooks/useAuth'
 import { sidebarItem, sidebarStaggerContainer } from '@lumina/components/motion'
 
 interface NavItem {
@@ -76,12 +89,27 @@ const navGroups: NavGroup[] = [
 
 export function AppSidebar() {
   const location = useLocation()
+  const router = useRouter()
   const { currentUser } = useAuth()
+  const logout = useLogout()
 
   const user = currentUser.data?.data
   const displayName = user?.username || '管理员'
   const subtitle = user?.email || 'Lumina Console'
   const fallbackInitial = displayName.slice(0, 1) || '管'
+
+  function handleLogout() {
+    logout.mutate(
+      { refresh_token: Cookies.get('refresh_token') || '' },
+      {
+        onSuccess: () => {
+          toast.success('已退出登录')
+          void router.navigate({ to: '/auth/login' })
+        },
+        onError: () => toast.error('退出登录失败，请重试'),
+      },
+    )
+  }
 
   return (
     <Sidebar variant="inset">
@@ -173,25 +201,61 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <motion.div variants={sidebarItem}>
-                <SidebarMenuButton
-                  size="lg"
-                  asChild
-                  className="hover:bg-link-bg-hover"
-                >
-                  <Link to="/console/profile">
-                    <div className="flex size-8 shrink-0 items-center justify-center border border-line text-sm font-bold text-lagoon-deep">
-                      {fallbackInitial}
-                    </div>
-                    <div className="flex flex-col gap-0.5 leading-none">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton
+                      size="lg"
+                      className="hover:bg-link-bg-hover data-[state=open]:bg-link-bg-hover"
+                    >
+                      <div className="flex size-8 shrink-0 items-center justify-center border border-line text-sm font-bold text-lagoon-deep">
+                        {fallbackInitial}
+                      </div>
+                      <div className="flex flex-col gap-0.5 leading-none">
+                        <span className="text-sm font-medium text-sea-ink">
+                          {displayName}
+                        </span>
+                        <span className="text-xs text-sea-ink-soft">
+                          {subtitle}
+                        </span>
+                      </div>
+                    </SidebarMenuButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    side="top"
+                    align="start"
+                    className="w-56 rounded-none border-line"
+                  >
+                    <DropdownMenuLabel className="flex flex-col gap-0.5">
                       <span className="text-sm font-medium text-sea-ink">
                         {displayName}
                       </span>
-                      <span className="text-xs text-sea-ink-soft">
+                      <span className="text-xs font-normal text-sea-ink-soft">
                         {subtitle}
                       </span>
-                    </div>
-                  </Link>
-                </SidebarMenuButton>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        className="rounded-none text-sea-ink-soft focus:bg-link-bg-hover focus:text-sea-ink"
+                        onClick={() =>
+                          void router.navigate({ to: '/console/profile' })
+                        }
+                      >
+                        <UserRound />
+                        个人信息管理
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        className="rounded-none focus:bg-link-bg-hover"
+                        disabled={logout.isPending}
+                        onClick={handleLogout}
+                      >
+                        <LogOut />
+                        {logout.isPending ? '正在退出…' : '退出登录'}
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </motion.div>
             </SidebarMenuItem>
           </SidebarMenu>
