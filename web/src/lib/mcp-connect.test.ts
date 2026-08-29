@@ -3,10 +3,14 @@ import {
   MCP_CLIENTS,
   MCP_KEY_PLACEHOLDER,
   MCP_PATH,
+  MCP_SERVER_NAME,
   MCP_TOOL_NAMES,
   buildAuthorizationHeader,
   buildAuthorizationValue,
+  buildClaudeOAuthAdd,
   buildClientSnippet,
+  buildCodexOAuthAdd,
+  buildGenericOAuthJSON,
   buildMcpUrl,
   normalizeApiKey,
   resolveMcpOrigin,
@@ -210,5 +214,31 @@ describe('client snippets', () => {
     expect(snippet).toContain(ctx.mcpUrl)
     expect(snippet).toContain('Authorization: Bearer lumi_testkey')
     expect(snippet).not.toMatch(/独立.*SSE/)
+  })
+})
+
+describe('oauth direct-connect snippets', () => {
+  const mcpUrl = 'https://lumina.example.com/api/v1/mcp'
+
+  it('adds Claude Code server without auth header', () => {
+    expect(buildClaudeOAuthAdd(mcpUrl)).toBe(
+      `claude mcp add --transport http ${MCP_SERVER_NAME} ${mcpUrl}`,
+    )
+    expect(buildClaudeOAuthAdd(mcpUrl)).not.toContain('--header')
+  })
+
+  it('adds Codex server via url flag', () => {
+    expect(buildCodexOAuthAdd(mcpUrl)).toBe(
+      `codex mcp add ${MCP_SERVER_NAME} --url ${mcpUrl}`,
+    )
+  })
+
+  it('builds generic mcpServers JSON without Authorization', () => {
+    const parsed = JSON.parse(buildGenericOAuthJSON(mcpUrl))
+    expect(parsed.mcpServers[MCP_SERVER_NAME]).toEqual({
+      type: 'http',
+      url: mcpUrl,
+    })
+    expect(buildGenericOAuthJSON(mcpUrl)).not.toContain('Authorization')
   })
 })

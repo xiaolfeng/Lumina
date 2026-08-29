@@ -47,6 +47,17 @@ func (l *AIPluginLogic) MarketplaceJSON(ctx context.Context, requestBaseURL, use
 	return data, nil
 }
 
+// MarketplaceZcodeJSON 渲染 ZCode 专用（url+zip）市场清单，地址确定性与 UA 无关
+func (l *AIPluginLogic) MarketplaceZcodeJSON(ctx context.Context, requestBaseURL string) ([]byte, *xError.Error) {
+	l.log.Info(ctx, "MarketplaceZcodeJSON - 渲染 ZCode 专用市场清单")
+	baseURL := l.resolveBaseURL(ctx, requestBaseURL)
+	data, _, err := l.plugin.MarketplaceJSONZcode(baseURL)
+	if err != nil {
+		return nil, xError.NewError(ctx, xError.ServerInternalError, "插件市场清单生成失败", false, err)
+	}
+	return data, nil
+}
+
 // Zip 返回带当前实例 MCP 地址的插件 ZIP 与其 SHA-256。
 func (l *AIPluginLogic) Zip(ctx context.Context, requestBaseURL string) ([]byte, string, *xError.Error) {
 	l.log.Info(ctx, "Zip - 打包 AI 插件")

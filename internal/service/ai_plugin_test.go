@@ -120,8 +120,12 @@ func TestPluginBundleForInstanceContainsAutomaticMCPConfig(t *testing.T) {
 	if want := base + bConst.AIPluginMCPPath; server.URL != want {
 		t.Fatalf("MCP url = %q, want %q", server.URL, want)
 	}
-	if want := "Bearer ${LUMINA_API_KEY}"; server.Headers["Authorization"] != want {
-		t.Fatalf("MCP Authorization = %q, want %q", server.Headers["Authorization"], want)
+	if len(server.Headers) != 0 {
+		// OAuth 直连模式：不带 Authorization 头，由客户端发起 OAuth 登录
+		t.Fatalf("MCP headers = %v, want 空（OAuth 模式）", server.Headers)
+	}
+	if bytes.Contains(mcpConfig, []byte("LUMINA_API_KEY")) {
+		t.Fatal("OAuth 模式下 .mcp.json 不应引用 LUMINA_API_KEY")
 	}
 }
 
@@ -252,6 +256,37 @@ func TestMarketplaceJSONServesZcodeURLZipVariant(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestMarketplaceJSONZcodeForced(t *testing.T) {
+	svc := NewAIPluginService()
+	const base = "https://lumina.example"
+
+	// Zcode 专用端点无论 UA 如何都输出 url+zip 形态
+	data, _, err := svc.MarketplaceJSONZcode(base)
+	if err != nil {
+		t.Fatalf("渲染 ZCode 市场清单失败: %v", err)
+	}
+	var doc apiPlugin.Marketplace
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("解析 ZCode 市场清单失败: %v\n%s", err, data)
+	}
+	source := doc.Plugins[0].Source
+	if source.Source != "url" || source.Type != "zip" {
+		t.Fatalf("source = (%q, %q), want (url, zip)", source.Source, source.Type)
+	}
+
+	// 非浏览器 UA 访问常规端点时仍保持 archive 形态（Claude Code 语义）
+	data, _, err = svc.MarketplaceJSON(base, "")
+	if err != nil {
+		t.Fatalf("渲染市场清单失败: %v", err)
+	}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("解析市场清单失败: %v", err)
+	}
+	if source := doc.Plugins[0].Source; source.Source != "archive" {
+		t.Fatalf("source.source = %q, want archive", source.Source)
+	}
 }
 
 func readZipEntryForTest(t *testing.T, zipBytes []byte, name string) []byte {

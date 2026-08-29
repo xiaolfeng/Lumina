@@ -118,8 +118,18 @@ func (s *AIPluginService) BundleForInstance(baseURL string) (*PluginBundle, erro
 //
 // ZCode 不支持 archive 源类型（会报 "Plugin source is invalid or
 // unsupported"），故按 User-Agent 输出其 url+zip 变体；其余客户端
-// 保持 Claude Code 的 archive 形态。
+// 保持 Claude Code 的 archive 形态。需要确定性行为时使用
+// MarketplaceJSONZcode 或让客户端访问 marketplace.zcode.json。
 func (s *AIPluginService) MarketplaceJSON(baseURL, userAgent string) ([]byte, *PluginBundle, error) {
+	return s.marketplaceJSONFor(baseURL, isZcodeUserAgent(userAgent))
+}
+
+// MarketplaceJSONZcode 渲染 ZCode 兼容形态（url+zip）的市场清单
+func (s *AIPluginService) MarketplaceJSONZcode(baseURL string) ([]byte, *PluginBundle, error) {
+	return s.marketplaceJSONFor(baseURL, true)
+}
+
+func (s *AIPluginService) marketplaceJSONFor(baseURL string, zcode bool) ([]byte, *PluginBundle, error) {
 	bundle, err := s.BundleForInstance(baseURL)
 	if err != nil {
 		return nil, nil, err
@@ -145,7 +155,7 @@ func (s *AIPluginService) MarketplaceJSON(baseURL, userAgent string) ([]byte, *P
 				Repository:  manifest.Repository,
 				License:     manifest.License,
 				Keywords:    manifest.Keywords,
-				Source:      marketplaceSource(baseURL, bundle.SHA256, isZcodeUserAgent(userAgent)),
+				Source:      marketplaceSource(baseURL, bundle.SHA256, zcode),
 			},
 		},
 	}
@@ -420,14 +430,16 @@ func packZipWithMCP(sourceZip, mcpConfig []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// buildPluginMCPConfig 生成随包 .mcp.json。
+//
+// 采用 OAuth 直连模式：不带 Authorization 头，客户端首次连接时收到
+// 401 与 resource_metadata 指引后自动发起 OAuth 2.1 登录授权，
+// 访问令牌由 Lumina 签发并自动续期，无需手动配置 API Key。
 func buildPluginMCPConfig(baseURL string) []byte {
 	config := map[string]any{
 		bConst.AIPluginName: map[string]any{
 			"type": "http",
 			"url":  joinURL(baseURL, bConst.AIPluginMCPPath),
-			"headers": map[string]string{
-				"Authorization": "Bearer ${LUMINA_API_KEY}",
-			},
 		},
 	}
 	data, err := json.MarshalIndent(config, "", "  ")

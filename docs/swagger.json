@@ -2492,6 +2492,32 @@
                 }
             }
         },
+        "/api/v1/plugins/marketplace.zcode.json": {
+            "get": {
+                "description": "输出 url+zip 源形态的 marketplace.json（ZCode 不支持 archive 源），地址确定性与 User-Agent 无关",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件接口"
+                ],
+                "summary": "[公开] ZCode 专用插件市场清单",
+                "responses": {
+                    "200": {
+                        "description": "市场清单",
+                        "schema": {
+                            "$ref": "#/definitions/plugin.Marketplace"
+                        }
+                    },
+                    "500": {
+                        "description": "插件资源打包失败",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/preview/files/{id}": {
             "get": {
                 "description": "根据文件 ID 查询预览文件详情与关联会话哈希，供 Q\u0026A supplement preview 类型渲染解析 serve 地址",

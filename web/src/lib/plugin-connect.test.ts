@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   MARKETPLACE_NAME,
   PLUGIN_MARKETPLACE_PATH,
+  PLUGIN_MARKETPLACE_ZCODE_PATH,
   PLUGIN_NAME,
   PLUGIN_ZIP_PATH,
   buildClaudeMarketplaceAdd,
-  buildClaudePluginEnv,
   buildClaudePluginInstall,
   buildClaudePluginSnippet,
+  buildClaudeRepoMarketplaceAdd,
   buildCodexMarketplaceAdd,
   buildCodexPluginAdd,
   buildCodexPluginSnippet,
@@ -15,6 +16,7 @@ import {
   buildNpxSkillsAddZip,
   buildNpxSkillsSnippet,
   buildPluginMarketplaceUrl,
+  buildPluginMarketplaceZcodeUrl,
   buildPluginZipUrl,
 } from './plugin-connect'
 
@@ -25,8 +27,14 @@ describe('plugin install URLs', () => {
     expect(buildPluginMarketplaceUrl(`${origin}/`)).toBe(
       `${origin}${PLUGIN_MARKETPLACE_PATH}`,
     )
+    expect(buildPluginMarketplaceZcodeUrl(`${origin}/`)).toBe(
+      `${origin}${PLUGIN_MARKETPLACE_ZCODE_PATH}`,
+    )
     expect(buildPluginZipUrl(`${origin}/`)).toBe(`${origin}${PLUGIN_ZIP_PATH}`)
     expect(buildPluginMarketplaceUrl('')).toBe(PLUGIN_MARKETPLACE_PATH)
+    expect(buildPluginMarketplaceZcodeUrl('')).toBe(
+      PLUGIN_MARKETPLACE_ZCODE_PATH,
+    )
     expect(buildPluginZipUrl('')).toBe(PLUGIN_ZIP_PATH)
   })
 })
@@ -36,16 +44,14 @@ describe('install snippets', () => {
     expect(buildClaudeMarketplaceAdd(origin)).toBe(
       `claude plugin marketplace add ${origin}${PLUGIN_MARKETPLACE_PATH}`,
     )
-    expect(buildClaudePluginEnv('lumi_test')).toBe(
-      "export LUMINA_API_KEY='lumi_test'",
+    expect(buildClaudeRepoMarketplaceAdd()).toBe(
+      'claude plugin marketplace add xiaolfeng/Lumina',
     )
-    expect(buildClaudePluginEnv()).toBe("export LUMINA_API_KEY='<api-key>'")
     expect(buildClaudePluginInstall()).toBe(
       `claude plugin install ${PLUGIN_NAME}@${MARKETPLACE_NAME}`,
     )
-    expect(buildClaudePluginSnippet(origin, 'lumi_test')).toBe(
+    expect(buildClaudePluginSnippet(origin)).toBe(
       [
-        "export LUMINA_API_KEY='lumi_test'",
         `claude plugin marketplace add ${origin}${PLUGIN_MARKETPLACE_PATH}`,
         `claude plugin install ${PLUGIN_NAME}@${MARKETPLACE_NAME}`,
       ].join('\n'),

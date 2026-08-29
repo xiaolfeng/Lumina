@@ -38,6 +38,28 @@ func (h *AIPluginHandler) GetMarketplace(ctx *gin.Context) {
 	ctx.Data(http.StatusOK, "application/json; charset=utf-8", data)
 }
 
+// GetMarketplaceZcode 获取 ZCode 专用插件市场清单
+//
+// @Summary     [公开] ZCode 专用插件市场清单
+// @Description 输出 url+zip 源形态的 marketplace.json（ZCode 不支持 archive 源），地址确定性与 User-Agent 无关
+// @Tags        插件接口
+// @Produce     json
+// @Success     200  {object}  apiPlugin.Marketplace  "市场清单"
+// @Failure     500  {object}  apiCommon.BaseResponse  "插件资源打包失败"
+// @Router      /api/v1/plugins/marketplace.zcode.json [GET]
+func (h *AIPluginHandler) GetMarketplaceZcode(ctx *gin.Context) {
+	h.log.Info(ctx, "GetMarketplaceZcode - 输出 ZCode 专用市场清单")
+
+	data, xErr := h.service.aiPluginLogic.MarketplaceZcodeJSON(ctx.Request.Context(), requestBaseURL(ctx))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+
+	ctx.Header("Cache-Control", "no-store")
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", data)
+}
+
 // DownloadZip 下载 AI 插件 ZIP
 //
 // @Summary     [公开] 下载插件 ZIP

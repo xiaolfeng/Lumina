@@ -10,6 +10,7 @@ func (r *route) pluginRouter(api gin.IRouter) {
 	h := handler.NewHandler[handler.AIPluginHandler](r.context, "AIPluginHandler")
 
 	api.GET("/plugins/marketplace.json", h.GetMarketplace)
+	api.GET("/plugins/marketplace.zcode.json", h.GetMarketplaceZcode)
 	api.GET("/plugins/lumina.zip", h.DownloadZip)
 
 	r.engine.GET("/.well-known/skills/index.json", h.GetWellKnownSkills)

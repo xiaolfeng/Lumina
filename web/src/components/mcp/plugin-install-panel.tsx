@@ -8,16 +8,15 @@ import {
 import {
   buildClaudePluginSnippet,
   buildCodexPluginSnippet,
-  buildNpxSkillsSnippet,
+  buildClaudeRepoMarketplaceAdd,
   buildPluginMarketplaceUrl,
-  buildPluginZipUrl,
+  buildPluginMarketplaceZcodeUrl,
 } from '#/lib/plugin-connect'
 import { ChannelKicker } from './channel-band'
 import { CopyBlock } from './copy-block'
 
 interface PluginInstallPanelProps {
   origin: string
-  apiKey?: string | null
 }
 
 const pluginBenefits = [
@@ -26,20 +25,19 @@ const pluginBenefits = [
   '后续更新继续沿用同一个插件入口',
 ]
 
-export function PluginInstallPanel({
-  origin,
-  apiKey,
-}: PluginInstallPanelProps) {
+export function PluginInstallPanel({ origin }: PluginInstallPanelProps) {
   const marketplaceUrl = origin ? buildPluginMarketplaceUrl(origin) : ''
-  const zipUrl = origin ? buildPluginZipUrl(origin) : ''
+  const zcodeMarketplaceUrl = origin
+    ? buildPluginMarketplaceZcodeUrl(origin)
+    : ''
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <ChannelKicker>方案 B · 插件安装</ChannelKicker>
+          <ChannelKicker>方案一 · 最优</ChannelKicker>
           <h1 className="display-title mt-2 text-[30px] font-medium tracking-tight text-sea-ink sm:text-[34px]">
-            安装插件，附加技能包
+            安装插件，一步到位
           </h1>
         </div>
         <span className="inline-flex items-center gap-1.5 bg-lagoon px-3 py-1.5 text-[11px] font-bold tracking-[0.12em] text-foam">
@@ -49,13 +47,11 @@ export function PluginInstallPanel({
       </div>
 
       <p className="mt-3 max-w-[48em] text-[15px] leading-relaxed text-sea-ink-soft">
-        相比方案 A
-        的纯直连，插件会随包安装 Q&A、Preview、Pin 与 RepoWiki
-        技能说明，并按客户端机制读取随包提供的 MCP 配置连接到当前站点；无需再执行{' '}
-        <code>claude mcp add</code>，也不用手动编辑 MCP 配置文件。
+        插件随包携带 Q&A、Preview、Pin 与 RepoWiki 技能说明，并按客户端机制读取随包提供的
+        MCP 配置连接到当前站点。MCP 采用 OAuth 登录授权，首次连接时完成一次登录即可，无需手动管理密钥。
       </p>
 
-      <div className="mt-5 grid gap-px bg-line sm:grid-cols-[1.05fr_0.95fr]">
+      <div className="mt-5 grid gap-px bg-line sm:grid-cols-1">
         <div className="bg-sand p-4 sm:p-5">
           <div className="flex items-center gap-2 text-sea-ink">
             <PackageOpen className="size-4 text-lagoon-deep" aria-hidden />
@@ -63,7 +59,7 @@ export function PluginInstallPanel({
               插件会替你准备好这些内容
             </h2>
           </div>
-          <ul className="mt-3 space-y-2.5">
+          <ul className="mt-3 grid gap-2.5 sm:grid-cols-3">
             {pluginBenefits.map((benefit) => (
               <li
                 key={benefit}
@@ -77,18 +73,6 @@ export function PluginInstallPanel({
               </li>
             ))}
           </ul>
-        </div>
-        <div className="bg-chip-bg p-4 sm:p-5">
-          <div className="flex items-center gap-2 text-sea-ink">
-            <Wrench className="size-4 text-lagoon-deep" aria-hidden />
-            <h2 className="text-[15px] font-semibold">安装前准备</h2>
-          </div>
-          <p className="mt-3 text-[13px] leading-relaxed text-sea-ink-soft">
-            先在本页生成令牌。命令会把它写入当前终端的{' '}
-            <code>LUMINA_API_KEY</code>{' '}
-            环境变量，插件用该变量完成鉴权。若需要长期使用，请把变量保存到你的
-            shell 配置中。
-          </p>
         </div>
       </div>
 
@@ -116,20 +100,15 @@ export function PluginInstallPanel({
             >
               Codex 插件
             </TabsTrigger>
-            <TabsTrigger
-              value="skills"
-              className="rounded-none px-3 py-2 text-xs data-[state=active]:bg-foam data-[state=active]:text-sea-ink"
-            >
-              仅安装技能
-            </TabsTrigger>
           </TabsList>
           <TabsContent value="claude-code" className="space-y-3">
             <p className="text-[13px] leading-relaxed text-sea-ink-soft">
-              复制并运行下面三行命令。安装完成后，重启 Claude Code，再用{' '}
-              <code>/mcp</code> 查看 Lumina 是否已连接。
+              复制并运行下面两行命令。安装完成后，重启 Claude Code，再用{' '}
+              <code>/mcp</code> 查看 Lumina 是否已连接；首次连接时按提示完成
+              OAuth 登录授权。
             </p>
             <CopyBlock
-              code={buildClaudePluginSnippet(origin, apiKey)}
+              code={buildClaudePluginSnippet(origin)}
               filename="Claude Code · 推荐"
             />
             <p className="text-xs leading-relaxed text-sea-ink-soft">
@@ -139,20 +118,31 @@ export function PluginInstallPanel({
               </span>
               ，其中的 MCP 地址会指向当前 Lumina 站点。
             </p>
+            <p className="text-xs leading-relaxed text-sea-ink-soft">
+              <Wrench className="mr-1 inline size-3.5" aria-hidden />
+              旧版本 Claude Code 不支持 archive
+              插件源时，可改用仓库市场：
+              <span className="font-mono break-all text-sea-ink">
+                {buildClaudeRepoMarketplaceAdd()}
+              </span>
+              （仅含技能，MCP 需按方案二手动接入）。
+            </p>
           </TabsContent>
           <TabsContent value="zcode" className="space-y-3">
             <p className="text-[13px] leading-relaxed text-sea-ink-soft">
               打开 ZCode 的「设置 → 插件管理 → 发现」，点击{' '}
               <code>+</code>{' '}
-              粘贴下方市场地址并安装 <code>lumina</code>{' '}
+              粘贴下方专用市场地址并安装 <code>lumina</code>{' '}
               插件，完成后重启 ZCode。
             </p>
-            <CopyBlock code={marketplaceUrl} filename="ZCode · 市场地址" />
+            <CopyBlock
+              code={zcodeMarketplaceUrl}
+              filename="ZCode · 专用市场地址"
+            />
             <p className="text-xs leading-relaxed text-sea-ink-soft">
-              ZCode 会拿到与其兼容的 url + zip
-              清单变体，其余客户端拿到 archive 变体，地址无需区分。鉴权沿用{' '}
-              <code>LUMINA_API_KEY</code>{' '}
-              环境变量；若 MCP 未自动连接，使用方案 C 的独立 MCP 配置手动添加。
+              该地址始终返回 ZCode 兼容的 url + zip
+              清单变体，不会出现「不支持 archive
+              源」的报错。若 ZCode 未自动完成 MCP 连接，请使用方案二手动接入。
             </p>
           </TabsContent>
           <TabsContent value="codex" className="space-y-3">
@@ -163,23 +153,8 @@ export function PluginInstallPanel({
             <CopyBlock code={buildCodexPluginSnippet()} filename="Codex" />
             <p className="text-xs leading-relaxed text-sea-ink-soft">
               插件提供 Q&A、Preview、Pin 与 RepoWiki
-              技能。Codex 不消费动态插件包内的 MCP 配置，连接 MCP 请使用方案 C
-              的独立 MCP 配置，或改用方案 A 的 OAuth 直连。
-            </p>
-          </TabsContent>
-          <TabsContent value="skills" className="space-y-3">
-            <p className="text-[13px] leading-relaxed text-sea-ink-soft">
-              只想把 Lumina 的使用说明装进支持 Agent Skills
-              的客户端时，可以选择这个方式。它不会自动连接
-              MCP，仍需使用下方的独立 MCP 配置。
-            </p>
-            <CopyBlock
-              code={buildNpxSkillsSnippet(origin)}
-              filename="npx skills"
-            />
-            <p className="text-xs leading-relaxed text-sea-ink-soft">
-              下载地址：{' '}
-              <span className="font-mono break-all text-sea-ink">{zipUrl}</span>
+              技能。Codex 不消费动态插件包内的 MCP 配置，连接 MCP 请使用方案二的
+              OAuth 直连（<code>codex mcp login</code>）或 API Key 配置。
             </p>
           </TabsContent>
         </Tabs>

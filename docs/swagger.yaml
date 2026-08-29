@@ -3791,6 +3791,24 @@ paths:
       summary: '[公开] 插件市场清单'
       tags:
       - 插件接口
+  /api/v1/plugins/marketplace.zcode.json:
+    get:
+      description: 输出 url+zip 源形态的 marketplace.json（ZCode 不支持 archive 源），地址确定性与 User-Agent
+        无关
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 市场清单
+          schema:
+            $ref: '#/definitions/plugin.Marketplace'
+        "500":
+          description: 插件资源打包失败
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[公开] ZCode 专用插件市场清单'
+      tags:
+      - 插件接口
   /api/v1/preview/files/{id}:
     delete:
       consumes:

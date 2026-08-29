@@ -6,6 +6,8 @@
 import { trimSlash } from './mcp-connect'
 
 export const PLUGIN_MARKETPLACE_PATH = '/api/v1/plugins/marketplace.json'
+export const PLUGIN_MARKETPLACE_ZCODE_PATH =
+  '/api/v1/plugins/marketplace.zcode.json'
 export const PLUGIN_ZIP_PATH = '/api/v1/plugins/lumina.zip'
 export const PLUGIN_NAME = 'lumina'
 export const MARKETPLACE_NAME = 'lumina'
@@ -18,6 +20,13 @@ export function buildPluginMarketplaceUrl(origin: string): string {
   return `${base}${PLUGIN_MARKETPLACE_PATH}`
 }
 
+/** ZCode 专用清单地址：无论 User-Agent 如何，始终返回 url+zip 兼容形态 */
+export function buildPluginMarketplaceZcodeUrl(origin: string): string {
+  const base = trimSlash(origin)
+  if (!base) return PLUGIN_MARKETPLACE_ZCODE_PATH
+  return `${base}${PLUGIN_MARKETPLACE_ZCODE_PATH}`
+}
+
 export function buildPluginZipUrl(origin: string): string {
   const base = trimSlash(origin)
   if (!base) return PLUGIN_ZIP_PATH
@@ -28,13 +37,13 @@ export function buildClaudeMarketplaceAdd(origin: string): string {
   return `claude plugin marketplace add ${buildPluginMarketplaceUrl(origin)}`
 }
 
-export function buildClaudePluginInstall(): string {
-  return `claude plugin install ${PLUGIN_NAME}@${MARKETPLACE_NAME}`
+/** 仓库市场兜底：Claude Code 版本不支持 archive 源（<2.1.224）时使用 */
+export function buildClaudeRepoMarketplaceAdd(): string {
+  return `claude plugin marketplace add ${CODEX_MARKETPLACE_REPO}`
 }
 
-export function buildClaudePluginEnv(apiKey?: string | null): string {
-  const value = apiKey?.trim() || '<api-key>'
-  return `export LUMINA_API_KEY='${value}'`
+export function buildClaudePluginInstall(): string {
+  return `claude plugin install ${PLUGIN_NAME}@${MARKETPLACE_NAME}`
 }
 
 export function buildNpxSkillsAddZip(origin: string): string {
@@ -46,12 +55,14 @@ export function buildNpxSkillsAddHost(origin: string): string {
   return base ? `npx skills add ${base}` : 'npx skills add <origin>'
 }
 
-export function buildClaudePluginSnippet(
-  origin: string,
-  apiKey?: string | null,
-): string {
+export function buildNpxSkillsSnippet(origin: string): string {
+  return [buildNpxSkillsAddZip(origin), buildNpxSkillsAddHost(origin)].join(
+    '\n',
+  )
+}
+
+export function buildClaudePluginSnippet(origin: string): string {
   return [
-    buildClaudePluginEnv(apiKey),
     buildClaudeMarketplaceAdd(origin),
     buildClaudePluginInstall(),
   ].join('\n')
@@ -67,10 +78,4 @@ export function buildCodexPluginAdd(): string {
 
 export function buildCodexPluginSnippet(): string {
   return [buildCodexMarketplaceAdd(), buildCodexPluginAdd()].join('\n')
-}
-
-export function buildNpxSkillsSnippet(origin: string): string {
-  return [buildNpxSkillsAddZip(origin), buildNpxSkillsAddHost(origin)].join(
-    '\n',
-  )
 }
