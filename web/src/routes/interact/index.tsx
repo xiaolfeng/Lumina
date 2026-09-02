@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 
 import type { Session } from '#/components/interact/types'
 import { DetailPanel } from '#/components/interact/detail-panel'
+import { groupHistoryDesc } from '#/components/interact/group-history'
 import { HistoryCard } from '#/components/interact/history-card'
 import { LobbyView } from '#/components/interact/lobby-view'
 import { QuestionCard } from '#/components/interact/question-card'
@@ -135,29 +136,8 @@ function InteractPage() {
   }, [currentSession])
 
   const activeQuestion = questions.find((q) => q.status === 'pending')
-  // 已取消的问题不计入 active（天然排除），也不混入 answered 历史；
-  // 单独归入 history 区灰色展示，便于用户感知 Agent 的取消动作。
-  const answeredQuestions = questions.filter(
-    (q) => (q.status === 'answered' || q.answered) && q.status !== 'cancelled',
-  )
-  const cancelledQuestions = questions.filter((q) => q.status === 'cancelled')
-
-  const groupedHistory: Record<string, typeof answeredQuestions> = {}
-  for (const q of answeredQuestions) {
-    const key = q.groupLabel || '未分组'
-    if (!(key in groupedHistory)) groupedHistory[key] = []
-    groupedHistory[key].push(q)
-  }
-  // 已取消的问题也归入历史区（灰色展示），按分组追加
-  for (const q of cancelledQuestions) {
-    const key = q.groupLabel || '未分组'
-    if (!(key in groupedHistory)) groupedHistory[key] = []
-    groupedHistory[key].push(q)
-  }
-  // 历史问答倒序排列（最新回答在前）
-  for (const key in groupedHistory) {
-    groupedHistory[key] = [...groupedHistory[key]].reverse()
-  }
+  // 已回答 / 已取消进入历史区，按事件时间 DESC（最新问答在最上方）。
+  const groupedHistory = groupHistoryDesc(questions)
 
   const hasDetailContent = activeSupplement != null
 
@@ -234,10 +214,7 @@ function InteractPage() {
                 />
               )}
 
-              <HistoryCard
-                answeredQuestions={answeredQuestions}
-                groupedHistory={groupedHistory}
-              />
+              <HistoryCard groupedHistory={groupedHistory} />
             </div>
           </ScrollArea>
         </aside>

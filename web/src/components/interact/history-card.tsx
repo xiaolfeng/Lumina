@@ -16,16 +16,13 @@ function plainTextSummary(md: string, maxLen = 120): string {
   return plain.length > maxLen ? plain.slice(0, maxLen) + '…' : plain
 }
 
-
 interface HistoryCardProps {
-  answeredQuestions: Question[]
   groupedHistory: Record<string, Question[]>
 }
 
-export function HistoryCard({
-  groupedHistory,
-  answeredQuestions,
-}: HistoryCardProps) {
+export function HistoryCard({ groupedHistory }: HistoryCardProps) {
+  const groups = Object.entries(groupedHistory)
+
   return (
     <PanelCard
       flushHeader
@@ -37,7 +34,7 @@ export function HistoryCard({
       bodyClassName="p-0"
     >
       <div className="space-y-0 divide-y divide-line/30">
-        {Object.entries(groupedHistory).map(([group, questions]) => (
+        {groups.map(([group, questions]) => (
           <div key={group} className="px-3 py-2">
             <div className="mb-1.5 flex items-center gap-2">
               <span className="inline-flex items-center gap-1 bg-lagoon/8 px-2 py-0.5 text-[10px] font-semibold text-lagoon-deep">
@@ -49,11 +46,11 @@ export function HistoryCard({
             </div>
 
             <div className="space-y-1.5">
-              {questions.map((q) => {
-                const isCancelled = q.status === 'cancelled'
+              {questions.map((item) => {
+                const isCancelled = item.status === 'cancelled'
                 return (
                   <div
-                    key={q.id}
+                    key={item.id}
                     className={`flex items-start gap-2 ${isCancelled ? 'opacity-60' : ''}`}
                   >
                     {isCancelled ? (
@@ -70,15 +67,15 @@ export function HistoryCard({
                     <div className="min-w-0 flex-1">
                       <p
                         className="line-clamp-2 text-xs leading-relaxed text-sea-ink-soft"
-                        title={q.content}
+                        title={item.content}
                       >
-                        {plainTextSummary(q.content)}
+                        {plainTextSummary(item.content)}
                       </p>
                       <p className="mt-0.5 text-xs font-medium text-sea-ink">
                         {isCancelled ? (
                           <span className="text-sea-ink-soft/70">已取消</span>
                         ) : (
-                          `→ ${formatAnswer(q.answer, q.options)}`
+                          `→ ${formatAnswer(item.answer, item.options)}`
                         )}
                       </p>
                     </div>
@@ -89,7 +86,7 @@ export function HistoryCard({
           </div>
         ))}
 
-        {answeredQuestions.length === 0 && (
+        {groups.length === 0 && (
           <div className="px-4 py-6 text-center">
             <p className="text-xs text-sea-ink-soft/50">暂无历史记录</p>
           </div>

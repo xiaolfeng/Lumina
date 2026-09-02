@@ -190,10 +190,17 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
       updateQuestions((prev) =>
         prev.map((q) => {
           if (q.id === data.question_id) {
+            const answered = data.status === 'answered'
             return {
               ...q,
               status: data.status,
-              answered: data.status === 'answered',
+              answered,
+              answeredAt: answered
+                ? data.answered_at ||
+                  data.answeredAt ||
+                  q.answeredAt ||
+                  new Date().toISOString()
+                : q.answeredAt,
             }
           }
           return q
@@ -282,7 +289,13 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
       updateQuestions((prev) =>
         prev.map((q) =>
           q.id === questionId
-            ? { ...q, status: 'answered' as const, answered: true, answer }
+            ? {
+                ...q,
+                status: 'answered' as const,
+                answered: true,
+                answer,
+                answeredAt: new Date().toISOString(),
+              }
             : q,
         ),
       )
