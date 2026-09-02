@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { FileCode2, FolderOpen } from 'lucide-react'
 
 import { PreviewFrame } from '#/components/interact/primitives/preview-frame'
+import { usePreviewHeader } from '#/hooks/usePreviewHeader'
 import { usePreviewWebSocket } from '#/hooks/usePreviewWebSocket'
 import type {
   PreviewFileItem,
@@ -38,6 +39,7 @@ function PreviewPage() {
   const [activeFile, setActiveFile] = useState('')
   const [sessionTitle, setSessionTitle] = useState('')
   const [error, setError] = useState('')
+  const { setTitle } = usePreviewHeader()
 
   const hash = search.session
 
@@ -71,7 +73,9 @@ function PreviewPage() {
         const htmlFile = syncData.files.find(
           (f) => f.filename.endsWith('.html') || f.filename.endsWith('.htm'),
         )
-        next = htmlFile ? htmlFile.filename : (syncData.files[0]?.filename ?? '')
+        next = htmlFile
+          ? htmlFile.filename
+          : (syncData.files[0]?.filename ?? '')
       }
 
       if (next !== activeFile) {
@@ -105,6 +109,11 @@ function PreviewPage() {
   // 加载态由 WS 状态驱动：idle / connecting 视为加载中
   const isLoading = status === 'idle' || status === 'connecting'
 
+  useEffect(() => {
+    setTitle(sessionTitle || null)
+    return () => setTitle(null)
+  }, [sessionTitle, setTitle])
+
   const selectFile = (filename: string) => {
     setActiveFile(filename)
     navigate({
@@ -137,9 +146,9 @@ function PreviewPage() {
       {/* 左侧文件列表 */}
       <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-surface/50">
         <div className="border-b border-line px-4 py-3">
-          <h2 className="truncate text-sm font-semibold text-sea-ink">
-            {sessionTitle || '预览工作区'}
-          </h2>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-lagoon-deep">
+            文件
+          </p>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {isLoading ? (
