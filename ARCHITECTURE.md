@@ -4,7 +4,7 @@ Lumina（微明）是给 AI Agent 用的代码知识与人机协作中枢：把�
 
 运行形态是**单二进制**：控制台（`web`）与 Wiki Reader（`web-wiki`）的构建产物经 `go:embed` 嵌入 Go 进程。共享视觉语言在 `@lumina/components`。后端基于 `bamboo-base-go`，PostgreSQL 存业务数据，Redis 存会话/缓存/OAuth 令牌元数据。
 
-本文只写**不常变的边界**。日常怎么改代码见 `AGENTS.md`；过时的模块设计草稿在 `docs/wiki/`（其中 `architecture.md` 仍写 SSE / 四模块，以本文为准）。
+本文只写**不常变的边界**。日常怎么改代码见 `AGENTS.md`；工程提案与架构决策统一登记在 `docs/README.md`。
 
 ## 解决什么问题
 

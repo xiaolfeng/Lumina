@@ -33,7 +33,7 @@ Lumina 采用**三模块独立领域 + 统一基础设施层**架构：
 - Q&A 模块使用 **WebSocket** 实时推送问题到浏览器
 - Agent 通过 MCP 自行编排组合调用三个模块
 
-详见 [docs/wiki/architecture.md](docs/wiki/architecture.md)。
+详见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 技术栈
 
@@ -217,22 +217,21 @@ make fmt          # 格式化代码
 make test         # 运行测试
 ```
 
-## 设计文档
+## 工程文档
 
-详细的项目设计文档位于 `docs/wiki/` 目录：
+工程提案与架构决策统一登记在 [docs/README.md](docs/README.md)：
 
 | 文档 | 说明 |
 |------|------|
-| [architecture.md](docs/wiki/architecture.md) | 整体架构设计 |
-| [infrastructure.md](docs/wiki/infrastructure.md) | 基础设施层说明 |
-| [repowiki/](docs/wiki/repowiki/) | RepoWiki 模块（概述、详细设计、MCP 工具） |
-| [memory/](docs/wiki/memory/) | Memory 模块（概述、详细设计、MCP 工具） |
-| [qa/](docs/wiki/qa/) | Q&A 模块（概述、详细设计、MCP 工具） |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 当前系统架构地图与稳定边界 |
+| [docs/engineering/rfc/](docs/engineering/rfc/) | 尚待评审的工程提案 |
+| [docs/engineering/adr/](docs/engineering/adr/) | 已收敛主题的架构决策记录 |
+| [Memory RFC](docs/engineering/rfc/0001-memory-decision-memory.md) | 尚未实现的长期决策记忆提案 |
 
 ## 注意事项
 
 - `docs/` 下的 `swagger*` 文件由 `swag init` 自动生成，请勿手动编辑
-- `docs/wiki/` 为手动维护的设计文档
+- 工程文档按 draft → research → RFC → ADR 生命周期维护
 - 启动时会自动执行数据库迁移（`AutoMigrate`）和种子数据初始化
 - 种子数据逻辑必须保证幂等性（可重复执行）
 - 所有环境变量读取应使用 `xEnv.GetEnv*` 并提供默认值，禁止直接使用 `os.Getenv`

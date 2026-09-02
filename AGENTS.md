@@ -16,7 +16,7 @@
 
 后端通过 Streamable MCP 协议 + HTTP REST API + WebSocket 三通道对外暴露能力；MCP 端点认证为 OAuth 2.1（`lum_at_`）优先、API Key 回退，并提供 AI 插件动态打包分发。前端通过 REST API + WebSocket 与后端通信。控制台前端（`web/`）与 Wiki Reader 前端（`web-wiki/`）构建产物分别通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。两前端通过 `@lumina/components` workspace 包共享 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体和微明主题 CSS。项目采用 pnpm monorepo 管理双前端与共享组件包，并提供 Dockerfile + docker-compose 及 GitHub Actions 发布流水线支持容器化部署。数据库与缓存初始化由 `main.go` 的 `xOption.WithDatabase / WithCache` 声明式装配（bamboo-base-go v1.2.3）。
 
-> ⚠️ 本文档中涉及的所有模块设计（MCP 工具名称、REST API 路径、数据结构、存储策略等）均为**设计参考方案，并非最终决策**。实际实现时可根据技术约束和开发决策进行调整。详见 `docs/wiki/` 目录。
+> 工程提案与架构决策按生命周期登记在 `docs/README.md`；当前架构地图见 `ARCHITECTURE.md`。
 
 ## 目录结构
 
@@ -207,13 +207,14 @@
 | 编写 Swagger 文档 | `internal/handler/*.go` 的 godoc + `make swag` | 使用 `swaggo/swag` 注解 |
 | 新增请求/响应 DTO | `api/<domain>/` | 按业务域保持子包结构；按操作类型拆分文件（create.go/update.go/detail.go/list.go 等），同一操作的相关 request+response 放在同一文件 |
 | 新增中间件 | `internal/app/middleware/` | 返回 `gin.HandlerFunc` |
-| 查看物理架构与边界 | `ARCHITECTURE.md` | 给人读的架构地图；与 `docs/wiki/architecture.md` 冲突时以它为准 |
+| 查看物理架构与边界 | `ARCHITECTURE.md` | 给人读的当前架构地图与稳定边界 |
 | 贡献代码 / 开 PR | `CONTRIBUTING.md` | 本地开发、质量门、提交与 PR |
 | 上报漏洞 | `SECURITY.md` | 只走 GitHub 私密公告，不要开公开 Issue |
 | 查看版本变更 | `CHANGELOG.md` | Keep a Changelog，自 v1.0.0-beta.18 起 |
-| 查看 RepoWiki 设计 | `docs/wiki/repowiki/` | 模块概述、详细设计、MCP 工具、Webhook 设计、多 Agent 设计 |
-| 查看 Memory 设计 | `docs/wiki/memory/` | 模块概述、详细设计、MCP 工具定义 |
-| 查看 Pin 设计 | `docs/wiki/pin/` | 模块概述、详细设计、MCP 工具定义 |
+| 查看工程文档索引 | `docs/README.md` | draft / research / RFC / design / ADR 统一入口 |
+| 查看 RepoWiki 决策 | `docs/engineering/adr/0005-repowiki-generation-delivery.md` | 生成流水线、版本隔离、Webhook 与只读 MCP |
+| 查看 Memory 提案 | `docs/engineering/rfc/0001-memory-decision-memory.md` | 尚未实现的长期决策记忆方案 |
+| 查看 Pin 决策 | `docs/engineering/adr/0004-pin-constraint-delivery.md` | 跨项目约束与 FIFO 消费契约 |
 | 新增 MCP 工具 | `internal/mcp/` | 注册到 `server.go`，Logic 注入到 `startup_mcp.go` |
 | 新增 WebSocket 消息 | `internal/websocket/message.go` | 定义 MessageType 常量 |
 | 新增 RepoWiki prompt | `resources/prompts/*.md` | 通过 `service/prompt_loader.go` 加载，禁止硬编码 |
@@ -343,7 +344,7 @@
 - 分层单向：`route` → `handler` → `logic` → `repository`；`service` 只放跨域基础设施。
 - Q&A / Preview 用 WebSocket，不用 SSE。
 - 控制台 `web/`、Wiki Reader `web-wiki/` 经 `go:embed` 进同一二进制；UI 原语在 `@lumina/components`。
-- `docs/wiki/architecture.md` 仍写 SSE / 四模块，视为过时草稿，冲突时以 `ARCHITECTURE.md` 为准。
+- 工程提案与架构决策从 `docs/README.md` 进入；稳定架构边界以 `ARCHITECTURE.md` 为准。
 
 ## 约定
 
@@ -531,9 +532,7 @@ pnpm test         # 运行 Vitest 测试（markdown/remark-fenced-blocks）
 - 依赖已升级：bamboo-base-go 全模块升至 v1.2.3（DB/Cache 改由 `xOption.WithDatabase/WithCache` 声明式装配），Go 1.25.11。
 - `make test` 命令存在，已有测试用例覆盖 project、llm_model、llm_provider、ssh_key_gen、webhook_parser、webhook_signer、wiki_auth_token、wiki_storage、git_service、file_scanner、dependency_extractor、repowiki_orchestrator、biometric、runtime_url、prompt_loader、preview_tools、webauthn_user、oauth_logic、ai_plugin、preview MIME 等模块。
 - 根位置公约文件：`ARCHITECTURE.md`（架构边界）、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md`（Contributor Covenant 2.1）、`SECURITY.md`、`SUPPORT.md`、`CHANGELOG.md`（自 v1.0.0-beta.18 起）。`README.md` 与 `LICENSE` 为既有人工文件，未改写。
-- `docs/wiki/` 为手动维护的早期设计文档，与 `docs/swagger*` 自动生成文件不同。其中 `docs/wiki/architecture.md` 仍写 SSE / 四模块，**与现状冲突时以根目录 `ARCHITECTURE.md` 为准**。
-- `docs/wiki/qa/` 设计文档已删除（Q&A 模块已从设计进入实现阶段）。
-- `docs/wiki/repowiki/` 新增 `webhook-design.md` 和 `multi-agent-design.md` 设计文档。
+- 工程文档统一位于 `docs/engineering/`，由 `docs/README.md` 登记；Memory 仍处于 RFC，已实现架构、Project、Pin 与 RepoWiki 约束记录为 proposed ADR。
 - `docs/` 下的 `swagger.json`、`swagger.yaml`、`docs.go` 由 `swag init -g main.go --parseDependency` 自动生成；切勿提交手动编辑。
 - `.env` 与 `.env.*` 已被 gitignore；本地开发时从 `.env.example` 复制。
 - 雪花算法数据中心/节点 ID 默认为 1/1；可通过 `SNOWFLAKE_DATACENTER_ID` 和 `SNOWFLAKE_NODE_ID` 覆盖。
