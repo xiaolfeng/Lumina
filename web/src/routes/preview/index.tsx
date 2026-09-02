@@ -2,8 +2,9 @@ import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
 import { useCallback, useEffect, useState } from 'react'
 import { FileCode2, FolderOpen } from 'lucide-react'
 
-import { PreviewFrame } from '#/components/interact/primitives/preview-frame'
+import { PreviewFileViewer } from '#/components/preview/file-viewer'
 import { usePreviewHeader } from '#/hooks/usePreviewHeader'
+import { previewKindFromFilename } from '#/lib/preview-file'
 import { usePreviewWebSocket } from '#/hooks/usePreviewWebSocket'
 import type {
   PreviewFileItem,
@@ -189,7 +190,11 @@ function PreviewPage() {
             <p className="text-sm text-sea-ink-soft/50">加载中…</p>
           </div>
         ) : src ? (
-          <PreviewFrame src={src} className="flex-1" />
+          <PreviewFileViewer
+            kind={previewKindFromFilename(activeFile)}
+            src={src}
+            filename={activeFile}
+          />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-2">
             <FolderOpen className="size-6 text-sea-ink-soft/40" aria-hidden />

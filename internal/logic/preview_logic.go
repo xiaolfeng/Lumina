@@ -382,10 +382,14 @@ func inferMimeType(filename string) string {
 		return bConst.PreviewMimeHTML
 	case ".css":
 		return bConst.PreviewMimeCSS
-	case ".js", ".mjs":
+	case ".js", ".mjs", ".cjs":
 		return bConst.PreviewMimeJS
 	case ".json":
 		return bConst.PreviewMimeJSON
+	case ".md", ".markdown":
+		return bConst.PreviewMimeMarkdown
+	case ".ts", ".tsx", ".mts", ".cts":
+		return bConst.PreviewMimePlain
 	case ".svg":
 		return bConst.PreviewMimeSVG
 	default:
