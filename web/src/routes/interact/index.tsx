@@ -11,6 +11,7 @@ import { MobileSessionDrawer } from '#/components/interact/session-drawer'
 import { SessionSidebarCompact } from '#/components/interact/session-sidebar-compact'
 import { EmptyState, LoadingState } from '#/components/interact/primitives'
 import { ScrollArea } from '@lumina/components/ui/scroll-area'
+import { computeSessionProgress } from '#/components/interact/session-progress'
 import { useQaSession } from '#/hooks/useQaSession'
 import { useSidebarOpen } from '#/hooks/useSidebarOpen'
 import { getSessionByHash, getSessionList } from '#/lib/apis/qa-admin'
@@ -160,20 +161,15 @@ function InteractPage() {
     : 'markdown'
 
   const current = sessions.find((s) => s.id === selectedSessionId)
-  const answeredCount = current
-    ? current.questions.filter((q) => q.answered).length
-    : 0
-  const totalCount = current?.questions.length ?? 0
-  const remainingCount = totalCount - answeredCount
 
-  // 将进度同步到 Context，供 Header 显示
+  // 进度以 WebSocket 推送的 questions 为准；列表接口的 session.questions 恒为空。
   useEffect(() => {
-    if (selectedSessionId && current) {
-      setProgress({ answered: answeredCount, remaining: remainingCount })
-    } else {
+    if (!sessionHash) {
       setProgress(null)
+      return
     }
-  }, [selectedSessionId, current, answeredCount, remainingCount, setProgress])
+    setProgress(computeSessionProgress(questions))
+  }, [sessionHash, questions, setProgress])
 
   if (!isConnected) {
     return <LobbyView sessions={sessions} />
