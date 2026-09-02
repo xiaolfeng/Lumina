@@ -3,6 +3,7 @@ import { Flame } from 'lucide-react'
 
 import type { Question } from './types'
 import { Markdown, PanelCard, proseQuestion } from './primitives'
+import { SupplementWaitOverlay } from './supplement-loading-banner'
 
 import type {
   QuestionComponentProps,
@@ -131,7 +132,12 @@ export function QuestionCard({
           </div>
         }
       >
-        {renderByType(question.type, props)}
+        <SupplementWaitOverlay
+          loading={isSupplementLoading}
+          onDismiss={onDismissSupplementLoading}
+        >
+          {renderByType(question.type, props)}
+        </SupplementWaitOverlay>
       </Suspense>
     </PanelCard>
   )

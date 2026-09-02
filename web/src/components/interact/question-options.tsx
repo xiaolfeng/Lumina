@@ -5,7 +5,6 @@ import { Input } from '@lumina/components/ui/input'
 import { Label } from '@lumina/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@lumina/components/ui/radio-group'
 import { Textarea } from '@lumina/components/ui/textarea'
-import { SupplementLoadingBanner } from './supplement-loading-banner'
 
 import { OptionDetailLabel } from './option-detail-label'
 import { QuestionShell } from './question-shell'
@@ -24,7 +23,6 @@ export function QuestionOptions({
   onSkip,
   onRequestSupplement,
   isSupplementLoading = false,
-  onDismissSupplementLoading,
   onViewOptionDetail,
   activeOptionId,
 }: QuestionComponentProps) {
@@ -80,11 +78,6 @@ export function QuestionOptions({
       submitDisabled={!selected || (isOther && !otherText.trim())}
       onSubmit={handleSubmit}
     >
-      {isSupplementLoading && (
-        <SupplementLoadingBanner
-          onDismiss={() => onDismissSupplementLoading?.()}
-        />
-      )}
       <RadioGroup
         value={selected}
         onValueChange={handleRadioChange}

@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Checkbox } from '@lumina/components/ui/checkbox'
 import { Input } from '@lumina/components/ui/input'
 import { Label } from '@lumina/components/ui/label'
-import { SupplementLoadingBanner } from './supplement-loading-banner'
 
 import { OptionDetailLabel } from './option-detail-label'
 import { QuestionShell } from './question-shell'
@@ -16,7 +15,6 @@ export function QuestionMultiSelect({
   onSkip,
   onRequestSupplement,
   isSupplementLoading = false,
-  onDismissSupplementLoading,
   onViewOptionDetail,
   activeOptionId,
 }: QuestionComponentProps) {
@@ -87,11 +85,6 @@ export function QuestionMultiSelect({
         </p>
       )}
 
-      {isSupplementLoading && (
-        <SupplementLoadingBanner
-          onDismiss={() => onDismissSupplementLoading?.()}
-        />
-      )}
       <div className="space-y-2">
         {options.map((opt) => (
           <Label

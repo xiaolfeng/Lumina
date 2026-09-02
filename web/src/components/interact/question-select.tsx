@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Input } from '@lumina/components/ui/input'
 import { Label } from '@lumina/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@lumina/components/ui/radio-group'
-import { SupplementLoadingBanner } from './supplement-loading-banner'
 
 import { OptionDetailLabel } from './option-detail-label'
 import { QuestionShell } from './question-shell'
@@ -21,7 +20,6 @@ export function QuestionSelect({
   onSkip,
   onRequestSupplement,
   isSupplementLoading = false,
-  onDismissSupplementLoading,
   onViewOptionDetail,
   activeOptionId,
 }: QuestionComponentProps) {
@@ -73,11 +71,6 @@ export function QuestionSelect({
       submitDisabled={!selected || (isOther && !otherText.trim())}
       onSubmit={handleSubmit}
     >
-      {isSupplementLoading && (
-        <SupplementLoadingBanner
-          onDismiss={() => onDismissSupplementLoading?.()}
-        />
-      )}
       <RadioGroup
         value={selected}
         onValueChange={handleRadioChange}
