@@ -1,3 +1,5 @@
+<!-- deep-init:synced@d1ef58c -->
+
 # web-wiki 前端知识库
 
 ## 概述
@@ -55,6 +57,21 @@ web-wiki/
 │       └── utils.ts
 ```
 
+## 导航指南
+
+| 任务 | 位置 | 说明 |
+| --- | --- | --- |
+| 改 Wiki 入口页 | `src/routes/wiki/$wikiId/wiki-index-page.tsx` | 路由薄壳在 `index.tsx`，实现与懒加载分离 |
+| 改 catch-all 正文页 | `src/routes/wiki/$wikiId/wiki-catchall-page.tsx` | 薄壳在 `$wikiId.$.tsx` |
+| 改三栏布局 | `src/components/docs-page.tsx` | Sidebar / Article / TOC；motion key 必须是 `wikiId` |
+| 改侧边导航树 | `src/components/page-tree-sidebar.tsx` | 展开状态键 `wiki-sidebar-expanded-{wikiId}` |
+| 改正文 Markdown | `src/components/markdown-renderer.tsx` | 必须套 `proseArticle`，禁止直接用共享 `Markdown` |
+| 改页面树构建 | `src/lib/source.ts` | `buildPageTree`、图标映射、节点查找 |
+| 改 frontmatter / TOC | `src/lib/frontmatter.ts` | 前端解析与 slug |
+| 改 API / 鉴权 | `src/lib/api-client.ts` + `src/hooks/useWikiAuth.ts` | Cookie `withCredentials`，无 Bearer |
+| 改密码门 | `src/components/password-gate.tsx` | Wiki Auth 与控制台登录分离 |
+| 改搜索 | `src/components/search.tsx` | Orama + 普通话分词 |
+
 ## 约定
 
 - **包管理器**：必须使用 `pnpm`；禁止 npm/yarn。
@@ -74,6 +91,14 @@ web-wiki/
 - **路由懒加载**：`$wikiId/index.tsx` 与 `$wikiId.$.tsx` 是懒加载薄壳（`lazyRouteComponent`），实际实现分别在 `wiki-index-page.tsx` / `wiki-catchall-page.tsx`，用于首屏体积优化。
 - **测试 setup**：`test-setup.ts` 作为 Vitest `setupFiles` 全局执行，修复 Node≥25 预置 `localStorage` 访问器遮蔽 jsdom 注入的问题（内存 `createMemoryStorage` 兜底），并 `afterEach` 自动 `cleanup()`。
 - **BREAKING**：旧版 `.md` 页面不再兼容；后端与前端均只处理 `.mdx`，无 `.md` fallback。
+
+## 反模式
+
+- 禁止手动编辑 `routeTree.gen.ts`，它由 TanStack Router 插件生成。
+- 禁止绕过 `markdown-renderer.tsx` 直接使用共享 `Markdown`——缺 `proseArticle` 会让代码块回到黑底。
+- 禁止使用 npm / yarn；本包与 monorepo 统一 pnpm。
+- 禁止为渲染 fenced 块引入 rehype-raw；raw HTML 默认不渲染是安全边界。
+- 禁止再做 `.md` fallback；磁盘与 API 都只认 `.mdx`。
 
 ## 调试路径
 
@@ -100,3 +125,7 @@ pnpm lint         # ESLint 检查
 pnpm format       # Prettier 格式化 + ESLint 自动修复
 pnpm check        # Prettier 格式检查
 ```
+
+## 引用
+
+- [components/](../components/AGENTS.md) — 共享 Markdown / 主题 / motion，正文必须走 `proseArticle`

@@ -1,3 +1,5 @@
+<!-- deep-init:synced@d1ef58c -->
+
 # STARTUP 启动模块知识库
 
 ## 概述
@@ -48,6 +50,7 @@ startup/
 - **项目缓存清理**：`prepare_project.go` 在启动时扫描并清除旧格式的项目缓存键，确保字段类型变更后缓存一致性。
 - **QA Hash 修复**：`prepare_qa_hash.go` 修复历史会话 Hash 缓存格式，仅在升级时需要。
 - **LLM 种子**：`prepare_llm.go` 写入默认 LLM Provider/Model 配置，仅在首次部署时生效（幂等）。
+- **OAuth / AI Plugin 无独立启动节点**：二者由 `NewHandler` 按请求构造 Logic（`OAuthLogic` / `AIPluginLogic`），不在 `Init()` 注册；OAuth 令牌只进 Redis（`cache.OAuthStore`），客户端注册靠 `WithAutoMigrate(OAuthClient)`。
 
 ## 反模式
 - 禁止在启动节点之外初始化 DB/Redis/MCP/RepoWiki Logic 客户端。
@@ -75,6 +78,6 @@ startup/
 
 ## 迁移顺序
 实体迁移由 `main.go` 的 `xOption.WithDatabase(WithAutoMigrate(...))` 声明式配置，当前顺序：
-`Info` → `Apikey` → `Project` → `Pin` → `QaSession` → `QaQuestion` → `QaSupplement` → `BiometricCredential` → `SshKey` → `RepoWikiConfig` → `WikiVersion` → `LlmProvider` → `LlmModel` → `WebhookEvent` → `PreviewSession` → `PreviewFile`。
+`Info` → `Apikey` → `Project` → `Pin` → `QaSession` → `QaQuestion` → `QaSupplement` → `BiometricCredential` → `SshKey` → `RepoWikiConfig` → `WikiVersion` → `LlmProvider` → `LlmModel` → `WebhookEvent` → `PreviewSession` → `PreviewFile` → `OAuthClient`。
 
 新增实体时根据 FK 依赖关系追加到正确位置。

@@ -1,3 +1,5 @@
+<!-- deep-init:synced@d1ef58c -->
+
 # WEB 前端知识库
 
 ## 概述
@@ -25,7 +27,8 @@ web/
     │   ├── _public.tsx         # 公开页面布局（Navbar + Outlet + Footer）
     │   ├── _public/
     │   │   ├── index.tsx       # 首页
-    │   │   └── start.tsx       # 快速开始（自托管 + MCP 接入）
+    │   │   ├── start.tsx       # 快速开始（自托管 + MCP 接入）
+    │   │   └── oauth.tsx       # MCP OAuth 授权同意页（?authorize_id=，登录后裁决）
     │   ├── auth.tsx            # 认证页面布局（品牌面板 + 表单区域）
     │   ├── auth/
     │   │   ├── login.tsx       # 登录页（含 WebAuthn 生物认证入口）
@@ -35,7 +38,7 @@ web/
     │   ├── console/
     │   │   ├── index.tsx       # 控制台入口（重定向到 dashboard）
     │   │   ├── dashboard.tsx   # 仪表盘（KPI 分栏 + 功能模块 bento grid + 最近预览）
-    │   │   ├── connect.tsx     # MCP 接入指南（端点/客户端配置/工具速览）
+    │   │   ├── connect.tsx     # 接入指南（插件安装 → 手动 MCP → 技能安装 → 工具速览）
     │   │   ├── apikey.tsx      # API Key 管理
     │   │   ├── project.tsx     # 项目管理（含项目列表 + 跳转到子页面）
     │   │   ├── project/        # 项目子路由
@@ -63,13 +66,17 @@ web/
     ├── components/             # 组件
     │   ├── Navbar.tsx          # 公开页面导航栏
     │   ├── Footer.tsx          # 公开页面页脚
-    │   ├── app-sidebar.tsx     # 控制台侧边栏（导航菜单，含接入指南/SSH/Settings 等入口）
-    │   ├── mcp/                # MCP 接入指南业务组件
+    │   ├── app-sidebar.tsx     # 控制台侧边栏（导航 + 底部用户弹出菜单：资料/退出）
+    │   ├── console-breadcrumb.tsx # 控制台面包屑
+    │   ├── mcp/                # 接入指南业务组件
     │   │   ├── channel-band.tsx         # 实心信道编号轨 + 斑马填充
     │   │   ├── copy-block.tsx           # 墨井代码块（一键复制）
     │   │   ├── endpoint-card.tsx        # 端点与鉴权接线卡
     │   │   ├── client-config-panel.tsx  # 客户端配置 Tab
     │   │   ├── created-key-panel.tsx    # 令牌创建/重置成功后的配置生成器
+    │   │   ├── plugin-install-panel.tsx # Claude / Codex / 市场 ZIP 安装命令
+    │   │   ├── skills-install-panel.tsx # npx skills add 安装命令
+    │   │   ├── manual-connect-panel.tsx # 手动 MCP JSON/TOML 配置
     │   │   └── tool-catalog.tsx         # 25 工具速览 + 协作顺序
     │   ├── data-table.tsx      # 通用数据表格组件
     │   ├── data-table-pagination.tsx # 通用分页组件
@@ -91,12 +98,14 @@ web/
     │   │   ├── password-tab.tsx    # 密码修改标签页
     │   │   └── biometric-tab.tsx   # WebAuthn 凭证管理标签页
     │   ├── qa/                 # Q&A 管理业务组件
-    │   │   ├── columns.tsx     # 会话列表列定义
     │   │   ├── question-card.tsx   # 问题卡片展示
     │   │   ├── session-detail.tsx  # 会话详情组件
     │   │   └── session-detail-drawer.tsx # 会话详情抽屉
     │   ├── preview/            # Preview 业务组件
-    │   │   ├── columns.tsx             # 预览会话列表列定义
+    │   │   ├── brand-header.tsx          # 对外预览品牌栏（标题右置）
+    │   │   ├── file-viewer.tsx           # 按 kind 分发：html/svg iframe、markdown、code
+    │   │   ├── markdown-view.tsx         # Markdown 预览（共享 Markdown + proseArticle）
+    │   │   ├── code-view.tsx             # 代码高亮预览（CodeMirror）
     │   │   └── session-detail-drawer.tsx # 会话详情抽屉（WebSocket 实时 + 文件删除）
     │   ├── llm/                # LLM 配置业务组件
     │   │   ├── provider-columns.tsx       # Provider 表格列定义
@@ -154,7 +163,10 @@ web/
     │       ├── session-item.tsx     # 会话列表项
     │       ├── session-sidebar-compact.tsx # 紧凑会话侧边栏
     │       ├── supplement-dialog.tsx      # 补充内容对话框
-    │       ├── supplement-loading-banner.tsx # 补充加载横幅
+    │       ├── supplement-loading-banner.tsx # 补充等待遮罩（题型统一提示）
+    │       ├── session-progress.ts       # 会话进度计算（answered / remaining）
+    │       ├── session-progress-bar.tsx  # Header 问题进度状态栏
+    │       ├── group-history.ts          # 历史按事件时间 DESC 分组（最新置顶）
     │       ├── motion-demo-panel.tsx      # 动画演示面板
     │       └── primitives/    # 交互原语组件
     │           ├── index.ts          # 原语导出入口
@@ -182,11 +194,16 @@ web/
     │   ├── usePreviewAdmin.ts  # Preview 管理 Hook（会话/文件 CRUD）
     │   ├── usePreviewWebSocket.ts # Preview WebSocket Hook（preview_sync 实时同步 + 重连）
     │   ├── useMcpEndpoint.ts   # MCP 接入 URL 解析（覆盖域名 / site.domain / 当前 origin）
+    │   ├── usePreviewHeader.ts # 对外预览页标题 Context（品牌栏右置会话名）
     │   └── useSidebarOpen.ts   # 侧边栏开合状态 Hook
     └── lib/
         ├── utils.ts            # cn() 工具（clsx + tailwind-merge）
         ├── format-answer.ts    # 题型 answer 格式化（各题型 → 可读字符串，跨 QA/interact 复用）
-        ├── mcp-connect.ts      # MCP 端点拼装、客户端配置模板、25 工具目录
+        ├── format-date.ts      # 日期格式化
+        ├── mcp-connect.ts      # MCP 端点拼装、客户端配置模板、25 工具目录（单一数据源）
+        ├── plugin-connect.ts   # 插件/技能安装命令（路径必须与后端 ai_plugin 常量一致）
+        ├── preview-file.ts     # 预览文件 kind 推断（html/markdown/code/svg）
+        ├── format-preview-source.ts # 预览源码拉取与展示辅助
         ├── auth/
         │   └── cookie-utils.ts # Cookie 操作工具（AT/RT/expires_at 读写）
         ├── webauthn/
@@ -206,7 +223,8 @@ web/
         │   ├── webhook.ts      # Webhook API（事件列表 + 配置查询）
         │   ├── settings.ts     # 系统设置 API（分组配置读写）
         │   ├── dashboard.ts    # Dashboard API（概览统计）
-        │   └── preview.ts      # Preview API（会话/文件 CRUD）
+        │   ├── preview.ts      # Preview API（会话/文件 CRUD）
+        │   └── oauth.ts        # OAuth 同意页 API（GET/POST /oauth/consent）
         └── models/             # TypeScript 类型定义
             ├── request/        # 请求 DTO
             │   ├── auth.ts
@@ -242,11 +260,12 @@ web/
 |---|---|---|
 | 新增页面 | `src/routes/` | 文件路径即路由路径；布局路由以 `_` 前缀 |
 | 新增控制台子页面 | `src/routes/console/` | 在 `console.tsx` 布局下添加，自动继承 Sidebar + Breadcrumb |
-| 新增 MCP 接入说明 | `src/routes/console/connect.tsx` | 端点、客户端配置生成器、工具速览；模板数据在 `lib/mcp-connect.ts` |
-| 新增 MCP 接入组件 | `src/components/mcp/` | 复制块/端点卡/客户端 Tab/工具目录；令牌弹窗复用 `created-key-panel` |
+| 新增 MCP 接入说明 | `src/routes/console/connect.tsx` | 四级信道：插件安装 / 手动 MCP / 技能安装 / 工具速览；模板在 `mcp-connect.ts` + `plugin-connect.ts` |
+| 新增 MCP 接入组件 | `src/components/mcp/` | 复制块/端点卡/插件安装/技能安装/手动配置/工具目录；令牌弹窗复用 `created-key-panel` |
+| 新增 OAuth 同意页 | `src/routes/_public/oauth.tsx` | 公开布局；`?authorize_id=` 对应后端授权请求缓存；未登录先走登录再裁决 |
 | 新增项目级子页面 | `src/routes/console/project/$projectId/` | 按模块划分子目录（如 `repowiki/`） |
 | 新增 Interact 子页面 | `src/routes/interact/` | 在 `interact.tsx` 布局下添加 |
-| 新增对外预览页 | `src/routes/preview.tsx` + `preview/` | 公开分享页，非 console 布局，WebSocket 实时驱动 |
+| 新增对外预览页 | `src/routes/preview.tsx` + `preview/` | 公开分享页，非 console 布局；`file-viewer` 按 kind 分发 html/svg/markdown/code |
 | 新增 Preview 管理页 | `src/routes/console/preview/` | 管理端预览会话列表 |
 | 新增布局路由 | `src/routes/<name>.tsx` | 含 `Outlet` 的布局组件 |
 | 新增通用组件 | `src/components/` | 全局级组件（Navbar/Footer/Sidebar/通用对话框/骨架屏等） |
@@ -266,7 +285,7 @@ web/
 | 新增题型格式化 | `src/lib/format-answer.ts` | 各题型 answer → 可读字符串，跨 QA/interact 复用 |
 | 修改全局主题色 | `components/src/styles/theme.css` | 主题色盘已迁到共享包（静烛 v1） |
 | 修改路由配置 | `src/router.tsx` | 预加载策略、滚动恢复等 |
-| 修改动画配置 | `components/src/motion/` | 缓动函数和全局动画变体（共享包） |
+| 修改动画配置 | `components/src/motion/` | 缓动函数和全局动画变体（共享包，详见 [components/](../components/AGENTS.md)） |
 | 工具函数 | `src/lib/` 或 `components/src/lib/` | 通用工具（如 `cn()`） |
 
 ## 约定
@@ -303,7 +322,11 @@ web/
 - **SSH Key 管理**：通过 `useSshKey` Hook + `components/ssh/` 实现，密钥对生成请求后端，前端不接触私钥明文。
 - **RepoWiki 配置**：通过 `useRepoWiki` Hook + `components/repowiki/` 实现，包括配置表单、版本管理、分析触发、Webhook 配置四部分；版本切换需二次确认（逻辑在 `version-list.tsx`）。
 - **系统设置**：`console/settings.tsx` 重构为多标签页（站点/安全/Q&A/RepoWiki），对应 `components/settings/` 下五个表单组件，统一通过 `useSettings` Hook 读写。
-- **MCP 接入指南**：端点拼装、客户端模板和 25 个工具名统一来自 `lib/mcp-connect.ts`；控制台页在 `console/connect.tsx`，令牌创建/重置成功态复用 `components/mcp/created-key-panel.tsx`。禁止再写独立 CLI、SSE 问答通道或 camelCase 旧工具名。
+- **MCP 接入指南**：端点拼装、客户端模板和 25 个工具名统一来自 `lib/mcp-connect.ts`；插件/技能安装命令统一来自 `lib/plugin-connect.ts`（路径必须与 `internal/constant/ai_plugin.go` 一致）。控制台页 `console/connect.tsx` 按信道 1–4 排列：插件安装 → 手动 MCP → 技能安装 → 工具速览。令牌创建/重置成功态复用 `created-key-panel.tsx`。禁止再写独立 CLI、SSE 问答通道或 camelCase 旧工具名。
+- **MCP OAuth 同意页**：`/_public/oauth?authorize_id=` 是浏览器授权 UI，调用 `lib/apis/oauth.ts` 的 consent 接口；客户端发现与令牌交换在后端公开端点完成，前端不保存 `lum_at_`。
+- **Preview 文件分发**：`lib/preview-file.ts` 按扩展名得到 kind；`file-viewer.tsx` 将 html/svg 交给 iframe，`markdown` 走共享 Markdown + `proseArticle`，其余走 CodeMirror。不要在预览页对源码使用 `dangerouslySetInnerHTML`。
+- **Interact 进度与历史**：`session-progress.ts` 计算 answered/remaining，`session-progress-bar.tsx` 画在 Header；`group-history.ts` 按 `answeredAt`（否则 `createdAt`）DESC 分组，保证最新问答置顶。
+- **侧边栏用户区**：`app-sidebar.tsx` 底栏用弹出菜单承载资料与退出，不再把个人入口塞进主导航。
 
 ## 反模式
 
@@ -322,6 +345,8 @@ web/
 - 禁止在路由文件（`routes/*.tsx`）中内联大段页面 JSX；拆分到 `components/` 下。
 - 禁止在前端缓存或持久化 LLM API Key / SSH 私钥明文。
 - 禁止在页面中另写一套 MCP 工具清单或客户端 JSON；统一从 `lib/mcp-connect.ts` 生成。
+- 禁止在页面中另写插件/技能安装命令；统一从 `lib/plugin-connect.ts` 生成（含 ZCode 的 marketplace.zcode.json 与 Codex 仓库市场兜底）。
+- 禁止在 Preview 页面对 markdown/code 使用 `dangerouslySetInnerHTML`；必须走 `markdown-view` / `code-view`。
 - 禁止在 `components/` 下跨业务域直接 import 组件；通过通用组件或 `@lumina/components` 共享。
 - 禁止在 `web` 内重新创建已迁入 `@lumina/components` 的 ui/markdown/motion/主题代码。
 
@@ -349,3 +374,13 @@ web/
 20. Preview 对外页无法打开 → 检查 URL 的 `?session=<hash>` 是否正确 + `usePreviewWebSocket.ts` 连接状态（idle/connecting/connected/disconnected/rejected）。
 21. Preview 管理页列表为空 → 检查 `usePreviewAdmin.ts` queryKey + 后端 `route_preview.go` 的 Bearer 鉴权。
 22. Dashboard KPI 不刷新 → 检查 `useDashboardOverview` queryKey（`['dashboard','overview']`）+ `lib/apis/dashboard.ts` 请求路径。
+23. 接入指南命令与后端路径不一致 → 核对 `plugin-connect.ts` 常量与 `internal/constant/ai_plugin.go` / `route_plugin.go`。
+24. OAuth 同意页空白 → 检查 URL 是否带 `authorize_id`、Cookie 登录态、以及 `GET /api/v1/oauth/consent`。
+25. Preview Markdown/代码不渲染 → 检查 `preview-file.ts` 的 kind 与 `file-viewer.tsx` 分发；Markdown 必须套 `proseArticle`。
+26. Interact 历史最新条目沉底 → 检查 `group-history.ts` 是否按 `historyEventTime` DESC。
+27. 补充等待遮罩不统一 → 检查 `supplement-loading-banner.tsx` 是否被各题型外壳复用。
+
+## 引用
+
+- [components/](../components/AGENTS.md) — 共享 UI / Markdown / motion / 主题
+- [internal/](../internal/AGENTS.md) — 后端 API 与 MCP 认证约定

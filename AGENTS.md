@@ -1,8 +1,6 @@
-# 项目知识库
+<!-- deep-init:synced@d1ef58c -->
 
-**生成日期:** 2026-08-16
-**提交:** 596abd9
-**分支:** master
+# 项目知识库
 
 ## 概述
 
@@ -16,7 +14,7 @@
 - **Pin**：跨项目依赖约束传递，点对点定向推送与 FIFO 队列消费 — ✅ 已实现
 - **Preview**：前端可视化预览会话与文件管理（WebSocket 实时同步）— ✅ 已实现
 
-后端通过 Streamable MCP 协议 + HTTP REST API + WebSocket 三通道对外暴露能力；前端通过 REST API + WebSocket 与后端通信。控制台前端（`web/`）与 Wiki Reader 前端（`web-wiki/`）构建产物分别通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。两前端通过 `@lumina/components` workspace 包共享 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体和微明主题 CSS。项目采用 pnpm monorepo 管理双前端与共享组件包，并提供 Dockerfile + docker-compose 及 GitHub Actions 发布流水线支持容器化部署。数据库与缓存初始化由 `main.go` 的 `xOption.WithDatabase / WithCache` 声明式装配（bamboo-base-go v1.2.3）。
+后端通过 Streamable MCP 协议 + HTTP REST API + WebSocket 三通道对外暴露能力；MCP 端点认证为 OAuth 2.1（`lum_at_`）优先、API Key 回退，并提供 AI 插件动态打包分发。前端通过 REST API + WebSocket 与后端通信。控制台前端（`web/`）与 Wiki Reader 前端（`web-wiki/`）构建产物分别通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。两前端通过 `@lumina/components` workspace 包共享 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体和微明主题 CSS。项目采用 pnpm monorepo 管理双前端与共享组件包，并提供 Dockerfile + docker-compose 及 GitHub Actions 发布流水线支持容器化部署。数据库与缓存初始化由 `main.go` 的 `xOption.WithDatabase / WithCache` 声明式装配（bamboo-base-go v1.2.3）。
 
 > ⚠️ 本文档中涉及的所有模块设计（MCP 工具名称、REST API 路径、数据结构、存储策略等）均为**设计参考方案，并非最终决策**。实际实现时可根据技术约束和开发决策进行调整。详见 `docs/wiki/` 目录。
 
@@ -40,7 +38,7 @@
 │   ├── package.json            # 包名 @lumina/components，被 web / web-wiki 共同消费
 │   ├── components.json         # shadcn/ui 配置（new-york、zinc、lucide）
 │   ├── vitest.config.ts        # Vitest 测试配置
-│   └── src/
+│   └── src/                    # 详见 [components/](./components/AGENTS.md)
 │       ├── index.ts            # 包导出入口（ui/markdown/motion/styles/hooks/lib）
 │       ├── ui/                 # shadcn/ui 组件（含 splitter 等，从 web 迁移而来）
 │       ├── markdown/           # Markdown 渲染原语（markdown/markdown-lite/markdown-mermaid/remark-fenced-blocks/table-of-contents/prose/fenced-components）
@@ -49,7 +47,8 @@
 │       ├── hooks/              # 共享 Hooks（use-mobile 等）
 │       └── lib/                # 共享工具（cn() 等）
 ├── resources/                  # 项目级内嵌资源（prompts、前端构建产物等）
-│   ├── embed.go                # go:embed 暴露 PromptFiles / FrontendDist / WikiFrontendDist
+│   ├── embed.go                # go:embed 暴露 PromptFiles / FrontendDist / WikiFrontendDist / AIPluginFS
+│   ├── ai-plugin/              # AI 插件源（.claude-plugin + skills），运行时动态打 ZIP
 │   ├── prompts/                # RepoWiki 5 角色 system prompt 文件
 │   │   ├── coordinator.md      # Coordinator 角色 prompt
 │   │   ├── explore.md          # Explore 角色 prompt
@@ -73,6 +72,8 @@
 │   ├── settings/               # 系统设置 DTO（setting/update）
 │   ├── preview/                # Preview DTO（create/detail/list）
 │   ├── dashboard/              # Dashboard DTO（overview）
+│   ├── oauth/                  # MCP OAuth 2.1 DTO（consent/metadata/register/token）
+│   ├── plugin/                 # AI 插件市场与 well-known DTO
 │   ├── common/                 # 通用响应结构
 │   └── health/                 # 健康检查 DTO
 ├── docs/
@@ -87,7 +88,7 @@
 │       └── pin/                # Pin 模块文档
 ├── internal/
 │   ├── app/
-│   │   ├── middleware/         # Gin 中间件（认证拦截、API Key 校验、Wiki Auth、MCP 兼容、CORS、安全头、WebAuthn Origin）
+│   │   ├── middleware/         # Gin 中间件（认证拦截、API Key、MCP OAuth+Key、Wiki Auth、MCP 兼容、CORS、安全头、WebAuthn Origin）
 │   │   ├── route/              # 路由注册与中间件绑定（含双前端 SPA fallback + MCP + WebSocket）
 │   │   │   ├── route_repowiki.go  # RepoWiki REST API 路由
 │   │   │   ├── route_llm.go       # LLM REST API 路由
@@ -106,7 +107,9 @@
 │   │   ├── webhook.go          # Webhook 事件接收处理器
 │   │   ├── settings.go         # 系统设置处理器
 │   │   ├── preview.go          # Preview 会话/文件处理器
-│   │   └── dashboard.go        # Dashboard 概览统计处理器
+│   │   ├── dashboard.go        # Dashboard 概览统计处理器
+│   │   ├── oauth.go            # MCP OAuth 2.1 处理器
+│   │   └── ai_plugin.go        # AI 插件分发处理器
 │   ├── logic/                  # 业务编排层（QA 逻辑按职责拆分为 qa_*.go 多文件）
 │   │   ├── repowiki_logic.go   # RepoWiki 核心逻辑（分析入口、配置/版本 CRUD）
 │   │   ├── repowiki_pipeline.go # RepoWiki 分析管道（Git 准备 + 状态机驱动）
@@ -121,7 +124,9 @@
 │   │   ├── settings.go         # 系统设置逻辑（分组配置读写）
 │   │   ├── preview_logic.go    # Preview 逻辑（会话/文件管理 + WebSocket 同步）
 │   │   ├── dashboard.go        # Dashboard 逻辑（六类指标聚合）
-│   │   └── runtime_url.go      # 运行时域名解析 + Preview 深链构建
+│   │   ├── runtime_url.go      # 运行时域名解析 + Preview 深链构建
+│   │   ├── oauth_logic.go      # MCP OAuth 2.1 编排
+│   │   └── ai_plugin.go        # AI 插件打包编排
 │   ├── repository/             # 数据库/Redis 访问层
 │   │   ├── repowiki_config.go  # RepoWikiConfig 持久化
 │   │   ├── wiki_version.go     # WikiVersion 持久化
@@ -148,7 +153,7 @@
 │   │   ├── ssh_key_gen.go      # SSH 密钥对生成
 │   │   ├── webhook_parser.go   # Webhook Payload 解析器
 │   │   └── webhook_signer.go   # Webhook HMAC 签名生成与校验
-│   ├── entity/                 # GORM 实体（需实现 GetGene() 绑定，Gene 32~46）
+│   ├── entity/                 # GORM 实体（需实现 GetGene() 绑定，Gene 32~47）
 │   ├── mcp/                    # MCP Server 工具注册（QA/Project/Pin/RepoWiki/Preview 工具拆分）
 │   ├── websocket/              # WebSocket 连接管理 + 消息分发
 │   ├── qa/                     # Q&A 回答队列（会话级 FIFO）
@@ -160,7 +165,7 @@
 │   └── src/                    # 前端源码
 │       ├── routes/             # 基于文件的路由（公开页 + 认证页 + 控制台 + Interact + Preview）
 │       ├── components/         # 组件（landing/、通用组件和业务子目录；shadcn/ui 与 markdown/motion 原语由 @lumina/components 提供）
-│       ├── hooks/              # React Hooks（18 个，含 LLM/SSH/RepoWiki/Webhook/Settings/Dashboard/Preview）
+│       ├── hooks/              # React Hooks（含 LLM/SSH/RepoWiki/Webhook/Settings/Dashboard/Preview/MCP）
 │       ├── lib/                # 工具函数 + API 客户端 + 类型定义 + WebAuthn 辅助 + Cookie 工具
 │       ├── styles.css          # 全局样式 + Tailwind 主题
 │       └── router.tsx          # TanStack Router 入口
@@ -179,7 +184,10 @@
 │           ├── breadcrumb.tsx      # 面包屑导航
 │           ├── prev-next.tsx       # 上一页/下一页
 │           └── search.tsx          # 客户端全文搜索（Orama）
-└── .agents/skills/             # 项目专属技能（lumina-qa、lumina-preview、lumina-pin、lumina-repowiki、mcp-qa-test、swagger-writer、entity-build、project-style 及 _shared/ 规范）
+└── .agents/
+    ├── skills/                 # 项目专属技能（lumina-qa、lumina-preview、lumina-pin、lumina-repowiki、mcp-qa-test、swagger-writer、entity-build、project-style 及 _shared/ 规范）
+    └── plugins/
+        └── marketplace.json    # Codex 仓库市场清单（Git 源，非 HTTP archive）
 ```
 
 ## 导航指南
@@ -199,6 +207,10 @@
 | 编写 Swagger 文档 | `internal/handler/*.go` 的 godoc + `make swag` | 使用 `swaggo/swag` 注解 |
 | 新增请求/响应 DTO | `api/<domain>/` | 按业务域保持子包结构；按操作类型拆分文件（create.go/update.go/detail.go/list.go 等），同一操作的相关 request+response 放在同一文件 |
 | 新增中间件 | `internal/app/middleware/` | 返回 `gin.HandlerFunc` |
+| 查看物理架构与边界 | `ARCHITECTURE.md` | 给人读的架构地图；与 `docs/wiki/architecture.md` 冲突时以它为准 |
+| 贡献代码 / 开 PR | `CONTRIBUTING.md` | 本地开发、质量门、提交与 PR |
+| 上报漏洞 | `SECURITY.md` | 只走 GitHub 私密公告，不要开公开 Issue |
+| 查看版本变更 | `CHANGELOG.md` | Keep a Changelog，自 v1.0.0-beta.18 起 |
 | 查看 RepoWiki 设计 | `docs/wiki/repowiki/` | 模块概述、详细设计、MCP 工具、Webhook 设计、多 Agent 设计 |
 | 查看 Memory 设计 | `docs/wiki/memory/` | 模块概述、详细设计、MCP 工具定义 |
 | 查看 Pin 设计 | `docs/wiki/pin/` | 模块概述、详细设计、MCP 工具定义 |
@@ -211,13 +223,15 @@
 | 新增 Webhook 事件 | `handler/webhook.go` + `logic/repowiki_webhook.go` + `service/webhook_parser.go` | HMAC 签名校验必经 |
 | 新增 Preview 会话/文件 | `entity/preview_*.go` + `logic/preview_logic.go` + `handler/preview.go` + `mcp/preview_tools.go` | 文件上限 256KB，`preview_sync` 实时同步 |
 | 新增 Dashboard 统计 | `logic/dashboard.go` + `repository/dashboard.go` + `handler/dashboard.go` | 六类指标聚合 |
+| 新增 MCP OAuth | `api/oauth/` + `logic/oauth_logic.go` + `handler/oauth.go` + `route_oauth.go` | 公开端点须在 `engine.Use()` 前注册；consent 走登录态 |
+| 新增 AI 插件/技能 | `resources/ai-plugin/` + `service/ai_plugin.go` | 运行时打包，禁止手写 marketplace.json 当产物 |
 | 新增前端页面 | `web/src/routes/` | 基于文件的路由，文件名即路由路径 |
 | 新增前端业务组件 | `web/src/components/<domain>/` | 按业务域组织 |
 | 新增前端 API 封装 | `web/src/lib/apis/` | 使用 apiClient 封装 |
 | 新增前端数据 Hook | `web/src/hooks/` | 基于 TanStack Query |
 | 前端样式调整 | `components/src/styles/theme.css` | 主题色盘已迁到共享包（静烛 v1） |
 | shadcn/ui 组件 | `components/src/ui/` | 通过 `pnpm dlx shadcn@latest add <component>` 添加到共享包 |
-| 新增共享组件/原语 | `components/src/` | 被 web / web-wiki 共同消费的 ui/markdown/motion/主题 |
+| 新增共享组件/原语 | `components/src/` | 被 web / web-wiki 共同消费的 ui/markdown/motion/主题，详见 [components/](./components/AGENTS.md) |
 | Wiki Reader 前端 | `web-wiki/` | 独立 SPA，部署在 `/wiki/`，只读渲染 |
 | 调整 Docker 镜像 | `Dockerfile`、`.dockerignore` | 多阶段构建，前端产物先构建再嵌入 |
 | 调整容器编排 | `docker-compose.yaml` / `docker-compose.full.yaml` | 精简/完整两套编排 |
@@ -235,9 +249,10 @@
 | `NewCronRunner` | 函数 | `internal/app/startup/startup_cron.go` | Cron Runner 工厂（RepoWiki 超时任务重试，传入 `xMain.Runner`） |
 | `NewWebSocketRunner` | 函数 | `internal/app/startup/startup_websocket.go` | WebSocket Runner 工厂（Hub 主循环，传入 `xMain.Runner`） |
 | `NewRoute` | 函数 | `internal/app/route/route.go` | 全局中间件 + API 路由 + MCP + WebSocket + 双前端 SPA fallback |
-| `NewHandler[T]` | 泛型函数 | `internal/handler/handler.go` | Handler 泛型构造模式，注入全部 Logic（14 个） |
+| `NewHandler[T]` | 泛型函数 | `internal/handler/handler.go` | Handler 泛型构造模式，注入全部 Logic（16 个，含 OAuth / AI Plugin） |
 | `Auth` | 中间件 | `internal/app/middleware/auth.go` | Bearer Token 认证拦截（单用户模式，注入认证标记） |
-| `ApikeyAuth` | 中间件 | `internal/app/middleware/apikey.go` | API Key 认证（`lumi_` 前缀 + bcrypt 校验，MCP 端点使用） |
+| `ApikeyAuth` | 中间件 | `internal/app/middleware/apikey.go` | 纯 API Key 认证（`lumi_` 前缀 + bcrypt）；MCP 端点已改走 `McpAuth` |
+| `McpAuth` | 中间件 | `internal/app/middleware/mcp_auth.go` | MCP 认证：OAuth `lum_at_` 优先，API Key 回退，401 带资源元数据 |
 | `WikiAuth` | 中间件 | `internal/app/middleware/wiki_auth.go` | Wiki Reader 访问认证（密码 Token / Cookie 会话） |
 | `McpCompat` | 中间件 | `internal/app/middleware/mcp_compat.go` | MCP 端点 Streamable HTTP 兼容性处理 |
 | `Cors` | 中间件 | `internal/app/middleware/cors.go` | 白名单 CORS（`XLF_ALLOWED_ORIGINS`） |
@@ -280,6 +295,11 @@
 | `SshKey` | 结构体 | `internal/entity/ssh_key.go` | SSH Key 实体（Gene=44，名称/指纹/公钥/加密私钥） |
 | `PreviewSession` | 结构体 | `internal/entity/preview_session.go` | Preview 会话实体（Gene=45，Hash/标题/状态） |
 | `PreviewFile` | 结构体 | `internal/entity/preview_file.go` | Preview 文件实体（Gene=46，会话关联/文件名/MIME/内容） |
+| `OAuthClient` | 结构体 | `internal/entity/oauth_client.go` | OAuth 动态客户端（Gene=47，公共客户端，仅 PKCE） |
+| `OAuthLogic` | 结构体 | `internal/logic/oauth_logic.go` | MCP OAuth 2.1 编排（DCR / 授权码+PKCE / 令牌 / RFC 8707） |
+| `AIPluginLogic` | 结构体 | `internal/logic/ai_plugin.go` | AI 插件市场清单 / ZIP / well-known 编排 |
+| `AIPluginService` | 结构体 | `internal/service/ai_plugin.go` | 从 embed 或调试目录打包插件 |
+| `AIPluginFS` | 变量 | `resources/embed.go` | `go:embed all:ai-plugin` 内嵌插件与技能源 |
 | `RepoWikiLogic` | 结构体 | `internal/logic/repowiki_logic.go` | RepoWiki 业务编排（配置/版本/分析入口） |
 | `GetRepoWikiLogicFromContext` | 函数 | `internal/logic/repowiki_logic.go` | 从 context 获取 RepoWikiLogic（MCP/Cron/Handler 共用） |
 | `SubAgentOrchestrator` | 结构体 | `internal/logic/repowiki_orchestrator.go` | 5 角色 SubAgent 编排引擎（overview → explore → architect → writer → validator） |
@@ -309,88 +329,21 @@
 
 ## 模块架构
 
-### 五模块独立领域 + 统一基础设施层
+物理边界、缺席性约束与横切约定以 [ARCHITECTURE.md](./ARCHITECTURE.md) 为准（给人读的架构地图）。下面只留 AI 开工时够用的摘要。
 
 ```
-对外接入层：MCP Server + HTTP REST API + WebSocket + Webhook
-                    │
-模块层：RepoWiki ○ Memory ○ Q&A ✅ Pin ✅ Preview ✅（互不调用）
-                    │
-基础设施层：PostgreSQL + Redis + LLM Provider（热配置）+ Git Service + 文件系统
+对外接入：MCP（OAuth 2.1 / API Key）+ REST + WebSocket + Webhook + 插件市场
+        │
+领域：RepoWiki ○ Memory（设计中）○ Q&A ○ Pin ○ Preview —— 互不调用
+        │
+基础设施：PostgreSQL + Redis + LLM 热配置 + Git + 文件系统
 ```
 
-- 五个模块完全独立，不直接交互
-- Agent 通过 MCP 自行编排组合调用
-- 每个模块同时提供 REST API（前端用）和 MCP Tool（Agent 用）
-- Q&A 模块额外提供 WebSocket 通道用于实时问题推送
-- Preview 模块额外提供 WebSocket 通道用于预览内容实时同步
-- RepoWiki 模块额外提供 Webhook 接收端点用于 Git Push 自动触发
-- LLM Provider 配置已从环境变量迁移到数据库热配置，通过前端管理页面配置
-- 详细架构设计见 `docs/wiki/architecture.md`
-
-### 已实现模块
-
-| 模块 | 职责 | 存储策略 | 状态 |
-|------|------|----------|------|
-| 认证 | 单用户登录/初始化/Token 管理/资料更新 | Info 表 + Redis Token 缓存 | ✅ 已实现 |
-| 用户 | 个人资料编辑/密码修改 | Info 表 | ✅ 已实现 |
-| WebAuthn | 生物特征认证（注册/登录/凭证管理 + RPID 动态推导） | BiometricCredential 表 + Redis Challenge 缓存 | ✅ 已实现 |
-| API Key | 密钥 CRUD/重置/脱敏/校验 | Apikey 表（bcrypt 哈希） | ✅ 已实现 |
-| 项目 | 项目 CRUD/别名管理 | Project 表 + Redis 缓存（Cache-Aside） | ✅ 已实现 |
-| Q&A | Session 管理、问题推送（WebSocket）、回答队列、MCP 工具、文件上传下载 | QaSession + QaQuestion + QaSupplement 表 + Redis 队列 | ✅ 已实现 |
-| Pin | 跨项目约束传递、定向推送、FIFO 消费 | Pin 表（数据库 FIFO） | ✅ 已实现 |
-| RepoWiki | Git 克隆 → 5 角色 SubAgent 编排 → Wiki 生成 + Webhook 自动触发 + Cron 重试 | RepoWikiConfig + WikiVersion 表 + 文件系统版本隔离 | ✅ 已实现 |
-| Preview | 预览会话创建/文件上传/对外分享 + WebSocket 实时同步 | PreviewSession + PreviewFile 表 | ✅ 已实现 |
-| Dashboard | 看板六类指标聚合统计 | 原生 SQL 聚合（只读） | ✅ 已实现 |
-| LLM 热配置 | Provider/Model CRUD + Agent 角色模型分配 + API Key 加密存储 | LlmProvider + LlmModel 表 + AES-256-GCM 加密 | ✅ 已实现 |
-| SSH Key | 密钥对生成/CRUD/公钥导出 + 私钥加密存储 | SshKey 表 + Redis 缓存 | ✅ 已实现 |
-| Webhook | Git Push 事件接收 + HMAC 校验 + RepoWiki 触发 | WebhookEvent 表 | ✅ 已实现 |
-| 系统设置 | 站点/安全/Q&A/RepoWiki 分组配置读写 | Info 表 | ✅ 已实现 |
-| 安全中间件 | CORS 白名单 + 安全响应头 + WebAuthn Origin 解析 | 无持久化 | ✅ 已实现 |
-| MCP Server | Streamable HTTP 端点、QA/Project/Pin/RepoWiki/Preview 工具注册（25 个工具） | 复用各模块 Logic 层 | ✅ 已实现 |
-| WebSocket | 连接管理、消息分发、心跳检测、会话恢复 | Hub 内存管理（sessionID → deviceID 索引） | ✅ 已实现 |
-| Cron Runner | RepoWiki 超时任务重试 | 无持久化（基于 xCronRunner） | ✅ 已实现 |
-| 健康检查 | 服务/数据库就绪检查 | 无持久化 | ✅ 已实现 |
-| Wiki Reader 前端 | 只读 Wiki 渲染 SPA + 密码门 | 无持久化（go:embed 嵌入） | ✅ 已实现 |
-| 容器化部署 | Dockerfile 多阶段构建 + docker-compose 编排 + CI/CD 发布 | Docker 镜像 + GitHub Actions | ✅ 已实现 |
-
-### 设计中模块
-
-| 模块 | 职责 | 存储策略 |
-|------|------|----------|
-| Memory | 决策卡片 CRUD、标签分类、条件检索 | PG 全量存储 + Redis 可选缓存 |
-
-### 前后端关系
-
-```
-控制台前端（web/）──REST API + WebSocket──▶ 后端（Go Gin）
-                                              │
-Wiki Reader 前端（web-wiki/）──REST API───▶ 后端（/wiki/* + WikiAuth）
-                                              │
-Preview 对外页（web/ /preview）──REST + WebSocket──▶ 后端（/preview/* hash 鉴权）
-                                              │
-                                              ├── 认证模块（已实现）
-                                              ├── 用户模块（已实现）
-                                              ├── WebAuthn 生物认证（已实现）
-                                              ├── API Key 模块（已实现）
-                                              ├── 项目模块（已实现）
-                                              ├── Q&A 模块（已实现）
-                                              ├── Pin 模块（已实现）
-                                              ├── RepoWiki 模块（已实现，含 Webhook + Cron）
-                                              ├── Preview 模块（已实现）
-                                              ├── Dashboard 看板（已实现）
-                                              ├── LLM 热配置（已实现）
-                                              ├── SSH Key 模块（已实现）
-                                              ├── Webhook 模块（已实现）
-                                              ├── 系统设置（已实现）
-                                              ├── 安全中间件（已实现）
-                                              ├── MCP Server（已实现）
-                                              ├── WebSocket Hub（已实现）
-                                              ├── Cron Runner（已实现）
-                                              ├── 健康检查（已实现）
-                                              ├── 双前端 SPA 服务（已实现，go:embed）
-                                              └── Memory（设计中）
-```
+- 五领域互不 import；Agent 经 MCP 自行编排。
+- 分层单向：`route` → `handler` → `logic` → `repository`；`service` 只放跨域基础设施。
+- Q&A / Preview 用 WebSocket，不用 SSE。
+- 控制台 `web/`、Wiki Reader `web-wiki/` 经 `go:embed` 进同一二进制；UI 原语在 `@lumina/components`。
+- `docs/wiki/architecture.md` 仍写 SSE / 四模块，视为过时草稿，冲突时以 `ARCHITECTURE.md` 为准。
 
 ## 约定
 
@@ -401,26 +354,27 @@ Preview 对外页（web/ /preview）──REST + WebSocket──▶ 后端（/pr
 - **上下文依赖注入**：启动阶段将基础设施注册到 context；逻辑层通过 `xCtxUtil.MustGetDB/MustGetRDB` 获取；RepoWikiLogic 通过 `logic.GetRepoWikiLogicFromContext` 获取。
 - **响应模式**：handler 通过 `xResult.SuccessHasData` 返回成功；错误通过 `ctx.Error` 传递。
 - **错误类型**：仓库/逻辑层使用 `*xError.Error` 表示业务/基础设施故障。
-- **环境变量族**：`XLF_*`、`APP_*`、`DATABASE_*`、`NOSQL_*`、`LUMINA_*`、`SNOWFLAKE_*`、`LLM_*`、`QA_*`、`REPOWIKI_*`、`XLF_BIOMETRIC_*`。
-- **实体 ID 策略**：采用雪花算法基因策略；每个实体必须实现 `GetGene() xSnowflake.Gene`，基因编号定义在 `constant/gene_number.go`（GeneProject=32 ~ GenePreviewFile=46）。
+- **环境变量族**：`XLF_*`、`APP_*`、`DATABASE_*`、`NOSQL_*`、`LUMINA_*`、`SNOWFLAKE_*`、`LLM_*`、`QA_*`、`REPOWIKI_*`、`XLF_BIOMETRIC_*`。OAuth TTL 用 `LUMINA_OAUTH_ACCESS_TTL` / `LUMINA_OAUTH_REFRESH_TTL`（秒）；插件源目录用 `LUMINA_AI_PLUGIN_DIR`。
+- **实体 ID 策略**：采用雪花算法基因策略；每个实体必须实现 `GetGene() xSnowflake.Gene`，基因编号定义在 `constant/gene_number.go`（GeneProject=32 ~ GeneOAuthClient=47）。
 - **字段注释**：实体字段必须追加行尾中文注释（`// 字段说明`），且与 `gorm comment` 保持一致。
 - **Info 配置键统一**：所有 Info 表键名在 `constant/info_key.go` 集中定义，禁止在业务代码写死键名字符串；键名规范为层级 `.` 分隔、同层多词 `-` 连接、禁止 `_`（如 `qa.session.ttl`）。
 - **Swagger 注册**：仅在 `XLF_DEBUG=true` 时注册 Swagger UI。
 - **WebSocket 实时推送**：Q&A 与 Preview 模块使用 WebSocket 进行实时推送（非 SSE）。
 - **模块独立性**：五个核心模块（RepoWiki、Memory、Q&A、Pin、Preview）互不调用，Agent 通过 MCP 自行编排。
 - **双前端嵌入部署**：通过 `go:embed` 将 `resources/web/dist` 和 `resources/web-wiki/dist` 分别嵌入 Go 二进制，构建命令 `make generate` 完成前端打包 → Swagger → Go 编译全流程。
-- **MCP 路由注册**：MCP 端点必须在 `engine.Use()` 之前注册以绕开 `ResponseMiddleware`。
+- **MCP 路由注册**：MCP 端点必须在 `engine.Use()` 之前注册以绕开 `ResponseMiddleware`。OAuth well-known / authorize / register / token 同样需要裸 JSON，必须在同一时机注册。
+- **MCP 认证**：MCP 路由挂 `middleware.McpAuth`（`lum_at_` OAuth 优先，其余 Bearer 走 API Key）。不要改回只挂 `ApikeyAuth`，否则客户端拿不到 `WWW-Authenticate` 资源元数据。
 - **安全中间件**：`middleware.SecurityHeaders` / `middleware.Cors` / `middleware.WebAuthnOrigin` 在 `route.go` 全局注册，提供安全响应头、白名单 CORS 与 WebAuthn Origin 解析。
 - **共享组件包**：shadcn ui 组件、Markdown 渲染原语、motion 动画变体、微明主题 CSS 统一在 `@lumina/components` workspace 包管理，被 `web` 和 `web-wiki` 共同消费。
 - **pnpm monorepo**：`web`、`web-wiki`、`components` 三个 workspace 包由根 `pnpm-workspace.yaml` 统一管理，锁文件为根目录 `pnpm-lock.yaml`；在根目录执行 `pnpm install` 安装全部依赖。
 - **DTO 拆分**：`api/<domain>/` 内按操作类型拆分文件（`create.go`/`update.go`/`detail.go`/`list.go` 等），同一操作的相关 request+response 放在同一文件，禁止将所有 DTO 塞入单文件。
-- **资源内嵌**：RepoWiki 5 角色 system prompt 通过 `go:embed` 内嵌在 `resources/prompts/`，由 `service/prompt_loader.go` 读取；前端构建产物由 `resources/embed.go` 统一 `go:embed` 暴露，禁止在 logic 中硬编码 prompt 文本。
+- **资源内嵌**：RepoWiki 5 角色 system prompt 通过 `go:embed` 内嵌在 `resources/prompts/`，由 `service/prompt_loader.go` 读取；前端构建产物与 AI 插件源由 `resources/embed.go` 统一 `go:embed` 暴露（`AIPluginFS`），禁止在 logic 中硬编码 prompt 文本。
 - **LLM 热配置**：LLM Provider/Model 配置存储在数据库（非环境变量），通过前端管理页面配置；API Key 经 `service/crypto_helper.go` AES-256-GCM 加密，密钥由 `LLM_ENCRYPT_SECRET` 环境变量提供。
 - **加密存储**：LLM API Key 和 SSH 私钥必须经 AES-256-GCM 加密后存储，禁止明文落库。
 - **Webhook 签名校验**：所有 Webhook 请求必须经 `service/webhook_signer.go` 校验 HMAC 签名，密钥由 `REPOWIKI_HMAC_SECRET` 环境变量提供。
 - **Cron 任务**：定时任务通过 `xCronRunner` 注册（`startup_cron.go`），由 `main.go` 传入 `xMain.Runner` 异步执行，不阻塞启动节点链。
 - **容器化构建**：`Dockerfile` 采用多阶段构建（先构建双前端产物，再 `go build` 嵌入，最后精简运行镜像）；镜像标签由 `Makefile` 的 `validate-version` + `docker-build` + `publish` 目标驱动，CI 在 tag 触发时发布。
-- **子模块约定**：后端分层详情见 [internal/](./internal/AGENTS.md)，控制台前端专属约定见 [web/](./web/AGENTS.md)，Wiki Reader 前端约定见 [web-wiki/](./web-wiki/AGENTS.md)。
+- **子模块约定**：后端分层详情见 [internal/](./internal/AGENTS.md)，控制台前端专属约定见 [web/](./web/AGENTS.md)，Wiki Reader 前端约定见 [web-wiki/](./web-wiki/AGENTS.md)，共享组件包见 [components/](./components/AGENTS.md)。
 
 ## 反模式
 
@@ -436,22 +390,27 @@ Preview 对外页（web/ /preview）──REST + WebSocket──▶ 后端（/pr
 - 禁止在 `resources/prompts/` 外散落 prompt 文件；所有内嵌静态资源集中在 `resources/` 目录。
 - 禁止通过裸 goroutine 调度定时任务；统一走 `xCronRunner`。
 - 禁止在 `web` / `web-wiki` 内重新创建已迁入 `@lumina/components` 的 ui/markdown/motion/主题代码；应通过共享包导入。
+- 禁止给 MCP 端点只挂 `ApikeyAuth`；必须走 `McpAuth`，否则 OAuth 客户端无法发现授权服务器。
+- 禁止把 OAuth 令牌原文写入 Redis；缓存键必须是 SHA-256 摘要。
+- 禁止手写运行时 marketplace.json；清单由 `AIPluginService` 按当前域名和 ZIP SHA-256 渲染。ZCode 不支持 archive 源，必须使用 `marketplace.zcode.json`。
 - 子模块反模式详见各子模块 AGENTS.md。
 
 ## 独特风格
 
 - **日志命名**：遵循模块标签（`NamedMAIN`、`NamedINIT`、`NamedCONT`、`NamedLOGC`、`NamedREPO`、`NamedMIDE`、`NamedCRON`）。
 - **启动种子阶段**：显式通过 `xCtx.Exec` 节点执行，并隔离在 `prepare/` 目录中。
-- **实体 ID 基因策略**：实体级别需绑定基因类型（`GeneProject = 32` ~ `GenePreviewFile = 46`），定义在 `constant/gene_number.go`。
+- **实体 ID 基因策略**：实体级别需绑定基因类型（`GeneProject = 32` ~ `GeneOAuthClient = 47`），定义在 `constant/gene_number.go`。
 - **项目技能**：`.agents/skills/` 包含项目专属技能：`lumina-qa`、`lumina-preview`、`lumina-pin`、`lumina-repowiki`、`mcp-qa-test`、`swagger-writer`、`entity-build`、`project-style` 及 `_shared/` 共享规范。
 - **双通道暴露**：每个模块同时提供 REST API 和 MCP Tool。
 - **MCP 编排**：Lumina 不做跨模块编排，由 Agent 端自行决定调用顺序和组合。
-- **泛型 Handler 构造**：`NewHandler[T]` 统一注入所有 logic 实例（14 个 Logic）。
-- **双前端嵌入**：`resources/embed.go` 统一管理 `FrontendDist` + `WikiFrontendDist` + `PromptFiles`，配合 `route_frontend.go` 实现双 SPA fallback，单二进制部署。
+- **泛型 Handler 构造**：`NewHandler[T]` 统一注入所有 logic 实例（16 个 Logic，含 OAuth / AI Plugin）。
+- **双前端嵌入**：`resources/embed.go` 统一管理 `FrontendDist` + `WikiFrontendDist` + `PromptFiles` + `AIPluginFS`，配合 `route_frontend.go` 实现双 SPA fallback，单二进制部署。
 - **pnpm monorepo 共享包**：`@lumina/components` workspace 包集中管理 shadcn/ui、Markdown 渲染原语（含 remark fenced-blocks 插件）、motion 动画变体、微明主题 CSS，被 `web` 和 `web-wiki` 共同消费。
 - **DTO 按操作类型拆分**：`api/` 各业务域内以 `create.go`/`update.go`/`detail.go`/`list.go` 等操作命名文件，同一操作 request+response 同文件。
 - **API Key 安全**：`lumi_` 前缀 + base64 RawURL 编码 + bcrypt 哈希，仅创建/重置时返回完整密钥。
-- **API Key 认证中间件**：`middleware.ApikeyAuth` 专门用于 MCP 端点认证，与 `middleware.Auth`（Bearer Token）分离。
+- **API Key 认证中间件**：`middleware.ApikeyAuth` 仍是纯 API Key 校验实现；MCP 端点改挂 `McpAuth`（OAuth 优先 + API Key 回退），与 `middleware.Auth`（控制台 Bearer Token）分离。
+- **MCP OAuth 2.1**：Lumina 同时充当授权服务器与资源服务器；仅 PKCE S256 公共客户端（无 secret）；访问令牌前缀 `lum_at_`；同意页在 `/_public/oauth`。
+- **AI 插件动态打包**：`resources/ai-plugin` 经 embed 后按请求域名写入 `.mcp.json` 再打 ZIP；调试态热重载；Codex 市场走仓库内 `.agents/plugins/marketplace.json`（Git 源）。
 - **Wiki Auth 中间件**：`middleware.WikiAuth` 处理 Wiki Reader 的密码 Token / Cookie 会话认证，与控制台认证分离。
 - **Project 缓存**：三层映射（ID→详情、Name→ID、Alias→ID），Cache-Aside 模式，30 分钟 TTL。
 - **WebSocket Hub**：按 sessionID → deviceID 二级索引管理连接，连接 `Kind` 区分 qa/preview，心跳检测间隔 5s / 超时 15s，支持会话恢复。
@@ -468,7 +427,7 @@ Preview 对外页（web/ /preview）──REST + WebSocket──▶ 后端（/pr
 - **HTML 沙盒隔离**：`sandbox-frame.tsx` 用 iframe `sandbox="allow-scripts"`（不加 `allow-same-origin`）实现 opaque origin 隔离，替代旧 Shadow DOM + DOMPurify 白名单方案。
 - **静烛 v1 设计语言**：共享 `theme.css` 全量重写，色盘为静烛/微明意象（`--sea-ink`/`--lagoon`/`--palm`/`--sand`/`--foam`），`--radius:0px` 全平直角。
 - **Preview 实时同步**：`OnPreviewChanged` 回调驱动 `preview_sync` 消息推送，对外分享页与管理端实时同步会话文件变更。
-- **Preview 对外分享**：会话通过 16 位 Hash 深链分享（`/preview?session=<hash>`），公开端点 hash 鉴权，文件 MIME 推断。
+- **Preview 对外分享**：会话通过 16 位 Hash 深链分享（`/preview?session=<hash>`），公开端点 hash 鉴权；前端按 kind 分发 html/svg iframe、Markdown 渲染与 CodeMirror 代码高亮。
 - **Dashboard KPI 聚合**：`repository/dashboard.go` 用原生 SQL 聚合六类指标，前端 `useDashboardOverview` 被多个 Console 页复用 KPI。
 - **RepoWiki 子 Agent 编排**：`SubAgentOrchestrator` 按预定义 5 阶段（Coordinator → Explore → Architect → Writer → Validator）生成 Wiki，prompt 模板内嵌在 `resources/prompts/*.md` 通过 `service/prompt_loader.go` 加载，`repowiki_subagent_prompts.go` 负责动态构建 user prompt，`repowiki_types.go` 定义内部类型，`repowiki_pipeline.go` 负责 Git 准备与状态机驱动。
 - **RepoWiki 版本隔离**：每个 Wiki 版本存储在 `versions/{vid}/` 下，`RepoWikiConfig.SelectedVersionID` 指定当前对外服务版本；旧版 config 级目录已废弃，新版本完成后清理。
@@ -480,7 +439,7 @@ Preview 对外页（web/ /preview）──REST + WebSocket──▶ 后端（/pr
 - **媒体回答处理**：`service/media_answer.go` 处理图片/文件附件的回答格式化，供 Q&A MCP 工具调用。
 - **文件缓存防护**：`service/file_cache.go` 的 `IsWithinCacheDir` 用绝对路径 + `EvalSymlinks` + `filepath.Rel` 前缀校验，防路径穿越与符号链接逃逸。
 - **双前端共享**：`@lumina/components` workspace 包统一管理 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体、微明主题 CSS，被 web 和 web-wiki 共同消费。
-- **内嵌资源集中管理**：`resources/` 目录集中管理项目级内嵌静态资源（prompt 文件 + 双前端构建产物），通过 `go:embed` 暴露给各业务包引用，避免资源文件散落在业务包内部。
+- **内嵌资源集中管理**：`resources/` 目录集中管理项目级内嵌静态资源（prompt 文件 + 双前端构建产物 + AI 插件源），通过 `go:embed` 暴露给各业务包引用，避免资源文件散落在业务包内部。
 - **Runner 模式**：`startup.NewWebSocketRunner()` 与 `startup.NewCronRunner()` 返回的函数由 `main.go` 传入 `xMain.Runner` 的 goroutineFunc 参数，与启动节点链解耦异步执行。
 - **容器化部署**：`Dockerfile` 多阶段构建 + `docker-compose.yaml`（精简）/ `docker-compose.full.yaml`（完整）双编排 + `.github/workflows/docker-publish.yml` 在 tag 触发时发布镜像。
 
@@ -570,8 +529,9 @@ pnpm test         # 运行 Vitest 测试（markdown/remark-fenced-blocks）
 - 已配置 CI 工作流（`.github/workflows/docker-publish.yml`），在打 tag 时触发镜像构建并发布到容器仓库。
 - 项目已 pnpm monorepo 化：锁文件为根目录 `pnpm-lock.yaml`，`web/pnpm-lock.yaml` 与 `web-wiki/pnpm-lock.yaml` 已移除；依赖安装统一在根目录执行 `pnpm install`。
 - 依赖已升级：bamboo-base-go 全模块升至 v1.2.3（DB/Cache 改由 `xOption.WithDatabase/WithCache` 声明式装配），Go 1.25.11。
-- `make test` 命令存在，已有测试用例覆盖 project、llm_model、llm_provider、ssh_key_gen、webhook_parser、webhook_signer、wiki_auth_token、wiki_storage、git_service、file_scanner、dependency_extractor、repowiki_orchestrator、biometric、runtime_url、prompt_loader、preview_tools、webauthn_user 等模块。
-- `docs/wiki/` 为手动维护的设计文档，与 `docs/swagger*` 自动生成文件不同。
+- `make test` 命令存在，已有测试用例覆盖 project、llm_model、llm_provider、ssh_key_gen、webhook_parser、webhook_signer、wiki_auth_token、wiki_storage、git_service、file_scanner、dependency_extractor、repowiki_orchestrator、biometric、runtime_url、prompt_loader、preview_tools、webauthn_user、oauth_logic、ai_plugin、preview MIME 等模块。
+- 根位置公约文件：`ARCHITECTURE.md`（架构边界）、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md`（Contributor Covenant 2.1）、`SECURITY.md`、`SUPPORT.md`、`CHANGELOG.md`（自 v1.0.0-beta.18 起）。`README.md` 与 `LICENSE` 为既有人工文件，未改写。
+- `docs/wiki/` 为手动维护的早期设计文档，与 `docs/swagger*` 自动生成文件不同。其中 `docs/wiki/architecture.md` 仍写 SSE / 四模块，**与现状冲突时以根目录 `ARCHITECTURE.md` 为准**。
 - `docs/wiki/qa/` 设计文档已删除（Q&A 模块已从设计进入实现阶段）。
 - `docs/wiki/repowiki/` 新增 `webhook-design.md` 和 `multi-agent-design.md` 设计文档。
 - `docs/` 下的 `swagger.json`、`swagger.yaml`、`docs.go` 由 `swag init -g main.go --parseDependency` 自动生成；切勿提交手动编辑。
@@ -597,15 +557,32 @@ pnpm test         # 运行 Vitest 测试（markdown/remark-fenced-blocks）
 - Webhook 模块已实现（Git Push 事件接收 + HMAC 校验 + RepoWiki 触发 + 事件历史查询）。
 - 系统设置已实现（站点/安全/Q&A/RepoWiki 分组配置读写 + 前端多标签页设置页）。
 - 安全中间件已实现（CORS 白名单 + 安全响应头 + WebAuthn Origin 解析）。
-- MCP Server 已实现，注册了 QA（10 工具）、Project（3 工具）、Pin（5 工具）、RepoWiki（2 只读工具）、Preview（5 工具）五套工具共 25 个，通过 API Key 认证。
+- MCP Server 已实现，注册了 QA（10 工具）、Project（3 工具）、Pin（5 工具）、RepoWiki（2 只读工具）、Preview（5 工具）五套工具共 25 个；认证为 OAuth 2.1 优先、API Key 回退。
+- MCP OAuth 2.1 已实现（RFC 8414 / 9728 / 7591 / 8707，PKCE S256，consent 页 `/oauth`）。
+- AI 插件动态分发已实现（marketplace.json、ZCode 专用清单、lumina.zip、`.well-known/skills`）。
 - WebSocket Hub 已实现，支持 sessionID → deviceID 二级索引，连接 `Kind` 区分 qa/preview，心跳检测，优雅关闭，断线重连和会话恢复。
 - Cron Runner 已实现，注册 RepoWiki 超时任务重试（默认每 5 分钟），由 `main.go` 传入 `xMain.Runner` 异步执行。
 - WebSocket Runner 已实现（`NewWebSocketRunner`），Hub 主循环由 `main.go` 传入 `xMain.Runner` 异步执行。
 - Wiki Reader 前端（`web-wiki/`）已实现，独立 SPA 部署在 `/wiki/`，支持密码门认证和只读 .mdx Wiki 渲染。
 - Docker 容器化已实现（多阶段 Dockerfile + 双 docker-compose 编排 + GitHub Actions tag 发布流水线）；容器内部端口默认 8800（`EXPOSE 8800`），由 `XLF_PORT` 环境变量驱动。
 
+## 调试路径
+
+1. 后端路由 / 分层 / MCP / OAuth → 见 [internal/](./internal/AGENTS.md) 调试路径。
+2. 启动节点、迁移、种子数据 → 见 [internal/app/startup/](./internal/app/startup/AGENTS.md)。
+3. 控制台页面、接入指南、Interact、Preview 前端 → 见 [web/](./web/AGENTS.md)。
+4. Wiki Reader 渲染与密码门 → 见 [web-wiki/](./web-wiki/AGENTS.md)。
+5. 共享组件、主题色、Markdown 排版（代码块黑底） → 见 [components/](./components/AGENTS.md)。
+
 ## 引用
 
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — 物理架构地图与长期边界（人类贡献者）
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — 本地开发与 PR
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — 行为准则
+- [SECURITY.md](./SECURITY.md) — 漏洞私密上报
+- [SUPPORT.md](./SUPPORT.md) — 求助渠道
+- [CHANGELOG.md](./CHANGELOG.md) — 版本变更
 - [internal/](./internal/AGENTS.md) — 后端业务层详细文档
 - [web/](./web/AGENTS.md) — 控制台前端应用详细文档
 - [web-wiki/](./web-wiki/AGENTS.md) — Wiki Reader 前端详细文档
+- [components/](./components/AGENTS.md) — 共享 UI / Markdown / motion / 主题包
