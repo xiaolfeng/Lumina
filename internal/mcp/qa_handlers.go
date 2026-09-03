@@ -240,23 +240,7 @@ func handleQaPushSupplement(ctx context.Context, req *mcp.CallToolRequest) (*mcp
 		return textResult("缺少必填参数: content"), nil
 	}
 
-	// 确定目标类型和目标 ID
-	targetType := "question"
-	targetIDStr := questionID
-
-	// 如果提供了 option_id，则目标类型为 option
-	if optID, _ := args["option_id"].(string); optID != "" {
-		targetType = "option"
-		targetIDStr = optID
-	}
-
-	// 解析 targetID 为 SnowflakeID
-	var targetID xSnowflake.SnowflakeID
-	if parsedTID, err := xSnowflake.ParseSnowflakeID(targetIDStr); err != nil {
-		return textResult(fmt.Sprintf("无效的 ID 格式: %s", targetIDStr)), nil
-	} else {
-		targetID = parsedTID
-	}
+	optionID, _ := args["option_id"].(string)
 
 	// 内容类型
 	contentType := "markdown"
@@ -272,7 +256,7 @@ func handleQaPushSupplement(ctx context.Context, req *mcp.CallToolRequest) (*mcp
 		}
 	}
 
-	xErr := qaLogic.PushSupplement(ctx, sessionID, targetType, targetID, contentType, content)
+	xErr := qaLogic.PushSupplement(ctx, sessionID, questionID, optionID, contentType, content)
 	if xErr != nil {
 		return textResult(fmt.Sprintf("推送补充内容失败: %s", xErr.Error())), nil
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -67,12 +68,14 @@ func (l *PreviewLogic) CreateSession(ctx context.Context, projectID xSnowflake.S
 		title = "未命名预览"
 	}
 
+	expiresAt := time.Now().Add(l.sessionTTL(ctx))
 	session := &entity.PreviewSession{
 		BaseEntity: xModels.BaseEntity{ID: id},
 		ProjectID:  projectID,
 		Title:      title,
 		Hash:       generateSessionHash(id),
 		Status:     bConst.PreviewSessionStatusActive,
+		ExpiresAt:  &expiresAt,
 	}
 
 	if xErr := l.repo.session.Create(ctx, session); xErr != nil {
@@ -157,8 +160,11 @@ func (l *PreviewLogic) UploadFile(ctx context.Context, sessionID xSnowflake.Snow
 		return nil, xError.NewError(ctx, xError.ParameterError, "文件大小超出上限(256KB)", false, nil)
 	}
 
-	// 校验会话存在
-	if _, xErr := l.repo.session.GetByID(ctx, sessionID); xErr != nil {
+	session, xErr := l.repo.session.GetByID(ctx, sessionID)
+	if xErr != nil {
+		return nil, xErr
+	}
+	if xErr := l.rejectIfUnusable(ctx, session); xErr != nil {
 		return nil, xErr
 	}
 
@@ -217,6 +223,9 @@ func (l *PreviewLogic) GetSessionByHash(ctx context.Context, hash string) (*apiP
 	if xErr != nil {
 		return nil, xErr
 	}
+	if xErr := l.rejectIfUnusable(ctx, session); xErr != nil {
+		return nil, xErr
+	}
 
 	return toPreviewSessionResponse(session), nil
 }
@@ -254,6 +263,9 @@ func (l *PreviewLogic) GetFileContent(ctx context.Context, hash, filename string
 	if xErr != nil {
 		return nil, xErr
 	}
+	if xErr := l.rejectIfUnusable(ctx, session); xErr != nil {
+		return nil, xErr
+	}
 
 	file, xErr := l.repo.file.GetBySessionAndFilename(ctx, session.ID, filename)
 	if xErr != nil {
@@ -271,8 +283,11 @@ func (l *PreviewLogic) GetFileContent(ctx context.Context, hash, filename string
 func (l *PreviewLogic) GetFileContentBySession(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string) (*apiPreview.PreviewFileContentResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("GetFileContentBySession - 获取预览文件内容 [sessionID=%d, filename=%s]", sessionID.Int64(), filename))
 
-	// 校验会话存在
-	if _, xErr := l.repo.session.GetByID(ctx, sessionID); xErr != nil {
+	session, xErr := l.repo.session.GetByID(ctx, sessionID)
+	if xErr != nil {
+		return nil, xErr
+	}
+	if xErr := l.rejectIfUnusable(ctx, session); xErr != nil {
 		return nil, xErr
 	}
 
@@ -301,6 +316,9 @@ func (l *PreviewLogic) GetFileByID(ctx context.Context, fileID xSnowflake.Snowfl
 
 	session, xErr := l.repo.session.GetByID(ctx, file.SessionID)
 	if xErr != nil {
+		return nil, xErr
+	}
+	if xErr := l.rejectIfUnusable(ctx, session); xErr != nil {
 		return nil, xErr
 	}
 
@@ -354,7 +372,69 @@ func (l *PreviewLogic) DeleteFile(ctx context.Context, fileID xSnowflake.Snowfla
 	return nil
 }
 
+// ExpireStaleSessions 将已到期仍为 active 的预览会话改为 deleted（保留文件）
+func (l *PreviewLogic) ExpireStaleSessions(ctx context.Context) {
+	l.log.Info(ctx, "ExpireStaleSessions - 扫描已到期的预览会话")
+	ids, xErr := l.repo.session.ListActiveExpiredIDs(ctx, time.Now())
+	if xErr != nil {
+		l.log.Warn(ctx, xErr.Error())
+		return
+	}
+	for _, id := range ids {
+		if uErr := l.repo.session.UpdateStatus(ctx, id, bConst.PreviewSessionStatusDeleted); uErr != nil {
+			l.log.Warn(ctx, uErr.Error())
+			continue
+		}
+		if OnPreviewChanged != nil {
+			OnPreviewChanged(id.String(), "delete_session")
+		}
+	}
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────
+
+const defaultPreviewSessionTTL = 7 * 24 * time.Hour
+
+func (l *PreviewLogic) sessionTTL(ctx context.Context) time.Duration {
+	ttlStr, xErr := l.repo.info.GetByKey(ctx, bConst.InfoKeyPreviewSessionTTL)
+	if xErr != nil {
+		l.log.Warn(ctx, fmt.Sprintf("读取 preview.session.ttl 失败: %s，使用默认值", xErr.GetMessage()))
+		return defaultPreviewSessionTTL
+	}
+	sec, err := strconv.Atoi(ttlStr)
+	if err != nil || sec <= 0 {
+		return defaultPreviewSessionTTL
+	}
+	return time.Duration(sec) * time.Second
+}
+
+func sessionDue(session *entity.PreviewSession, now time.Time) bool {
+	return session.Status == bConst.PreviewSessionStatusActive &&
+		session.ExpiresAt != nil &&
+		now.After(*session.ExpiresAt)
+}
+
+func (l *PreviewLogic) expireIfDue(ctx context.Context, session *entity.PreviewSession) {
+	if !sessionDue(session, time.Now()) {
+		return
+	}
+	if xErr := l.repo.session.UpdateStatus(ctx, session.ID, bConst.PreviewSessionStatusDeleted); xErr != nil {
+		l.log.Warn(ctx, xErr.Error())
+		return
+	}
+	session.Status = bConst.PreviewSessionStatusDeleted
+	if OnPreviewChanged != nil {
+		OnPreviewChanged(session.ID.String(), "delete_session")
+	}
+}
+
+func (l *PreviewLogic) rejectIfUnusable(ctx context.Context, session *entity.PreviewSession) *xError.Error {
+	l.expireIfDue(ctx, session)
+	if session.Status != bConst.PreviewSessionStatusActive {
+		return xError.NewError(ctx, xError.NotFound, "预览会话不存在", false, nil)
+	}
+	return nil
+}
 
 // validateFilename 校验文件名是否合法（扁平单层）
 //
@@ -399,12 +479,17 @@ func inferMimeType(filename string) string {
 
 // toPreviewSessionResponse 将预览会话实体映射为响应 DTO
 func toPreviewSessionResponse(session *entity.PreviewSession) *apiPreview.PreviewSessionResponse {
+	expiresAt := ""
+	if session.ExpiresAt != nil {
+		expiresAt = session.ExpiresAt.Format(time.RFC3339)
+	}
 	return &apiPreview.PreviewSessionResponse{
 		ID:        session.ID,
 		ProjectID: session.ProjectID,
 		Title:     session.Title,
 		Hash:      session.Hash,
 		Status:    session.Status,
+		ExpiresAt: expiresAt,
 		CreatedAt: session.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: session.UpdatedAt.Format(time.RFC3339),
 	}

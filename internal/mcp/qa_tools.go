@@ -237,9 +237,9 @@ var qaToolDefs = []struct {
 	},
 	{
 		name: "qa_push_supplement",
-		description: `用途：为已推送的问题或某个选项写入一份右侧详情面板内容。每个目标只保留一份 supplement；对同一 question_id/option_id 再次调用会覆盖旧内容。
+		description: `用途：为已推送的问题或某个选项写入一份右侧详情面板内容。每个目标只保留一份 supplement；对同一 question_id/option_id 再次调用会覆盖旧内容。覆盖只对尚未回答的问题成立——已回答或已跳过时调用会失败，不会改写已有 supplement。
 
-何时调用：qa_push_question 使用 supplement=true、选项需要展开说明，或 qa_get_answer 返回 [NEED_SUPPLEMENT] 时调用。它不会创建问题、Preview 文件或浏览器页面；目标问题必须已存在。
+何时调用：qa_push_question 使用 supplement=true、选项需要展开说明，或 qa_get_answer 返回 [NEED_SUPPLEMENT] 时调用。它不会创建问题、Preview 文件或浏览器页面；目标问题必须已存在且仍为 pending。
 
 content_type 选择：
 - markdown（默认）：技术说明、约束、代码、表格、Mermaid、KaTeX；浏览器与 Agent 都可读。凡是后续推理必须保留的信息都应使用 markdown。

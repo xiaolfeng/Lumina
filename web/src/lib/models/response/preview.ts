@@ -5,6 +5,7 @@ export interface PreviewSessionItem {
   hash: string
   status: 'active' | 'deleted'
   file_count: number
+  expires_at: string
   created_at: string
   updated_at: string
 }

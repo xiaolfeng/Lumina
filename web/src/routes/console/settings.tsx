@@ -19,6 +19,7 @@ import { SiteSettingsForm } from '#/components/settings/site-settings-form'
 import { QaSettingsForm } from '#/components/settings/qa-settings-form'
 import { RepowikiSettingsForm } from '#/components/settings/repowiki-settings-form'
 import { SecuritySettingsForm } from '#/components/settings/security-settings-form'
+import { PreviewSettingsForm } from '#/components/settings/preview-settings-form'
 import {
   useProviders,
   useDeleteProvider,
@@ -31,6 +32,7 @@ import type { Provider, Model } from '#/lib/models/response/llm'
 const SETTINGS_TABS = [
   'site',
   'qa',
+  'preview',
   'repowiki',
   'security',
   'provider',
@@ -128,6 +130,7 @@ function SettingsPage() {
         <TabsList variant="line" className="w-full justify-start gap-6">
           <TabsTrigger value="site">站点信息</TabsTrigger>
           <TabsTrigger value="qa">Q&A 配置</TabsTrigger>
+          <TabsTrigger value="preview">Preview</TabsTrigger>
           <TabsTrigger value="repowiki">RepoWiki</TabsTrigger>
           <TabsTrigger value="security">安全策略</TabsTrigger>
           <TabsTrigger value="provider">Provider 管理</TabsTrigger>
@@ -146,6 +149,12 @@ function SettingsPage() {
         <TabsContent value="qa">
           <motion.div variants={staggerItem}>
             <QaSettingsForm />
+          </motion.div>
+        </TabsContent>
+
+        <TabsContent value="preview">
+          <motion.div variants={staggerItem}>
+            <PreviewSettingsForm />
           </motion.div>
         </TabsContent>
 

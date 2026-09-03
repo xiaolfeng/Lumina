@@ -4,6 +4,7 @@ package bConst
 const (
 	SettingCategorySite     = "site"     // 站点外观设置分类
 	SettingCategoryQa       = "qa"       // Q&A 模块设置分类
+	SettingCategoryPreview  = "preview"  // Preview 模块设置分类
 	SettingCategoryRepoWiki = "repowiki" // RepoWiki 模块设置分类
 	SettingCategorySecurity = "security" // 安全认证设置分类
 )
@@ -17,9 +18,9 @@ type SettingKeyDef struct {
 	Description string // 配置说明
 }
 
-// SettingKeyDefs 系统设置全量元数据定义（共 17 项）
+// SettingKeyDefs 系统设置全量元数据定义（共 18 项）
 //
-// 覆盖站点信息、Q&A 模块、RepoWiki 模块、安全认证四大分类。
+// 覆盖站点信息、Q&A、Preview、RepoWiki、安全认证五类。
 // 新增设置项时只需在此追加定义并在 KeysByCategory 中自动归类。
 // 键名规范：层级用 . 分隔，同层多词用 - 连接，禁止使用 _。
 var SettingKeyDefs = []SettingKeyDef{
@@ -36,6 +37,9 @@ var SettingKeyDefs = []SettingKeyDef{
 	{Key: InfoKeyQaGetAnswerMaxRetries, Category: SettingCategoryQa, Type: "int", Default: "36", Description: "qa_get_answer 最大重试次数（默认36次≈15分钟），达到后返回 STOPPED 提示用户主动触发"},
 	{Key: InfoKeyQaMaxActiveSessions, Category: SettingCategoryQa, Type: "int", Default: "100", Description: "Q&A 最大活跃会话数"},
 	{Key: InfoKeyQaEnableFileUpload, Category: SettingCategoryQa, Type: "bool", Default: "true", Description: "是否启用 Q&A 文件上传功能"},
+
+	// ── preview 分类（1 项）──
+	{Key: InfoKeyPreviewSessionTTL, Category: SettingCategoryPreview, Type: "int", Default: "604800", Description: "Preview 会话默认 TTL（秒）"},
 
 	// ── repowiki 分类（3 项）──
 	{Key: InfoKeyRepoWikiDefaultLanguage, Category: SettingCategoryRepoWiki, Type: "string", Default: "zh", Description: "RepoWiki 默认 Wiki 语言"},
@@ -55,7 +59,7 @@ var SettingKeyDefs = []SettingKeyDef{
 var KeysByCategory map[string][]SettingKeyDef
 
 func init() {
-	KeysByCategory = make(map[string][]SettingKeyDef, 4) // 4 个分类 // 4 个分类
+	KeysByCategory = make(map[string][]SettingKeyDef, 5)
 	for _, def := range SettingKeyDefs {
 		KeysByCategory[def.Category] = append(KeysByCategory[def.Category], def)
 	}

@@ -175,6 +175,7 @@ export function SandboxFrame({ content, css, className, title }: SandboxFramePro
 	const frameRef = useRef<HTMLIFrameElement>(null);
 	const [mounted, setMounted] = useState(false);
 	const [height, setHeight] = useState(0);
+	const [loaded, setLoaded] = useState(false);
 	const [themeVars, setThemeVars] = useState<string>(() =>
 		typeof document !== 'undefined' ? collectThemeVariables() : ''
 	);
@@ -200,6 +201,7 @@ export function SandboxFrame({ content, css, className, title }: SandboxFramePro
 			const data = e.data;
 			if (data && data.type === HEIGHT_MSG_TYPE && typeof data.height === 'number') {
 				setHeight(data.height);
+				if (data.height > 0) setLoaded(true);
 			}
 		};
 		window.addEventListener('message', onMessage);
@@ -211,19 +213,29 @@ export function SandboxFrame({ content, css, className, title }: SandboxFramePro
 		[content, css, themeVars]
 	);
 
-	// SSR / 首次渲染占位，与旧 ShadowHtml 行为一致（内容在客户端挂载后呈现）
-	if (!mounted) {
-		return <div className={className} />;
-	}
+	useEffect(() => {
+		setLoaded(false);
+		setHeight(0);
+	}, [doc]);
 
 	return (
-		<iframe
-			ref={frameRef}
-			title={title ?? '即时渲染预览'}
-			sandbox="allow-scripts"
-			srcDoc={doc}
-			style={{ height }}
-			className={`block w-full border-0 ${className ?? ''}`}
-		/>
+		<div className={`relative min-h-40 w-full ${className ?? ''}`}>
+			{(!mounted || !loaded) && (
+				<div className="absolute inset-0 z-10 flex items-center justify-center bg-bg-base">
+					<p className="text-sm text-sea-ink-soft/50">正在加载中</p>
+				</div>
+			)}
+			{mounted ? (
+				<iframe
+					ref={frameRef}
+					title={title ?? '即时渲染预览'}
+					sandbox="allow-scripts"
+					srcDoc={doc}
+					onLoad={() => setLoaded(true)}
+					style={{ height: height > 0 ? height : 160 }}
+					className="block w-full border-0"
+				/>
+			) : null}
+		</div>
 	);
 }

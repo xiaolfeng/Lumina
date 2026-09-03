@@ -16,31 +16,45 @@ import { getPreviewFileByID } from '#/lib/apis/preview'
 export interface PreviewFrameProps {
   /** 指向 serve 接口的文件 URL（支持跨文件相对引用） */
   src: string
-  /** 作用于 iframe 元素的 className（布局） */
+  /** 作用于外层容器的 className（布局） */
   className?: string
   /** iframe 无障碍标题 */
   title?: string
 }
 
+function LoadingSlot() {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-bg-base">
+      <p className="text-sm text-sea-ink-soft/50">正在加载中</p>
+    </div>
+  )
+}
+
 export function PreviewFrame({ src, className, title }: PreviewFrameProps) {
   const [mounted, setMounted] = useState(false)
+  const [loaded, setLoaded] = useState(false)
 
-  // 首次挂载后再渲染 iframe，规避 SSR 下 src 序列化问题
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  if (!mounted) {
-    return <div className={className} />
-  }
+  useEffect(() => {
+    setLoaded(false)
+  }, [src])
 
   return (
-    <iframe
-      src={src}
-      title={title ?? '前端预览'}
-      sandbox="allow-scripts"
-      className={`block h-full w-full border-0 ${className ?? ''}`}
-    />
+    <div className={`relative min-h-0 h-full w-full ${className ?? ''}`}>
+      {(!mounted || !loaded) && <LoadingSlot />}
+      {mounted ? (
+        <iframe
+          src={src}
+          title={title ?? '前端预览'}
+          sandbox="allow-scripts"
+          onLoad={() => setLoaded(true)}
+          className="block h-full w-full border-0"
+        />
+      ) : null}
+    </div>
   )
 }
 
@@ -99,10 +113,18 @@ export function PreviewSupplement({ content }: { content: string }) {
   }, [content])
 
   if (error) {
-    return <p className="text-xs text-red-500">{error}</p>
+    return (
+      <div className="flex h-full min-h-80 w-full items-center justify-center">
+        <p className="text-xs text-red-500">{error}</p>
+      </div>
+    )
   }
   if (src === '') {
-    return <p className="text-xs text-sea-ink-soft/50">正在加载预览…</p>
+    return (
+      <div className="relative h-full min-h-80 w-full">
+        <LoadingSlot />
+      </div>
+    )
   }
-  return <PreviewFrame src={src} className="h-80 w-full" />
+  return <PreviewFrame src={src} className="min-h-80" />
 }

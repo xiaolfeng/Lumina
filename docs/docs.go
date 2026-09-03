@@ -7788,6 +7788,10 @@ const docTemplate = `{
                     "description": "创建时间",
                     "type": "string"
                 },
+                "expires_at": {
+                    "description": "过期时间",
+                    "type": "string"
+                },
                 "file_count": {
                     "description": "文件数量",
                     "type": "integer"

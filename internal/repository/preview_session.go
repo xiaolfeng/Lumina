@@ -10,6 +10,7 @@ import (
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"gorm.io/gorm"
 )
@@ -203,6 +204,33 @@ func (r *PreviewSessionRepo) DeleteCascade(ctx context.Context, id xSnowflake.Sn
 		return xError.NewError(ctx, xError.DatabaseError, "删除预览会话失败", false, err)
 	}
 	return nil
+}
+
+// UpdateStatus 更新预览会话状态（过期时改为 deleted，不删文件）
+func (r *PreviewSessionRepo) UpdateStatus(ctx context.Context, id xSnowflake.SnowflakeID, status string) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("UpdateStatus - 更新预览会话状态 [id=%d, status=%s]", id.Int64(), status))
+	result := r.db.WithContext(ctx).Model(&entity.PreviewSession{}).Where("id = ?", id).Update("status", status)
+	if result.Error != nil {
+		r.log.Warn(ctx, result.Error.Error())
+		return xError.NewError(ctx, xError.DatabaseError, "更新预览会话状态失败", false, result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return xError.NewError(ctx, xError.NotFound, "预览会话不存在", false, nil)
+	}
+	return nil
+}
+
+// ListActiveExpiredIDs 列出已到期仍为 active 的预览会话 ID
+func (r *PreviewSessionRepo) ListActiveExpiredIDs(ctx context.Context, now time.Time) ([]xSnowflake.SnowflakeID, *xError.Error) {
+	r.log.Info(ctx, "ListActiveExpiredIDs - 查询已到期的活跃预览会话")
+	var ids []xSnowflake.SnowflakeID
+	if err := r.db.WithContext(ctx).
+		Model(&entity.PreviewSession{}).
+		Where("status = ? AND expires_at IS NOT NULL AND expires_at < ?", bConst.PreviewSessionStatusActive, now).
+		Pluck("id", &ids).Error; err != nil {
+		return nil, xError.NewError(ctx, xError.DatabaseError, "查询过期预览会话失败", false, err)
+	}
+	return ids, nil
 }
 
 // TouchUpdatedAt 触摸预览会话更新时间（文件变更后同步会话 updated_at）

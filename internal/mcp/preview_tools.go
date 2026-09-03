@@ -670,6 +670,7 @@ func previewSessionData(session *apiPreview.PreviewSessionResponse, previewURL s
 		"hash":        session.Hash,
 		"status":      session.Status,
 		"file_count":  session.FileCount,
+		"expires_at":  session.ExpiresAt,
 		"created_at":  session.CreatedAt,
 		"updated_at":  session.UpdatedAt,
 		"preview_url": previewURL,

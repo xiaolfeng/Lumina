@@ -90,7 +90,13 @@ export function PreviewSessionDetailDrawer({
                 <div className="flex items-center justify-between">
                   <span className="text-sea-ink-soft">状态</span>
                   <span className="font-medium text-sea-ink">
-                    {detail.session.status === 'active' ? '活跃' : '已删除'}
+                    {detail.session.status === 'active' ? '活跃' : '已过期'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sea-ink-soft">过期时间</span>
+                  <span className="font-medium text-sea-ink">
+                    {formatDateTime(detail.session.expires_at)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">

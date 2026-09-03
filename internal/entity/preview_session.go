@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"time"
+
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
@@ -13,6 +15,7 @@ type PreviewSession struct {
 	Title              string                 `gorm:"type:varchar(255);not null;comment:会话标题" json:"title"`                               // 会话标题
 	Hash               string                 `gorm:"type:char(32);uniqueIndex;not null;comment:访问哈希标识" json:"hash"`                      // 访问哈希标识
 	Status             string                 `gorm:"type:varchar(16);not null;default:active;comment:会话状态 active/deleted" json:"status"` // 会话状态 active/deleted
+	ExpiresAt          *time.Time             `gorm:"type:timestamptz;index;comment:过期时间" json:"expires_at,omitempty"`                    // 过期时间
 }
 
 // GetGene 返回PreviewSession实体的雪花算法基因编号

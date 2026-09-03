@@ -38,7 +38,7 @@ function PreviewPage() {
 
   const [files, setFiles] = useState<PreviewFileItem[]>([])
   const [activeFile, setActiveFile] = useState('')
-  const [sessionTitle, setSessionTitle] = useState('')
+  const [sessionTitle, setSessionTitle] = useState<string | null>(null)
   const [error, setError] = useState('')
   const { setTitle } = usePreviewHeader()
 
@@ -47,12 +47,12 @@ function PreviewPage() {
   // WS 实时同步：连接快照 / 文件变更均通过 preview_sync 消息驱动，替代单次 REST 拉取
   const handleSync = useCallback(
     (data: any) => {
-      if (!data?.session) {
-        // 会话删除事件：后端仅广播 event_type=delete_session（无 session/files），关闭预览内容
-        if (data?.event_type === 'delete_session') {
+      if (!data?.session || data.session.status !== 'active') {
+        // 会话删除 / 过期：后端广播 delete_session，或快照里 status 已不是 active
+        if (data?.event_type === 'delete_session' || data?.session) {
           setFiles([])
           setActiveFile('')
-          setSessionTitle('')
+          setSessionTitle(null)
           setError('预览会话已被删除')
         }
         return
@@ -102,6 +102,7 @@ function PreviewPage() {
   useEffect(() => {
     if (status === 'rejected') {
       setError('预览会话不存在')
+      setSessionTitle(null)
     } else if (status === 'connecting' || status === 'connected') {
       setError('')
     }
@@ -111,7 +112,7 @@ function PreviewPage() {
   const isLoading = status === 'idle' || status === 'connecting'
 
   useEffect(() => {
-    setTitle(sessionTitle || null)
+    setTitle(sessionTitle)
     return () => setTitle(null)
   }, [sessionTitle, setTitle])
 

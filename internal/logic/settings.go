@@ -16,7 +16,7 @@ import (
 
 // SettingsLogic 系统设置业务编排层
 //
-// 承载站点外观、Q&A、RepoWiki、安全认证四大分类的配置读写编排。
+// 承载站点外观、Q&A、Preview、RepoWiki、安全认证分类的配置读写编排。
 // 所有持久化操作经由 InfoRepo 完成，logic 层仅负责分类校验、类型校验
 // 与默认值兜底，不直连 GORM。
 type SettingsLogic struct {

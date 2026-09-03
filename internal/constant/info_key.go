@@ -19,6 +19,9 @@ const (
 	InfoKeyQaMaxActiveSessions   = "qa.max-active-sessions"    // Q&A 最大活跃会话数
 	InfoKeyQaEnableFileUpload    = "qa.enable-file-upload"     // 是否启用 Q&A 文件上传
 
+	// ── Preview 配置（preview）──
+	InfoKeyPreviewSessionTTL = "preview.session.ttl" // Preview 会话默认 TTL（秒）
+
 	// ── RepoWiki 配置（repowiki）──
 	InfoKeyRepoWikiDefaultLanguage = "repowiki.default-language"    // RepoWiki 默认 Wiki 语言
 	InfoKeyRepoWikiDefaultBranch   = "repowiki.default-branch"      // RepoWiki 默认 Git 分支

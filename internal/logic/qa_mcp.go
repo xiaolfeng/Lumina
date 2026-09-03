@@ -207,16 +207,17 @@ func (l *QaLogic) PushQuestion(ctx context.Context, sessionID, qType, title, des
 }
 
 // PushSupplement 推送补充内容（MCP工具）
-func (l *QaLogic) PushSupplement(ctx context.Context, sessionID, targetType string, targetID xSnowflake.SnowflakeID, contentType, content string) *xError.Error {
-	l.log.Info(ctx, fmt.Sprintf("PushSupplement - 推送补充内容 [session=%s, target=%s/%d]", sessionID, targetType, targetID))
+//
+// questionID 必填。optionID 非空时写入该选项；必须属于该问题。
+// 仅 pending 问题允许写入；answered / skipped 拒绝且不广播。
+func (l *QaLogic) PushSupplement(ctx context.Context, sessionID, questionID, optionID, contentType, content string) *xError.Error {
+	l.log.Info(ctx, fmt.Sprintf("PushSupplement - 推送补充内容 [session=%s, question=%s, option=%s]", sessionID, questionID, optionID))
 
-	// 解析会话ID
 	parsedSID, err := xSnowflake.ParseSnowflakeID(sessionID)
 	if err != nil {
 		return xError.NewError(ctx, xError.BusinessError, "无效的会话ID", false, nil)
 	}
 
-	// 校验会话存在且活跃（防止向不存在/已归档的假会话写入）
 	session, xErr := l.repo.session.GetByID(ctx, parsedSID)
 	if xErr != nil {
 		return xErr
@@ -225,9 +226,37 @@ func (l *QaLogic) PushSupplement(ctx context.Context, sessionID, targetType stri
 		return xError.NewError(ctx, xError.BusinessError, "会话不是活跃状态，无法推送补充内容", false, nil)
 	}
 
-	// 生成补充ID
-	sID := xSnowflake.GenerateID(bConst.GeneQaSupplement)
+	parsedQID, err := xSnowflake.ParseSnowflakeID(questionID)
+	if err != nil {
+		return xError.NewError(ctx, xError.BusinessError, "无效的问题ID", false, nil)
+	}
 
+	question, xErr := l.repo.question.GetByID(ctx, parsedQID)
+	if xErr != nil {
+		return xErr
+	}
+	if question.SessionID != parsedSID {
+		return xError.NewError(ctx, xError.BusinessError, "问题不属于该会话", false, nil)
+	}
+	if denied := supplementDeniedByQuestionStatus(question.Status); denied != "" {
+		return xError.NewError(ctx, xError.BusinessError, xError.ErrMessage(denied), false, nil)
+	}
+
+	targetType := "question"
+	targetID := parsedQID
+	if optionID != "" {
+		parsedOID, optErr := xSnowflake.ParseSnowflakeID(optionID)
+		if optErr != nil {
+			return xError.NewError(ctx, xError.BusinessError, "无效的选项ID", false, nil)
+		}
+		if !questionHasOption(question.Options, optionID) {
+			return xError.NewError(ctx, xError.BusinessError, "选项不属于该问题，无法推送补充内容", false, nil)
+		}
+		targetType = "option"
+		targetID = parsedOID
+	}
+
+	sID := xSnowflake.GenerateID(bConst.GeneQaSupplement)
 	supplementEntity := &entity.QaSupplement{
 		BaseEntity:  xModels.BaseEntity{ID: sID},
 		SessionID:   parsedSID,
@@ -237,18 +266,45 @@ func (l *QaLogic) PushSupplement(ctx context.Context, sessionID, targetType stri
 		Content:     content,
 	}
 
-	// 创建或覆写
 	result, xErr := l.repo.supplement.CreateOrUpdate(ctx, supplementEntity)
 	if xErr != nil {
 		return xErr
 	}
 
-	// 通知 WebSocket 层广播补充内容到在线设备
 	if OnSupplementPushed != nil {
 		OnSupplementPushed(sessionID, result)
 	}
 
 	return nil
+}
+
+// supplementDeniedByQuestionStatus 已回答 / 已跳过问题时返回拒绝文案，否则空串。
+func supplementDeniedByQuestionStatus(status string) string {
+	switch status {
+	case "answered":
+		return "问题已回答，无法推送补充内容"
+	case "skipped":
+		return "问题已跳过，无法推送补充内容"
+	default:
+		return ""
+	}
+}
+
+// questionHasOption 判断选项 ID 是否出现在问题 Options JSON 中。
+func questionHasOption(options datatypes.JSON, optionID string) bool {
+	if optionID == "" || len(options) == 0 {
+		return false
+	}
+	var opts []map[string]interface{}
+	if json.Unmarshal(options, &opts) != nil {
+		return false
+	}
+	for _, o := range opts {
+		if id, ok := o["id"].(string); ok && id == optionID {
+			return true
+		}
+	}
+	return false
 }
 
 // GetAnswer 阻塞获取回答（MCP工具）

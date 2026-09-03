@@ -32,6 +32,7 @@ import { PreviewSessionDetailDrawer } from '#/components/preview/session-detail-
 import { ConfirmDeleteDialog } from '#/components/confirm-delete-dialog'
 import { DataTablePagination } from '#/components/data-table-pagination'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
+import { formatDateTime } from '#/lib/format-date'
 import type { PreviewSessionItem } from '#/lib/models/response/preview'
 
 export const Route = createFileRoute('/console/preview/')({
@@ -140,7 +141,10 @@ function PreviewPage() {
                     <span>
                       {item.file_count} 文件 · {relativeTime(item.updated_at)}
                     </span>
-                    <StatusDot active={item.status === 'active'} />
+                    {item.expires_at ? (
+                      <span>过期 {formatDateTime(item.expires_at)}</span>
+                    ) : null}
+                    <StatusDot expired={isPreviewExpired(item)} />
                   </div>
                 </div>
                 <button
@@ -306,16 +310,23 @@ function Kpi({
   )
 }
 
-function StatusDot({ active }: { active: boolean }) {
+function isPreviewExpired(item: PreviewSessionItem): boolean {
+  if (item.status !== 'active') return true
+  if (!item.expires_at) return false
+  const ts = new Date(item.expires_at).getTime()
+  return !Number.isNaN(ts) && ts <= Date.now()
+}
+
+function StatusDot({ expired }: { expired: boolean }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-xs font-medium">
       <span
         className={`inline-block size-[7px] rounded-full ${
-          active ? 'bg-green-600' : 'bg-sea-ink-soft/40'
+          expired ? 'bg-sea-ink-soft/40' : 'bg-green-600'
         }`}
       />
-      <span className={active ? 'text-green-700' : 'text-sea-ink-soft'}>
-        {active ? '活跃' : '已删除'}
+      <span className={expired ? 'text-sea-ink-soft' : 'text-green-700'}>
+        {expired ? '已过期' : '活跃'}
       </span>
     </span>
   )

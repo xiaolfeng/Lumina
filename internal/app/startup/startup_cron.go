@@ -33,6 +33,14 @@ func NewCronRunner() func(ctx context.Context, option ...any) {
 					}
 					repoWikiLogic.RetryStaleTask(jobCtx)
 				}),
+				xCron.NewJob("@every 5m", func(jobCtx context.Context) {
+					defer func() {
+						if rec := recover(); rec != nil {
+							log.Error(jobCtx, "Preview cron Job panic recovered", slog.Any("error", rec))
+						}
+					}()
+					logic.NewPreviewLogic(ctx).ExpireStaleSessions(jobCtx)
+				}),
 			),
 			xCronRunner.WithGracefulStopTimeout(30*time.Second),
 		)

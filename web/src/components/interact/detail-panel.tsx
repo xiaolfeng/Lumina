@@ -35,9 +35,17 @@ function SupplementContent({ content, contentType }: { content: string; contentT
 		return <PreviewSupplement content={content} />;
 	}
 	return (
-		<article className={proseArticle}>
+		<article className={`${proseArticle} max-w-3xl`}>
 			<Markdown>{content}</Markdown>
 		</article>
+	);
+}
+
+function FillPreview({ content }: { content: string }) {
+	return (
+		<div className="flex min-h-0 flex-1 flex-col">
+			<PreviewSupplement content={content} />
+		</div>
 	);
 }
 
@@ -54,6 +62,8 @@ export function DetailPanel({
 }: DetailPanelProps) {
 	const [renderKey, setRenderKey] = useState(0);
 	const hasOption = optionContent.length > 0;
+	const questionFill = !isMotionDemo && questionContentType === "preview";
+	const optionFill = optionContentType === "preview";
 
 	return (
 		<AnimatePresence mode="popLayout">
@@ -64,26 +74,28 @@ export function DetailPanel({
 					animate={{ opacity: 1, x: 0 }}
 					exit={{ opacity: 0, x: 60 }}
 					transition={{ duration: 0.5, ease }}
-					className="relative flex min-w-0 flex-1 flex-col overflow-hidden min-h-0 max-w-3xl"
+					className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
 				>
-					{/* 底层：问题级补充内容（始终渲染） */}
-					<ScrollArea className="flex-1 min-h-0 pt-2" hideScrollbar>
-						<div className="p-4">
-							{activeOption && isMotionDemo ? (
-								<MotionDemoPanel
-									selectedLabel={activeOption.label}
-									onBack={onBack}
-								/>
-							) : (
-								<SupplementContent
-									content={questionContent}
-									contentType={questionContentType}
-								/>
-							)}
-						</div>
-					</ScrollArea>
+					{questionFill ? (
+						<FillPreview content={questionContent} />
+					) : (
+						<ScrollArea className="flex-1 min-h-0 pt-2" hideScrollbar>
+							<div className="p-4">
+								{activeOption && isMotionDemo ? (
+									<MotionDemoPanel
+										selectedLabel={activeOption.label}
+										onBack={onBack}
+									/>
+								) : (
+									<SupplementContent
+										content={questionContent}
+										contentType={questionContentType}
+									/>
+								)}
+							</div>
+						</ScrollArea>
+					)}
 
-					{/* 上层：选项级补充内容（从右侧滑入覆盖，返回从左向右滑出移开） */}
 					<AnimatePresence>
 						{hasOption && (
 							<motion.div
@@ -94,7 +106,6 @@ export function DetailPanel({
 								transition={{ duration: 0.4, ease }}
 								className="absolute inset-0 z-10 flex flex-col bg-bg-base"
 							>
-								{/* 工具栏：返回 + 重新渲染 */}
 								<div className="flex items-center justify-between border-b border-line/50 p-4 pt-6 pb-2">
 									<Button
 										variant="ghost"
@@ -117,24 +128,28 @@ export function DetailPanel({
 										</Button>
 									)}
 								</div>
-								<ScrollArea className="flex-1 min-h-0" hideScrollbar>
-									<div className="px-4 pb-4 pt-3">
-										<AnimatePresence mode="wait">
-											<motion.div
-												key={`${optionId}-${renderKey}`}
-												initial={{ opacity: 0 }}
-												animate={{ opacity: 1 }}
-												exit={{ opacity: 0 }}
-												transition={{ duration: 0.2, ease }}
+								{optionFill ? (
+									<FillPreview content={optionContent} />
+								) : (
+									<ScrollArea className="flex-1 min-h-0" hideScrollbar>
+										<div className="px-4 pb-4 pt-3">
+											<AnimatePresence mode="wait">
+												<motion.div
+													key={`${optionId}-${renderKey}`}
+													initial={{ opacity: 0 }}
+													animate={{ opacity: 1 }}
+													exit={{ opacity: 0 }}
+													transition={{ duration: 0.2, ease }}
 												>
 													<SupplementContent
 														content={optionContent}
 														contentType={optionContentType}
 													/>
 												</motion.div>
-										</AnimatePresence>
-									</div>
-								</ScrollArea>
+											</AnimatePresence>
+										</div>
+									</ScrollArea>
+								)}
 							</motion.div>
 						)}
 					</AnimatePresence>

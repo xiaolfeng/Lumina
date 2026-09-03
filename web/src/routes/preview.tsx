@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Toaster } from '@lumina/components/ui/sonner'
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { PreviewBrandHeader } from '#/components/preview/brand-header'
@@ -12,6 +12,22 @@ export const Route = createFileRoute('/preview')({
 
 function PreviewLayout() {
   const [title, setTitle] = useState<string | null>(null)
+
+  useEffect(() => {
+    const previous = document.title
+    return () => {
+      document.title = previous
+    }
+  }, [])
+
+  useEffect(() => {
+    if (title === null) {
+      document.title = 'Preview | Lumina'
+      return
+    }
+    const name = title.trim() === '' ? '未命名预览' : title
+    document.title = `${name} | Lumina`
+  }, [title])
 
   return (
     <PreviewHeaderContext.Provider value={{ title, setTitle }}>

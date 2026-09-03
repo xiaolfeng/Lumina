@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/repository"
 )
 
@@ -47,8 +49,16 @@ func PreviewWSHandler(hub *Hub, sessionRepo *repository.PreviewSessionRepo) gin.
 			return
 		}
 
-		// 3. 校验会话状态 —— 已删除会话拒绝连接，前端会触发 onReject 展示会话不存在
-		if session.Status != "active" {
+		// 3. 过期的活跃会话先改成 deleted（保留文件），再与已删除一样拒绝连接
+		if session.Status == bConst.PreviewSessionStatusActive &&
+			session.ExpiresAt != nil &&
+			time.Now().After(*session.ExpiresAt) {
+			if xErr := sessionRepo.UpdateStatus(c.Request.Context(), session.ID, bConst.PreviewSessionStatusDeleted); xErr != nil {
+				wsLog.Warn(nil, "预览会话过期改状态失败", slog.String("error", xErr.Error()))
+			}
+			session.Status = bConst.PreviewSessionStatusDeleted
+		}
+		if session.Status != bConst.PreviewSessionStatusActive {
 			c.JSON(http.StatusGone, gin.H{"error": "会话已删除", "status": session.Status})
 			c.Abort()
 			return

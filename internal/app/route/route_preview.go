@@ -54,10 +54,12 @@ func (r *route) previewRouter(route gin.IRouter) {
 			"event_type": eventType,
 		}
 
-		// 会话仍存在时附带最新详情（session + files）；会话删除后仅携带事件标记
-		if sid, err := xSnowflake.ParseSnowflakeID(sessionID); err == nil {
-			if detail, xErr := previewLogic.GetSessionDetailByID(r.context, sid); xErr == nil {
-				data = detail
+		// 会话仍存在且非删除事件时附带最新详情；delete_session（含过期改状态）只带事件标记
+		if eventType != "delete_session" {
+			if sid, err := xSnowflake.ParseSnowflakeID(sessionID); err == nil {
+				if detail, xErr := previewLogic.GetSessionDetailByID(r.context, sid); xErr == nil {
+					data = detail
+				}
 			}
 		}
 
