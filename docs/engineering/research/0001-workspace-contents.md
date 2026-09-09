@@ -20,7 +20,7 @@ Lumina 要把 Workspace 做成产品概念。仓库里目前没有对应实体�
 
 认证与配置是实例级。`entity/info.go` 写明「个人项目不需要多用户体系」；WebAuthn 使用固定用户 ID（`internal/logic/webauthn_user.go`）；Token 仓储注释写明单用户无「按用户」索引。站点名、Logo、域名在 `constant/info_key.go` 的 `site.*` 键上，主键是键名本身，没有空间维度。`LlmProvider.Name` 同样是全局 `uniqueIndex`。
 
-ADR-0003 把 Project 定为「项目身份的唯一记录」，路径前缀匹配例子是 `/workspace/Lumina`——这里的 workspace 是路径片段，不是实体。ADR-0002 的业务域清单是 RepoWiki / Memory / Q&A / Pin / Preview，没有 Workspace。`docs/scope-manage.md` 在本稿登记前也没有该词。
+ADR-0002 把 Project 定为「项目身份的唯一记录」，路径前缀匹配例子是 `/workspace/Lumina`——这里的 workspace 是路径片段，不是实体。ADR-0001 的业务域清单是 RepoWiki / Memory / Q&A / Pin / Preview，没有 Workspace。`docs/scope-manage.md` 在本稿登记前也没有该词。
 
 「工作区」在代码里的三种用法：
 
@@ -71,7 +71,7 @@ ADR-0003 把 Project 定为「项目身份的唯一记录」，路径前缀匹�
 
 身份。Project 要多一个必填 `workspace_id`。现有项目在初始化/升级时挂到默认空间，否则「先选空间再解析」会让旧数据从 MCP 里消失。`Name` 保持全局唯一，则 `project_get(name=)` 的现有契约还能用；但 `match_path` 必须加空间范围，否则生活/工作里若出现路径前缀重叠会串空间。
 
-Pin。ADR-0004 没有组织边界。要满足「只允许空间内」，消费和推送都得校验两端项目的 `workspace_id` 相同。
+Pin。ADR-0003 没有组织边界。要满足「只允许空间内」，消费和推送都得校验两端项目的 `workspace_id` 相同。
 
 Memory。RFC-0001 仍是 draft，卡片含「来源项目」，待定项写了来源项目是否必填。用户要求记忆只挂空间：生活空间的决策不能在工作空间被检索到。这和「来源项目」不是同一条轴。
 
@@ -105,8 +105,8 @@ MCP。现在 `project_get` / `project_list` 没有 `workspace_id` 参数。用�
 - Linear Workspaces — https://linear.app/docs/workspaces
 - VS Code: What is a VS Code workspace? — https://code.visualstudio.com/docs/editor/workspaces
 - Kaneo MCP `list_workspaces` / `list_projects` / `list_workspace_members` 实测（2026-09-09）
-- ADR-0003 项目标识 — [../adr/0003-project-identity-resolution.md](../adr/0003-project-identity-resolution.md)
-- ADR-0004 Pin — [../adr/0004-pin-constraint-delivery.md](../adr/0004-pin-constraint-delivery.md)
+- ADR-0002 项目标识 — [../adr/0002-project-identity-resolution.md](../adr/0002-project-identity-resolution.md)
+- ADR-0003 Pin — [../adr/0003-pin-constraint-delivery.md](../adr/0003-pin-constraint-delivery.md)
 - RFC-0001 Memory — [../rfc/0001-memory-decision-memory.md](../rfc/0001-memory-decision-memory.md)
 - `internal/entity/project.go`、`qa_session.go`、`pin.go`、`preview_session.go`、`info.go`、`llm_provider.go`
 - `internal/constant/gene_number.go`、`info_key.go`

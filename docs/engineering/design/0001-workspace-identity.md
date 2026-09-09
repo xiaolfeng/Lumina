@@ -1,6 +1,6 @@
 # Workspace 身份层设计
 
-> 状态：draft · 承接 [0001](../research/0001-workspace-contents.md)
+> 状态：draft · 承接 [调研 0001](../research/0001-workspace-contents.md) · 提案 [RFC-0003](../rfc/0003-workspace-identity.md) · 定稿 [ADR-0005](../adr/0005-workspace-identity.md)
 
 | 项 | 值 |
 | --- | --- |
@@ -67,7 +67,7 @@ Lumina 当前的身份边界是「单用户实例 + Project」。Project 同时�
 | # | 决定 | 理由 |
 | --- | --- | --- |
 | 1 | 默认空间 slug 固定为 `default`，实例内 `uniqueIndex`。默认空间的 slug **不可改**；展示名可改。 | slug 给 MCP/文档一个稳定句柄；展示名给控制台。删除守卫用 `IsDefault`，不依赖展示名。 |
-| 2 | MCP v1 **不**暴露 workspace 写工具。控制台 REST 负责创建/更新/删除。MCP 仅 `workspace_list`、`workspace_get`。 | 与 RepoWiki「MCP 只读、写走管理端」同一模式（ADR-0005）。空间增删是管理动作，不是 Agent 编排动作。 |
+| 2 | MCP v1 **不**暴露 workspace 写工具。控制台 REST 负责创建/更新/删除。MCP 仅 `workspace_list`、`workspace_get`。 | 与 RepoWiki「MCP 只读、写走管理端」同一模式（ADR-0004）。空间增删是管理动作，不是 Agent 编排动作。 |
 | 3 | Agent「当前空间」**无状态**。凡是现在靠 `match_path` / `name` 解析项目、且未传 `project_id` 的 MCP 工具，必须带 `workspace_id` 或 workspace slug 作为必填过滤。不在服务端存 MCP session 当前空间。同步改 `resources/ai-plugin/skills/_shared/project-resolver.md`。 | 避免多设备/多 Agent 串空间；MCP 连接没有可靠的会话级租户状态。`project_id` 全局可查，响应里带上 `workspace_id`。 |
 | 4 | LLM 升格（后续 PR）时 `LlmProvider.Name` 唯一索引改为 `(workspace_id, name)`。身份 PR **不改**该索引。 | 用户排序：实体 → 控制台 → MCP →（跳过名称唯一性）→ 配置升格。 |
 | 5 | v1 控制台选中空间后，chrome 用 Workspace 的 name/icon/description。**不**拆 Info `site.*`。`site.name` 仍是安装/产品名（落地页、OAuth、Wiki Reader 品牌）。 | 标识字段已在实体上；Info 主键是键名，加空间维度要改表形，排在配置升格之后且 v1 不需要。 |
@@ -78,13 +78,13 @@ Lumina 当前的身份边界是「单用户实例 + Project」。Project 同时�
 | 10 | 实例内至少一条空间。禁止删光。默认空间创建后不可删除，因此正常路径不会出现零空间。 | 项目 `workspace_id` 应用层必填的前提。 |
 | 11 | `Project.Name` 保持全局 `uniqueIndex`。`AliasName` 不加唯一索引。别名解析：已知 `workspace_id` 时只在该空间内找；未知且命中多行时 `BusinessError`「别名不唯一，请使用项目 ID」。MCP `to_project_name` 仍只解析 **雪花 ID 或别名**，不解析 `Project.Name`（与现网 `ResolveProject` 一致）。 | 名称全局唯一已锁定。别名现状就不是唯一的，两空间都可以叫 `blog`；`First()` 会把 Pin 送到错误项目。 |
 | 12 | v1 **不允许**项目在空间之间任意移动。`workspace_id` 只在创建时写入。唯一搬迁路径是删除非默认空间时整批移到默认空间。 | 避免 ProjectLogic 去查 Pin 表；也避免「移动后历史 Pin 变成跨空间」。 |
-| 13 | Pin：`from_project_id` 与 `to` **都必填**（选更小的 API 改动：收紧已有字段，不给 `pin_push` 加 `workspace_id`）。`PinLogic.Push` 先解析 `from`，再在 `from.WorkspaceID` 内解析 `to`，然后比较两端 `workspace_id`。无来源 Pin 拒绝写入。PinLogic **不**调用 WorkspaceLogic，只读 `ProjectRepo`（沿用 ADR-0003）。该校验放进 **PR1**（当时只有默认空间，比较恒为真，但第二个空间出现前守卫已在二进制里）。 | 「只允许空间内」与「from 为空则跳过比较」不能并存：`project_id` 全局可查，无来源 Push 就是跨空间写入。 |
+| 13 | Pin：`from_project_id` 与 `to` **都必填**（选更小的 API 改动：收紧已有字段，不给 `pin_push` 加 `workspace_id`）。`PinLogic.Push` 先解析 `from`，再在 `from.WorkspaceID` 内解析 `to`，然后比较两端 `workspace_id`。无来源 Pin 拒绝写入。PinLogic **不**调用 WorkspaceLogic，只读 `ProjectRepo`（沿用 ADR-0002）。该校验放进 **PR1**（当时只有默认空间，比较恒为真，但第二个空间出现前守卫已在二进制里）。 | 「只允许空间内」与「from 为空则跳过比较」不能并存：`project_id` 全局可查，无来源 Push 就是跨空间写入。 |
 | 14 | 数据库不建 ON DELETE CASCADE。Logic 先搬项目再删空间。不强制 GORM 外键。应用层把 `workspace_id == 0` 视为非法。 | 与 QaSession/Pin/Preview 的关联风格一致。 |
 | 15 | 默认空间 **不**另写 Info 键。它是 `workspaces` 表里 `is_default = true` 的一行。 | 用行比用键更直接，也能改名。 |
 | 16 | `ProjectLogic.Create`：请求未带合法 `workspace_id` 时（PR1，DTO 尚未必填）写入默认空间 ID，**禁止插入 0**。PR2 起 REST `binding:"required"`，零值直接 `ParameterError`「缺少所属空间」，不再默默落到默认空间。`SET NOT NULL` 只在 PR2、且 Create 已保证非 0 之后执行。 | PR1 单独部署时 MCP `project_create` 仍不传空间字段；若此时列已 NOT NULL 而 Create 写 0，行会变成无主。 |
 | 17 | `ProjectRepo.List` / `FindByMatchPath`：`workspaceID.IsZero()` 表示 **不按空间过滤**（与现网行为相同）。MCP 在 PR2 才对 `name` / `match_path` / `project_list` 要求非零空间并传入。PR1 改签名时 MCP 传零，避免 `project_get(match_path)` 查不到刚回填的行。 | 过滤 SQL 与「MCP 强制带空间」必须同一 PR 才打开；否则 PR1 会把路径解析打黑。 |
 | 18 | 删除空间：先提交 **DB 事务**（锁空间行、UPDATE 项目、DELETE 空间），**再**调用 `ProjectRepo.ReplaceWorkspaceCache` 刷新 Redis。Logic **不得**直接碰 `repository/cache` 或对快照 `Save`。Redis 不进 SQL 事务。 | `ProjectCache` 在 `ProjectRepo` 内未导出。Logic 调缓存是分层违规。COMMIT 后再 `Save` 快照会把旧 `workspace_id` 写回。 |
-| 19 | MCP 解析空间只走 `WorkspaceLogic.GetByID` / `GetBySlug`（或 `ProjectLogic` 内封装的同一 Logic 调用）。MCP 与 Handler **不得**碰 `WorkspaceRepo`。 | ADR-0002：MCP 经 Logic。现网 `project_tools.go` 只调 `projectLogic`。 |
+| 19 | MCP 解析空间只走 `WorkspaceLogic.GetByID` / `GetBySlug`（或 `ProjectLogic` 内封装的同一 Logic 调用）。MCP 与 Handler **不得**碰 `WorkspaceRepo`。 | ADR-0001：MCP 经 Logic。现网 `project_tools.go` 只调 `projectLogic`。 |
 
 ## Proposed Design
 
@@ -870,10 +870,10 @@ Info：EnsureDefault 创建/命中、backfill 行数、Delete 移动项目数、
 ## References
 
 - [调研 0001 Workspace 租户层与首版内容](../research/0001-workspace-contents.md)（仓库路径 `docs/engineering/research/0001-workspace-contents.md`）
-- [ADR-0002 运行时架构与基础设施边界](../adr/0002-architecture-runtime-boundaries.md)
-- [ADR-0003 Project 项目标识与解析](../adr/0003-project-identity-resolution.md)
-- [ADR-0004 Pin 跨项目约束消费](../adr/0004-pin-constraint-delivery.md)
-- [ADR-0005 RepoWiki 生成与发布](../adr/0005-repowiki-generation-delivery.md)
+- [ADR-0001 运行时架构与基础设施边界](../adr/0001-architecture-runtime-boundaries.md)
+- [ADR-0002 Project 项目标识与解析](../adr/0002-project-identity-resolution.md)
+- [ADR-0003 Pin 跨项目约束消费](../adr/0003-pin-constraint-delivery.md)
+- [ADR-0004 RepoWiki 生成与发布](../adr/0004-repowiki-generation-delivery.md)
 - [RFC-0001 Memory](../rfc/0001-memory-decision-memory.md)
 - `ARCHITECTURE.md` 身份与基因范围
 - `docs/scope-manage.md` 词表：空间 / 工作空间 / `workspace`

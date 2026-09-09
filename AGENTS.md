@@ -212,9 +212,9 @@
 | 上报漏洞 | `SECURITY.md` | 只走 GitHub 私密公告，不要开公开 Issue |
 | 查看版本变更 | `CHANGELOG.md` | Keep a Changelog，自 v1.0.0-beta.18 起 |
 | 查看工程文档索引 | `docs/README.md` | draft / research / RFC / design / ADR 统一入口 |
-| 查看 RepoWiki 决策 | `docs/engineering/adr/0005-repowiki-generation-delivery.md` | 生成流水线、版本隔离、Webhook 与只读 MCP |
+| 查看 RepoWiki 决策 | `docs/engineering/adr/0004-repowiki-generation-delivery.md` | 生成流水线、版本隔离、Webhook 与只读 MCP |
 | 查看 Memory 提案 | `docs/engineering/rfc/0001-memory-decision-memory.md` | 尚未实现的长期决策记忆方案 |
-| 查看 Pin 决策 | `docs/engineering/adr/0004-pin-constraint-delivery.md` | 跨项目约束与 FIFO 消费契约 |
+| 查看 Pin 决策 | `docs/engineering/adr/0003-pin-constraint-delivery.md` | 跨项目约束与 FIFO 消费契约 |
 | 新增 MCP 工具 | `internal/mcp/` | 注册到 `server.go`，Logic 注入到 `startup_mcp.go` |
 | 新增 WebSocket 消息 | `internal/websocket/message.go` | 定义 MessageType 常量 |
 | 新增 RepoWiki prompt | `resources/prompts/*.md` | 通过 `service/prompt_loader.go` 加载，禁止硬编码 |
