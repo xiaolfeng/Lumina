@@ -22,6 +22,7 @@ var _ = apiCommon.BaseResponse{}
 // @Param       size           query     int      false  "每页数量"
 // @Param       status         query     string   false  "状态过滤(active/expired/deleted)"
 // @Param       type           query     string   false  "类型过滤(temporary/permanent)"
+// @Param       workspace_id   query     string   false  "所属空间ID筛选"
 // @Success     200  {object}  apiCommon.BaseResponse{data=apiQa.SessionListResponse}  "获取成功"
 // @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
 // @Router      /api/v1/qa/sessions [GET]

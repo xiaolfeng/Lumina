@@ -132,6 +132,9 @@ func (r *PinRepo) List(ctx context.Context, req *apiPin.PinListRequest) ([]*enti
 	if req.Priority != "" {
 		query = query.Where("priority = ?", req.Priority)
 	}
+	if !req.WorkspaceID.IsZero() {
+		query = query.Where("to_project_id IN (SELECT id FROM projects WHERE workspace_id = ?)", req.WorkspaceID)
+	}
 
 	// 统计总数
 	var total int64

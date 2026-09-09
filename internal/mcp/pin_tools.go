@@ -52,7 +52,7 @@ from_project_id 为可选，表示约束来源项目；不传时该约束将被�
 				},
 				"to_project_name": map[string]any{
 					"type":        "string",
-					"description": "目标项目名称/别名或雪花 ID 字符串",
+					"description": "目标项目的雪花 ID 或别名，不是 Project.Name",
 				},
 				"category": map[string]any{
 					"type":        "string",
@@ -61,10 +61,10 @@ from_project_id 为可选，表示约束来源项目；不传时该约束将被�
 				},
 				"from_project_id": map[string]any{
 					"type":        "string",
-					"description": "来源项目 ID（雪花 ID 字符串或别名，可选）",
+					"description": "来源项目 ID（雪花 ID 字符串或别名）",
 				},
 			},
-			"required": []string{"title", "content", "priority", "to_project_name"},
+			"required": []string{"title", "content", "priority", "to_project_name", "from_project_id"},
 		},
 	},
 	{
@@ -83,7 +83,7 @@ project_name 支持名称/别名或雪花 ID 字符串，由后端自动解析�
 			"properties": map[string]any{
 				"project_name": map[string]any{
 					"type":        "string",
-					"description": "目标项目名称/别名或雪花 ID 字符串",
+					"description": "目标项目的雪花 ID 或别名，不是 Project.Name",
 				},
 				"id": map[string]any{
 					"type":        "string",
@@ -116,7 +116,7 @@ project_name 支持名称/别名或雪花 ID 字符串。
 			"properties": map[string]any{
 				"project_name": map[string]any{
 					"type":        "string",
-					"description": "目标项目名称/别名或雪花 ID 字符串",
+					"description": "目标项目的雪花 ID 或别名，不是 Project.Name",
 				},
 				"status": map[string]any{
 					"type":        "string",
@@ -226,19 +226,17 @@ func handlePinPush(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 	}
 	category, _ := args["category"].(string)
 	fromProjectIDStr, _ := args["from_project_id"].(string)
-
-	toProject, xErr := pinLogic.ResolveProject(context.Background(), toProjectName)
-	if xErr != nil {
-		return textResult(fmt.Sprintf("目标项目解析失败: %s", xErr.Error())), nil
+	if fromProjectIDStr == "" {
+		return textResult("缺少必填参数: from_project_id"), nil
 	}
 
-	var fromProjectID xSnowflake.SnowflakeID
-	if fromProjectIDStr != "" {
-		fromProj, xErr := pinLogic.ResolveProject(context.Background(), fromProjectIDStr)
-		if xErr != nil {
-			return textResult(fmt.Sprintf("来源项目解析失败: %s", xErr.Error())), nil
-		}
-		fromProjectID = fromProj.ID
+	fromProject, xErr := pinLogic.ResolveProject(context.Background(), fromProjectIDStr, 0)
+	if xErr != nil {
+		return textResult(fmt.Sprintf("来源项目解析失败: %s", xErr.Error())), nil
+	}
+	toProject, xErr := pinLogic.ResolveProject(context.Background(), toProjectName, fromProject.WorkspaceID)
+	if xErr != nil {
+		return textResult(fmt.Sprintf("目标项目解析失败: %s", xErr.Error())), nil
 	}
 
 	apiReq := &apiPin.CreatePinRequest{
@@ -246,7 +244,7 @@ func handlePinPush(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 		Content:       content,
 		Category:      category,
 		Priority:      priority,
-		FromProjectID: fromProjectID,
+		FromProjectID: fromProject.ID,
 		ToProjectID:   toProject.ID,
 	}
 	resp, xErr := pinLogic.Push(context.Background(), apiReq)
@@ -276,7 +274,7 @@ func handlePinConsume(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToo
 	}
 
 	// 解析目标项目（支持名称/别名或雪花 ID）
-	project, xErr := pinLogic.ResolveProject(context.Background(), projectName)
+	project, xErr := pinLogic.ResolveProject(context.Background(), projectName, 0)
 	if xErr != nil {
 		return textResult(fmt.Sprintf("解析目标项目失败: %s", xErr.Error())), nil
 	}
@@ -316,7 +314,7 @@ func handlePinList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 	}
 
 	// 解析目标项目
-	project, xErr := pinLogic.ResolveProject(context.Background(), projectName)
+	project, xErr := pinLogic.ResolveProject(context.Background(), projectName, 0)
 	if xErr != nil {
 		return textResult(fmt.Sprintf("解析目标项目失败: %s", xErr.Error())), nil
 	}
@@ -335,7 +333,7 @@ func handlePinList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 
 	var fromProjectID xSnowflake.SnowflakeID
 	if fromProjectIDStr, ok := args["from_project_id"].(string); ok && fromProjectIDStr != "" {
-		fromProj, xErr := pinLogic.ResolveProject(context.Background(), fromProjectIDStr)
+		fromProj, xErr := pinLogic.ResolveProject(context.Background(), fromProjectIDStr, 0)
 		if xErr != nil {
 			return textResult(fmt.Sprintf("来源项目解析失败: %s", xErr.Error())), nil
 		}

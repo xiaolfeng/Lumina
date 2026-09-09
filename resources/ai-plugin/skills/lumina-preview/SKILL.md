@@ -12,7 +12,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 
 # Lumina 前端原型实时预览与可视化评审指南 (lumina-preview)
 
-用于指导 AI Agent 构建轻量级前端原型工作区，通过单层文件上传与沙盒隔离，向用户实时展示可视化的 HTML/CSS/JS 页面，并支持独立浏览器评审与 Q&A 题目挂载。
+用于指导 AI Agent 构建轻量级前端原型预览会话，通过单层文件上传与沙盒隔离，向用户实时展示可视化的 HTML/CSS/JS 页面，并支持独立浏览器评审与 Q&A 题目挂载。
 
 项目解析见 [`../_shared/project-resolver.md`](../_shared/project-resolver.md)。挂到 Q&A 时只读 [`../_shared/preview-qa-contract.md`](../_shared/preview-qa-contract.md)，不要另造字段。
 

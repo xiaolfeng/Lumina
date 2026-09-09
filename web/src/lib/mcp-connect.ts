@@ -304,6 +304,15 @@ export function buildClientSnippet(id: string, ctx: McpConnectContext): string {
 
 export const MCP_TOOL_MODULES: McpToolModule[] = [
   {
+    id: 'workspace',
+    name: 'Workspace',
+    summary: '先选定工作空间，再在该空间内解析项目。单用户用来拆开生活与工作。',
+    tools: [
+      { name: 'workspace_list', summary: '列出全部空间，默认空间 slug 为 default' },
+      { name: 'workspace_get', summary: '按 ID 或 slug 查看空间' },
+    ],
+  },
+  {
     id: 'project',
     name: 'Project',
     summary:
@@ -378,9 +387,9 @@ export const MCP_TOOL_NAMES: string[] = MCP_TOOL_MODULES.flatMap((module) =>
 export const MCP_WORKFLOW_STEPS: McpWorkflowStep[] = [
   {
     step: 1,
-    title: '先找到当前项目',
-    body: 'Agent 会先按当前目录查找已有项目。第一次接入的代码库，确认没有重复记录后再创建。',
-    tools: ['project_get', 'project_list', 'project_create'],
+    title: '先选定空间，再找到当前项目',
+    body: 'Agent 先列出空间并选定一个，再按项目路径在该空间内查找。第一次接入的代码库，确认没有重复记录后再创建。',
+    tools: ['workspace_list', 'workspace_get', 'project_get', 'project_list', 'project_create'],
   },
   {
     step: 2,

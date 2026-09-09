@@ -22,7 +22,7 @@ func InitMCPServer(ctx context.Context) http.Handler {
 			Instructions: `Lumina 是面向代码项目的知识与人机协作中枢。工具由模型调用，但必须服从用户当前任务；不要因为工具存在就主动创建项目、会话、预览或跨项目通知。
 
 全局工作流：
-1. 需要项目上下文时，先用 project_get（优先 match_path）或 project_list 解析已有 project_id；仅在确认尚未注册且用户任务确实需要时使用 project_create。
+1. 需要项目上下文时，先 workspace_list（或已有 workspace_id）选定空间，再用 project_get（优先 match_path + workspace_id）或 project_list 解析 project_id；仅在确认尚未注册且任务确实需要时 project_create（必须带空间）。
 2. 需要用户作决定或补充信息时，使用 Q&A：qa_session_list/create → qa_what_question → qa_push_question →（如 supplement=true，先 qa_push_supplement）→ qa_get_answer。不要用猜测替代用户决策。
 3. 需要可视化前端文件时，使用 Preview：preview_session_list/create → 逐文件 preview_file_upload → preview_file_list 最终核对。Preview 是评审和沟通媒介，不能替代真实项目文件的实现、测试与交付。
 4. Preview 核对通过后分两种交付：直接视觉评审时，优先用 MCP 客户端原生浏览器/打开链接能力访问返回的绝对 preview_url；没有该能力时向用户提供可点击 URL。作为 Q&A 补充时，调用 qa_push_supplement，content_type=preview，content 原样使用 Preview 返回的 qa_supplement.content，然后再 qa_get_answer。
@@ -32,6 +32,9 @@ func InitMCPServer(ctx context.Context) http.Handler {
 所有工具都应按其 description 的「何时调用、不要调用、限制、返回与下一步」执行。工具返回 isError=true 时，先根据错误修正输入或停止流程，不得把失败结果当作成功。`,
 		},
 	)
+
+	// 注册 Workspace 模块工具
+	RegisterWorkspaceTools(server)
 
 	// 注册 Q&A 模块工具
 	RegisterQATools(server)
@@ -49,7 +52,7 @@ func InitMCPServer(ctx context.Context) http.Handler {
 	RegisterPreviewTools(server)
 
 	log := xLog.WithName(xLog.NamedINIT)
-	log.Info(ctx, "MCP Server initialized with QA, Project, Pin, RepoWiki and Preview tools registered")
+	log.Info(ctx, "MCP Server initialized with Workspace, QA, Project, Pin, RepoWiki and Preview tools registered")
 
 	// 创建 Streamable HTTP Handler，每个请求使用同一个 Server 实例
 	return mcp.NewStreamableHTTPHandler(

@@ -36,7 +36,7 @@ var previewToolDefs = []previewToolDef{
 	{
 		name:  "preview_session_create",
 		title: "创建前端预览会话",
-		description: `用途：为已注册项目创建一个独立的前端预览工作区；一个项目可以有多个会话。它只创建空会话，不会生成代码、上传文件、修改本地仓库，也不代表用户已确认设计。
+		description: `用途：为已注册项目创建一个独立的前端预览会话；一个项目可以有多个会话。它只创建空会话，不会生成代码、上传文件、修改本地仓库，也不代表用户已确认设计。
 
 何时调用：用户要求可视化查看 HTML/CSS/JavaScript 原型，且没有合适的现有 Preview 会话时调用。调用前先用 project_get/project_list 确定 project_id，并优先用 preview_session_list 检查能否复用当前任务的会话。
 
@@ -70,7 +70,7 @@ var previewToolDefs = []previewToolDef{
 		title: "列出项目预览会话",
 		description: `用途：分页列出指定项目的 Preview 会话，返回会话 ID、标题、状态、访问 hash 和绝对预览 URL；不返回文件内容。
 
-何时调用：创建新会话前检查是否存在与当前任务匹配的 active 会话，或需要恢复既有预览工作区时调用。不要仅因同一项目存在会话就盲目复用；标题和任务不匹配时应创建新会话，避免覆盖无关方案。
+何时调用：创建新会话前检查是否存在与当前任务匹配的 active 会话，或需要恢复既有预览会话时调用。不要仅因同一项目存在会话就盲目复用；标题和任务不匹配时应创建新会话，避免覆盖无关方案。
 
 该工具只读且可安全重试。选定会话后调用 preview_file_list 检查文件清单；只有确认是当前任务的会话后，才继续上传或覆写文件。`,
 		inputSchema: map[string]any{
@@ -108,7 +108,7 @@ var previewToolDefs = []previewToolDef{
 
 何时调用：已经掌握完整文件内容，需要创建预览、补齐 HTML 的相对依赖，或将 preview_file_get 读取的文件迭代后写回时调用。HTML 内应使用同层相对路径引用 CSS/JS，例如 style.css 和 app.js。
 
-限制：文件名只能是扁平单层名称，禁止 /、\\ 和 ..；最长 255 字符；content 按 UTF-8 字节计最大 256 KiB。它不支持目录、二进制附件、构建命令或 npm 依赖安装，也不会修改 Agent 当前工作区的真实源文件。
+限制：文件名只能是扁平单层名称，禁止 /、\\ 和 ..；最长 255 字符；content 按 UTF-8 字节计最大 256 KiB。它不支持目录、二进制附件、构建命令或 npm 依赖安装，也不会修改 Agent 当前项目路径下的真实源文件。
 
 副作用：可能创建新文件，也可能覆盖既有内容；同参数重试后的最终文件内容相同，但覆盖前应确认会话属于当前任务。返回 file_id；preview_url 指向当前可预览文件——会话已有 HTML 入口时指向入口文件，否则指向本次上传的文件；仅当存在 HTML 入口时，qa_supplement.content 才会返回可直接传给 qa_push_supplement 的非空引用 JSON。
 
@@ -193,7 +193,7 @@ var previewToolDefs = []previewToolDef{
 }
 
 // previewToolAnnotations 描述工具的只读、覆盖与幂等语义。Preview 仅操作 Lumina
-// 内部工作区，因此 openWorldHint 固定为 false。
+// 内部预览会话，因此 openWorldHint 固定为 false。
 func previewToolAnnotations(readOnly, destructive, idempotent bool) *mcp.ToolAnnotations {
 	return &mcp.ToolAnnotations{
 		ReadOnlyHint:    readOnly,
@@ -400,7 +400,7 @@ func handlePreviewSessionList(ctx context.Context, req *mcp.CallToolRequest) (*m
 		size = int(s)
 	}
 
-	resp, xErr := previewLogic.ListSessions(ctx, projectID, page, size)
+	resp, xErr := previewLogic.ListSessions(ctx, projectID, 0, page, size)
 	if xErr != nil {
 		return previewErrorResult(fmt.Sprintf("获取预览会话列表失败: %s", xErr.Error())), nil
 	}
@@ -641,7 +641,7 @@ func handlePreviewFileGet(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 
 	metadata := map[string]any{
 		"status":  "success",
-		"message": "已读取单个预览文件源码；该内容仍属于 Preview 工作区，不等同于真实项目文件。",
+		"message": "已读取单个预览文件源码；该内容仍属于 Preview 会话，不等同于真实项目文件。",
 		"file": map[string]any{
 			"session_id": sessionIDStr,
 			"filename":   resp.Filename,

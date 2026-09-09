@@ -3,6 +3,7 @@ export interface CreateProjectRequest {
   alias_name?: string
   match_path?: string[]
   description?: string
+  workspace_id: string
 }
 
 export interface UpdateProjectRequest {
@@ -15,4 +16,5 @@ export interface UpdateProjectRequest {
 export interface ProjectListParams {
   page?: number
   size?: number
+  workspace_id?: string
 }

@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"strconv"
-
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
 	"github.com/gin-gonic/gin"
 	apiCommon "github.com/xiaolfeng/Lumina/api/common"
@@ -46,25 +44,26 @@ func (h *ProjectHandler) CreateProject(ctx *gin.Context) {
 // ListProjects 获取项目列表
 //
 // @Summary     [管理] 获取项目列表
-// @Description 按 page/size 分页查询项目列表，返回项目信息与总数
+// @Description 按 page/size 分页查询项目列表，可按 workspace_id 过滤；零值不过滤
 // @Tags        项目接口
 // @Accept      json
 // @Produce     json
-// @Param       Authorization  header    string   true  "Bearer Access Token"
+// @Param       Authorization  header    string   true   "Bearer Access Token"
 // @Param       page           query     int      false  "页码"
 // @Param       size           query     int      false  "每页数量"
+// @Param       workspace_id   query     string   false  "所属空间ID"
 // @Success     200  {object}  apiCommon.BaseResponse{data=apiProject.ProjectListResponse}  "获取成功"
 // @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
 // @Router      /api/v1/project [GET]
 func (h *ProjectHandler) ListProjects(ctx *gin.Context) {
 	h.log.Info(ctx, "ListProjects - 获取项目列表")
 
-	pageStr := ctx.DefaultQuery("page", "1")
-	sizeStr := ctx.DefaultQuery("size", "20")
-	page, _ := strconv.Atoi(pageStr)
-	size, _ := strconv.Atoi(sizeStr)
+	var req apiProject.ProjectListRequest
+	if !BindQuery(ctx, &req) {
+		return
+	}
 
-	resp, xErr := h.service.projectLogic.List(ctx, page, size)
+	resp, xErr := h.service.projectLogic.List(ctx, req.Page, req.Size, req.WorkspaceID)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return

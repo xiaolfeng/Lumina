@@ -50,6 +50,7 @@ pin_push(to="B", priority, content)               │
 当发现需要通知其他项目的约束时调用：
 ```json
 {
+  "from_project_id": "当前项目雪花 ID 或别名",
   "to_project_name": "Lumina-Frontend",
   "title": "WebSocket 消息体新增 trace_id 字段",
   "priority": "high",
@@ -57,14 +58,15 @@ pin_push(to="B", priority, content)               │
   "content": "## 接口变更说明\n\n后端 `qa_push_question` 广播的 WebSocket 消息体中已新增 `trace_id` 顶层字段，前端在渲染 interact 页面时需在错误上报中携带该 ID。"
 }
 ```
-- **`to_project_name`**：支持目标项目的**名称**、**别名**或**雪花 ID 字符串**（后端自动解析）。
+- **`to_project_name`**：目标项目的**雪花 ID 或别名**（不是 `Project.Name`）。
+- **`from_project_id`**：来源项目必填，且必须与目标属于同一工作空间。
 - **`priority`**：`high`（高）/ `medium`（中）/ `low`（低）。
 - **`category`**：`notice`（普通通知）/ `dependency`（依赖升级）/ `api_change`（接口变动）/ `other`（其他）。
 
 ---
 
 ### 2. 查阅项目约束队列 (`pin_list`)
-进入目标项目工作区后，首先查看当前项目有哪些待处理约束：
+进入目标项目路径后，首先查看当前项目有哪些待处理约束：
 ```json
 {
   "project_name": "Lumina-Frontend",

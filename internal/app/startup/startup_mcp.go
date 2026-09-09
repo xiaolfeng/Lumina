@@ -21,6 +21,7 @@ func (r *reg) mcpInit(ctx context.Context) (any, error) {
 	projectLogic := logic.NewProjectLogic(ctx)
 	pinLogic := logic.NewPinLogic(ctx)
 	previewLogic := logic.NewPreviewLogic(ctx)
+	workspaceLogic := logic.NewWorkspaceLogic(ctx)
 	repoWikiLogic := logic.GetRepoWikiLogicFromContext(ctx)
 	if repoWikiLogic == nil {
 		log.Warn(ctx, "context 中未找到 RepoWikiLogic，MCP 的 RepoWiki 工具将不可用")
@@ -29,6 +30,7 @@ func (r *reg) mcpInit(ctx context.Context) (any, error) {
 	mcp.SetProjectLogic(projectLogic)
 	mcp.SetPinLogic(pinLogic)
 	mcp.SetPreviewLogic(previewLogic)
+	mcp.SetWorkspaceLogic(workspaceLogic)
 	mcp.SetRepoWikiLogic(repoWikiLogic)
 
 	handler := mcp.InitMCPServer(ctx)

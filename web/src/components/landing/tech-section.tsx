@@ -6,7 +6,7 @@ const channels = [
   {
     kicker: '对外通道',
     name: 'MCP Server',
-    description: 'Streamable HTTP 协议，25 个工具供 Agent 编排调用。',
+    description: 'Streamable HTTP 协议，27 个工具供 Agent 编排调用。',
   },
   {
     kicker: '对外通道',

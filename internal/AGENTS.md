@@ -171,6 +171,7 @@ internal/
 │   ├── qa_handlers.go        # Q&A MCP 工具 handler 实现（工具执行逻辑）
 │   ├── qa_type_details.go    # Q&A MCP 题型详情定义（15+ 题型 schema 细节）
 │   ├── project_tools.go      # Project MCP 工具（CRUD + 别名解析 + match_path 数组）
+│   ├── workspace_tools.go    # Workspace MCP 工具（只读：list/get）
 │   ├── pin_tools.go          # Pin MCP 工具（Push/Consume/List/Update/Peek）
 │   ├── repowiki_tools.go     # RepoWiki MCP 工具（只读：query/list）
 │   └── preview_tools.go      # Preview MCP 工具（5 个：会话创建/列表 + 文件上传/列表/读取）
@@ -185,7 +186,7 @@ internal/
 └── constant/                 # 共享业务常量
     ├── cache.go              # Redis Key 前缀/过期时间（带环境前缀格式化）
     ├── context.go            # Context Key（如 CtxOwnerKey、RepoWikiLogicKey）
-    ├── gene_number.go        # 雪花算法基因编号（GeneProject=32 ~ GeneOAuthClient=47）
+    ├── gene_number.go        # 雪花算法基因编号（GeneProject=32 ~ GeneWorkspace=48）
     ├── info_key.go           # Info 表配置键常量（键名规范：层级 . 分隔、同层多词 - 连接）
     ├── biometric.go          # WebAuthn 相关常量（RP ID/Origin/超时）
     ├── pin.go                # Pin 模块常量（分类/优先级枚举）
@@ -235,7 +236,7 @@ internal/
 
 | 符号 | 类型 | 位置 | 作用 |
 |---|---|---|---|
-| `NewHandler[T]` | 泛型函数 | `handler/handler.go` | Handler 泛型构造模式，注入全部 Logic（16 个，含 OAuth / AI Plugin） |
+| `NewHandler[T]` | 泛型函数 | `handler/handler.go` | Handler 泛型构造模式，注入全部 Logic（17 个，含 OAuth / AI Plugin / Workspace） |
 | `BindJSON` | 辅助函数 | `handler/bind.go` | 统一请求绑定 + 分页参数规范化 |
 | `computeNav` | 函数 | `handler/wiki_reader.go` | 根据 manifest 计算当前 Wiki 页的 prev/next/breadcrumb |
 | `Cors` | 中间件 | `app/middleware/cors.go` | 白名单 CORS（`XLF_ALLOWED_ORIGINS`），命中才反射 `Access-Control-Allow-Origin` |
@@ -310,8 +311,8 @@ internal/
 - **Wiki Auth 中间件**：`middleware.WikiAuth` 处理 Wiki Reader 的密码 Token / Cookie 会话认证，保护 `/wiki/*` 路由。
 - **MCP 兼容中间件**：`middleware.McpCompat` 处理 Streamable HTTP 请求的兼容性（如 SSE 响应头处理）。
 - **安全中间件**：`middleware.SecurityHeaders` 设置安全响应头（nosniff / X-Frame-Options / CSP）；`middleware.Cors` 按 `XLF_ALLOWED_ORIGINS` 白名单反射 CORS；`middleware.WebAuthnOrigin` 按请求解析 Origin 注入 context。三者均在 `route.go` 全局注册。
-- **泛型 Handler 构造**：`NewHandler[T]` 统一注入所有 logic 实例到 `service` 结构体（health/auth/apikey/project/qa/biometric/pin/repowiki/ssh/llmProvider/llmModel/settings/preview/dashboard/aiPlugin/oauth 共 16 个）。
-- **实体 ID 策略**：雪花算法基因策略；每个实体必须实现 `GetGene() xSnowflake.Gene`，基因编号定义在 `constant/gene_number.go`（GeneProject=32 ~ GeneOAuthClient=47）。
+- **泛型 Handler 构造**：`NewHandler[T]` 统一注入所有 logic 实例到 `service` 结构体（health/auth/apikey/project/qa/biometric/pin/repowiki/ssh/llmProvider/llmModel/settings/preview/dashboard/aiPlugin/oauth/workspace 共 17 个）。
+- **实体 ID 策略**：雪花算法基因策略；每个实体必须实现 `GetGene() xSnowflake.Gene`，基因编号定义在 `constant/gene_number.go`（GeneProject=32 ~ GeneWorkspace=48）。
 - **字段注释**：实体字段必须追加行尾中文注释（`// 字段说明`），且与 `gorm comment` 一致。
 - **Info 配置键统一**：所有 Info 表键名在 `constant/info_key.go` 集中定义，禁止在业务代码写死键名字符串；键名规范为层级 `.` 分隔、同层多词 `-` 连接、禁止 `_`（如 `qa.session.ttl`）。
 - **缓存键前缀**：通过 `xEnv.NoSqlPrefix` 环境变量自动拼接前缀，使用 `RedisKey.Get(args...)` 格式化。

@@ -4,6 +4,7 @@ export interface SessionListParams {
   status?: 'active' | 'expired' | 'deleted' | ''
   type?: 'temporary' | 'permanent' | ''
   hash?: string
+  workspace_id?: string
 }
 
 export interface CreateSessionRequest {

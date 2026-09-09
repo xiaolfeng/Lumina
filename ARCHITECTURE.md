@@ -24,6 +24,7 @@ Lumina（微明）是给 AI Agent 用的代码知识与人机协作中枢：把�
 | 认证 / 用户 / WebAuthn | 单用户登录、资料、生物识别 | `AuthLogic`、`BiometricLogic` |
 | API Key | `lumi_` 密钥，MCP 回退凭证 | `ApikeyLogic` |
 | MCP OAuth 2.1 | 授权服务器 + 资源服务器，PKCE 公共客户端 | `OAuthLogic`、`OAuthClient`、`OAuthStore` |
+| 工作空间 | 单用户生活/工作分组，1—N 项目 | `WorkspaceLogic`、`WorkspaceRepo` |
 | 项目 | 名称/别名/路径解析 | `ProjectLogic`、`ProjectRepo` |
 | Q&A | 会话、题型推送、回答队列 | `QaLogic`、`Hub`（kind=qa）、`QueueManager` |
 | Pin | 跨项目约束，数据库 FIFO | `PinLogic` |
@@ -51,7 +52,7 @@ Lumina（微明）是给 AI Agent 用的代码知识与人机协作中枢：把�
 - **RepoWiki prompt 不进 Logic 源码。** 五角色模板在 `resources/prompts/`，经 `PromptLoader` 读取。
 - **Wiki 产物只认 `.mdx`。** 没有 `.md` fallback。
 - **共享 UI 只在 `@lumina/components`。** `web` / `web-wiki` 不得再拷一份 shadcn、Markdown 原语或主题 CSS。
-- **实体必须带基因。** `GetGene()` 使用 `GeneProject=32` 至 `GeneOAuthClient=47`，新增实体还要进 `main.go` 的 `WithAutoMigrate`（顺序跟 FK）。
+- **实体必须带基因。** `GetGene()` 使用 `GeneProject=32` 至 `GeneWorkspace=48`，新增实体还要进 `main.go` 的 `WithAutoMigrate`（顺序跟 FK）。
 - **定时任务不走裸 goroutine。** Cron 经 `xCronRunner`，Hub 主循环经 `xMain.Runner`。
 
 ## 横切关注点

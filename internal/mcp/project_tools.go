@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	apiProject "github.com/xiaolfeng/Lumina/api/project"
 	"github.com/xiaolfeng/Lumina/internal/logic"
@@ -17,6 +18,17 @@ var projectLogic *logic.ProjectLogic
 // SetProjectLogic 设置 ProjectLogic 实例，供 MCP 工具处理器使用。
 func SetProjectLogic(l *logic.ProjectLogic) {
 	projectLogic = l
+}
+
+var workspaceFilterProperties = map[string]any{
+	"workspace_id": map[string]any{
+		"type":        "string",
+		"description": "空间雪花 ID。与 workspace_slug 二选一；用 name 或 match_path 或 project_list / project_create 时必填。",
+	},
+	"workspace_slug": map[string]any{
+		"type":        "string",
+		"description": "空间 slug，如 default。与 workspace_id 二选一。",
+	},
 }
 
 // projectToolDefs 定义 Project 模块的全部 MCP 工具。
@@ -33,15 +45,15 @@ var projectToolDefs = []struct {
 
 match_path 填写项目根目录的绝对路径。Agent 应先执行 pwd（Unix/macOS）或 cd（Windows）获取当前工作目录绝对路径，将其作为 match_path 传入。AI 会根据该路径前缀自动将文件匹配到对应项目。
 
-创建成功后返回 project_id（雪花 ID）和项目基本信息，后续通过 project_id 或 name 查询详情。`,
+创建时必须指定 workspace_id 或 workspace_slug。创建成功后返回 project_id（雪花 ID）和项目基本信息，后续通过 project_id 或 name 查询详情。`,
 		inputSchema: map[string]any{
 			"type": "object",
-			"properties": map[string]any{
+			"properties": mergeProjectSchema(map[string]any{
 				"name":        map[string]any{"type": "string", "description": "项目名称（全局唯一）"},
 				"match_path":  map[string]any{"type": "array", "description": "路径匹配列表，AI 可根据文件路径自动匹配到该项目", "items": map[string]any{"type": "string"}},
 				"alias_name":  map[string]any{"type": "string", "description": "项目别名（人类可读，可选）"},
 				"description": map[string]any{"type": "string", "description": "项目描述（可选）"},
-			},
+			}),
 			"required": []string{"name", "match_path"},
 		},
 	},
@@ -53,10 +65,10 @@ match_path 填写项目根目录的绝对路径。Agent 应先执行 pwd（Unix/
 
 match_path 匹配逻辑：项目的 MatchPath 字段中任一元素是查询路径的前缀时命中。例如项目 MatchPath=["/home/user/Lumina"] 可匹配查询路径 "/home/user/Lumina/src/main.go"。
 
-返回项目完整信息（ID、名称、别名、路径匹配列表、描述等），若不存在会返回错误提示。`,
+按 name 或 match_path 查询时必须带 workspace_id 或 workspace_slug。按 project_id 查询时不要求空间参数。返回项目完整信息（含空间 ID），若不存在会返回错误提示。`,
 		inputSchema: map[string]any{
 			"type": "object",
-			"properties": map[string]any{
+			"properties": mergeProjectSchema(map[string]any{
 				"project_id": map[string]any{"type": "string", "description": "项目 ID（雪花 ID 字符串）"},
 				"name":       map[string]any{"type": "string", "description": "项目名称"},
 				"match_path": map[string]any{
@@ -66,12 +78,12 @@ match_path 匹配逻辑：项目的 MatchPath 字段中任一元素是查询路�
 						{"type": "array", "items": map[string]any{"type": "string"}},
 					},
 				},
-			},
+			}),
 		},
 	},
 	{
 		name: "project_list",
-		description: `获取项目列表。支持按路径前缀过滤，不传过滤条件时返回全部项目（分页）。
+		description: `获取项目列表。必须指定 workspace_id 或 workspace_slug；支持按路径前缀在该空间内过滤。
 
 触发场景：Agent 不知道 project_id 但需要找到对应项目时，可用当前工作目录的绝对路径作为 match_path 过滤匹配。
 
@@ -80,13 +92,34 @@ match_path 过滤模式：在应用层执行，匹配逻辑为双向前缀匹配
 每项返回项目 ID、名称、别名和路径匹配列表。需要查看完整详情时使用 project_get。`,
 		inputSchema: map[string]any{
 			"type": "object",
-			"properties": map[string]any{
+			"properties": mergeProjectSchema(map[string]any{
 				"match_path": map[string]any{"type": "string", "description": "路径前缀过滤（可选，不传则返回全部）"},
 				"page":       map[string]any{"type": "integer", "description": "页码（从 1 开始，默认 1）"},
 				"size":       map[string]any{"type": "integer", "description": "每页数量（默认 20，最大 100）"},
-			},
+			}),
 		},
 	},
+}
+
+func mergeProjectSchema(extra map[string]any) map[string]any {
+	out := make(map[string]any, len(workspaceFilterProperties)+len(extra))
+	for k, v := range workspaceFilterProperties {
+		out[k] = v
+	}
+	for k, v := range extra {
+		out[k] = v
+	}
+	return out
+}
+
+func resolveProjectWorkspaceArg(args map[string]any) (xSnowflake.SnowflakeID, string) {
+	workspaceID, _ := args["workspace_id"].(string)
+	workspaceSlug, _ := args["workspace_slug"].(string)
+	id, xErr := projectLogic.ResolveWorkspace(context.Background(), workspaceID, workspaceSlug)
+	if xErr != nil {
+		return 0, xErr.Error()
+	}
+	return id, ""
 }
 
 // handleProjectCreate 创建项目
@@ -115,8 +148,12 @@ func handleProjectCreate(_ context.Context, req *mcp.CallToolRequest) (*mcp.Call
 	}
 	aliasName, _ := args["alias_name"].(string)
 	description, _ := args["description"].(string)
+	workspaceID, errMsg := resolveProjectWorkspaceArg(args)
+	if errMsg != "" {
+		return textResult(errMsg), nil
+	}
 	apiReq := &apiProject.CreateProjectRequest{
-		Name: name, AliasName: aliasName, MatchPath: matchPath, Description: description,
+		Name: name, AliasName: aliasName, MatchPath: matchPath, Description: description, WorkspaceID: workspaceID,
 	}
 	resp, xErr := projectLogic.Create(context.Background(), apiReq)
 	if xErr != nil {
@@ -128,8 +165,9 @@ func handleProjectCreate(_ context.Context, req *mcp.CallToolRequest) (*mcp.Call
 名称: %s
 别名: %s
 路径匹配: %s
-描述: %s`,
-		resp.ID, resp.Name, resp.AliasName, formatPathList(resp.MatchPath), resp.Description)), nil
+描述: %s
+空间 ID: %s`,
+		resp.ID, resp.Name, resp.AliasName, formatPathList(resp.MatchPath), resp.Description, resp.WorkspaceID)), nil
 }
 
 // handleProjectGet 查询项目详情
@@ -150,9 +188,16 @@ func handleProjectGet(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToo
 		return textResult(formatProjectDetail(resp)), nil
 	}
 	if name, _ := args["name"].(string); name != "" {
+		workspaceID, errMsg := resolveProjectWorkspaceArg(args)
+		if errMsg != "" {
+			return textResult(errMsg), nil
+		}
 		resp, xErr := projectLogic.GetByName(context.Background(), name)
 		if xErr != nil {
 			return textResult(fmt.Sprintf("查询项目失败: %s", xErr.Error())), nil
+		}
+		if resp.WorkspaceID != workspaceID {
+			return textResult("查询项目失败: 项目不存在"), nil
 		}
 		return textResult(formatProjectDetail(resp)), nil
 	}
@@ -168,7 +213,11 @@ func handleProjectGet(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToo
 		}
 	}
 	if mp != "" {
-		resp, xErr := projectLogic.GetByMatchPath(context.Background(), mp)
+		workspaceID, errMsg := resolveProjectWorkspaceArg(args)
+		if errMsg != "" {
+			return textResult(errMsg), nil
+		}
+		resp, xErr := projectLogic.GetByMatchPath(context.Background(), mp, workspaceID)
 		if xErr != nil {
 			return textResult(fmt.Sprintf("查询项目失败: %s", xErr.Error())), nil
 		}
@@ -195,7 +244,11 @@ func handleProjectList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallTo
 		size = int(s)
 	}
 	matchPathFilter, _ := args["match_path"].(string)
-	resp, xErr := projectLogic.List(context.Background(), page, size)
+	workspaceID, errMsg := resolveProjectWorkspaceArg(args)
+	if errMsg != "" {
+		return textResult(errMsg), nil
+	}
+	resp, xErr := projectLogic.List(context.Background(), page, size, workspaceID)
 	if xErr != nil {
 		return textResult(fmt.Sprintf("获取项目列表失败: %s", xErr.Error())), nil
 	}
@@ -273,7 +326,8 @@ ID: %s
 别名: %s
 路径匹配: %s
 描述: %s
+空间 ID: %s
 创建时间: %s
 更新时间: %s`,
-		resp.ID, resp.Name, resp.AliasName, formatPathList(resp.MatchPath), resp.Description, resp.CreatedAt, resp.UpdatedAt)
+		resp.ID, resp.Name, resp.AliasName, formatPathList(resp.MatchPath), resp.Description, resp.WorkspaceID, resp.CreatedAt, resp.UpdatedAt)
 }

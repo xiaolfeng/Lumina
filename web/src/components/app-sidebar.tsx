@@ -1,15 +1,22 @@
 import { Link, useLocation, useRouter } from '@tanstack/react-router'
+import { useState } from 'react'
 import {
+  Briefcase,
+  Check,
+  ChevronsUpDown,
   ExternalLink,
   FileKey,
   FolderKanban,
+  Home,
   KeyRound,
+  LayoutGrid,
   Pin,
   LayoutDashboard,
   LogOut,
   MessageCircle,
   MessageCircleQuestion,
   MonitorPlay,
+  Plus,
   Plug,
   Settings,
   User,
@@ -40,6 +47,8 @@ import {
   SidebarMenuItem,
 } from '@lumina/components/ui/sidebar'
 import { useAuth, useLogout } from '#/hooks/useAuth'
+import { useCurrentWorkspace } from '#/hooks/useCurrentWorkspace'
+import { CreateWorkspaceDialog } from '#/components/workspace/create-dialog'
 import { sidebarItem, sidebarStaggerContainer } from '@lumina/components/motion'
 
 interface NavItem {
@@ -92,6 +101,8 @@ export function AppSidebar() {
   const router = useRouter()
   const { currentUser } = useAuth()
   const logout = useLogout()
+  const { current, workspaces, setCurrentWorkspace } = useCurrentWorkspace()
+  const [createOpen, setCreateOpen] = useState(false)
 
   const user = currentUser.data?.data
   const displayName = user?.username || '管理员'
@@ -142,6 +153,69 @@ export function AppSidebar() {
                     </span>
                   </Link>
                 </SidebarMenuButton>
+              </motion.div>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <motion.div variants={sidebarItem}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton size="lg" className="hover:bg-link-bg-hover">
+                      <WorkspaceIcon name={current?.icon} />
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-none">
+                        <span className="truncate text-sm font-medium text-sea-ink">
+                          {current?.name || '选择空间'}
+                        </span>
+                        <span className="truncate text-xs text-sea-ink-soft">
+                          {current?.slug || '尚未加载'}
+                        </span>
+                      </div>
+                      <ChevronsUpDown className="ml-auto size-4 opacity-50" />
+                    </SidebarMenuButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    side="bottom"
+                    align="start"
+                    className="w-64 rounded-none border-line"
+                  >
+                    {workspaces.map((workspace) => (
+                      <DropdownMenuItem
+                        key={workspace.id}
+                        className="rounded-none text-sea-ink-soft focus:bg-link-bg-hover focus:text-sea-ink"
+                        onClick={() => setCurrentWorkspace(workspace)}
+                      >
+                        <WorkspaceIcon name={workspace.icon} />
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-sm text-sea-ink">
+                            {workspace.name}
+                          </span>
+                          <span className="truncate text-xs text-sea-ink-soft">
+                            {workspace.slug}
+                          </span>
+                        </div>
+                        {current?.id === workspace.id ? (
+                          <Check className="size-4 text-lagoon" />
+                        ) : null}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="rounded-none text-sea-ink-soft focus:bg-link-bg-hover focus:text-sea-ink"
+                      onClick={() =>
+                        void router.navigate({ to: '/console/workspace' })
+                      }
+                    >
+                      <Settings />
+                      管理空间
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="rounded-none text-sea-ink-soft focus:bg-link-bg-hover focus:text-sea-ink"
+                      onClick={() => setCreateOpen(true)}
+                    >
+                      <Plus />
+                      新建空间
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </motion.div>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -261,6 +335,23 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarFooter>
       </motion.div>
+      <CreateWorkspaceDialog open={createOpen} onOpenChange={setCreateOpen} />
     </Sidebar>
   )
+}
+
+const WORKSPACE_ICON_MAP = {
+  briefcase: Briefcase,
+  home: Home,
+  'layout-grid': LayoutGrid,
+} as const
+
+function WorkspaceIcon({ name }: { name?: string }) {
+  if (name && !name.includes('/') && !name.includes('://') && name.length <= 4) {
+    return <span className="text-base leading-none">{name}</span>
+  }
+  const Icon =
+    WORKSPACE_ICON_MAP[(name ?? '') as keyof typeof WORKSPACE_ICON_MAP] ??
+    LayoutGrid
+  return <Icon className="size-4" />
 }

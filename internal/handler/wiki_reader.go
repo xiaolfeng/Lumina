@@ -48,7 +48,7 @@ const (
 
 type wikiAuthLimiter struct {
 	mu       sync.Mutex
-	failures map[int64]int      // configID → 连续失败次数
+	failures map[int64]int       // configID → 连续失败次数
 	lockedAt map[int64]time.Time // configID → 锁定截止时间
 }
 

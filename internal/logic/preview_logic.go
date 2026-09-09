@@ -56,7 +56,7 @@ func NewPreviewLogic(ctx context.Context) *PreviewLogic {
 	}
 }
 
-// CreateSession 创建预览会话（活动工作区，1:N 多工作区）
+// CreateSession 创建预览会话（活动会话，1:N 多会话）
 //
 // 生成雪花 ID 与访问哈希后持久化，title 为空时回退为「未命名预览」。
 func (l *PreviewLogic) CreateSession(ctx context.Context, projectID xSnowflake.SnowflakeID, title string) (*apiPreview.PreviewSessionResponse, *xError.Error) {
@@ -86,10 +86,10 @@ func (l *PreviewLogic) CreateSession(ctx context.Context, projectID xSnowflake.S
 }
 
 // ListSessions 分页获取预览会话列表（projectID 为零值时不过滤），并批量填充各会话文件数。
-func (l *PreviewLogic) ListSessions(ctx context.Context, projectID xSnowflake.SnowflakeID, page, size int) (*apiPreview.PreviewSessionListResponse, *xError.Error) {
-	l.log.Info(ctx, fmt.Sprintf("ListSessions - 分页获取预览会话列表 [projectID=%d, page=%d, size=%d]", projectID.Int64(), page, size))
+func (l *PreviewLogic) ListSessions(ctx context.Context, projectID, workspaceID xSnowflake.SnowflakeID, page, size int) (*apiPreview.PreviewSessionListResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("ListSessions - 分页获取预览会话列表 [projectID=%d, workspace=%d, page=%d, size=%d]", projectID.Int64(), workspaceID.Int64(), page, size))
 
-	sessions, total, xErr := l.repo.session.List(ctx, projectID, page, size)
+	sessions, total, xErr := l.repo.session.List(ctx, projectID, workspaceID, page, size)
 	if xErr != nil {
 		return nil, xErr
 	}

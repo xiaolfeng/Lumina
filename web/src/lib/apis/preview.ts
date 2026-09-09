@@ -9,6 +9,7 @@ import type {
 
 export interface PreviewSessionListParams {
   project_id?: string
+  workspace_id?: string
   page?: number
   size?: number
 }

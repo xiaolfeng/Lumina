@@ -19,8 +19,9 @@ import (
 
 // authRepo 认证模块依赖的仓储集合
 type authRepo struct {
-	token *repository.TokenRepo
-	info  *repository.InfoRepo
+	token     *repository.TokenRepo
+	info      *repository.InfoRepo
+	workspace *repository.WorkspaceRepo
 }
 
 // AuthLogic 认证业务逻辑层，负责初始化、登录、令牌管理与校验
@@ -39,8 +40,9 @@ func NewAuthLogic(ctx context.Context) *AuthLogic {
 			log: xLog.WithName(xLog.NamedLOGC, "AuthLogic"),
 		},
 		repo: authRepo{
-			token: repository.NewTokenRepo(rdb),
-			info:  repository.NewInfoRepo(db),
+			token:     repository.NewTokenRepo(rdb),
+			info:      repository.NewInfoRepo(db),
+			workspace: repository.NewWorkspaceRepo(db, rdb),
 		},
 	}
 }
@@ -96,6 +98,11 @@ func (l *AuthLogic) Initialize(ctx context.Context, req *apiAuth.InitializeReque
 	}
 
 	l.log.Info(ctx, "Initialize - 系统初始化成功")
+
+	if _, ensureErr := l.repo.workspace.EnsureDefault(ctx); ensureErr != nil {
+		l.log.Warn(ctx, "Initialize - 保证默认空间失败: "+ensureErr.Error())
+	}
+
 	return nil
 }
 

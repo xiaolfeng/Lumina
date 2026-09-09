@@ -4,6 +4,7 @@ import { motion } from 'motion/react'
 import { Skeleton } from '@lumina/components/ui/skeleton'
 import { Eye, Trash2 } from 'lucide-react'
 import { useSessionList, useDeleteSession } from '#/hooks/useQaAdmin'
+import { useCurrentWorkspace } from '#/hooks/useCurrentWorkspace'
 import { useDashboardOverview } from '#/hooks/useDashboard'
 import { SessionDetailDrawer } from '#/components/qa/session-detail-drawer'
 import { ConfirmDeleteDialog } from '#/components/confirm-delete-dialog'
@@ -21,7 +22,12 @@ function QaPage() {
   const [deleteTarget, setDeleteTarget] = useState<SessionItem | null>(null)
   const [viewTarget, setViewTarget] = useState<string | null>(null)
 
-  const { data, isLoading } = useSessionList({ page, size: pageSize })
+  const { current } = useCurrentWorkspace()
+  const { data, isLoading } = useSessionList({
+    page,
+    size: pageSize,
+    workspace_id: current?.id,
+  })
   const { data: overviewData } = useDashboardOverview()
   const deleteMutation = useDeleteSession()
 

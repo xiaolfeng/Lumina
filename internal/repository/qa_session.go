@@ -206,8 +206,8 @@ func (r *QaSessionRepo) GetByIDWithQuestions(ctx context.Context, id xSnowflake.
 //   - []*entity.QaSession: 当前页的会话列表
 //   - int64:                符合条件的总记录数
 //   - *xError.Error:        查询过程中的错误
-func (r *QaSessionRepo) List(ctx context.Context, page, size int, statusFilter, typeFilter, hashFilter string) ([]*entity.QaSession, int64, *xError.Error) {
-	r.log.Info(ctx, fmt.Sprintf("List - 分页获取QA会话列表 [page=%d, size=%d, status=%s, type=%s, hash=%s]", page, size, statusFilter, typeFilter, hashFilter))
+func (r *QaSessionRepo) List(ctx context.Context, page, size int, statusFilter, typeFilter, hashFilter string, workspaceID xSnowflake.SnowflakeID) ([]*entity.QaSession, int64, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("List - 分页获取QA会话列表 [page=%d, size=%d, status=%s, type=%s, hash=%s, workspace=%d]", page, size, statusFilter, typeFilter, hashFilter, workspaceID.Int64()))
 
 	// 构建基础查询
 	query := r.db.WithContext(ctx).Model(&entity.QaSession{})
@@ -221,6 +221,9 @@ func (r *QaSessionRepo) List(ctx context.Context, page, size int, statusFilter, 
 	}
 	if hashFilter != "" {
 		query = query.Where("hash = ?", hashFilter)
+	}
+	if !workspaceID.IsZero() {
+		query = query.Where("project_id IN (SELECT id FROM projects WHERE workspace_id = ?)", workspaceID)
 	}
 
 	// 统计总数

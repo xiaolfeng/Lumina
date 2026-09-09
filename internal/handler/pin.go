@@ -13,7 +13,7 @@ var _ = apiCommon.BaseResponse{}
 // CreatePin 创建 Pin 约束
 //
 // @Summary     [管理] 创建 Pin 约束
-// @Description 提交标题、内容、分类、优先级与目标项目创建跨项目依赖约束，推送到目标项目待消费队列
+// @Description 提交标题、内容、分类、优先级、来源项目与目标项目创建跨项目依赖约束，两端必须属于同一空间
 // @Tags        Pin接口
 // @Accept      json
 // @Produce     json
@@ -54,6 +54,7 @@ func (h *PinHandler) CreatePin(ctx *gin.Context) {
 // @Param       status           query     string   false  "状态筛选 (pending/consumed)"
 // @Param       category         query     string   false  "分类筛选 (notice/dependency/api_change/other)"
 // @Param       priority         query     string   false  "优先级筛选 (high/medium/low)"
+// @Param       workspace_id     query     string   false  "所属空间ID筛选"
 // @Param       page             query     int      false  "页码"  default(1)
 // @Param       size             query     int      false  "每页数量"  default(20)
 // @Success     200  {object}  apiCommon.BaseResponse{data=apiPin.PinListResponse}  "查询成功"

@@ -25,6 +25,7 @@ import { Route as ConsoleQaRouteImport } from './routes/console/qa'
 import { Route as ConsoleProjectRouteImport } from './routes/console/project'
 import { Route as ConsoleProfileRouteImport } from './routes/console/profile'
 import { Route as ConsolePinRouteImport } from './routes/console/pin'
+import { Route as ConsoleWorkspaceRouteImport } from './routes/console/workspace'
 import { Route as ConsoleDashboardRouteImport } from './routes/console/dashboard'
 import { Route as ConsoleConnectRouteImport } from './routes/console/connect'
 import { Route as ConsoleApikeyRouteImport } from './routes/console/apikey'
@@ -118,6 +119,11 @@ const ConsoleProfileRoute = ConsoleProfileRouteImport.update({
 const ConsolePinRoute = ConsolePinRouteImport.update({
   id: '/pin',
   path: '/pin',
+  getParentRoute: () => ConsoleRoute,
+} as any)
+const ConsoleWorkspaceRoute = ConsoleWorkspaceRouteImport.update({
+  id: '/workspace',
+  path: '/workspace',
   getParentRoute: () => ConsoleRoute,
 } as any)
 const ConsoleDashboardRoute = ConsoleDashboardRouteImport.update({
@@ -214,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/console/connect': typeof ConsoleConnectRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/pin': typeof ConsolePinRoute
+  '/console/workspace': typeof ConsoleWorkspaceRoute
   '/console/profile': typeof ConsoleProfileRoute
   '/console/project': typeof ConsoleProjectRouteWithChildren
   '/console/qa': typeof ConsoleQaRouteWithChildren
@@ -242,6 +249,7 @@ export interface FileRoutesByTo {
   '/console/connect': typeof ConsoleConnectRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/pin': typeof ConsolePinRoute
+  '/console/workspace': typeof ConsoleWorkspaceRoute
   '/console/profile': typeof ConsoleProfileRoute
   '/console/settings': typeof ConsoleSettingsRoute
   '/console/ssh': typeof ConsoleSshRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/console/connect': typeof ConsoleConnectRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/pin': typeof ConsolePinRoute
+  '/console/workspace': typeof ConsoleWorkspaceRoute
   '/console/profile': typeof ConsoleProfileRoute
   '/console/project': typeof ConsoleProjectRouteWithChildren
   '/console/qa': typeof ConsoleQaRouteWithChildren
@@ -308,6 +317,7 @@ export interface FileRouteTypes {
     | '/console/connect'
     | '/console/dashboard'
     | '/console/pin'
+    | '/console/workspace'
     | '/console/profile'
     | '/console/project'
     | '/console/qa'
@@ -336,6 +346,7 @@ export interface FileRouteTypes {
     | '/console/connect'
     | '/console/dashboard'
     | '/console/pin'
+    | '/console/workspace'
     | '/console/profile'
     | '/console/settings'
     | '/console/ssh'
@@ -366,6 +377,7 @@ export interface FileRouteTypes {
     | '/console/connect'
     | '/console/dashboard'
     | '/console/pin'
+    | '/console/workspace'
     | '/console/profile'
     | '/console/project'
     | '/console/qa'
@@ -505,6 +517,13 @@ declare module '@tanstack/react-router' {
       path: '/pin'
       fullPath: '/console/pin'
       preLoaderRoute: typeof ConsolePinRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
+    '/console/workspace': {
+      id: '/console/workspace'
+      path: '/workspace'
+      fullPath: '/console/workspace'
+      preLoaderRoute: typeof ConsoleWorkspaceRouteImport
       parentRoute: typeof ConsoleRoute
     }
     '/console/dashboard': {
@@ -696,6 +715,7 @@ interface ConsoleRouteChildren {
   ConsoleConnectRoute: typeof ConsoleConnectRoute
   ConsoleDashboardRoute: typeof ConsoleDashboardRoute
   ConsolePinRoute: typeof ConsolePinRoute
+  ConsoleWorkspaceRoute: typeof ConsoleWorkspaceRoute
   ConsoleProfileRoute: typeof ConsoleProfileRoute
   ConsoleProjectRoute: typeof ConsoleProjectRouteWithChildren
   ConsoleQaRoute: typeof ConsoleQaRouteWithChildren
@@ -710,6 +730,7 @@ const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleConnectRoute: ConsoleConnectRoute,
   ConsoleDashboardRoute: ConsoleDashboardRoute,
   ConsolePinRoute: ConsolePinRoute,
+  ConsoleWorkspaceRoute: ConsoleWorkspaceRoute,
   ConsoleProfileRoute: ConsoleProfileRoute,
   ConsoleProjectRoute: ConsoleProjectRouteWithChildren,
   ConsoleQaRoute: ConsoleQaRouteWithChildren,

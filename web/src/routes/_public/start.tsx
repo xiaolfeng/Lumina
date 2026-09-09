@@ -7,6 +7,7 @@ import {
   Brain,
   CheckCircle2,
   FolderKanban,
+  LayoutGrid,
   MessageCircle,
   MonitorPlay,
   Pin,
@@ -81,6 +82,8 @@ const deploySteps = [
 
 function iconForModule(id: string) {
   switch (id) {
+    case 'workspace':
+      return LayoutGrid
     case 'project':
       return FolderKanban
     case 'qa':
@@ -343,7 +346,7 @@ function StartPage() {
             className="display-title mb-8 text-center text-2xl font-bold text-sea-ink sm:text-3xl"
             variants={fadeUp}
           >
-            25 个工具，按任务编排
+            27 个工具，按任务编排
           </motion.h2>
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
             {MCP_TOOL_MODULES.map((mod) => {

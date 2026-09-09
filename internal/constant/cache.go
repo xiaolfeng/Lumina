@@ -15,10 +15,14 @@ const (
 	CacheRefreshToken RedisKey = "auth:rt:%s" // CacheRefreshToken RefreshToken→UserID 缓存（%s = RT）
 
 	// ── 项目缓存（Cache-Aside 三/四层映射，TTL 30 分钟）──
-	CacheProjectByID          RedisKey = "project:id:%d"         // CacheProjectByID 项目 ID→详情缓存（%d = snowflake ID）
-	CacheProjectIDByName      RedisKey = "project:name:%s"       // CacheProjectIDByName 项目名称→ID 映射（%s = name）
-	CacheProjectIDByAlias     RedisKey = "project:alias:%s"      // CacheProjectIDByAlias 别名→ID 映射（%s = alias）
-	CacheProjectIDByMatchPath RedisKey = "project:match_path:%s" // CacheProjectIDByMatchPath 路径→ID 映射（%s = match path）
+	CacheProjectByID          RedisKey = "project:id:%d"               // CacheProjectByID 项目 ID→详情缓存（%d = snowflake ID）
+	CacheProjectIDByName      RedisKey = "project:name:%s"             // CacheProjectIDByName 项目名称→ID 映射（%s = name）
+	CacheProjectIDByAlias     RedisKey = "project:alias:%s"            // CacheProjectIDByAlias 别名→ID 映射（%s = alias）
+	CacheProjectIDByMatchPath RedisKey = "project:ws:%d:match_path:%s" // CacheProjectIDByMatchPath 空间内路径→ID 映射（%d = workspace ID，%s = match path）
+
+	// ── 工作空间缓存（Cache-Aside ID→详情 + slug→ID，TTL 30 分钟）──
+	CacheWorkspaceByID   RedisKey = "workspace:id:%d"   // CacheWorkspaceByID 空间 ID→详情缓存（%d = snowflake ID）
+	CacheWorkspaceBySlug RedisKey = "workspace:slug:%s" // CacheWorkspaceBySlug 空间 slug→ID 映射（%s = slug）
 
 	// ── QA Session 缓存（Cache-Aside ID→详情 + Hash→ID，TTL 10 分钟）──
 	CacheQaSessionByID     RedisKey = "qa:session:%d"      // CacheQaSessionByID 会话 ID→详情缓存（%d = snowflake ID）

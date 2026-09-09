@@ -3,7 +3,7 @@ export interface CreatePinRequest {
   content: string
   category?: string
   priority: string
-  from_project_id?: string
+  from_project_id: string
   to_project_id: string
 }
 
@@ -18,6 +18,7 @@ export interface PinListParams {
   status?: string
   category?: string
   priority?: string
+  workspace_id?: string
   page?: number
   size?: number
 }

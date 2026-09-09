@@ -73,6 +73,7 @@ func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) xOption.RouteRegistrar {
 		r.apikeyRouter(apiRouter)
 		r.llmRouter(apiRouter)
 		r.settingsRouter(apiRouter)
+		r.workspaceRouter(apiRouter)
 		r.projectRouter(apiRouter)
 		r.pinRouter(apiRouter)
 		r.qaRouter(apiRouter)

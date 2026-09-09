@@ -147,6 +147,7 @@ func (h *PreviewHandler) GetFileByID(ctx *gin.Context) {
 // @Produce     json
 // @Param       Authorization  header    string  true  "Bearer Access Token"
 // @Param       project_id     query     string  false "项目ID筛选"
+// @Param       workspace_id   query     string  false "所属空间ID筛选"
 // @Param       page           query     int     false "页码"  default(1)
 // @Param       size           query     int     false "每页数量"  default(20)
 // @Success     200  {object}  apiCommon.BaseResponse{data=apiPreview.PreviewSessionListResponse}  "查询成功"
@@ -160,7 +161,7 @@ func (h *PreviewHandler) ListSessions(ctx *gin.Context) {
 		return
 	}
 
-	resp, xErr := h.service.previewLogic.ListSessions(ctx.Request.Context(), req.ProjectID, req.Page, req.Size)
+	resp, xErr := h.service.previewLogic.ListSessions(ctx.Request.Context(), req.ProjectID, req.WorkspaceID, req.Page, req.Size)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return

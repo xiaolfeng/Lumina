@@ -19,4 +19,5 @@ const (
 	GenePreviewSession      xSnowflake.Gene = 45 // 预览会话基因
 	GenePreviewFile         xSnowflake.Gene = 46 // 预览文件基因
 	GeneOAuthClient         xSnowflake.Gene = 47 // OAuth动态客户端基因
+	GeneWorkspace           xSnowflake.Gene = 48 // 工作空间基因
 )

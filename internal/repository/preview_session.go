@@ -17,7 +17,7 @@ import (
 
 // PreviewSessionRepo 预览会话数据访问层，提供 CRUD 与按项目/哈希查询能力。
 //
-// 预览会话为活动工作区（1:N 多工作区），无 Redis 缓存（与 Pin 一致），
+// 预览会话为活动会话（1:N 多会话），无 Redis 缓存（与 Pin 一致），
 // 因为会话内容依赖文件子表实时变更，缓存层会引入一致性成本。
 //
 // 字段说明:
@@ -116,14 +116,17 @@ func (r *PreviewSessionRepo) GetByHash(ctx context.Context, hash string) (*entit
 //   - []*entity.PreviewSession: 当前页的预览会话列表
 //   - int64:                    符合条件的总记录数
 //   - *xError.Error:            查询过程中的错误
-func (r *PreviewSessionRepo) List(ctx context.Context, projectID xSnowflake.SnowflakeID, page, size int) ([]*entity.PreviewSession, int64, *xError.Error) {
+func (r *PreviewSessionRepo) List(ctx context.Context, projectID, workspaceID xSnowflake.SnowflakeID, page, size int) ([]*entity.PreviewSession, int64, *xError.Error) {
 	pageReq := xModels.PageRequest{Page: int64(page), Size: int64(size)}.Normalize()
 	page, size = int(pageReq.Page), int(pageReq.Size)
-	r.log.Info(ctx, fmt.Sprintf("List - 分页获取预览会话列表 [projectID=%d, page=%d, size=%d]", projectID.Int64(), page, size))
+	r.log.Info(ctx, fmt.Sprintf("List - 分页获取预览会话列表 [projectID=%d, workspace=%d, page=%d, size=%d]", projectID.Int64(), workspaceID.Int64(), page, size))
 
 	query := r.db.WithContext(ctx).Model(&entity.PreviewSession{})
 	if !projectID.IsZero() {
 		query = query.Where("project_id = ?", projectID)
+	}
+	if !workspaceID.IsZero() {
+		query = query.Where("project_id IN (SELECT id FROM projects WHERE workspace_id = ?)", workspaceID)
 	}
 
 	var total int64

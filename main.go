@@ -40,6 +40,7 @@ func main() {
 			xOptDatabase.WithAutoMigrate(
 				&entity.Info{},
 				&entity.Apikey{},
+				&entity.Workspace{},
 				&entity.Project{},
 				&entity.Pin{},
 				&entity.QaSession{},

@@ -135,26 +135,23 @@ func (r *ProjectRepo) GetByName(ctx context.Context, name string) (*entity.Proje
 
 // List 分页获取项目列表（按创建时间降序）
 //
-// 参数:
-//   - ctx:  上下文对象
-//   - page: 页码（从 1 开始）
-//   - size: 每页数量
-//
-// 返回值:
-//   - []*entity.Project: 当前页的项目列表
-//   - int64:             符合条件的总记录数
-//   - *xError.Error:     查询过程中的错误
-func (r *ProjectRepo) List(ctx context.Context, page, size int) ([]*entity.Project, int64, *xError.Error) {
-	r.log.Info(ctx, fmt.Sprintf("List - 分页获取项目列表 [page=%d, size=%d]", page, size))
+// workspaceID 为零值时不过滤空间，与现网行为相同。
+func (r *ProjectRepo) List(ctx context.Context, page, size int, workspaceID xSnowflake.SnowflakeID) ([]*entity.Project, int64, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("List - 分页获取项目列表 [page=%d, size=%d, workspace=%d]", page, size, workspaceID.Int64()))
+
+	query := r.db.WithContext(ctx).Model(&entity.Project{})
+	if !workspaceID.IsZero() {
+		query = query.Where("workspace_id = ?", workspaceID)
+	}
 
 	var total int64
-	if err := r.db.WithContext(ctx).Model(&entity.Project{}).Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, xError.NewError(ctx, xError.DatabaseError, "统计项目数量失败", false, err)
 	}
 
 	var projects []*entity.Project
 	offset := (page - 1) * size
-	if err := r.db.WithContext(ctx).
+	if err := query.
 		Offset(offset).
 		Limit(size).
 		Order("created_at DESC").
@@ -231,13 +228,16 @@ func (r *ProjectRepo) Delete(ctx context.Context, id xSnowflake.SnowflakeID) *xE
 // 返回值:
 //   - *entity.Project: 查询到的项目实体
 //   - *xError.Error:   查询过程中的错误
-func (r *ProjectRepo) FindByAliasName(ctx context.Context, alias string) (*entity.Project, *xError.Error) {
-	r.log.Info(ctx, fmt.Sprintf("FindByAliasName - 根据别名查询项目 [%s]", alias))
+func (r *ProjectRepo) FindByAliasName(ctx context.Context, alias string, workspaceID xSnowflake.SnowflakeID) (*entity.Project, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("FindByAliasName - 根据别名查询项目 [%s, workspace=%d]", alias, workspaceID.Int64()))
+
+	query := r.db.WithContext(ctx).Where("LOWER(alias_name) = LOWER(?)", alias)
+	if !workspaceID.IsZero() {
+		query = query.Where("workspace_id = ?", workspaceID)
+	}
 
 	var project entity.Project
-	if err := r.db.WithContext(ctx).
-		Where("LOWER(alias_name) = LOWER(?)", alias).
-		First(&project).Error; err != nil {
+	if err := query.First(&project).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, xError.NewError(ctx, xError.NotFound, "项目不存在", false, nil)
 		}
@@ -245,6 +245,22 @@ func (r *ProjectRepo) FindByAliasName(ctx context.Context, alias string) (*entit
 	}
 
 	return &project, nil
+}
+
+// CountByAliasName 统计同名别名数量；workspaceID 为零时全表计数
+func (r *ProjectRepo) CountByAliasName(ctx context.Context, alias string, workspaceID xSnowflake.SnowflakeID) (int64, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("CountByAliasName - 统计别名 [%s, workspace=%d]", alias, workspaceID.Int64()))
+
+	query := r.db.WithContext(ctx).Model(&entity.Project{}).Where("LOWER(alias_name) = LOWER(?)", alias)
+	if !workspaceID.IsZero() {
+		query = query.Where("workspace_id = ?", workspaceID)
+	}
+
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return 0, xError.NewError(ctx, xError.DatabaseError, "统计项目别名失败", false, err)
+	}
+	return count, nil
 }
 
 // FindByMatchPath 根据路径匹配查询项目
@@ -261,15 +277,19 @@ func (r *ProjectRepo) FindByAliasName(ctx context.Context, alias string) (*entit
 // 返回值:
 //   - *entity.Project: 第一个匹配的项目实体
 //   - *xError.Error:   查询过程中的错误
-func (r *ProjectRepo) FindByMatchPath(ctx context.Context, path string) (*entity.Project, *xError.Error) {
-	r.log.Info(ctx, fmt.Sprintf("FindByMatchPath - 根据路径匹配项目 [%s]", path))
+func (r *ProjectRepo) FindByMatchPath(ctx context.Context, path string, workspaceID xSnowflake.SnowflakeID) (*entity.Project, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("FindByMatchPath - 根据路径匹配项目 [%s, workspace=%d]", path, workspaceID.Int64()))
 
 	// 注：path 是 LIKE 的左操作数（被匹配字符串，字面量），通配符只作用于右操作数
 	// (elem || '%') 中的 elem；path 无需转义。elem 来自管理员配置的 match_path 列。
+	query := r.db.WithContext(ctx).
+		Where("EXISTS (SELECT 1 FROM json_array_elements_text(match_path) AS elem WHERE ? LIKE (elem || '%'))", path)
+	if !workspaceID.IsZero() {
+		query = query.Where("workspace_id = ?", workspaceID)
+	}
+
 	var project entity.Project
-	if err := r.db.WithContext(ctx).
-		Where("EXISTS (SELECT 1 FROM json_array_elements_text(match_path) AS elem WHERE ? LIKE (elem || '%'))", path).
-		First(&project).Error; err != nil {
+	if err := query.First(&project).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, xError.NewError(ctx, xError.NotFound, "项目不存在", false, nil)
 		}
@@ -277,6 +297,25 @@ func (r *ProjectRepo) FindByMatchPath(ctx context.Context, path string) (*entity
 	}
 
 	return &project, nil
+}
+
+// ReplaceWorkspaceCache 删除空间后按新 workspace_id 刷新项目缓存。
+// 对每个快照先按旧 WorkspaceID 清路径键，再把内存中的 WorkspaceID 改为 defaultID 后写入。
+// 禁止把快照写回 projects 表。
+func (r *ProjectRepo) ReplaceWorkspaceCache(ctx context.Context, snapshot []*entity.Project, defaultID xSnowflake.SnowflakeID) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("ReplaceWorkspaceCache - 刷新搬家项目缓存 [count=%d, default=%d]", len(snapshot), defaultID.Int64()))
+
+	for _, project := range snapshot {
+		if project == nil {
+			continue
+		}
+		r.cache.DeleteProject(ctx, project)
+		project.WorkspaceID = defaultID
+		if xErr := r.cache.SetProject(ctx, project); xErr != nil {
+			r.log.Warn(ctx, xErr.Error())
+		}
+	}
+	return nil
 }
 
 // GetByIDs 批量查询项目（WHERE id IN）

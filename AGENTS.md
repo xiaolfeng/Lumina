@@ -153,8 +153,8 @@
 │   │   ├── ssh_key_gen.go      # SSH 密钥对生成
 │   │   ├── webhook_parser.go   # Webhook Payload 解析器
 │   │   └── webhook_signer.go   # Webhook HMAC 签名生成与校验
-│   ├── entity/                 # GORM 实体（需实现 GetGene() 绑定，Gene 32~47）
-│   ├── mcp/                    # MCP Server 工具注册（QA/Project/Pin/RepoWiki/Preview 工具拆分）
+│   ├── entity/                 # GORM 实体（需实现 GetGene() 绑定，Gene 32~48）
+│   ├── mcp/                    # MCP Server 工具注册（Workspace/QA/Project/Pin/RepoWiki/Preview 工具拆分）
 │   ├── websocket/              # WebSocket 连接管理 + 消息分发
 │   ├── qa/                     # Q&A 回答队列（会话级 FIFO）
 │   └── constant/               # 共享业务常量（基因编号、Info 键、LLM、RepoWiki、Preview、Settings 等）
@@ -250,7 +250,7 @@
 | `NewCronRunner` | 函数 | `internal/app/startup/startup_cron.go` | Cron Runner 工厂（RepoWiki 超时任务重试，传入 `xMain.Runner`） |
 | `NewWebSocketRunner` | 函数 | `internal/app/startup/startup_websocket.go` | WebSocket Runner 工厂（Hub 主循环，传入 `xMain.Runner`） |
 | `NewRoute` | 函数 | `internal/app/route/route.go` | 全局中间件 + API 路由 + MCP + WebSocket + 双前端 SPA fallback |
-| `NewHandler[T]` | 泛型函数 | `internal/handler/handler.go` | Handler 泛型构造模式，注入全部 Logic（16 个，含 OAuth / AI Plugin） |
+| `NewHandler[T]` | 泛型函数 | `internal/handler/handler.go` | Handler 泛型构造模式，注入全部 Logic（17 个，含 OAuth / AI Plugin / Workspace） |
 | `Auth` | 中间件 | `internal/app/middleware/auth.go` | Bearer Token 认证拦截（单用户模式，注入认证标记） |
 | `ApikeyAuth` | 中间件 | `internal/app/middleware/apikey.go` | 纯 API Key 认证（`lumi_` 前缀 + bcrypt）；MCP 端点已改走 `McpAuth` |
 | `McpAuth` | 中间件 | `internal/app/middleware/mcp_auth.go` | MCP 认证：OAuth `lum_at_` 优先，API Key 回退，401 带资源元数据 |
@@ -356,7 +356,7 @@
 - **响应模式**：handler 通过 `xResult.SuccessHasData` 返回成功；错误通过 `ctx.Error` 传递。
 - **错误类型**：仓库/逻辑层使用 `*xError.Error` 表示业务/基础设施故障。
 - **环境变量族**：`XLF_*`、`APP_*`、`DATABASE_*`、`NOSQL_*`、`LUMINA_*`、`SNOWFLAKE_*`、`LLM_*`、`QA_*`、`REPOWIKI_*`、`XLF_BIOMETRIC_*`。OAuth TTL 用 `LUMINA_OAUTH_ACCESS_TTL` / `LUMINA_OAUTH_REFRESH_TTL`（秒）；插件源目录用 `LUMINA_AI_PLUGIN_DIR`。
-- **实体 ID 策略**：采用雪花算法基因策略；每个实体必须实现 `GetGene() xSnowflake.Gene`，基因编号定义在 `constant/gene_number.go`（GeneProject=32 ~ GeneOAuthClient=47）。
+- **实体 ID 策略**：采用雪花算法基因策略；每个实体必须实现 `GetGene() xSnowflake.Gene`，基因编号定义在 `constant/gene_number.go`（GeneProject=32 ~ GeneWorkspace=48）。
 - **字段注释**：实体字段必须追加行尾中文注释（`// 字段说明`），且与 `gorm comment` 保持一致。
 - **Info 配置键统一**：所有 Info 表键名在 `constant/info_key.go` 集中定义，禁止在业务代码写死键名字符串；键名规范为层级 `.` 分隔、同层多词 `-` 连接、禁止 `_`（如 `qa.session.ttl`）。
 - **Swagger 注册**：仅在 `XLF_DEBUG=true` 时注册 Swagger UI。
@@ -400,11 +400,11 @@
 
 - **日志命名**：遵循模块标签（`NamedMAIN`、`NamedINIT`、`NamedCONT`、`NamedLOGC`、`NamedREPO`、`NamedMIDE`、`NamedCRON`）。
 - **启动种子阶段**：显式通过 `xCtx.Exec` 节点执行，并隔离在 `prepare/` 目录中。
-- **实体 ID 基因策略**：实体级别需绑定基因类型（`GeneProject = 32` ~ `GeneOAuthClient = 47`），定义在 `constant/gene_number.go`。
+- **实体 ID 基因策略**：实体级别需绑定基因类型（`GeneProject = 32` ~ `GeneWorkspace = 48`），定义在 `constant/gene_number.go`。
 - **项目技能**：`.agents/skills/` 包含项目专属技能：`lumina-qa`、`lumina-preview`、`lumina-pin`、`lumina-repowiki`、`mcp-qa-test`、`swagger-writer`、`entity-build`、`project-style` 及 `_shared/` 共享规范。
 - **双通道暴露**：每个模块同时提供 REST API 和 MCP Tool。
 - **MCP 编排**：Lumina 不做跨模块编排，由 Agent 端自行决定调用顺序和组合。
-- **泛型 Handler 构造**：`NewHandler[T]` 统一注入所有 logic 实例（16 个 Logic，含 OAuth / AI Plugin）。
+- **泛型 Handler 构造**：`NewHandler[T]` 统一注入所有 logic 实例（17 个 Logic，含 OAuth / AI Plugin / Workspace）。
 - **双前端嵌入**：`resources/embed.go` 统一管理 `FrontendDist` + `WikiFrontendDist` + `PromptFiles` + `AIPluginFS`，配合 `route_frontend.go` 实现双 SPA fallback，单二进制部署。
 - **pnpm monorepo 共享包**：`@lumina/components` workspace 包集中管理 shadcn/ui、Markdown 渲染原语（含 remark fenced-blocks 插件）、motion 动画变体、微明主题 CSS，被 `web` 和 `web-wiki` 共同消费。
 - **DTO 按操作类型拆分**：`api/` 各业务域内以 `create.go`/`update.go`/`detail.go`/`list.go` 等操作命名文件，同一操作 request+response 同文件。
@@ -556,7 +556,7 @@ pnpm test         # 运行 Vitest 测试（markdown/remark-fenced-blocks）
 - Webhook 模块已实现（Git Push 事件接收 + HMAC 校验 + RepoWiki 触发 + 事件历史查询）。
 - 系统设置已实现（站点/安全/Q&A/RepoWiki 分组配置读写 + 前端多标签页设置页）。
 - 安全中间件已实现（CORS 白名单 + 安全响应头 + WebAuthn Origin 解析）。
-- MCP Server 已实现，注册了 QA（10 工具）、Project（3 工具）、Pin（5 工具）、RepoWiki（2 只读工具）、Preview（5 工具）五套工具共 25 个；认证为 OAuth 2.1 优先、API Key 回退。
+- MCP Server 已实现，注册了 Workspace（2 只读工具）、QA（10 工具）、Project（3 工具）、Pin（5 工具）、RepoWiki（2 只读工具）、Preview（5 工具）六套工具共 27 个；认证为 OAuth 2.1 优先、API Key 回退。
 - MCP OAuth 2.1 已实现（RFC 8414 / 9728 / 7591 / 8707，PKCE S256，consent 页 `/oauth`）。
 - AI 插件动态分发已实现（marketplace.json、ZCode 专用清单、lumina.zip、`.well-known/skills`）。
 - WebSocket Hub 已实现，支持 sessionID → deviceID 二级索引，连接 `Kind` 区分 qa/preview，心跳检测，优雅关闭，断线重连和会话恢复。

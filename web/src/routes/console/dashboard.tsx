@@ -143,7 +143,7 @@ function DashboardPage() {
             </h2>
             <p className="mt-5 max-w-md text-sm leading-relaxed text-sea-ink-soft">
               赋予 AI
-              深度代码认知与长期记忆。项目、令牌、问答与预览工作区，皆于此安放。
+              深度代码认知与长期记忆。项目、令牌、问答与预览会话，皆于此安放。
             </p>
             <div className="mt-7 flex flex-wrap gap-3.5">
               <Button

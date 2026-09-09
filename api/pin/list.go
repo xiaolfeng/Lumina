@@ -9,6 +9,7 @@ type PinListRequest struct {
 	Status        string                 `form:"status"`          // 状态筛选
 	Category      string                 `form:"category"`        // 分类筛选
 	Priority      string                 `form:"priority"`        // 优先级筛选
+	WorkspaceID   xSnowflake.SnowflakeID `form:"workspace_id"`    // 所属空间ID筛选，零值不过滤
 	Page          int                    `form:"page"`            // 页码
 	Size          int                    `form:"size"`            // 每页数量
 }

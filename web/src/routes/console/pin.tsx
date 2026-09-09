@@ -6,6 +6,7 @@ import { Button } from '@lumina/components/ui/button'
 import { DataTable } from '#/components/data-table'
 import { DataTablePagination } from '#/components/data-table-pagination'
 import { usePinList, useDeletePin } from '#/hooks/usePin'
+import { useCurrentWorkspace } from '#/hooks/useCurrentWorkspace'
 import { getColumns } from '#/components/pin/columns'
 import { CreatePinDialog } from '#/components/pin/create-dialog'
 import { EditPinDialog } from '#/components/pin/edit-dialog'
@@ -45,9 +46,11 @@ function PinPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<PinItem | null>(null)
 
+  const { current } = useCurrentWorkspace()
   const { data, isLoading } = usePinList({
     page,
     size: pageSize,
+    workspace_id: current?.id,
     ...(statusFilter ? { status: statusFilter } : {}),
     ...(categoryFilter ? { category: categoryFilter } : {}),
   })

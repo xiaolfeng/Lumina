@@ -6,6 +6,7 @@ import { Button } from '@lumina/components/ui/button'
 import { DataTable } from '#/components/data-table'
 import { DataTablePagination } from '#/components/data-table-pagination'
 import { useProjectList, useDeleteProject } from '#/hooks/useProject'
+import { useCurrentWorkspace } from '#/hooks/useCurrentWorkspace'
 import { getColumns } from '#/components/project/columns'
 import { CreateDialog } from '#/components/project/create-dialog'
 import { EditDialog } from '#/components/project/edit-dialog'
@@ -28,7 +29,12 @@ function ProjectPage() {
 	const [deleteOpen, setDeleteOpen] = useState(false)
 	const [selectedItem, setSelectedItem] = useState<ProjectItem | null>(null)
 
-	const { data, isLoading } = useProjectList({ page, size: pageSize })
+	const { current } = useCurrentWorkspace()
+		const { data, isLoading } = useProjectList({
+			page,
+			size: pageSize,
+			workspace_id: current?.id,
+		})
 	const deleteMutation = useDeleteProject()
 
 	const items = data?.data?.items ?? []

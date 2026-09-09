@@ -54,35 +54,55 @@ func NewPinLogic(ctx context.Context) *PinLogic {
 // ResolveProject 根据名称/ID 双模式解析目标项目
 //
 // 双模式调度策略：
-//  1. 优先尝试将输入解析为雪花 ID，命中则直接按 ID 查询
-//  2. 解析失败时降级为别名查询（输入转小写，与 FindByAliasName 的 LOWER 大小写不敏感匹配对齐）
-//  3. 两种方式均未命中时返回 NotFound 错误
-//
-// 导出方法供 MCP 工具处理器复用项目别名/ID 解析能力（如 pin_consume 工具
-// 需将用户传入的 project_name 解析为 SnowflakeID 后再调用 Consume）。
-func (l *PinLogic) ResolveProject(ctx context.Context, nameOrID string) (*entity.Project, *xError.Error) {
-	l.log.Info(ctx, fmt.Sprintf("ResolveProject - 解析目标项目 [%s]", nameOrID))
+//  1. 优先尝试将输入解析为雪花 ID，命中则按 ID 查询；workspaceID 非零时校验所属空间
+//  2. 解析失败时降级为别名查询。workspaceID 非零则只在该空间内找；为零则 COUNT 同名别名，
+//     多于一行时报「别名不唯一，请使用项目 ID」
+//  3. 不按 Project.Name 解析
+func (l *PinLogic) ResolveProject(ctx context.Context, nameOrID string, workspaceID xSnowflake.SnowflakeID) (*entity.Project, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("ResolveProject - 解析目标项目 [%s, workspace=%d]", nameOrID, workspaceID.Int64()))
 
-	// Step 1: 尝试解析为雪花 ID
 	if parsedID, err := xSnowflake.ParseSnowflakeID(nameOrID); err == nil {
-		if project, xErr := l.repo.project.GetByID(ctx, parsedID); xErr != nil {
-			// ID 解析成功但查询失败（NotFound 或 DB 错误），直接透传
+		project, xErr := l.repo.project.GetByID(ctx, parsedID)
+		if xErr != nil {
 			return nil, xErr
-		} else {
-			return project, nil
 		}
+		if !workspaceID.IsZero() && project.WorkspaceID != workspaceID {
+			return nil, xError.NewError(ctx, xError.NotFound, "项目不存在", false, nil)
+		}
+		return project, nil
 	}
 
-	// Step 2: 降级为别名查询（输入转小写以匹配 JSON @> 区分大小写）
-	project, xErr := l.repo.project.FindByAliasName(ctx, strings.ToLower(nameOrID))
+	alias := strings.ToLower(nameOrID)
+	if !workspaceID.IsZero() {
+		project, xErr := l.repo.project.FindByAliasName(ctx, alias, workspaceID)
+		if xErr != nil {
+			if xErr.GetErrorCode() == xError.NotFound {
+				return nil, xError.NewError(ctx, xError.NotFound, "项目不存在", false, nil)
+			}
+			return nil, xErr
+		}
+		return project, nil
+	}
+
+	count, xErr := l.repo.project.CountByAliasName(ctx, alias, 0)
 	if xErr != nil {
-		// 别名查询也失败，返回统一的 NotFound 错误
+		return nil, xErr
+	}
+	if count > 1 {
+		l.log.Info(ctx, fmt.Sprintf("ResolveProject - 别名不唯一 [%s, count=%d]", alias, count))
+		return nil, xError.NewError(ctx, xError.BusinessError, "别名不唯一，请使用项目 ID", false, nil)
+	}
+	if count == 0 {
+		return nil, xError.NewError(ctx, xError.NotFound, "项目不存在", false, nil)
+	}
+
+	project, xErr := l.repo.project.FindByAliasName(ctx, alias, 0)
+	if xErr != nil {
 		if xErr.GetErrorCode() == xError.NotFound {
 			return nil, xError.NewError(ctx, xError.NotFound, "项目不存在", false, nil)
 		}
 		return nil, xErr
 	}
-
 	return project, nil
 }
 
@@ -90,33 +110,33 @@ func (l *PinLogic) ResolveProject(ctx context.Context, nameOrID string) (*entity
 func (l *PinLogic) Push(ctx context.Context, req *apiPin.CreatePinRequest) (*apiPin.PinResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("Push - 创建 Pin 约束 [title=%s, toProject=%s]", req.Title, req.ToProjectID))
 
-	// 解析目标项目
-	toProject, xErr := l.ResolveProject(ctx, req.ToProjectID.String())
+	if req.FromProjectID.IsZero() {
+		return nil, xError.NewError(ctx, xError.ParameterError, "缺少来源项目", false, nil)
+	}
+
+	fromProject, xErr := l.ResolveProject(ctx, req.FromProjectID.String(), 0)
 	if xErr != nil {
 		return nil, xErr
 	}
 
-	// 解析来源项目（可选）
-	var fromProjectID xSnowflake.SnowflakeID
-	if !req.FromProjectID.IsZero() {
-		fromProject, xErr := l.ResolveProject(ctx, req.FromProjectID.String())
-		if xErr != nil {
-			return nil, xErr
-		}
-		fromProjectID = fromProject.ID
+	toProject, xErr := l.ResolveProject(ctx, req.ToProjectID.String(), fromProject.WorkspaceID)
+	if xErr != nil {
+		return nil, xErr
+	}
+	if fromProject.WorkspaceID != toProject.WorkspaceID {
+		l.log.Warn(ctx, fmt.Sprintf("Push - 拒绝跨空间推送 [from=%d, to=%d]", fromProject.ID.Int64(), toProject.ID.Int64()))
+		return nil, xError.NewError(ctx, xError.BusinessError, "不能跨空间推送 Pin", false, nil)
 	}
 
-	// 分类默认值
 	category := req.Category
 	if category == "" {
 		category = bConst.PinCategoryNotice
 	}
 
-	// 生成雪花 ID 并构建实体
 	id := xSnowflake.GenerateID(bConst.GenePin)
 	pinEntity := &entity.Pin{
 		BaseEntity:    xModels.BaseEntity{ID: id},
-		FromProjectID: fromProjectID,
+		FromProjectID: fromProject.ID,
 		ToProjectID:   toProject.ID,
 		Title:         req.Title,
 		Content:       req.Content,
@@ -125,7 +145,6 @@ func (l *PinLogic) Push(ctx context.Context, req *apiPin.CreatePinRequest) (*api
 		Priority:      req.Priority,
 	}
 
-	// 持久化
 	if xErr := l.repo.pin.Create(ctx, pinEntity); xErr != nil {
 		return nil, xErr
 	}

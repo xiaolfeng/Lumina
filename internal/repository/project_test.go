@@ -107,7 +107,7 @@ func TestProjectRepo_List(t *testing.T) {
 	repo := setupTestRepo(t)
 	ctx := context.Background()
 
-	projects, total, xErr := repo.List(ctx, 1, 10)
+	projects, total, xErr := repo.List(ctx, 1, 10, 0)
 	if xErr != nil {
 		t.Fatalf("List failed: %v", xErr)
 	}
@@ -204,7 +204,7 @@ func TestProjectRepo_FindByAliasName(t *testing.T) {
 		t.Fatalf("setup Create failed: %v", xErr)
 	}
 
-	found, xErr := repo.FindByAliasName(ctx, alias)
+	found, xErr := repo.FindByAliasName(ctx, alias, 0)
 	if xErr != nil {
 		t.Fatalf("FindByAliasName failed: %v", xErr)
 	}

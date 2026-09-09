@@ -35,6 +35,7 @@ import {
 import { cn } from '#/lib/utils'
 import { useCreatePin } from '#/hooks/usePin'
 import { useProjectList } from '#/hooks/useProject'
+import { useCurrentWorkspace } from '#/hooks/useCurrentWorkspace'
 
 interface CreateDialogProps {
   open: boolean
@@ -64,7 +65,10 @@ function ProjectCombobox({
   placeholder?: string
 }) {
   const [open, setOpen] = useState(false)
-  const { data } = useProjectList()
+  const { current } = useCurrentWorkspace()
+  const { data } = useProjectList(
+    current?.id ? { workspace_id: current.id, page: 1, size: 200 } : undefined,
+  )
   const projects = data?.data?.items ?? []
   const selectedProject = projects.find((p) => p.id === value)
 
@@ -124,14 +128,14 @@ export function CreatePinDialog({ open, onOpenChange }: CreateDialogProps) {
   const createMutation = useCreatePin()
 
   const handleSubmit = () => {
-    if (!title.trim() || !content.trim() || !priority || !toProjectId) return
+    if (!title.trim() || !content.trim() || !priority || !toProjectId || !fromProjectId) return
     createMutation.mutate(
       {
         title: title.trim(),
         content: content.trim(),
         category,
         priority,
-        from_project_id: fromProjectId || undefined,
+        from_project_id: fromProjectId,
         to_project_id: toProjectId,
       },
       { onSuccess: () => handleClose() },
@@ -215,13 +219,13 @@ export function CreatePinDialog({ open, onOpenChange }: CreateDialogProps) {
             </div>
           </div>
 
-          {/* 来源项目（可选） */}
+          {/* 来源项目 */}
           <div className="grid gap-2">
-            <Label>来源项目</Label>
+            <Label>来源项目 *</Label>
             <ProjectCombobox
               value={fromProjectId}
               onChange={setFromProjectId}
-              placeholder="选择来源项目（可选）"
+              placeholder="选择来源项目"
             />
           </div>
 
@@ -245,6 +249,7 @@ export function CreatePinDialog({ open, onOpenChange }: CreateDialogProps) {
               !title.trim() ||
               !content.trim() ||
               !priority ||
+              !fromProjectId ||
               !toProjectId ||
               createMutation.isPending
             }

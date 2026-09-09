@@ -13,11 +13,11 @@ type WikiEntry struct {
 
 // WikiMeta Architect 输出的目录元数据，描述一个目录节点的展示信息与页面顺序
 type WikiMeta struct {
-	Path        string   `json:"path"`                  // 目录路径（无扩展名，如 "modules"、"api/endpoints"）
-	Title       string   `json:"title"`                 // 目录标题
-	Icon        string   `json:"icon,omitempty"`        // lucide 图标名（默认 "Folder"）
-	DefaultOpen bool     `json:"default_open"`          // 是否默认展开
-	Pages       []string `json:"pages,omitempty"`       // 目录下页面顺序（无扩展名），支持 "---文本---" 形式的分隔符
+	Path        string   `json:"path"`            // 目录路径（无扩展名，如 "modules"、"api/endpoints"）
+	Title       string   `json:"title"`           // 目录标题
+	Icon        string   `json:"icon,omitempty"`  // lucide 图标名（默认 "Folder"）
+	DefaultOpen bool     `json:"default_open"`    // 是否默认展开
+	Pages       []string `json:"pages,omitempty"` // 目录下页面顺序（无扩展名），支持 "---文本---" 形式的分隔符
 }
 
 // ArchitectOutput Architect Agent 的顶层输出结构

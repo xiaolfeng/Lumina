@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
@@ -18,7 +19,8 @@ import (
 
 // projectRepo 项目模块依赖的仓储集合
 type projectRepo struct {
-	project *repository.ProjectRepo
+	project   *repository.ProjectRepo
+	workspace *repository.WorkspaceRepo
 }
 
 // ProjectLogic 项目业务逻辑层，负责项目 CRUD 编排与校验
@@ -37,39 +39,41 @@ func NewProjectLogic(ctx context.Context) *ProjectLogic {
 			log: xLog.WithName(xLog.NamedLOGC, "ProjectLogic"),
 		},
 		repo: projectRepo{
-			project: repository.NewProjectRepo(db, rdb),
+			project:   repository.NewProjectRepo(db, rdb),
+			workspace: repository.NewWorkspaceRepo(db, rdb),
 		},
 	}
 }
 
-// Create 创建项目，校验名称唯一性后构建实体并持久化
+// Create 创建项目，校验名称唯一性后构建实体并持久化。
+// 未带合法 workspace_id 时写入默认空间，禁止落 0。
 func (l *ProjectLogic) Create(ctx context.Context, req *apiProject.CreateProjectRequest) (*apiProject.ProjectResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("Create - 创建项目 [%s]", req.Name))
 
-	// 校验项目名称唯一性
+	workspaceID, xErr := l.resolveCreateWorkspaceID(ctx, req.WorkspaceID)
+	if xErr != nil {
+		return nil, xErr
+	}
+
 	existing, xErr := l.repo.project.GetByName(ctx, req.Name)
 	if xErr != nil {
-		// 非 NotFound 错误（数据库异常），直接透传
 		if xErr.GetErrorCode() != xError.NotFound {
 			return nil, xErr
 		}
-		// NotFound → 名称可用，继续创建
 	} else if existing != nil {
-		// 查询成功且记录存在 → 名称重复
 		return nil, xError.NewError(ctx, xError.BusinessError, "项目名称已存在", false, nil)
 	}
 
-	// 生成雪花 ID 并构建实体
 	id := xSnowflake.GenerateID(bConst.GeneProject)
 	projectEntity := &entity.Project{
 		BaseEntity:  xModels.BaseEntity{ID: id},
+		WorkspaceID: workspaceID,
 		Name:        req.Name,
 		AliasName:   req.AliasName,
 		MatchPath:   req.MatchPath,
 		Description: req.Description,
 	}
 
-	// 持久化
 	if xErr := l.repo.project.Create(ctx, projectEntity); xErr != nil {
 		return nil, xErr
 	}
@@ -77,17 +81,33 @@ func (l *ProjectLogic) Create(ctx context.Context, req *apiProject.CreateProject
 	return l.toResponse(projectEntity), nil
 }
 
+func (l *ProjectLogic) resolveCreateWorkspaceID(ctx context.Context, workspaceID xSnowflake.SnowflakeID) (xSnowflake.SnowflakeID, *xError.Error) {
+	if workspaceID.IsZero() {
+		return 0, xError.NewError(ctx, xError.ParameterError, "缺少所属空间", false, nil)
+	}
+
+	workspace, xErr := l.repo.workspace.GetByID(ctx, workspaceID)
+	if xErr != nil {
+		if xErr.GetErrorCode() == xError.NotFound {
+			return 0, xError.NewError(ctx, xError.NotFound, "空间不存在", false, nil)
+		}
+		return 0, xErr
+	}
+	if workspace.ID.IsZero() {
+		return 0, xError.NewError(ctx, xError.NotFound, "空间不存在", false, nil)
+	}
+	return workspace.ID, nil
+}
+
 // GetByID 根据 ID 获取项目详情
 func (l *ProjectLogic) GetByID(ctx context.Context, id string) (*apiProject.ProjectResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("GetByID - 获取项目 [%s]", id))
 
-	// 解析雪花 ID
 	parsedID, err := xSnowflake.ParseSnowflakeID(id)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.BusinessError, "无效的项目ID", false, nil)
 	}
 
-	// 查询项目
 	project, xErr := l.repo.project.GetByID(ctx, parsedID)
 	if xErr != nil {
 		return nil, xErr
@@ -96,22 +116,19 @@ func (l *ProjectLogic) GetByID(ctx context.Context, id string) (*apiProject.Proj
 	return l.toResponse(project), nil
 }
 
-// List 分页获取项目列表
-func (l *ProjectLogic) List(ctx context.Context, page, size int) (*apiProject.ProjectListResponse, *xError.Error) {
-	l.log.Info(ctx, fmt.Sprintf("List - 获取项目列表 [page=%d, size=%d]", page, size))
+// List 分页获取项目列表；workspaceID 为零时不过滤
+func (l *ProjectLogic) List(ctx context.Context, page, size int, workspaceID xSnowflake.SnowflakeID) (*apiProject.ProjectListResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("List - 获取项目列表 [page=%d, size=%d, workspace=%d]", page, size, workspaceID.Int64()))
 
-	// 分页参数规范化
 	pageReq := xModels.PageRequest{Page: int64(page), Size: int64(size)}.Normalize()
 	page = int(pageReq.Page)
 	size = int(pageReq.Size)
 
-	// 查询列表
-	projects, total, xErr := l.repo.project.List(ctx, page, size)
+	projects, total, xErr := l.repo.project.List(ctx, page, size, workspaceID)
 	if xErr != nil {
 		return nil, xErr
 	}
 
-	// 映射响应
 	items := make([]apiProject.ProjectResponse, 0, len(projects))
 	for _, p := range projects {
 		items = append(items, *l.toResponse(p))
@@ -127,38 +144,32 @@ func (l *ProjectLogic) List(ctx context.Context, page, size int) (*apiProject.Pr
 func (l *ProjectLogic) Update(ctx context.Context, id string, req *apiProject.UpdateProjectRequest) (*apiProject.ProjectResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("Update - 更新项目 [%s]", id))
 
-	// 解析雪花 ID
 	parsedID, err := xSnowflake.ParseSnowflakeID(id)
 	if err != nil {
 		return nil, xError.NewError(ctx, xError.BusinessError, "无效的项目ID", false, nil)
 	}
 
-	// 查询现有项目
 	existing, xErr := l.repo.project.GetByID(ctx, parsedID)
 	if xErr != nil {
 		return nil, xErr
 	}
 
-	// 如果名称变更，校验新名称唯一性
 	if req.Name != existing.Name {
 		conflict, xErr := l.repo.project.GetByName(ctx, req.Name)
 		if xErr != nil {
 			if xErr.GetErrorCode() != xError.NotFound {
 				return nil, xErr
 			}
-			// NotFound → 新名称可用
 		} else if conflict != nil {
 			return nil, xError.NewError(ctx, xError.BusinessError, "项目名称已存在", false, nil)
 		}
 	}
 
-	// 更新字段
 	existing.Name = req.Name
 	existing.AliasName = req.AliasName
 	existing.MatchPath = req.MatchPath
 	existing.Description = req.Description
 
-	// 持久化
 	if xErr := l.repo.project.Update(ctx, existing); xErr != nil {
 		return nil, xErr
 	}
@@ -170,13 +181,11 @@ func (l *ProjectLogic) Update(ctx context.Context, id string, req *apiProject.Up
 func (l *ProjectLogic) Delete(ctx context.Context, id string) *xError.Error {
 	l.log.Info(ctx, fmt.Sprintf("Delete - 删除项目 [%s]", id))
 
-	// 解析雪花 ID
 	parsedID, err := xSnowflake.ParseSnowflakeID(id)
 	if err != nil {
 		return xError.NewError(ctx, xError.BusinessError, "无效的项目ID", false, nil)
 	}
 
-	// 执行删除
 	return l.repo.project.Delete(ctx, parsedID)
 }
 
@@ -184,8 +193,7 @@ func (l *ProjectLogic) Delete(ctx context.Context, id string) *xError.Error {
 func (l *ProjectLogic) ResolveByAlias(ctx context.Context, alias string) (*apiProject.ProjectResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("ResolveByAlias - 根据别名查询项目 [%s]", alias))
 
-	// 查询项目
-	project, xErr := l.repo.project.FindByAliasName(ctx, alias)
+	project, xErr := l.repo.project.FindByAliasName(ctx, alias, 0)
 	if xErr != nil {
 		return nil, xErr
 	}
@@ -207,12 +215,11 @@ func (l *ProjectLogic) GetByName(ctx context.Context, name string) (*apiProject.
 
 // GetByMatchPath 根据路径匹配查询项目（用于 MCP 工具 project_get）
 //
-// 通过 repo.FindByMatchPath 进行 JSON 数组前缀匹配。
-// 例如：match_path=["/home/user/Lumina"] 可以匹配 "/home/user/Lumina/src/main.go"
-func (l *ProjectLogic) GetByMatchPath(ctx context.Context, path string) (*apiProject.ProjectResponse, *xError.Error) {
-	l.log.Info(ctx, fmt.Sprintf("GetByMatchPath - 根据路径匹配项目 [%s]", path))
+// workspaceID 为零时不过滤空间。
+func (l *ProjectLogic) GetByMatchPath(ctx context.Context, path string, workspaceID xSnowflake.SnowflakeID) (*apiProject.ProjectResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("GetByMatchPath - 根据路径匹配项目 [%s, workspace=%d]", path, workspaceID.Int64()))
 
-	project, xErr := l.repo.project.FindByMatchPath(ctx, path)
+	project, xErr := l.repo.project.FindByMatchPath(ctx, path, workspaceID)
 	if xErr != nil {
 		return nil, xErr
 	}
@@ -220,10 +227,38 @@ func (l *ProjectLogic) GetByMatchPath(ctx context.Context, path string) (*apiPro
 	return l.toResponse(project), nil
 }
 
+// ResolveWorkspace 将 workspace_id 或 slug 解析为空间 ID；id 优先于 slug
+func (l *ProjectLogic) ResolveWorkspace(ctx context.Context, workspaceID, slug string) (xSnowflake.SnowflakeID, *xError.Error) {
+	workspaceID = strings.TrimSpace(workspaceID)
+	slug = strings.TrimSpace(slug)
+	if workspaceID == "" && slug == "" {
+		return 0, xError.NewError(ctx, xError.ParameterError, "缺少必填参数: workspace_id 或 workspace_slug", false, nil)
+	}
+
+	if workspaceID != "" {
+		parsedID, err := xSnowflake.ParseSnowflakeID(workspaceID)
+		if err != nil {
+			return 0, xError.NewError(ctx, xError.BusinessError, "无效的空间ID", false, nil)
+		}
+		workspace, xErr := l.repo.workspace.GetByID(ctx, parsedID)
+		if xErr != nil {
+			return 0, xErr
+		}
+		return workspace.ID, nil
+	}
+
+	workspace, xErr := l.repo.workspace.GetBySlug(ctx, slug)
+	if xErr != nil {
+		return 0, xErr
+	}
+	return workspace.ID, nil
+}
+
 // toResponse 将实体映射为响应 DTO
 func (l *ProjectLogic) toResponse(project *entity.Project) *apiProject.ProjectResponse {
 	return &apiProject.ProjectResponse{
 		ID:          project.ID,
+		WorkspaceID: project.WorkspaceID,
 		Name:        project.Name,
 		AliasName:   project.AliasName,
 		MatchPath:   project.MatchPath,

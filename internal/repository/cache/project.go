@@ -16,7 +16,7 @@ import (
 //   - ID → 项目 JSON 详情（主缓存，GetByID 命中）
 //   - Name → 项目 ID（名称索引）
 //   - Alias → 项目 ID（别名索引）
-//   - MatchPath → 项目 ID（路径索引，每个路径一条）
+//   - WorkspaceID + MatchPath → 项目 ID（路径索引，每个路径一条）
 //
 // 该缓存为多 key 维度，与单 key 的 KeyCache[K,V] 接口不匹配，
 // 故持有 *Base 复用 RDB/TTL，内部直接操作 Redis。
@@ -55,12 +55,20 @@ func (c *ProjectCache) GetIDByAlias(ctx context.Context, alias string) (string, 
 	return c.getIDByPattern(ctx, bConst.CacheProjectIDByAlias, alias)
 }
 
-// GetIDByMatchPath 根据路径读取 ID 映射缓存
-func (c *ProjectCache) GetIDByMatchPath(ctx context.Context, path string) (string, bool, *xError.Error) {
-	return c.getIDByPattern(ctx, bConst.CacheProjectIDByMatchPath, path)
+// GetIDByMatchPath 根据空间与路径读取 ID 映射缓存
+func (c *ProjectCache) GetIDByMatchPath(ctx context.Context, workspaceID int64, path string) (string, bool, *xError.Error) {
+	if workspaceID == 0 {
+		return "", false, nil
+	}
+	key := bConst.CacheProjectIDByMatchPath.Get(workspaceID, path).String()
+	val, err := c.RDB.Get(ctx, key).Result()
+	if err != nil || val == "" {
+		return "", false, nil
+	}
+	return val, true, nil
 }
 
-// getIDByPattern 通用 ID 映射读取（Name/Alias/MatchPath 共用）
+// getIDByPattern 通用 ID 映射读取（Name/Alias 共用）
 func (c *ProjectCache) getIDByPattern(ctx context.Context, pattern bConst.RedisKey, arg interface{}) (string, bool, *xError.Error) {
 	key := pattern.Get(arg).String()
 	val, err := c.RDB.Get(ctx, key).Result()
@@ -73,6 +81,7 @@ func (c *ProjectCache) getIDByPattern(ctx context.Context, pattern bConst.RedisK
 // SetProject 写入项目全维度缓存
 //
 // 写入四组键：ID→详情、Name→ID、Alias→ID（若有）、每个 MatchPath→ID。
+// WorkspaceID 为零时不写路径索引，避免出现无空间键。
 // 序列化失败仅记录并跳过，不影响其他维度写入。
 func (c *ProjectCache) SetProject(ctx context.Context, project *entity.Project) *xError.Error {
 	if project == nil {
@@ -97,9 +106,11 @@ func (c *ProjectCache) SetProject(ctx context.Context, project *entity.Project) 
 		c.RDB.Set(ctx, bConst.CacheProjectIDByAlias.Get(project.AliasName).String(), idStr, c.TTL)
 	}
 
-	// MatchPath → ID（每个路径一条）
-	for _, mp := range project.MatchPath {
-		c.RDB.Set(ctx, bConst.CacheProjectIDByMatchPath.Get(mp).String(), idStr, c.TTL)
+	// MatchPath → ID（每个路径一条，必须带非零空间）
+	if !project.WorkspaceID.IsZero() {
+		for _, mp := range project.MatchPath {
+			c.RDB.Set(ctx, bConst.CacheProjectIDByMatchPath.Get(project.WorkspaceID.Int64(), mp).String(), idStr, c.TTL)
+		}
 	}
 
 	return nil
@@ -123,7 +134,9 @@ func (c *ProjectCache) DeleteProject(ctx context.Context, project *entity.Projec
 	}
 
 	// MatchPath 映射
-	for _, mp := range project.MatchPath {
-		c.RDB.Del(ctx, bConst.CacheProjectIDByMatchPath.Get(mp).String())
+	if !project.WorkspaceID.IsZero() {
+		for _, mp := range project.MatchPath {
+			c.RDB.Del(ctx, bConst.CacheProjectIDByMatchPath.Get(project.WorkspaceID.Int64(), mp).String())
+		}
 	}
 }

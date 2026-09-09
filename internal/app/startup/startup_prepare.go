@@ -9,6 +9,8 @@ import (
 
 func (r *reg) businessDataPrepare(ctx context.Context) (any, error) {
 	log := xLog.WithName(xLog.NamedINIT)
-	prepare.New(log, ctx).Prepare()
+	if err := prepare.New(log, ctx).Prepare(); err != nil {
+		return nil, err
+	}
 	return nil, nil
 }

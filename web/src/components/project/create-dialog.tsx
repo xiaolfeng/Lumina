@@ -11,6 +11,7 @@ import {
 import { Input } from '@lumina/components/ui/input'
 import { Label } from '@lumina/components/ui/label'
 import { useCreateProject } from '#/hooks/useProject'
+import { useCurrentWorkspace } from '#/hooks/useCurrentWorkspace'
 
 interface CreateDialogProps {
   open: boolean
@@ -22,11 +23,12 @@ export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
   const [aliasName, setAliasName] = useState('')
   const [matchPathInput, setMatchPathInput] = useState('')
   const [description, setDescription] = useState('')
+  const { current } = useCurrentWorkspace()
 
   const createMutation = useCreateProject()
 
   const handleSubmit = () => {
-    if (!name.trim()) return
+    if (!name.trim() || !current?.id) return
     const matchPaths = matchPathInput
       .split(',')
       .map((s) => s.trim())
@@ -37,6 +39,7 @@ export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
         alias_name: aliasName.trim() || undefined,
         match_path: matchPaths.length > 0 ? matchPaths : undefined,
         description: description.trim() || undefined,
+        workspace_id: current.id,
       },
       {
         onSuccess: () => handleClose(),
@@ -109,7 +112,7 @@ export function CreateDialog({ open, onOpenChange }: CreateDialogProps) {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!name.trim() || createMutation.isPending}
+            disabled={!name.trim() || !current?.id || createMutation.isPending}
           >
             {createMutation.isPending ? '创建中...' : '创建'}
           </Button>

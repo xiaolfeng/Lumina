@@ -88,7 +88,7 @@ func (l *QaLogic) ListSessions(ctx context.Context, req *qa.ListSessionRequest) 
 	size := int(pageReq.Size)
 
 	// 查询列表
-	sessions, total, xErr := l.repo.session.List(ctx, page, size, req.Status, req.Type, req.Hash)
+	sessions, total, xErr := l.repo.session.List(ctx, page, size, req.Status, req.Type, req.Hash, req.WorkspaceID)
 	if xErr != nil {
 		return nil, xErr
 	}

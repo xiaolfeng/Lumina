@@ -8,7 +8,7 @@ import (
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
-// PreviewSession 预览会话表，存储前端可视化预览的工作区会话信息
+// PreviewSession 预览会话表，存储前端可视化预览的会话信息
 type PreviewSession struct {
 	xModels.BaseEntity                        // 基础实体（ID、创建时间、更新时间）
 	ProjectID          xSnowflake.SnowflakeID `gorm:"type:bigint;not null;index;comment:关联项目ID" json:"project_id"`                        // 关联项目ID

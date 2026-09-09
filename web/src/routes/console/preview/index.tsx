@@ -27,6 +27,7 @@ import {
   useCreatePreviewSession,
 } from '#/hooks/usePreviewAdmin'
 import { useProjectList } from '#/hooks/useProject'
+import { useCurrentWorkspace } from '#/hooks/useCurrentWorkspace'
 import { useDashboardOverview } from '#/hooks/useDashboard'
 import { PreviewSessionDetailDrawer } from '#/components/preview/session-detail-drawer'
 import { ConfirmDeleteDialog } from '#/components/confirm-delete-dialog'
@@ -51,9 +52,18 @@ function PreviewPage() {
   const [createTitle, setCreateTitle] = useState('')
   const [createProjectId, setCreateProjectId] = useState('')
 
-  const { data, isLoading } = usePreviewSessionList({ page, size: pageSize })
+  const { current } = useCurrentWorkspace()
+  const { data, isLoading } = usePreviewSessionList({
+    page,
+    size: pageSize,
+    workspace_id: current?.id,
+  })
   const { data: overviewData } = useDashboardOverview()
-  const { data: projectData } = useProjectList({ page: 1, size: 50 })
+  const { data: projectData } = useProjectList({
+    page: 1,
+    size: 50,
+    workspace_id: current?.id,
+  })
   const deleteMutation = useDeletePreviewSession()
   const createMutation = useCreatePreviewSession()
 
