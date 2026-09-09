@@ -12,7 +12,10 @@
 
 | 编号 | 文档 | 状态 |
 | --- | --- | --- |
+| 0001 | [Workspace 租户层与首版内容](./engineering/research/0001-workspace-contents.md) | 调研 |
+| 0001 | [Workspace 身份层设计](./engineering/design/0001-workspace-identity.md) | draft |
 | 0001 | [Memory 长期决策记忆](./engineering/rfc/0001-memory-decision-memory.md) | draft |
+| 0002 | [Pin 同空间隔离](./engineering/rfc/0002-pin-workspace-isolation.md) | draft |
 | 0002 | [运行时架构与基础设施边界](./engineering/adr/0002-architecture-runtime-boundaries.md) | proposed |
 | 0003 | [Project 项目标识与解析](./engineering/adr/0003-project-identity-resolution.md) | proposed |
 | 0004 | [Pin 跨项目约束消费](./engineering/adr/0004-pin-constraint-delivery.md) | proposed |

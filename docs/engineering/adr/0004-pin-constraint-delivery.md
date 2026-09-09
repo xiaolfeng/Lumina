@@ -1,4 +1,6 @@
 > 状态：proposed · 依据当前实现补录
+>
+> 相关：[RFC-0002](../rfc/0002-pin-workspace-isolation.md) 提议增加同空间隔离与 `from` 必填；本文 FIFO / 消费 / 工具集仍有效。
 
 ## 背景
 Pin 已实现跨项目约束推送和 PostgreSQL FIFO 消费。旧 Wiki 还描述了超时天数、过期提示、`force` 重读和可手工改状态等未落地语义；继续把这些参考值当成契约会让 Agent 调用不存在的能力。

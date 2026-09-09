@@ -9,3 +9,4 @@
 | 约束 | 约束传递 | `pin` | Pin 跨项目约束推送与消费 |
 | 百科 | 代码百科 | `repowiki` | RepoWiki 生成、版本、Webhook 与读取通道 |
 | 记忆 | 决策记忆 | `memory` | 尚待实现的长期决策记忆 |
+| 空间 | 工作空间 | `workspace` | Project 之上的组织边界；单用户用来拆分生活/工作 |
