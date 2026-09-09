@@ -58,6 +58,7 @@ function PreviewPage() {
     size: pageSize,
     workspace_id: current?.id,
   })
+  const showLoading = !current?.id || isLoading
   const { data: overviewData } = useDashboardOverview()
   const { data: projectData } = useProjectList({
     page: 1,
@@ -130,7 +131,7 @@ function PreviewPage() {
         </div>
 
         <div className="border-t border-line">
-          {isLoading ? (
+          {showLoading ? (
             <div className="space-y-2 py-4">
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />

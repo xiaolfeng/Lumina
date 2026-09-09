@@ -220,18 +220,26 @@ func (r *WorkspaceRepo) EnsureDefault(ctx context.Context) (*entity.Workspace, *
 	return created, nil
 }
 
-// BackfillProjectWorkspace 将 workspace_id 为空或 0 的项目回填到指定空间
-func (r *WorkspaceRepo) BackfillProjectWorkspace(ctx context.Context, defaultID xSnowflake.SnowflakeID) (int64, *xError.Error) {
+// BackfillProjectWorkspace 将 workspace_id 为空或 0 的项目回填到指定空间，返回回填前快照
+func (r *WorkspaceRepo) BackfillProjectWorkspace(ctx context.Context, defaultID xSnowflake.SnowflakeID) ([]*entity.Project, int64, *xError.Error) {
 	r.log.Info(ctx, fmt.Sprintf("BackfillProjectWorkspace - 回填项目空间 [%d]", defaultID.Int64()))
 
-	result := r.db.WithContext(ctx).
-		Model(&entity.Project{}).
-		Where("workspace_id IS NULL OR workspace_id = 0").
-		Update("workspace_id", defaultID)
-	if result.Error != nil {
-		return 0, xError.NewError(ctx, xError.DatabaseError, "回填项目所属空间失败", false, result.Error)
+	var snapshot []*entity.Project
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("workspace_id IS NULL OR workspace_id = 0").Find(&snapshot).Error; err != nil {
+			return err
+		}
+		if len(snapshot) == 0 {
+			return nil
+		}
+		return tx.Model(&entity.Project{}).
+			Where("workspace_id IS NULL OR workspace_id = 0").
+			Update("workspace_id", defaultID).Error
+	})
+	if err != nil {
+		return nil, 0, xError.NewError(ctx, xError.DatabaseError, "回填项目所属空间失败", false, err)
 	}
-	return result.RowsAffected, nil
+	return snapshot, int64(len(snapshot)), nil
 }
 
 // DeduplicateDefaultFlags 多行 is_default=true 时保留 created_at 最早的一行

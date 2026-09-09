@@ -5,16 +5,21 @@ import (
 	"fmt"
 
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
+	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xCtxUtil "github.com/bamboo-services/bamboo-base-go/major/utility/context"
+	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
 	"gorm.io/gorm"
 )
 
 type Prepare struct {
-	log           *xLog.LogNamedLogger
-	db            *gorm.DB
-	ctx           context.Context
-	workspaceRepo *repository.WorkspaceRepo
+	log                *xLog.LogNamedLogger
+	db                 *gorm.DB
+	ctx                context.Context
+	workspaceRepo      *repository.WorkspaceRepo
+	projectRepo        *repository.ProjectRepo
+	backfillSnapshot   []*entity.Project
+	defaultWorkspaceID xSnowflake.SnowflakeID
 }
 
 func New(log *xLog.LogNamedLogger, ctx context.Context) *Prepare {
@@ -25,6 +30,7 @@ func New(log *xLog.LogNamedLogger, ctx context.Context) *Prepare {
 		db:            db,
 		ctx:           ctx,
 		workspaceRepo: repository.NewWorkspaceRepo(db, rdb),
+		projectRepo:   repository.NewProjectRepo(db, rdb),
 	}
 }
 
@@ -34,6 +40,7 @@ func (p *Prepare) Prepare() error {
 		return err
 	}
 	p.prepareProject()
+	p.refreshBackfilledProjectCache()
 	p.prepareQaHash()
 	p.prepareLlm()
 	p.prepareRepoWiki()
@@ -50,11 +57,13 @@ func (p *Prepare) prepareWorkspace() error {
 	}
 	p.log.Info(p.ctx, fmt.Sprintf("默认空间就绪 [%s]", defaultWorkspace.ID.String()))
 
-	affected, xErr := p.workspaceRepo.BackfillProjectWorkspace(p.ctx, defaultWorkspace.ID)
+	snapshot, affected, xErr := p.workspaceRepo.BackfillProjectWorkspace(p.ctx, defaultWorkspace.ID)
 	if xErr != nil {
 		p.log.Warn(p.ctx, "回填项目所属空间失败: "+xErr.Error())
 		return fmt.Errorf("回填项目所属空间失败: %s", xErr.Error())
 	}
+	p.backfillSnapshot = snapshot
+	p.defaultWorkspaceID = defaultWorkspace.ID
 	if affected > 0 {
 		p.log.Info(p.ctx, fmt.Sprintf("已回填项目所属空间 [%d]", affected))
 	}
@@ -74,4 +83,13 @@ func (p *Prepare) prepareWorkspace() error {
 	}
 
 	return nil
+}
+
+func (p *Prepare) refreshBackfilledProjectCache() {
+	if len(p.backfillSnapshot) == 0 {
+		return
+	}
+	if xErr := p.projectRepo.ReplaceWorkspaceCache(p.ctx, p.backfillSnapshot, p.defaultWorkspaceID); xErr != nil {
+		p.log.Warn(p.ctx, "回填后刷新项目缓存失败: "+xErr.Error())
+	}
 }

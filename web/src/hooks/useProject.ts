@@ -14,6 +14,7 @@ export function useProjectList(params?: ProjectListParams) {
   return useQuery({
     queryKey: ['project', 'list', params],
     queryFn: () => api.getProjectList(params),
+    enabled: Boolean(params?.workspace_id),
   })
 }
 

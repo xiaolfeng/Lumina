@@ -7,6 +7,7 @@ export function usePreviewSessionList(params?: PreviewSessionListParams) {
   return useQuery({
     queryKey: ['preview', 'sessions', params],
     queryFn: () => api.getPreviewSessions(params),
+    enabled: Boolean(params?.workspace_id),
   })
 }
 

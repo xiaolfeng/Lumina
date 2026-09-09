@@ -30,11 +30,12 @@ function ProjectPage() {
 	const [selectedItem, setSelectedItem] = useState<ProjectItem | null>(null)
 
 	const { current } = useCurrentWorkspace()
-		const { data, isLoading } = useProjectList({
-			page,
-			size: pageSize,
-			workspace_id: current?.id,
-		})
+	const { data, isLoading } = useProjectList({
+		page,
+		size: pageSize,
+		workspace_id: current?.id,
+	})
+	const showLoading = !current?.id || isLoading
 	const deleteMutation = useDeleteProject()
 
 	const items = data?.data?.items ?? []
@@ -78,7 +79,7 @@ function ProjectPage() {
 
 			{/* 表格区域 */}
 			<motion.div variants={staggerItem}>
-				{isLoading ? (
+				{showLoading ? (
 					<SkeletonTable />
 				) : (
 					<>

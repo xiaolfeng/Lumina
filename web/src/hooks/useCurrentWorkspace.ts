@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useWorkspaceList } from '#/hooks/useWorkspace'
@@ -24,37 +24,77 @@ function writeStoredWorkspaceId(id: string) {
   }
 }
 
+let storedId = ''
+const listeners = new Set<() => void>()
+
+function emitStoredId() {
+  for (const listener of listeners) listener()
+}
+
+function subscribeStoredId(listener: () => void) {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+function getStoredId() {
+  return storedId
+}
+
+function getServerStoredId() {
+  return ''
+}
+
+function persistStoredId(id: string) {
+  if (storedId === id) return
+  storedId = id
+  writeStoredWorkspaceId(id)
+  emitStoredId()
+}
+
+function hydrateStoredId() {
+  storedId = readStoredWorkspaceId()
+}
+
+if (typeof window !== 'undefined') {
+  hydrateStoredId()
+}
+
+export function resetCurrentWorkspaceStoreForTests() {
+  hydrateStoredId()
+  emitStoredId()
+}
+
 export function useCurrentWorkspace() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { data, isLoading } = useWorkspaceList({ page: 1, size: 50 })
   const workspaces = data?.data?.items ?? []
-  const [storedId, setStoredId] = useState('')
-
-  useEffect(() => {
-    setStoredId(readStoredWorkspaceId())
-  }, [])
+  const currentId = useSyncExternalStore(
+    subscribeStoredId,
+    getStoredId,
+    getServerStoredId,
+  )
 
   const current = useMemo(() => {
     if (workspaces.length === 0) return null
-    const matched = workspaces.find((item) => item.id === storedId)
+    const matched = workspaces.find((item) => item.id === currentId)
     if (matched) return matched
     return workspaces.find((item) => item.is_default) ?? workspaces[0]
-  }, [workspaces, storedId])
+  }, [workspaces, currentId])
 
   useEffect(() => {
     if (!current) return
-    if (storedId !== current.id) {
-      writeStoredWorkspaceId(current.id)
-      setStoredId(current.id)
-    }
-  }, [current, storedId])
+    const known = currentId !== '' && workspaces.some((item) => item.id === currentId)
+    if (known) return
+    persistStoredId(current.id)
+  }, [current, currentId, workspaces])
 
   const setCurrentWorkspace = useCallback(
     (workspace: WorkspaceItem) => {
-      writeStoredWorkspaceId(workspace.id)
-      setStoredId(workspace.id)
+      persistStoredId(workspace.id)
       queryClient.invalidateQueries({ queryKey: ['project', 'list'] })
       queryClient.invalidateQueries({ queryKey: ['pin'] })
       queryClient.invalidateQueries({ queryKey: ['qa', 'sessions'] })

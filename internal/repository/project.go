@@ -88,8 +88,7 @@ func (r *ProjectRepo) Create(ctx context.Context, project *entity.Project) *xErr
 func (r *ProjectRepo) GetByID(ctx context.Context, id xSnowflake.SnowflakeID) (*entity.Project, *xError.Error) {
 	r.log.Info(ctx, fmt.Sprintf("GetByID - 根据ID获取项目 [%d]", id.Int64()))
 
-	// 尝试从缓存读取
-	if project, ok, _ := r.cache.GetByID(ctx, id.Int64()); ok {
+	if project, ok, _ := r.cache.GetByID(ctx, id.Int64()); ok && !project.WorkspaceID.IsZero() {
 		r.log.Info(ctx, fmt.Sprintf("GetByID - 缓存命中 [%d]", id.Int64()))
 		return project, nil
 	}

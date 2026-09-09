@@ -28,6 +28,7 @@ function QaPage() {
     size: pageSize,
     workspace_id: current?.id,
   })
+  const showLoading = !current?.id || isLoading
   const { data: overviewData } = useDashboardOverview()
   const deleteMutation = useDeleteSession()
 
@@ -76,7 +77,7 @@ function QaPage() {
         </h3>
 
         <div className="border-t border-line">
-          {isLoading ? (
+          {showLoading ? (
             <div className="space-y-2 py-4">
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />

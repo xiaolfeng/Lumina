@@ -31,9 +31,9 @@ var pinToolDefs = []struct {
 
 触发场景：当你在一个项目中发现了会影响另一个项目的约定、接口变更、依赖升级、兼容性约束等信息时，使用本工具将约束推送到目标项目队列，目标项目的消费方会按 FIFO 顺序处理。
 
-to_project_name 支持两种输入：项目名称/别名（如 "lumina"、"Lumina"）或雪花 ID 字符串（如 "1234567890123456789"）。Logic 层的 ResolveProject 会自动识别并解析。
+to_project_name 只接受雪花 ID 或别名，不是 Project.Name。来源与目标必须属于同一工作空间。
 
-from_project_id 为可选，表示约束来源项目；不传时该约束将被标记为无来源。`,
+from_project_id 必填，表示约束来源项目（雪花 ID 或别名）。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -75,7 +75,7 @@ from_project_id 为可选，表示约束来源项目；不传时该约束将被�
   - 不传 id 时：消费队首约束（最旧的 pending，FIFO）
   - 传 id 时：精确消费指定 ID 的约束（仅当该约束归属此项目且状态为 pending 时成功）
 
-project_name 支持名称/别名或雪花 ID 字符串，由后端自动解析。
+project_name 只接受雪花 ID 或别名，不是 Project.Name。
 
 队列已空时返回「暂无待处理约束」提示，不视为错误。`,
 		inputSchema: map[string]any{
@@ -107,7 +107,7 @@ project_name 支持名称/别名或雪花 ID 字符串，由后端自动解析�
 		name: "pin_list",
 		description: `列出目标项目的约束列表，支持状态/分类/优先级筛选和分页。
 
-project_name 支持名称/别名或雪花 ID 字符串。
+project_name 只接受雪花 ID 或别名，不是 Project.Name。
 
 默认返回 pending 状态的约束；可指定 status 查看 consumed（已消费）等历史约束。
 排序为 FIFO（创建时间升序），便于消费场景查看队列顺序。`,
@@ -273,7 +273,6 @@ func handlePinConsume(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToo
 		return textResult("缺少必填参数: project_name"), nil
 	}
 
-	// 解析目标项目（支持名称/别名或雪花 ID）
 	project, xErr := pinLogic.ResolveProject(context.Background(), projectName, 0)
 	if xErr != nil {
 		return textResult(fmt.Sprintf("解析目标项目失败: %s", xErr.Error())), nil

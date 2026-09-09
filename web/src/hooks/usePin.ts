@@ -11,6 +11,7 @@ export function usePinList(params?: PinListParams) {
   return useQuery({
     queryKey: ['pin', 'list', params],
     queryFn: () => api.getPinList(params),
+    enabled: Boolean(params?.workspace_id),
   })
 }
 

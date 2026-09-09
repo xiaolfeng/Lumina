@@ -54,6 +54,7 @@ function PinPage() {
     ...(statusFilter ? { status: statusFilter } : {}),
     ...(categoryFilter ? { category: categoryFilter } : {}),
   })
+  const showLoading = !current?.id || isLoading
   const deleteMutation = useDeletePin()
 
   const items = data?.data?.items ?? []
@@ -149,7 +150,7 @@ function PinPage() {
           </div>
         </div>
 
-        {isLoading ? (
+        {showLoading ? (
           <SkeletonTable />
         ) : (
           <>

@@ -19,13 +19,13 @@ import { Route as InteractIndexRouteImport } from './routes/interact/index'
 import { Route as ConsoleIndexRouteImport } from './routes/console/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as InteractThankRouteImport } from './routes/interact/thank'
+import { Route as ConsoleWorkspaceRouteImport } from './routes/console/workspace'
 import { Route as ConsoleSshRouteImport } from './routes/console/ssh'
 import { Route as ConsoleSettingsRouteImport } from './routes/console/settings'
 import { Route as ConsoleQaRouteImport } from './routes/console/qa'
 import { Route as ConsoleProjectRouteImport } from './routes/console/project'
 import { Route as ConsoleProfileRouteImport } from './routes/console/profile'
 import { Route as ConsolePinRouteImport } from './routes/console/pin'
-import { Route as ConsoleWorkspaceRouteImport } from './routes/console/workspace'
 import { Route as ConsoleDashboardRouteImport } from './routes/console/dashboard'
 import { Route as ConsoleConnectRouteImport } from './routes/console/connect'
 import { Route as ConsoleApikeyRouteImport } from './routes/console/apikey'
@@ -91,6 +91,11 @@ const InteractThankRoute = InteractThankRouteImport.update({
   path: '/thank',
   getParentRoute: () => InteractRoute,
 } as any)
+const ConsoleWorkspaceRoute = ConsoleWorkspaceRouteImport.update({
+  id: '/workspace',
+  path: '/workspace',
+  getParentRoute: () => ConsoleRoute,
+} as any)
 const ConsoleSshRoute = ConsoleSshRouteImport.update({
   id: '/ssh',
   path: '/ssh',
@@ -119,11 +124,6 @@ const ConsoleProfileRoute = ConsoleProfileRouteImport.update({
 const ConsolePinRoute = ConsolePinRouteImport.update({
   id: '/pin',
   path: '/pin',
-  getParentRoute: () => ConsoleRoute,
-} as any)
-const ConsoleWorkspaceRoute = ConsoleWorkspaceRouteImport.update({
-  id: '/workspace',
-  path: '/workspace',
   getParentRoute: () => ConsoleRoute,
 } as any)
 const ConsoleDashboardRoute = ConsoleDashboardRouteImport.update({
@@ -220,12 +220,12 @@ export interface FileRoutesByFullPath {
   '/console/connect': typeof ConsoleConnectRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/pin': typeof ConsolePinRoute
-  '/console/workspace': typeof ConsoleWorkspaceRoute
   '/console/profile': typeof ConsoleProfileRoute
   '/console/project': typeof ConsoleProjectRouteWithChildren
   '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
   '/console/ssh': typeof ConsoleSshRoute
+  '/console/workspace': typeof ConsoleWorkspaceRoute
   '/interact/thank': typeof InteractThankRoute
   '/console/': typeof ConsoleIndexRoute
   '/interact/': typeof InteractIndexRoute
@@ -249,10 +249,10 @@ export interface FileRoutesByTo {
   '/console/connect': typeof ConsoleConnectRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/pin': typeof ConsolePinRoute
-  '/console/workspace': typeof ConsoleWorkspaceRoute
   '/console/profile': typeof ConsoleProfileRoute
   '/console/settings': typeof ConsoleSettingsRoute
   '/console/ssh': typeof ConsoleSshRoute
+  '/console/workspace': typeof ConsoleWorkspaceRoute
   '/interact/thank': typeof InteractThankRoute
   '/': typeof PublicIndexRoute
   '/console': typeof ConsoleIndexRoute
@@ -281,12 +281,12 @@ export interface FileRoutesById {
   '/console/connect': typeof ConsoleConnectRoute
   '/console/dashboard': typeof ConsoleDashboardRoute
   '/console/pin': typeof ConsolePinRoute
-  '/console/workspace': typeof ConsoleWorkspaceRoute
   '/console/profile': typeof ConsoleProfileRoute
   '/console/project': typeof ConsoleProjectRouteWithChildren
   '/console/qa': typeof ConsoleQaRouteWithChildren
   '/console/settings': typeof ConsoleSettingsRoute
   '/console/ssh': typeof ConsoleSshRoute
+  '/console/workspace': typeof ConsoleWorkspaceRoute
   '/interact/thank': typeof InteractThankRoute
   '/_public/': typeof PublicIndexRoute
   '/console/': typeof ConsoleIndexRoute
@@ -317,12 +317,12 @@ export interface FileRouteTypes {
     | '/console/connect'
     | '/console/dashboard'
     | '/console/pin'
-    | '/console/workspace'
     | '/console/profile'
     | '/console/project'
     | '/console/qa'
     | '/console/settings'
     | '/console/ssh'
+    | '/console/workspace'
     | '/interact/thank'
     | '/console/'
     | '/interact/'
@@ -346,10 +346,10 @@ export interface FileRouteTypes {
     | '/console/connect'
     | '/console/dashboard'
     | '/console/pin'
-    | '/console/workspace'
     | '/console/profile'
     | '/console/settings'
     | '/console/ssh'
+    | '/console/workspace'
     | '/interact/thank'
     | '/'
     | '/console'
@@ -377,12 +377,12 @@ export interface FileRouteTypes {
     | '/console/connect'
     | '/console/dashboard'
     | '/console/pin'
-    | '/console/workspace'
     | '/console/profile'
     | '/console/project'
     | '/console/qa'
     | '/console/settings'
     | '/console/ssh'
+    | '/console/workspace'
     | '/interact/thank'
     | '/_public/'
     | '/console/'
@@ -477,6 +477,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InteractThankRouteImport
       parentRoute: typeof InteractRoute
     }
+    '/console/workspace': {
+      id: '/console/workspace'
+      path: '/workspace'
+      fullPath: '/console/workspace'
+      preLoaderRoute: typeof ConsoleWorkspaceRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
     '/console/ssh': {
       id: '/console/ssh'
       path: '/ssh'
@@ -517,13 +524,6 @@ declare module '@tanstack/react-router' {
       path: '/pin'
       fullPath: '/console/pin'
       preLoaderRoute: typeof ConsolePinRouteImport
-      parentRoute: typeof ConsoleRoute
-    }
-    '/console/workspace': {
-      id: '/console/workspace'
-      path: '/workspace'
-      fullPath: '/console/workspace'
-      preLoaderRoute: typeof ConsoleWorkspaceRouteImport
       parentRoute: typeof ConsoleRoute
     }
     '/console/dashboard': {
@@ -715,12 +715,12 @@ interface ConsoleRouteChildren {
   ConsoleConnectRoute: typeof ConsoleConnectRoute
   ConsoleDashboardRoute: typeof ConsoleDashboardRoute
   ConsolePinRoute: typeof ConsolePinRoute
-  ConsoleWorkspaceRoute: typeof ConsoleWorkspaceRoute
   ConsoleProfileRoute: typeof ConsoleProfileRoute
   ConsoleProjectRoute: typeof ConsoleProjectRouteWithChildren
   ConsoleQaRoute: typeof ConsoleQaRouteWithChildren
   ConsoleSettingsRoute: typeof ConsoleSettingsRoute
   ConsoleSshRoute: typeof ConsoleSshRoute
+  ConsoleWorkspaceRoute: typeof ConsoleWorkspaceRoute
   ConsoleIndexRoute: typeof ConsoleIndexRoute
   ConsolePreviewIndexRoute: typeof ConsolePreviewIndexRoute
 }
@@ -730,12 +730,12 @@ const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleConnectRoute: ConsoleConnectRoute,
   ConsoleDashboardRoute: ConsoleDashboardRoute,
   ConsolePinRoute: ConsolePinRoute,
-  ConsoleWorkspaceRoute: ConsoleWorkspaceRoute,
   ConsoleProfileRoute: ConsoleProfileRoute,
   ConsoleProjectRoute: ConsoleProjectRouteWithChildren,
   ConsoleQaRoute: ConsoleQaRouteWithChildren,
   ConsoleSettingsRoute: ConsoleSettingsRoute,
   ConsoleSshRoute: ConsoleSshRoute,
+  ConsoleWorkspaceRoute: ConsoleWorkspaceRoute,
   ConsoleIndexRoute: ConsoleIndexRoute,
   ConsolePreviewIndexRoute: ConsolePreviewIndexRoute,
 }

@@ -10,6 +10,7 @@ export function useSessionList(params?: SessionListParams) {
   return useQuery({
     queryKey: ['qa', 'sessions', params],
     queryFn: () => api.getSessionList(params),
+    enabled: Boolean(params?.workspace_id),
   })
 }
 
