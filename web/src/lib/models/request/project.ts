@@ -7,6 +7,7 @@ export interface CreateProjectRequest {
 }
 
 export interface UpdateProjectRequest {
+  workspace_id?: string
   name: string
   alias_name?: string
   match_path?: string[]

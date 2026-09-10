@@ -2140,6 +2140,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "所属空间ID筛选",
+                        "name": "workspace_id",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "default": 1,
                         "description": "页码",
@@ -2182,7 +2188,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "提交标题、内容、分类、优先级与目标项目创建跨项目依赖约束，推送到目标项目待消费队列",
+                "description": "提交标题、内容、分类、优先级、来源项目与目标项目创建跨项目依赖约束，两端必须属于同一空间",
                 "consumes": [
                     "application/json"
                 ],
@@ -2666,6 +2672,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "所属空间ID筛选",
+                        "name": "workspace_id",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "default": 1,
                         "description": "页码",
@@ -2910,7 +2922,7 @@ const docTemplate = `{
         },
         "/api/v1/project": {
             "get": {
-                "description": "按 page/size 分页查询项目列表，返回项目信息与总数",
+                "description": "按 page/size 分页查询项目列表，可按 workspace_id 过滤；零值不过滤",
                 "consumes": [
                     "application/json"
                 ],
@@ -2939,6 +2951,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "每页数量",
                         "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "所属空间ID",
+                        "name": "workspace_id",
                         "in": "query"
                     }
                 ],
@@ -3108,7 +3126,7 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "更新指定 ID 的项目信息，名称需保持唯一",
+                "description": "更新指定 ID 的项目信息，名称需保持唯一；可通过 workspace_id 迁移到现有空间，省略时保持原空间",
                 "consumes": [
                     "application/json"
                 ],
@@ -3430,6 +3448,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "类型过滤(temporary/permanent)",
                         "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "所属空间ID筛选",
+                        "name": "workspace_id",
                         "in": "query"
                     }
                 ],
@@ -5993,6 +6017,343 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/workspace": {
+            "get": {
+                "description": "按 page/size 分页查询工作空间，默认空间排在最前",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "工作空间接口"
+                ],
+                "summary": "[管理] 获取工作空间列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/workspace.WorkspaceListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "创建非默认工作空间，用于拆分生活/工作项目分组",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "工作空间接口"
+                ],
+                "summary": "[管理] 创建工作空间",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "创建空间请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/workspace.CreateWorkspaceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/workspace.WorkspaceResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/workspace/{id}": {
+            "get": {
+                "description": "根据空间 ID 查询单个工作空间",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "工作空间接口"
+                ],
+                "summary": "[管理] 获取工作空间详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "空间ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/workspace.WorkspaceResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "空间不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "更新名称、描述、图标；非默认空间可改标识",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "工作空间接口"
+                ],
+                "summary": "[管理] 更新工作空间",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "空间ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新空间请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/workspace.UpdateWorkspaceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/workspace.WorkspaceResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "空间不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "删除非默认空间，其中的项目将迁到默认空间",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "工作空间接口"
+                ],
+                "summary": "[管理] 删除工作空间",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "空间ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/workspace.DeleteWorkspaceResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "空间不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/oauth/authorize": {
             "get": {
                 "description": "校验 client/redirect_uri/PKCE 后暂存请求并重定向到前端授权页 /oauth?authorize_id=...",
@@ -7416,6 +7777,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "content",
+                "from_project_id",
                 "priority",
                 "title",
                 "to_project_id"
@@ -7430,7 +7792,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "from_project_id": {
-                    "description": "来源项目ID (可选)",
+                    "description": "来源项目ID",
                     "type": "integer"
                 },
                 "priority": {
@@ -7825,7 +8187,8 @@ const docTemplate = `{
         "project.CreateProjectRequest": {
             "type": "object",
             "required": [
-                "name"
+                "name",
+                "workspace_id"
             ],
             "properties": {
                 "alias_name": {
@@ -7846,6 +8209,10 @@ const docTemplate = `{
                 "name": {
                     "description": "项目名称",
                     "type": "string"
+                },
+                "workspace_id": {
+                    "description": "所属空间ID",
+                    "type": "integer"
                 }
             }
         },
@@ -7898,6 +8265,10 @@ const docTemplate = `{
                 "updated_at": {
                     "description": "更新时间",
                     "type": "string"
+                },
+                "workspace_id": {
+                    "description": "所属空间ID",
+                    "type": "integer"
                 }
             }
         },
@@ -7924,6 +8295,10 @@ const docTemplate = `{
                 },
                 "name": {
                     "description": "项目名称",
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "description": "目标空间ID，未提供时保持原空间",
                     "type": "string"
                 }
             }
@@ -9234,6 +9609,124 @@ const docTemplate = `{
                 "version_id": {
                     "description": "present when status=accepted",
                     "type": "integer"
+                }
+            }
+        },
+        "workspace.CreateWorkspaceRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
+            "properties": {
+                "description": {
+                    "description": "空间描述",
+                    "type": "string"
+                },
+                "icon": {
+                    "description": "空间图标",
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "name": {
+                    "description": "空间名称",
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "slug": {
+                    "description": "空间标识",
+                    "type": "string",
+                    "maxLength": 63
+                }
+            }
+        },
+        "workspace.DeleteWorkspaceResponse": {
+            "type": "object",
+            "properties": {
+                "moved_project_count": {
+                    "description": "迁到默认空间的项目数",
+                    "type": "integer"
+                }
+            }
+        },
+        "workspace.UpdateWorkspaceRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
+            "properties": {
+                "description": {
+                    "description": "空间描述",
+                    "type": "string"
+                },
+                "icon": {
+                    "description": "空间图标",
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "name": {
+                    "description": "空间名称",
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "slug": {
+                    "description": "空间标识",
+                    "type": "string",
+                    "maxLength": 63
+                }
+            }
+        },
+        "workspace.WorkspaceListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "空间列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/workspace.WorkspaceResponse"
+                    }
+                },
+                "total": {
+                    "description": "总数量",
+                    "type": "integer"
+                }
+            }
+        },
+        "workspace.WorkspaceResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "空间描述",
+                    "type": "string"
+                },
+                "icon": {
+                    "description": "空间图标",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "空间ID",
+                    "type": "integer"
+                },
+                "is_default": {
+                    "description": "是否为默认空间",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "空间名称",
+                    "type": "string"
+                },
+                "slug": {
+                    "description": "空间标识",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
                 }
             }
         },

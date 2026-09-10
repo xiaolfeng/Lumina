@@ -165,6 +165,14 @@ func (l *ProjectLogic) Update(ctx context.Context, id string, req *apiProject.Up
 		}
 	}
 
+	if req.WorkspaceID != nil {
+		workspaceID, xErr := l.ResolveWorkspace(ctx, req.WorkspaceID.String(), "")
+		if xErr != nil {
+			return nil, xErr
+		}
+		existing.WorkspaceID = workspaceID
+	}
+
 	existing.Name = req.Name
 	existing.AliasName = req.AliasName
 	existing.MatchPath = req.MatchPath

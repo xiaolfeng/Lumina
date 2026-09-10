@@ -133,7 +133,8 @@ func (r *PinRepo) List(ctx context.Context, req *apiPin.PinListRequest) ([]*enti
 		query = query.Where("priority = ?", req.Priority)
 	}
 	if !req.WorkspaceID.IsZero() {
-		query = query.Where("to_project_id IN (SELECT id FROM projects WHERE workspace_id = ?)", req.WorkspaceID)
+		projects := r.db.WithContext(ctx).Model(&entity.Project{}).Select("id").Where("workspace_id = ?", req.WorkspaceID)
+		query = query.Where("to_project_id IN (?)", projects)
 	}
 
 	// 统计总数

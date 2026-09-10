@@ -172,12 +172,18 @@ func (r *ProjectRepo) List(ctx context.Context, page, size int, workspaceID xSno
 func (r *ProjectRepo) Update(ctx context.Context, project *entity.Project) *xError.Error {
 	r.log.Info(ctx, fmt.Sprintf("Update - 更新项目 [%s]", project.Name))
 
+	previous, xErr := r.GetByID(ctx, project.ID)
+	if xErr != nil {
+		return xErr
+	}
+
 	if err := r.db.WithContext(ctx).Save(project).Error; err != nil {
 		r.log.Warn(ctx, err.Error())
 		return xError.NewError(ctx, xError.DatabaseError, "更新项目失败", false, err)
 	}
 
-	// 刷新缓存
+	// 清除旧空间、名称和路径索引后回填新值。
+	r.cache.DeleteProject(ctx, previous)
 	if xErr := r.cache.SetProject(ctx, project); xErr != nil {
 		r.log.Warn(ctx, xErr.Error())
 	}

@@ -223,7 +223,8 @@ func (r *QaSessionRepo) List(ctx context.Context, page, size int, statusFilter, 
 		query = query.Where("hash = ?", hashFilter)
 	}
 	if !workspaceID.IsZero() {
-		query = query.Where("project_id IN (SELECT id FROM projects WHERE workspace_id = ?)", workspaceID)
+		projects := r.db.WithContext(ctx).Model(&entity.Project{}).Select("id").Where("workspace_id = ?", workspaceID)
+		query = query.Where("project_id IN (?)", projects)
 	}
 
 	// 统计总数

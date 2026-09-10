@@ -10,6 +10,7 @@ import {
 } from '@lumina/components/ui/dropdown-menu'
 import { formatDate } from '#/lib/format-date'
 import type { WorkspaceItem } from '#/lib/models/response/workspace'
+import { WorkspaceIcon } from '#/components/workspace-icon'
 
 interface ColumnActions {
   onEdit: (item: WorkspaceItem) => void
@@ -23,16 +24,15 @@ export function getWorkspaceColumns(
     {
       accessorKey: 'name',
       header: '名称',
-      cell: ({ row }) => (
-        <span className="font-medium">{row.getValue('name')}</span>
-      ),
-    },
-    {
-      accessorKey: 'slug',
-      header: '标识',
-      cell: ({ row }) => (
-        <span className="font-mono text-xs">{row.getValue('slug')}</span>
-      ),
+      cell: ({ row }) => {
+        const item = row.original
+        return (
+          <span className="flex min-w-0 items-center gap-2">
+            <WorkspaceIcon name={item.icon} label={`${item.name}的图标`} />
+            <span className="truncate font-medium">{item.name}</span>
+          </span>
+        )
+      },
     },
     {
       accessorKey: 'is_default',
@@ -43,14 +43,6 @@ export function getWorkspaceColumns(
         ) : (
           <span className="text-muted-foreground">-</span>
         ),
-    },
-    {
-      accessorKey: 'icon',
-      header: '图标',
-      cell: ({ row }) => {
-        const icon = row.getValue('icon') as string
-        return <span className="text-muted-foreground">{icon || '-'}</span>
-      },
     },
     {
       accessorKey: 'created_at',

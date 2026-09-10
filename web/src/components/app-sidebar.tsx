@@ -1,15 +1,12 @@
 import { Link, useLocation, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import {
-  Briefcase,
   Check,
   ChevronsUpDown,
   ExternalLink,
   FileKey,
   FolderKanban,
-  Home,
   KeyRound,
-  LayoutGrid,
   Pin,
   LayoutDashboard,
   LogOut,
@@ -49,6 +46,7 @@ import {
 import { useAuth, useLogout } from '#/hooks/useAuth'
 import { useCurrentWorkspace } from '#/hooks/useCurrentWorkspace'
 import { CreateWorkspaceDialog } from '#/components/workspace/create-dialog'
+import { WorkspaceIcon } from '#/components/workspace-icon'
 import { sidebarItem, sidebarStaggerContainer } from '@lumina/components/motion'
 
 interface NavItem {
@@ -159,14 +157,24 @@ export function AppSidebar() {
               <motion.div variants={sidebarItem}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <SidebarMenuButton size="lg" className="hover:bg-link-bg-hover">
-                      <WorkspaceIcon name={current?.icon} />
+                    <SidebarMenuButton
+                      size="lg"
+                      className="hover:bg-link-bg-hover"
+                    >
+                      <WorkspaceIcon
+                        name={current?.icon}
+                        label={
+                          current?.name ? `${current.name}的图标` : '空间图标'
+                        }
+                      />
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-none">
                         <span className="truncate text-sm font-medium text-sea-ink">
                           {current?.name || '选择空间'}
                         </span>
                         <span className="truncate text-xs text-sea-ink-soft">
-                          {current?.slug || '尚未加载'}
+                          {current
+                            ? current.description || '工作空间'
+                            : '尚未加载'}
                         </span>
                       </div>
                       <ChevronsUpDown className="ml-auto size-4 opacity-50" />
@@ -183,13 +191,13 @@ export function AppSidebar() {
                         className="rounded-none text-sea-ink-soft focus:bg-link-bg-hover focus:text-sea-ink"
                         onClick={() => setCurrentWorkspace(workspace)}
                       >
-                        <WorkspaceIcon name={workspace.icon} />
+                        <WorkspaceIcon
+                          name={workspace.icon}
+                          label={`${workspace.name}的图标`}
+                        />
                         <div className="flex min-w-0 flex-1 flex-col">
                           <span className="truncate text-sm text-sea-ink">
                             {workspace.name}
-                          </span>
-                          <span className="truncate text-xs text-sea-ink-soft">
-                            {workspace.slug}
                           </span>
                         </div>
                         {current?.id === workspace.id ? (
@@ -338,20 +346,4 @@ export function AppSidebar() {
       <CreateWorkspaceDialog open={createOpen} onOpenChange={setCreateOpen} />
     </Sidebar>
   )
-}
-
-const WORKSPACE_ICON_MAP = {
-  briefcase: Briefcase,
-  home: Home,
-  'layout-grid': LayoutGrid,
-} as const
-
-function WorkspaceIcon({ name }: { name?: string }) {
-  if (name && !name.includes('/') && !name.includes('://') && name.length <= 4) {
-    return <span className="text-base leading-none">{name}</span>
-  }
-  const Icon =
-    WORKSPACE_ICON_MAP[(name ?? '') as keyof typeof WORKSPACE_ICON_MAP] ??
-    LayoutGrid
-  return <Icon className="size-4" />
 }

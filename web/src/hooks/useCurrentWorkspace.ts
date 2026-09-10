@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { useWorkspaceList } from '#/hooks/useWorkspace'
+import { useWorkspaceOptions } from '#/hooks/useWorkspace'
 import type { WorkspaceItem } from '#/lib/models/response/workspace'
 
 export const CURRENT_WORKSPACE_STORAGE_KEY = 'lumina.currentWorkspaceId'
@@ -70,8 +70,8 @@ export function useCurrentWorkspace() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const { data, isLoading } = useWorkspaceList({ page: 1, size: 50 })
-  const workspaces = data?.data?.items ?? []
+  const { data, isLoading } = useWorkspaceOptions()
+  const workspaces = data ?? []
   const currentId = useSyncExternalStore(
     subscribeStoredId,
     getStoredId,
@@ -87,7 +87,8 @@ export function useCurrentWorkspace() {
 
   useEffect(() => {
     if (!current) return
-    const known = currentId !== '' && workspaces.some((item) => item.id === currentId)
+    const known =
+      currentId !== '' && workspaces.some((item) => item.id === currentId)
     if (known) return
     persistStoredId(current.id)
   }, [current, currentId, workspaces])

@@ -56,9 +56,15 @@ export function useUpdateProject() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateProjectRequest }) =>
       api.updateProject(id, data),
-    onSuccess: () => {
+    onSuccess: async (_, { data }) => {
       toast.success('项目更新成功')
-      queryClient.invalidateQueries({ queryKey: ['project', 'list'] })
+      const keys = [['project']]
+      if (data.workspace_id !== undefined) {
+        keys.push(['pin'], ['qa', 'sessions'], ['preview', 'sessions'])
+      }
+      await Promise.all(
+        keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      )
     },
     onError: (error: Error) => {
       toast.error(error.message || '更新失败')

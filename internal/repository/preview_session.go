@@ -126,7 +126,8 @@ func (r *PreviewSessionRepo) List(ctx context.Context, projectID, workspaceID xS
 		query = query.Where("project_id = ?", projectID)
 	}
 	if !workspaceID.IsZero() {
-		query = query.Where("project_id IN (SELECT id FROM projects WHERE workspace_id = ?)", workspaceID)
+		projects := r.db.WithContext(ctx).Model(&entity.Project{}).Select("id").Where("workspace_id = ?", workspaceID)
+		query = query.Where("project_id IN (?)", projects)
 	}
 
 	var total int64

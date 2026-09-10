@@ -1,5 +1,11 @@
 /** @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
@@ -37,8 +43,8 @@ const { workspaces } = vi.hoisted(() => {
 })
 
 vi.mock('#/hooks/useWorkspace', () => ({
-  useWorkspaceList: () => ({
-    data: { data: { items: workspaces, total: 2 } },
+  useWorkspaceOptions: () => ({
+    data: workspaces,
     isLoading: false,
   }),
 }))
@@ -81,7 +87,11 @@ function CurrentProbe({ testId }: { testId: string }) {
 }
 
 function Switcher() {
-  const { current, workspaces: items, setCurrentWorkspace } = useCurrentWorkspace()
+  const {
+    current,
+    workspaces: items,
+    setCurrentWorkspace,
+  } = useCurrentWorkspace()
   return (
     <>
       <div data-testid="switcher">{current?.id ?? 'none'}</div>

@@ -3,7 +3,7 @@ export interface ProjectItem {
   workspace_id: string
   name: string
   alias_name: string
-  match_path: string[]
+  match_path: string[] | null
   description: string
   created_at: string
   updated_at: string

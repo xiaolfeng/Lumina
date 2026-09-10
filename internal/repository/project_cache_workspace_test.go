@@ -99,3 +99,39 @@ func TestReplaceWorkspaceCacheWritesWorkspaceID(t *testing.T) {
 		t.Fatalf("WorkspaceID = %d, want %d", got.WorkspaceID.Int64(), defaultID.Int64())
 	}
 }
+
+func TestUpdateClearsOldWorkspaceCache(t *testing.T) {
+	repo := setupProjectRepoWithCache(t)
+	ctx := context.Background()
+	project := &entity.Project{
+		WorkspaceID: 100000000000000001,
+		Name:        "cache-move-original", AliasName: "cache-move-alias",
+		MatchPath: []string{"/cache-move"},
+	}
+	project.ID = 100000000000000003
+	if xErr := repo.Create(ctx, project); xErr != nil {
+		t.Fatal(xErr)
+	}
+	project.WorkspaceID = 100000000000000002
+	project.Name = "cache-move-renamed"
+	project.AliasName = "cache-move-new-alias"
+	if xErr := repo.Update(ctx, project); xErr != nil {
+		t.Fatal(xErr)
+	}
+	if _, ok, _ := repo.cache.GetIDByMatchPath(ctx, 100000000000000001, "/cache-move"); ok {
+		t.Fatal("old workspace path cache remains")
+	}
+	if _, ok, _ := repo.cache.GetIDByName(ctx, "cache-move-original"); ok {
+		t.Fatal("old name cache remains")
+	}
+	if _, ok, _ := repo.cache.GetIDByAlias(ctx, "cache-move-alias"); ok {
+		t.Fatal("old alias cache remains")
+	}
+	if id, ok, _ := repo.cache.GetIDByMatchPath(ctx, 100000000000000002, "/cache-move"); !ok || id != project.ID.String() {
+		t.Fatal("new workspace path cache missing")
+	}
+	cached, ok, xErr := repo.cache.GetByID(ctx, project.ID.Int64())
+	if xErr != nil || !ok || cached.WorkspaceID != project.WorkspaceID {
+		t.Fatalf("cached project = %+v, error = %v", cached, xErr)
+	}
+}

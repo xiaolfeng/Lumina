@@ -14,6 +14,13 @@ export function useWorkspaceList(params?: WorkspaceListParams) {
   })
 }
 
+export function useWorkspaceOptions() {
+  return useQuery({
+    queryKey: ['workspace', 'options'],
+    queryFn: api.getWorkspaceOptions,
+  })
+}
+
 export function useCreateWorkspace() {
   const queryClient = useQueryClient()
   return useMutation({

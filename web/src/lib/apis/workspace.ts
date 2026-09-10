@@ -17,6 +17,18 @@ export function getWorkspaceList(
   return apiClient.get('/api/v1/workspace', { params })
 }
 
+export async function getWorkspaceOptions(): Promise<WorkspaceItem[]> {
+  const items: WorkspaceItem[] = []
+  for (let page = 1; ; page++) {
+    const response = await getWorkspaceList({ page, size: 100 })
+    const batch = response.data?.items ?? []
+    items.push(...batch)
+    if (batch.length === 0 || items.length >= (response.data?.total ?? 0)) {
+      return items
+    }
+  }
+}
+
 export function getWorkspace(id: string): Promise<BaseResponse<WorkspaceItem>> {
   return apiClient.get(`/api/v1/workspace/${id}`)
 }

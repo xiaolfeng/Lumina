@@ -103,7 +103,7 @@ func (h *ProjectHandler) GetProject(ctx *gin.Context) {
 // UpdateProject 更新项目
 //
 // @Summary     [管理] 更新项目
-// @Description 更新指定 ID 的项目信息，名称需保持唯一
+// @Description 更新指定 ID 的项目信息，名称需保持唯一；可通过 workspace_id 迁移到现有空间，省略时保持原空间
 // @Tags        项目接口
 // @Accept      json
 // @Produce     json
