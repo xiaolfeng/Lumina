@@ -29,6 +29,7 @@
 | 编号 | 文档 | 状态 |
 | --- | --- | --- |
 | 0001 | [Workspace 身份层设计](./engineering/design/0001-workspace-identity.md) | draft |
+| 0002 | [Preview 与 Pages 区分架构设计](./engineering/design/0002-preview-pages-architecture.md) | draft |
 
 ### adr/
 
@@ -40,6 +41,7 @@
 | 0004 | [RepoWiki 生成与发布](./engineering/adr/0004-repowiki-generation-delivery.md) | proposed |
 | 0005 | [Workspace 身份层](./engineering/adr/0005-workspace-identity.md) | proposed |
 | 0006 | [Pin 同空间隔离](./engineering/adr/0006-pin-workspace-isolation.md) | proposed |
+| 0007 | [Preview 与 Pages 区分](./engineering/adr/0007-preview-pages-separation.md) | proposed |
 
 ### draft/
 
