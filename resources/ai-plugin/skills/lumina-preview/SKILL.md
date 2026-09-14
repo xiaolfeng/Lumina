@@ -81,7 +81,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 
 #### 分支 A：独立视觉评审
 若用户需要直接在浏览器中查看原型效果：
-1. 从 `preview_file_list` 返回中获取绝对 `preview_url`（形如 `http://<domain>/preview?session=<hash>&file=index.html`）。
+	1. 从 `preview_file_list` 返回中获取绝对 `preview_url`（形如 `http://<domain>/preview/<hash>/index.html`）。Preview 必须登录；打开后若跳到登录页属预期。需要对外持久分享时改走 `lumina-pages`。
 2. **[CRITICAL] 主动打开浏览器**：Agent **必须立即通过 Bash 执行系统打开命令为用户弹出预览页面**，严禁要求用户手动复制或输入链接：
    - **macOS**: `open "<preview_url>"`
    - **Linux**: `xdg-open "<preview_url>"`

@@ -12,6 +12,31 @@ import (
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
+func TestPreviewSessionSchemaDeclaresSourceFields(t *testing.T) {
+	schema := previewSessionSchema()
+	props, _ := schema["properties"].(map[string]any)
+	for _, key := range []string{"expires_at", "source_page_id", "source_page_slug", "source_version_id", "preview_url"} {
+		if _, ok := props[key]; !ok {
+			t.Fatalf("previewSessionSchema missing %s", key)
+		}
+	}
+}
+
+func TestPreviewSessionDataIncludesSourceSlug(t *testing.T) {
+	session := &apiPreview.PreviewSessionResponse{
+		Title:          "forked",
+		Hash:           "abc",
+		SourcePageSlug: "design-system",
+	}
+	data := previewSessionData(session, "https://example.com/preview/abc/index.html")
+	if data["source_page_slug"] != "design-system" {
+		t.Fatalf("source_page_slug = %v", data["source_page_slug"])
+	}
+	if data["source_page_id"] != nil || data["source_version_id"] != nil {
+		t.Fatalf("empty source ids should be null, got %v %v", data["source_page_id"], data["source_version_id"])
+	}
+}
+
 func TestPreviewToolDefinitions(t *testing.T) {
 	wantNames := []string{
 		"preview_session_create",

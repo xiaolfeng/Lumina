@@ -2077,6 +2077,611 @@
                 }
             }
         },
+        "/api/v1/pages": {
+            "get": {
+                "description": "分页获取 Pages 列表，可按项目或空间筛选",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[管理] 获取页面列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目ID",
+                        "name": "project_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "空间ID",
+                        "name": "workspace_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.PageListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pages/{id}": {
+            "get": {
+                "description": "根据页面 ID 获取详情（不含密码哈希）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[管理] 获取页面详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.PageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "页面不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pages/{id}/access-policy": {
+            "put": {
+                "description": "仅控制台可设置公开或密码保护",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[管理] 更新页面访问策略",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "访问策略",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/pages.UpdateAccessPolicyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.PageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pages/{id}/archive": {
+            "post": {
+                "description": "将页面状态改为 archived",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[管理] 归档页面",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "归档成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.PageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pages/{id}/fork": {
+            "post": {
+                "description": "深拷贝指定版本文件到新 Preview 会话并写入溯源字段",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[管理] Fork 页面到预览",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "可选版本",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/pages.ForkPageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.ForkPageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pages/{id}/versions": {
+            "get": {
+                "description": "列出指定页面的全部不可变快照版本",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[管理] 获取页面版本列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.PageVersionListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pages/{id}/versions/{version_id}/switch-active": {
+            "post": {
+                "description": "原子更新 latest_version_id，零文件搬迁",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[管理] 切换生效版本",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "版本 ID",
+                        "name": "version_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "切换成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.SwitchActiveResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pages/{project_name}/{slug}/auth-check": {
+            "get": {
+                "description": "返回是否需要密码以及当前 Cookie 是否有效",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[公开] 检查页面认证状态",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "项目名称",
+                        "name": "project_name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面标识",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "认证状态",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.PageAuthCheckResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pages/{project_name}/{slug}/meta": {
+            "get": {
+                "description": "返回当前生效（或指定）版本的元信息与文件清单",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[公开] 获取页面元信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "项目名称",
+                        "name": "project_name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面标识",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "历史版本号",
+                        "name": "v",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.PagePublicMetaResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "密码门未解锁",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "页面不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pages/{project_name}/{slug}/unlock": {
+            "post": {
+                "description": "校验密码后签发 HttpOnly Cookie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[公开] 解锁页面密码门",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "项目名称",
+                        "name": "project_name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面标识",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "密码",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/pages.UnlockPageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "解锁成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "密码错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/pin": {
             "get": {
                 "description": "按目标项目、来源项目、状态、分类、优先级多条件动态过滤，page/size 分页查询",
@@ -2774,15 +3379,22 @@
         },
         "/api/v1/preview/sessions/{hash}": {
             "get": {
-                "description": "根据访问哈希获取预览会话元数据与文件列表，用于预览页加载",
+                "description": "根据访问哈希获取预览会话元数据与文件列表，用于预览页加载（需登录）",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Preview接口"
                 ],
-                "summary": "[公开] 获取预览会话详情",
+                "summary": "[管理] 获取预览会话详情",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "预览会话访问哈希",
@@ -2810,6 +3422,12 @@
                             ]
                         }
                     },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
                     "404": {
                         "description": "预览会话不存在",
                         "schema": {
@@ -2821,15 +3439,22 @@
         },
         "/api/v1/preview/sessions/{hash}/files/{filename}": {
             "get": {
-                "description": "根据访问哈希与文件名返回文件原始内容（带正确 Content-Type），供预览 iframe 加载",
+                "description": "根据访问哈希与文件名返回文件原始内容（带正确 Content-Type），供预览 iframe 加载（需登录）",
                 "produces": [
                     "application/octet-stream"
                 ],
                 "tags": [
                     "Preview接口"
                 ],
-                "summary": "[公开] 获取预览文件内容",
+                "summary": "[管理] 获取预览文件内容",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "预览会话访问哈希",
@@ -2848,6 +3473,12 @@
                 "responses": {
                     "200": {
                         "description": "文件内容"
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
                     },
                     "404": {
                         "description": "预览文件不存在",
@@ -2890,6 +3521,84 @@
                 "responses": {
                     "200": {
                         "description": "删除成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "预览会话不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/preview/sessions/{id}/promote": {
+            "post": {
+                "description": "将当前预览会话文件深拷贝为不可变页面快照；不包含密码设置",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Preview接口"
+                ],
+                "summary": "[管理] 晋升预览会话为 Pages",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Access Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "预览会话 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "晋升请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/preview.PromoteSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "晋升成功或并发冲突",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.PromoteSessionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }
@@ -7762,6 +8471,322 @@
                 }
             }
         },
+        "pages.ForkPageRequest": {
+            "type": "object",
+            "properties": {
+                "version_id": {
+                    "description": "可选，默认当前生效版本",
+                    "type": "integer"
+                }
+            }
+        },
+        "pages.ForkPageResponse": {
+            "type": "object",
+            "properties": {
+                "preview_url": {
+                    "description": "工作台路径",
+                    "type": "string"
+                },
+                "session": {
+                    "description": "新预览会话",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/preview.PreviewSessionResponse"
+                        }
+                    ]
+                }
+            }
+        },
+        "pages.PageAuthCheckResponse": {
+            "type": "object",
+            "properties": {
+                "authenticated": {
+                    "description": "Cookie 是否有效",
+                    "type": "boolean"
+                },
+                "password_required": {
+                    "description": "是否需要密码",
+                    "type": "boolean"
+                }
+            }
+        },
+        "pages.PageFileResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "filename": {
+                    "description": "扁平文件名",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "文件 ID",
+                    "type": "integer"
+                },
+                "mime_type": {
+                    "description": "MIME 类型",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "字节数",
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                },
+                "version_id": {
+                    "description": "所属版本 ID",
+                    "type": "integer"
+                }
+            }
+        },
+        "pages.PageListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "页面列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/pages.PageResponse"
+                    }
+                },
+                "total": {
+                    "description": "总数量",
+                    "type": "integer"
+                }
+            }
+        },
+        "pages.PagePublicMetaResponse": {
+            "type": "object",
+            "properties": {
+                "files": {
+                    "description": "文件清单（不含正文）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/pages.PageFileResponse"
+                    }
+                },
+                "page": {
+                    "description": "页面元信息",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pages.PageResponse"
+                        }
+                    ]
+                },
+                "version": {
+                    "description": "当前渲染版本",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pages.PageVersionResponse"
+                        }
+                    ]
+                }
+            }
+        },
+        "pages.PageResponse": {
+            "type": "object",
+            "properties": {
+                "access_mode": {
+                    "description": "public / password",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "页面描述",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "页面 ID",
+                    "type": "integer"
+                },
+                "latest_version": {
+                    "description": "当前线上版本号",
+                    "type": "string"
+                },
+                "latest_version_id": {
+                    "description": "当前线上生效版本指针",
+                    "type": "integer"
+                },
+                "page_url": {
+                    "description": "对外访问路径",
+                    "type": "string"
+                },
+                "project_id": {
+                    "description": "所属项目 ID",
+                    "type": "integer"
+                },
+                "project_name": {
+                    "description": "所属项目名称",
+                    "type": "string"
+                },
+                "slug": {
+                    "description": "项目内访问标识",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "published / archived",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "页面显示标题",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                }
+            }
+        },
+        "pages.PageVersionListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "description": "版本列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/pages.PageVersionResponse"
+                    }
+                }
+            }
+        },
+        "pages.PageVersionResponse": {
+            "type": "object",
+            "properties": {
+                "base_version_id": {
+                    "description": "派生基准版本",
+                    "type": "integer"
+                },
+                "changelog": {
+                    "description": "更新说明",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "created_by": {
+                    "description": "发布者",
+                    "type": "string"
+                },
+                "entry_filename": {
+                    "description": "入口文件",
+                    "type": "string"
+                },
+                "file_count": {
+                    "description": "文件数",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "版本 ID",
+                    "type": "integer"
+                },
+                "is_active": {
+                    "description": "是否为当前生效版本",
+                    "type": "boolean"
+                },
+                "page_id": {
+                    "description": "所属页面 ID",
+                    "type": "integer"
+                },
+                "source_session_id": {
+                    "description": "来源预览会话",
+                    "type": "integer"
+                },
+                "total_size": {
+                    "description": "快照总字节",
+                    "type": "integer"
+                },
+                "version": {
+                    "description": "语义化版本号",
+                    "type": "string"
+                }
+            }
+        },
+        "pages.PromoteSessionResponse": {
+            "type": "object",
+            "properties": {
+                "conflict": {
+                    "description": "并发冲突详情",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/preview.PromoteConflictResponse"
+                        }
+                    ]
+                },
+                "page": {
+                    "description": "目标页面",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pages.PageResponse"
+                        }
+                    ]
+                },
+                "version": {
+                    "description": "新写入的版本",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pages.PageVersionResponse"
+                        }
+                    ]
+                }
+            }
+        },
+        "pages.SwitchActiveResponse": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "description": "更新后的页面",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pages.PageResponse"
+                        }
+                    ]
+                },
+                "version": {
+                    "description": "新的生效版本",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pages.PageVersionResponse"
+                        }
+                    ]
+                }
+            }
+        },
+        "pages.UnlockPageRequest": {
+            "type": "object",
+            "required": [
+                "password"
+            ],
+            "properties": {
+                "password": {
+                    "description": "访问密码",
+                    "type": "string"
+                }
+            }
+        },
+        "pages.UpdateAccessPolicyRequest": {
+            "type": "object",
+            "required": [
+                "access_mode"
+            ],
+            "properties": {
+                "access_mode": {
+                    "description": "public / password",
+                    "type": "string"
+                },
+                "password": {
+                    "description": "password 模式必填；public 可空",
+                    "type": "string"
+                }
+            }
+        },
         "pin.CreatePinRequest": {
             "type": "object",
             "required": [
@@ -8159,6 +9184,18 @@
                     "description": "关联项目ID",
                     "type": "integer"
                 },
+                "source_page_id": {
+                    "description": "Fork 来源页面",
+                    "type": "integer"
+                },
+                "source_page_slug": {
+                    "description": "Fork 来源页面 slug",
+                    "type": "string"
+                },
+                "source_version_id": {
+                    "description": "Fork 基准版本",
+                    "type": "integer"
+                },
                 "status": {
                     "description": "会话状态",
                     "type": "string"
@@ -8170,6 +9207,78 @@
                 "updated_at": {
                     "description": "更新时间",
                     "type": "string"
+                }
+            }
+        },
+        "preview.PromoteConflictResponse": {
+            "type": "object",
+            "properties": {
+                "current_changelog": {
+                    "description": "当前线上版本说明",
+                    "type": "string"
+                },
+                "current_created_at": {
+                    "description": "当前线上版本发布时间",
+                    "type": "string"
+                },
+                "current_created_by": {
+                    "description": "当前线上版本发布者",
+                    "type": "string"
+                },
+                "current_version": {
+                    "description": "当前线上版本号",
+                    "type": "string"
+                },
+                "current_version_id": {
+                    "description": "当前线上版本 ID",
+                    "type": "integer"
+                },
+                "message": {
+                    "description": "冲突提示文案",
+                    "type": "string"
+                },
+                "source_version_id": {
+                    "description": "本次草稿基于的版本 ID",
+                    "type": "integer"
+                }
+            }
+        },
+        "preview.PromoteSessionRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "changelog": {
+                    "description": "版本更新说明",
+                    "type": "string"
+                },
+                "confirm_conflict": {
+                    "description": "线上指针已前进时确认覆盖",
+                    "type": "boolean"
+                },
+                "description": {
+                    "description": "页面描述",
+                    "type": "string"
+                },
+                "set_as_active": {
+                    "description": "是否立即设为线上生效版本",
+                    "type": "boolean"
+                },
+                "slug": {
+                    "description": "项目内访问标识；Fork 发布新版本时可空",
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "title": {
+                    "description": "页面显示标题",
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "version": {
+                    "description": "语义化版本号，空则自动递增",
+                    "type": "string",
+                    "maxLength": 32
                 }
             }
         },

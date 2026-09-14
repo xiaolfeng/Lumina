@@ -88,7 +88,7 @@ export function usePreviewWebSocket(
     setStatus('connecting')
 
     // Build WebSocket URL (upgrade http → ws)
-    // /api/v1/preview/ws 为公开端点（hash 鉴权），无需携带 token
+    // /api/v1/preview/ws 需登录，同源 Cookie 会随 WebSocket 升级自动携带
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     // 每次建连生成全新 device_id，不持久化：localStorage 在同源所有标签页共享，

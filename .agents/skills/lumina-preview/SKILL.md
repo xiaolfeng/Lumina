@@ -5,14 +5,14 @@ license: MIT
 compatibility: Requires Lumina MCP (Streamable HTTP) and network access to the Lumina instance.
 metadata:
   author: lumina
-  version: "0.1.0"
+  version: "0.1.1"
 argument-hint: [ session-id | filename ]
-allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__project_create, mcp__lumina__preview_session_create, mcp__lumina__preview_session_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_list, mcp__lumina__preview_file_get, mcp__lumina__qa_push_supplement, mcp__lumina__qa_get_answer
+allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__project_create, mcp__lumina__preview_session_create, mcp__lumina__preview_session_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_list, mcp__lumina__preview_file_get, mcp__lumina__qa_push_supplement, mcp__lumina__qa_get_answer, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__project_create, mcp__plugin_lumina_lumina__preview_session_create, mcp__plugin_lumina_lumina__preview_session_list, mcp__plugin_lumina_lumina__preview_file_upload, mcp__plugin_lumina_lumina__preview_file_list, mcp__plugin_lumina_lumina__preview_file_get, mcp__plugin_lumina_lumina__qa_push_supplement, mcp__plugin_lumina_lumina__qa_get_answer
 ---
 
 # Lumina 前端原型实时预览与可视化评审指南 (lumina-preview)
 
-用于指导 AI Agent 构建轻量级前端原型工作区，通过单层文件上传与沙盒隔离，向用户实时展示可视化的 HTML/CSS/JS 页面，并支持独立浏览器评审与 Q&A 题目挂载。
+用于指导 AI Agent 构建轻量级前端原型预览会话，通过单层文件上传与沙盒隔离，向用户实时展示可视化的 HTML/CSS/JS 页面，并支持独立浏览器评审与 Q&A 题目挂载。
 
 项目解析见 [`../_shared/project-resolver.md`](../_shared/project-resolver.md)。挂到 Q&A 时只读 [`../_shared/preview-qa-contract.md`](../_shared/preview-qa-contract.md)，不要另造字段。
 
@@ -81,7 +81,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 
 #### 分支 A：独立视觉评审
 若用户需要直接在浏览器中查看原型效果：
-1. 从 `preview_file_list` 返回中获取绝对 `preview_url`（形如 `http://<domain>/preview?session=<hash>&file=index.html`）。
+	1. 从 `preview_file_list` 返回中获取绝对 `preview_url`（形如 `http://<domain>/preview/<hash>/index.html`）。Preview 必须登录；打开后若跳到登录页属预期。需要对外持久分享时改走 `lumina-pages`。
 2. **[CRITICAL] 主动打开浏览器**：Agent **必须立即通过 Bash 执行系统打开命令为用户弹出预览页面**，严禁要求用户手动复制或输入链接：
    - **macOS**: `open "<preview_url>"`
    - **Linux**: `xdg-open "<preview_url>"`

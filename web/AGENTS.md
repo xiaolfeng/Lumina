@@ -53,6 +53,8 @@ web/
     │   │   │   └── $sessionId.tsx  # Q&A 会话详情（问题列表）
     │   │   ├── preview/        # Preview 管理端
     │   │   │   └── index.tsx   # 预览会话列表（KPI + 列表 + 新建/删除/详情抽屉）
+    │   │   ├── pages/          # Pages 管理端
+    │   │   │   └── index.tsx   # 已发布页面列表 + 访问策略（密码只在此设置）
     │   │   ├── ssh.tsx         # SSH Key 管理
     │   │   ├── settings.tsx    # 系统设置（站点/安全/Q&A/RepoWiki 多标签页）
     │   │   └── profile.tsx     # 个人资料（资料/密码/生物认证三标签页）
@@ -60,9 +62,14 @@ web/
     │   │   └── interact/
     │   │       ├── index.tsx   # Interact 交互主页（WebSocket 连接 + 问题展示）
     │   │       └── thank.tsx   # Interact 结束感谢页
-    │   ├── preview.tsx         # Preview 对外页布局（品牌栏 + Outlet，非 console 布局）
-    │   └── preview/
-    │       └── index.tsx       # 对外预览主体（文件列表 + iframe 预览，WebSocket 实时驱动）
+    │   ├── preview.tsx         # Preview 工作台布局（品牌栏 + Outlet，需登录）
+    │   ├── preview/
+    │   │   ├── index.tsx       # 旧 Query 深链重定向到 /preview/:hash/:file
+    │   │   └── $sessionHash/
+    │   │       └── $.tsx       # 路径式工作台（视口/源码/晋升）
+    │   ├── pages.tsx           # Pages 展示态布局
+    │   └── pages/
+    │       └── $projectName/$slug/$.tsx  # 沉浸展示 + 密码门 + 可拖拽胶囊
     ├── components/             # 组件
     │   ├── Navbar.tsx          # 公开页面导航栏
     │   ├── Footer.tsx          # 公开页面页脚
@@ -322,7 +329,7 @@ web/
 - **SSH Key 管理**：通过 `useSshKey` Hook + `components/ssh/` 实现，密钥对生成请求后端，前端不接触私钥明文。
 - **RepoWiki 配置**：通过 `useRepoWiki` Hook + `components/repowiki/` 实现，包括配置表单、版本管理、分析触发、Webhook 配置四部分；版本切换需二次确认（逻辑在 `version-list.tsx`）。
 - **系统设置**：`console/settings.tsx` 重构为多标签页（站点/安全/Q&A/RepoWiki），对应 `components/settings/` 下五个表单组件，统一通过 `useSettings` Hook 读写。
-- **MCP 接入指南**：端点拼装、客户端模板和 27 个工具名统一来自 `lib/mcp-connect.ts`；插件/技能安装命令统一来自 `lib/plugin-connect.ts`（路径必须与 `internal/constant/ai_plugin.go` 一致）。控制台页 `console/connect.tsx` 按信道 1–4 排列：插件安装 → 手动 MCP → 技能安装 → 工具速览。令牌创建/重置成功态复用 `created-key-panel.tsx`。禁止再写独立 CLI、SSE 问答通道或 camelCase 旧工具名。
+- **MCP 接入指南**：端点拼装、客户端模板和 30 个工具名统一来自 `lib/mcp-connect.ts`；插件/技能安装命令统一来自 `lib/plugin-connect.ts`（路径必须与 `internal/constant/ai_plugin.go` 一致）。控制台页 `console/connect.tsx` 按信道 1–4 排列：插件安装 → 手动 MCP → 技能安装 → 工具速览。令牌创建/重置成功态复用 `created-key-panel.tsx`。禁止再写独立 CLI、SSE 问答通道或 camelCase 旧工具名。
 - **MCP OAuth 同意页**：`/_public/oauth?authorize_id=` 是浏览器授权 UI，调用 `lib/apis/oauth.ts` 的 consent 接口；客户端发现与令牌交换在后端公开端点完成，前端不保存 `lum_at_`。
 - **Preview 文件分发**：`lib/preview-file.ts` 按扩展名得到 kind；`file-viewer.tsx` 将 html/svg 交给 iframe，`markdown` 走共享 Markdown + `proseArticle`，其余走 CodeMirror。不要在预览页对源码使用 `dangerouslySetInnerHTML`。
 - **Interact 进度与历史**：`session-progress.ts` 计算 answered/remaining，`session-progress-bar.tsx` 画在 Header；`group-history.ts` 按 `answeredAt`（否则 `createdAt`）DESC 分组，保证最新问答置顶。

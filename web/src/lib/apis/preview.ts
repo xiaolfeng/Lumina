@@ -39,3 +39,13 @@ export function deletePreviewSession(id: string): Promise<BaseResponse> {
 export function deletePreviewFile(id: string): Promise<BaseResponse> {
   return apiClient.delete(`/api/v1/preview/files/${id}`)
 }
+
+export interface PromotePreviewSessionRequest {
+  slug: string
+  title: string
+  description?: string
+  version?: string
+  changelog?: string
+  set_as_active?: boolean
+  confirm_conflict?: boolean
+}

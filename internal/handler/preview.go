@@ -7,11 +7,13 @@ import (
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
 	"github.com/gin-gonic/gin"
 	apiCommon "github.com/xiaolfeng/Lumina/api/common"
+	apiPages "github.com/xiaolfeng/Lumina/api/pages"
 	apiPreview "github.com/xiaolfeng/Lumina/api/preview"
 )
 
 // 确保 apiCommon 包被编译器识别（swag 注释依赖此导入）
 var _ = apiCommon.BaseResponse{}
+var _ = apiPages.PromoteSessionResponse{}
 
 // CreateSession 创建预览会话（管理端）
 //
@@ -43,14 +45,16 @@ func (h *PreviewHandler) CreateSession(ctx *gin.Context) {
 	xResult.SuccessHasData(ctx, "创建成功", resp)
 }
 
-// GetSession 获取预览会话详情与文件列表（公开，hash 鉴权）
+// GetSession 获取预览会话详情与文件列表（需登录）
 //
-// @Summary     [公开] 获取预览会话详情
-// @Description 根据访问哈希获取预览会话元数据与文件列表，用于预览页加载
+// @Summary     [管理] 获取预览会话详情
+// @Description 根据访问哈希获取预览会话元数据与文件列表，用于预览页加载（需登录）
 // @Tags        Preview接口
 // @Produce     json
+// @Param       Authorization  header  string  true  "Bearer Access Token"
 // @Param       hash  path  string  true  "预览会话访问哈希"
 // @Success     200  {object}  apiCommon.BaseResponse{data=apiPreview.PreviewSessionDetailResponse}  "获取成功"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
 // @Failure     404  {object}  apiCommon.BaseResponse  "预览会话不存在"
 // @Router      /api/v1/preview/sessions/{hash} [GET]
 func (h *PreviewHandler) GetSession(ctx *gin.Context) {
@@ -75,15 +79,17 @@ func (h *PreviewHandler) GetSession(ctx *gin.Context) {
 	})
 }
 
-// GetFile 获取预览文件内容（公开，serve 原始内容，供 iframe src 相对引用）
+// GetFile 获取预览文件内容（需登录，serve 原始内容，供 iframe src 相对引用）
 //
-// @Summary     [公开] 获取预览文件内容
-// @Description 根据访问哈希与文件名返回文件原始内容（带正确 Content-Type），供预览 iframe 加载
+// @Summary     [管理] 获取预览文件内容
+// @Description 根据访问哈希与文件名返回文件原始内容（带正确 Content-Type），供预览 iframe 加载（需登录）
 // @Tags        Preview接口
 // @Produce     octet-stream
+// @Param       Authorization  header  string  true  "Bearer Access Token"
 // @Param       hash      path  string  true  "预览会话访问哈希"
 // @Param       filename  path  string  true  "文件名（如 index.html）"
 // @Success     200  "文件内容"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
 // @Failure     404  {object}  apiCommon.BaseResponse  "预览文件不存在"
 // @Router      /api/v1/preview/sessions/{hash}/files/{filename} [GET]
 func (h *PreviewHandler) GetFile(ctx *gin.Context) {
@@ -228,4 +234,79 @@ func (h *PreviewHandler) DeleteFile(ctx *gin.Context) {
 	}
 
 	xResult.Success(ctx, "删除成功")
+}
+
+// PromoteSession 将预览会话晋升为 Pages 快照
+//
+// @Summary     [管理] 晋升预览会话为 Pages
+// @Description 将当前预览会话文件深拷贝为不可变页面快照；不包含密码设置
+// @Tags        Preview接口
+// @Accept      json
+// @Produce     json
+// @Param       Authorization  header  string  true  "Bearer Access Token"
+// @Param       id             path    string  true  "预览会话 ID"
+// @Param       request        body    apiPreview.PromoteSessionRequest  true  "晋升请求"
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiPages.PromoteSessionResponse}  "晋升成功或并发冲突"
+// @Failure     400  {object}  apiCommon.BaseResponse  "请求参数错误"
+// @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
+// @Failure     404  {object}  apiCommon.BaseResponse  "预览会话不存在"
+// @Router      /api/v1/preview/sessions/{id}/promote [POST]
+func (h *PreviewHandler) PromoteSession(ctx *gin.Context) {
+	h.log.Info(ctx, "PromoteSession - 晋升预览会话")
+
+	id, xErr := ParseSnowflakeID(ctx, ctx.Param("id"))
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+	var req apiPreview.PromoteSessionRequest
+	if !BindJSON(ctx, &req) {
+		return
+	}
+	resp, xErr := h.service.pagesLogic.Promote(ctx.Request.Context(), id, &req)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+	xResult.SuccessHasData(ctx, "晋升成功", resp)
+}
+
+// ServePreviewPath 引擎级路径直出：按 MIME 输出文件（顶层 document 由路由层回落 SPA）。
+func (h *PreviewHandler) ServePreviewPath(ctx *gin.Context) {
+	hash := ctx.Param("session_hash")
+	filepathParam := strings.TrimPrefix(ctx.Param("filepath"), "/")
+	if filepathParam == "" {
+		session, xErr := h.service.previewLogic.GetSessionByHash(ctx.Request.Context(), hash)
+		if xErr != nil {
+			_ = ctx.Error(xErr)
+			return
+		}
+		files, xErr := h.service.previewLogic.ListFiles(ctx.Request.Context(), session.ID)
+		if xErr != nil {
+			_ = ctx.Error(xErr)
+			return
+		}
+		entry := ""
+		for _, file := range files {
+			if strings.HasPrefix(strings.ToLower(file.MimeType), "text/html") {
+				entry = file.Filename
+				break
+			}
+		}
+		if entry == "" && len(files) > 0 {
+			entry = files[0].Filename
+		}
+		if entry == "" {
+			ctx.Status(http.StatusNotFound)
+			return
+		}
+		ctx.Redirect(http.StatusFound, "/preview/"+hash+"/"+entry)
+		return
+	}
+	file, xErr := h.service.previewLogic.GetFileContent(ctx.Request.Context(), hash, filepathParam)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+	writeServedFile(ctx, file.MimeType, file.Content)
 }

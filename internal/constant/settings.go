@@ -5,6 +5,7 @@ const (
 	SettingCategorySite     = "site"     // 站点外观设置分类
 	SettingCategoryQa       = "qa"       // Q&A 模块设置分类
 	SettingCategoryPreview  = "preview"  // Preview 模块设置分类
+	SettingCategoryPages    = "pages"    // Pages 模块设置分类
 	SettingCategoryRepoWiki = "repowiki" // RepoWiki 模块设置分类
 	SettingCategorySecurity = "security" // 安全认证设置分类
 )
@@ -18,9 +19,9 @@ type SettingKeyDef struct {
 	Description string // 配置说明
 }
 
-// SettingKeyDefs 系统设置全量元数据定义（共 18 项）
+// SettingKeyDefs 系统设置全量元数据定义（共 19 项）
 //
-// 覆盖站点信息、Q&A、Preview、RepoWiki、安全认证五类。
+// 覆盖站点信息、Q&A、Preview、Pages、RepoWiki、安全认证六类。
 // 新增设置项时只需在此追加定义并在 KeysByCategory 中自动归类。
 // 键名规范：层级用 . 分隔，同层多词用 - 连接，禁止使用 _。
 var SettingKeyDefs = []SettingKeyDef{
@@ -41,6 +42,9 @@ var SettingKeyDefs = []SettingKeyDef{
 	// ── preview 分类（1 项）──
 	{Key: InfoKeyPreviewSessionTTL, Category: SettingCategoryPreview, Type: "int", Default: "604800", Description: "Preview 会话默认 TTL（秒）"},
 
+	// ── pages 分类（1 项）──
+	{Key: InfoKeyPagesAuthCookieMaxAge, Category: SettingCategoryPages, Type: "int", Default: "86400", Description: "Pages 密码门 Cookie 最大有效期（秒）"},
+
 	// ── repowiki 分类（3 项）──
 	{Key: InfoKeyRepoWikiDefaultLanguage, Category: SettingCategoryRepoWiki, Type: "string", Default: "zh", Description: "RepoWiki 默认 Wiki 语言"},
 	{Key: InfoKeyRepoWikiDefaultBranch, Category: SettingCategoryRepoWiki, Type: "string", Default: "main", Description: "RepoWiki 默认 Git 分支"},
@@ -59,7 +63,7 @@ var SettingKeyDefs = []SettingKeyDef{
 var KeysByCategory map[string][]SettingKeyDef
 
 func init() {
-	KeysByCategory = make(map[string][]SettingKeyDef, 5)
+	KeysByCategory = make(map[string][]SettingKeyDef, 6)
 	for _, def := range SettingKeyDefs {
 		KeysByCategory[def.Category] = append(KeysByCategory[def.Category], def)
 	}

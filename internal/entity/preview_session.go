@@ -10,12 +10,14 @@ import (
 
 // PreviewSession 预览会话表，存储前端可视化预览的会话信息
 type PreviewSession struct {
-	xModels.BaseEntity                        // 基础实体（ID、创建时间、更新时间）
-	ProjectID          xSnowflake.SnowflakeID `gorm:"type:bigint;not null;index;comment:关联项目ID" json:"project_id"`                        // 关联项目ID
-	Title              string                 `gorm:"type:varchar(255);not null;comment:会话标题" json:"title"`                               // 会话标题
-	Hash               string                 `gorm:"type:char(32);uniqueIndex;not null;comment:访问哈希标识" json:"hash"`                      // 访问哈希标识
-	Status             string                 `gorm:"type:varchar(16);not null;default:active;comment:会话状态 active/deleted" json:"status"` // 会话状态 active/deleted
-	ExpiresAt          *time.Time             `gorm:"type:timestamptz;index;comment:过期时间" json:"expires_at,omitempty"`                    // 过期时间
+	xModels.BaseEntity                         // 基础实体（ID、创建时间、更新时间）
+	ProjectID          xSnowflake.SnowflakeID  `gorm:"type:bigint;not null;index;comment:关联项目ID" json:"project_id"`                        // 关联项目ID
+	Title              string                  `gorm:"type:varchar(255);not null;comment:会话标题" json:"title"`                               // 会话标题
+	Hash               string                  `gorm:"type:char(32);uniqueIndex;not null;comment:访问哈希标识" json:"hash"`                      // 访问哈希标识
+	Status             string                  `gorm:"type:varchar(16);not null;default:active;comment:会话状态 active/deleted" json:"status"` // 会话状态 active/deleted
+	ExpiresAt          *time.Time              `gorm:"type:timestamptz;index;comment:过期时间" json:"expires_at,omitempty"`                    // 过期时间
+	SourcePageID       *xSnowflake.SnowflakeID `gorm:"type:bigint;index;comment:Fork来源页面ID" json:"source_page_id,omitempty"`               // Fork来源页面ID
+	SourceVersionID    *xSnowflake.SnowflakeID `gorm:"type:bigint;index;comment:Fork基准版本ID" json:"source_version_id,omitempty"`            // Fork基准版本ID
 }
 
 // GetGene 返回PreviewSession实体的雪花算法基因编号

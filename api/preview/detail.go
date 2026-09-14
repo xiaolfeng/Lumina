@@ -4,15 +4,18 @@ import xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 
 // PreviewSessionResponse 预览会话响应
 type PreviewSessionResponse struct {
-	ID        xSnowflake.SnowflakeID `json:"id"`         // 预览会话 ID
-	ProjectID xSnowflake.SnowflakeID `json:"project_id"` // 关联项目ID
-	Title     string                 `json:"title"`      // 会话标题
-	Hash      string                 `json:"hash"`       // 访问哈希标识
-	Status    string                 `json:"status"`     // 会话状态
-	FileCount int64                  `json:"file_count"` // 文件数量
-	ExpiresAt string                 `json:"expires_at"` // 过期时间
-	CreatedAt string                 `json:"created_at"` // 创建时间
-	UpdatedAt string                 `json:"updated_at"` // 更新时间
+	ID              xSnowflake.SnowflakeID  `json:"id"`                          // 预览会话 ID
+	ProjectID       xSnowflake.SnowflakeID  `json:"project_id"`                  // 关联项目ID
+	Title           string                  `json:"title"`                       // 会话标题
+	Hash            string                  `json:"hash"`                        // 访问哈希标识
+	Status          string                  `json:"status"`                      // 会话状态
+	FileCount       int64                   `json:"file_count"`                  // 文件数量
+	ExpiresAt       string                  `json:"expires_at"`                  // 过期时间
+	SourcePageID    *xSnowflake.SnowflakeID `json:"source_page_id,omitempty"`    // Fork 来源页面
+	SourcePageSlug  string                  `json:"source_page_slug,omitempty"`  // Fork 来源页面 slug
+	SourceVersionID *xSnowflake.SnowflakeID `json:"source_version_id,omitempty"` // Fork 基准版本
+	CreatedAt       string                  `json:"created_at"`                  // 创建时间
+	UpdatedAt       string                  `json:"updated_at"`                  // 更新时间
 }
 
 // PreviewFileResponse 预览文件响应（不含 Content，文件内容经 serve 接口单独获取）

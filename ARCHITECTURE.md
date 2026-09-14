@@ -11,7 +11,7 @@ Lumina（微明）是给 AI Agent 用的代码知识与人机协作中枢：把�
 - Agent 需要一份可检索的仓库 Wiki，而不是每次从零扫代码。
 - Agent 需要向人提问并阻塞等待裁决，而不是猜。
 - 跨仓库的破坏性约定需要点对点投递并按 FIFO 消费。
-- HTML/CSS/JS 原型需要沙盒预览，不能代替真实仓库交付。
+- HTML/CSS/JS 原型需要沙盒预览，核对后可晋升为路径式 Pages 快照；不能代替真实仓库交付。
 - MCP 客户端需要标准 OAuth 2.1 或 API Key 接入，而不是私有协议。
 
 外部依赖：PostgreSQL、Redis、Git 远端（RepoWiki）、LLM Provider（热配置，密钥加密存储）。Memory 模块仍在设计，未进入运行时。
@@ -29,7 +29,7 @@ Lumina（微明）是给 AI Agent 用的代码知识与人机协作中枢：把�
 | Q&A | 会话、题型推送、回答队列 | `QaLogic`、`Hub`（kind=qa）、`QueueManager` |
 | Pin | 跨项目约束，数据库 FIFO | `PinLogic` |
 | RepoWiki | 克隆 → 五角色 SubAgent → `.mdx` Wiki | `RepoWikiLogic`、`SubAgentOrchestrator`、`AnalysisPipeline` |
-| Preview | 会话文件沙盒预览与分享 | `PreviewLogic`、`Hub`（kind=preview） |
+| Preview / Pages | 会话草稿工作台与项目级不可变快照 | `PreviewLogic`、`PagesLogic`、`Hub`（kind=preview） |
 | LLM 热配置 | Provider/Model 与 Agent 角色绑定 | `LlmProviderLogic`、`LLMResolver` |
 | SSH / Webhook / 设置 | 克隆凭证、Git Push 触发、分组配置 | `SshKeyLogic`、`WebhookSigner`、`SettingsLogic` |
 | AI 插件 | 运行时打包 ZIP 与 marketplace | `AIPluginService`、`AIPluginFS` |
@@ -39,7 +39,7 @@ Lumina（微明）是给 AI Agent 用的代码知识与人机协作中枢：把�
 
 这些规则在代码里几乎看不见「禁止」二字，但打破它们会让分层和模块独立性一起塌掉。
 
-- **五领域互不调用。** RepoWiki、Memory、Q&A、Pin、Preview 不得互相 import 业务 Logic。组合只发生在 Agent 的 MCP 调用序列里。
+- **五领域互不调用。** RepoWiki、Memory、Q&A、Pin、Preview 不得互相 import 业务 Logic。Pages 是 Preview 域的持久交付层，不另开第六域。组合只发生在 Agent 的 MCP 调用序列里。
 - **分层单向。** `route` → `handler` → `logic` → `repository`。Handler 不得碰 DB/Redis；Logic 不得拼 GORM/Redis 命令，也不得自己持有 `db`/`rdb` 字段；缓存只进 `repository/cache`。
 - **`service` 不是第六业务模块。** 只放跨域基础设施（Git、加解密、Webhook 签名、插件打包、Wiki 存储）。业务裁决仍回 Logic。
 - **Q&A 实时通道是 WebSocket，不是 SSE。** 旧设计文档若仍写 SSE，视为过时。
@@ -52,7 +52,7 @@ Lumina（微明）是给 AI Agent 用的代码知识与人机协作中枢：把�
 - **RepoWiki prompt 不进 Logic 源码。** 五角色模板在 `resources/prompts/`，经 `PromptLoader` 读取。
 - **Wiki 产物只认 `.mdx`。** 没有 `.md` fallback。
 - **共享 UI 只在 `@lumina/components`。** `web` / `web-wiki` 不得再拷一份 shadcn、Markdown 原语或主题 CSS。
-- **实体必须带基因。** `GetGene()` 使用 `GeneProject=32` 至 `GeneWorkspace=48`，新增实体还要进 `main.go` 的 `WithAutoMigrate`（顺序跟 FK）。
+- **实体必须带基因。** `GetGene()` 使用 `GeneProject=32` 至 `GenePageFile=51`，新增实体还要进 `main.go` 的 `WithAutoMigrate`（顺序跟 FK）。
 - **定时任务不走裸 goroutine。** Cron 经 `xCronRunner`，Hub 主循环经 `xMain.Runner`。
 
 ## 横切关注点

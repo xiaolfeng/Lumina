@@ -20,8 +20,8 @@ interface PluginInstallPanelProps {
 }
 
 const pluginBenefits = [
-  '自动连接当前 Lumina 的 27 个 MCP 工具',
-  '同时安装 Q&A、Preview、Pin 与 RepoWiki 技能',
+  '自动连接当前 Lumina 的 30 个 MCP 工具',
+  '同时安装 Q&A、Preview、Pages、Pin 与 RepoWiki 技能',
   '后续更新继续沿用同一个插件入口',
 ]
 

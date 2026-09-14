@@ -1,10 +1,24 @@
 import { useEffect, useState } from 'react'
 import { Toaster } from '@lumina/components/ui/sonner'
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+import Cookies from 'js-cookie'
 import { PreviewBrandHeader } from '#/components/preview/brand-header'
 import { PreviewHeaderContext } from '#/hooks/usePreviewHeader'
+import { getSafeRedirect } from '#/lib/apis/client'
 
 export const Route = createFileRoute('/preview')({
+  beforeLoad: ({ location }) => {
+    const token = Cookies.get('access_token')
+    const refreshToken = Cookies.get('refresh_token')
+    if (!token && !refreshToken) {
+      throw redirect({
+        to: '/auth/login',
+        search: {
+          redirect: getSafeRedirect(location.href, '/console/dashboard'),
+        },
+      })
+    }
+  },
   component: PreviewLayout,
 })
 

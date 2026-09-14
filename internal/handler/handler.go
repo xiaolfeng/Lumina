@@ -25,6 +25,7 @@ type service struct {
 	aiPluginLogic    *logic.AIPluginLogic
 	oauthLogic       *logic.OAuthLogic
 	workspaceLogic   *logic.WorkspaceLogic
+	pagesLogic       *logic.PagesLogic
 }
 
 type handler struct {
@@ -69,6 +70,7 @@ func NewHandler[T IHandler](ctx context.Context, handlerName string) *T {
 			aiPluginLogic:    logic.NewAIPluginLogic(ctx),
 			oauthLogic:       logic.NewOAuthLogic(ctx),
 			workspaceLogic:   logic.NewWorkspaceLogic(ctx),
+			pagesLogic:       logic.NewPagesLogic(ctx),
 		},
 	}
 }
@@ -108,3 +110,5 @@ type AIPluginHandler handler
 type OAuthHandler handler
 
 type WorkspaceHandler handler
+
+type PagesHandler handler

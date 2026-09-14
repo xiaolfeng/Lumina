@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path"
 	"strings"
 
 	xEnv "github.com/bamboo-services/bamboo-base-go/defined/env"
@@ -28,12 +29,22 @@ func resolveRuntimeDomain(ctx context.Context, infoRepo *repository.InfoRepo) st
 	return fmt.Sprintf("http://%s:%s", host, port)
 }
 
-// buildPreviewURL 构造 Preview 会话访问地址；filename 非空时生成文件深链。
+// buildPreviewURL 构造 Preview 会话访问地址；filename 非空时生成路径式深链。
 func buildPreviewURL(domain, hash, filename string) string {
-	query := url.Values{}
-	query.Set("session", hash)
-	if filename != "" {
-		query.Set("file", filename)
+	base := strings.TrimRight(domain, "/") + "/preview/" + url.PathEscape(hash)
+	filename = strings.TrimSpace(filename)
+	if filename == "" {
+		return base
 	}
-	return fmt.Sprintf("%s/preview?%s", strings.TrimRight(domain, "/"), query.Encode())
+	return base + "/" + url.PathEscape(filename)
+}
+
+// buildPagesURL 构造 Pages 展示态访问地址。
+func buildPagesURL(domain, projectName, slug, filename string) string {
+	base := strings.TrimRight(domain, "/") + "/pages/" + url.PathEscape(projectName) + "/" + url.PathEscape(slug)
+	filename = strings.TrimSpace(filename)
+	if filename == "" {
+		return base
+	}
+	return base + "/" + path.Base(filename)
 }

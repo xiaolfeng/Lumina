@@ -112,7 +112,7 @@ export function PreviewSessionDetailDrawer({
                 className="w-full"
                 onClick={() =>
                   window.open(
-                    `/preview?session=${detail.session.hash}`,
+                    `/preview/${detail.session.hash}/`,
                     '_blank',
                   )
                 }

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PreviewRouteImport } from './routes/preview'
+import { Route as PagesRouteImport } from './routes/pages'
 import { Route as InteractRouteImport } from './routes/interact'
 import { Route as ConsoleRouteImport } from './routes/console'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -18,6 +19,7 @@ import { Route as PreviewIndexRouteImport } from './routes/preview/index'
 import { Route as InteractIndexRouteImport } from './routes/interact/index'
 import { Route as ConsoleIndexRouteImport } from './routes/console/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as PreviewSessionHashRouteImport } from './routes/preview/$sessionHash'
 import { Route as InteractThankRouteImport } from './routes/interact/thank'
 import { Route as ConsoleWorkspaceRouteImport } from './routes/console/workspace'
 import { Route as ConsoleSshRouteImport } from './routes/console/ssh'
@@ -37,7 +39,11 @@ import { Route as PublicOauthRouteImport } from './routes/_public/oauth'
 import { Route as ConsoleQaIndexRouteImport } from './routes/console/qa/index'
 import { Route as ConsoleProjectIndexRouteImport } from './routes/console/project/index'
 import { Route as ConsolePreviewIndexRouteImport } from './routes/console/preview/index'
+import { Route as ConsolePagesIndexRouteImport } from './routes/console/pages/index'
+import { Route as PreviewSessionHashSplatRouteImport } from './routes/preview/$sessionHash/$'
+import { Route as PagesProjectNameSlugRouteImport } from './routes/pages/$projectName/$slug'
 import { Route as ConsoleQaSessionIdRouteImport } from './routes/console/qa/$sessionId'
+import { Route as PagesProjectNameSlugSplatRouteImport } from './routes/pages/$projectName/$slug/$'
 import { Route as ConsoleProjectProjectIdRepowikiRouteImport } from './routes/console/project/$projectId/repowiki'
 import { Route as ConsoleProjectProjectIdRepowikiIndexRouteImport } from './routes/console/project/$projectId/repowiki/index'
 import { Route as ConsoleProjectProjectIdRepowikiCreateRouteImport } from './routes/console/project/$projectId/repowiki/create'
@@ -45,6 +51,11 @@ import { Route as ConsoleProjectProjectIdRepowikiCreateRouteImport } from './rou
 const PreviewRoute = PreviewRouteImport.update({
   id: '/preview',
   path: '/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PagesRoute = PagesRouteImport.update({
+  id: '/pages',
+  path: '/pages',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InteractRoute = InteractRouteImport.update({
@@ -85,6 +96,11 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRoute,
+} as any)
+const PreviewSessionHashRoute = PreviewSessionHashRouteImport.update({
+  id: '/$sessionHash',
+  path: '/$sessionHash',
+  getParentRoute: () => PreviewRoute,
 } as any)
 const InteractThankRoute = InteractThankRouteImport.update({
   id: '/thank',
@@ -181,11 +197,32 @@ const ConsolePreviewIndexRoute = ConsolePreviewIndexRouteImport.update({
   path: '/preview/',
   getParentRoute: () => ConsoleRoute,
 } as any)
+const ConsolePagesIndexRoute = ConsolePagesIndexRouteImport.update({
+  id: '/pages/',
+  path: '/pages/',
+  getParentRoute: () => ConsoleRoute,
+} as any)
+const PreviewSessionHashSplatRoute = PreviewSessionHashSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => PreviewSessionHashRoute,
+} as any)
+const PagesProjectNameSlugRoute = PagesProjectNameSlugRouteImport.update({
+  id: '/$projectName/$slug',
+  path: '/$projectName/$slug',
+  getParentRoute: () => PagesRoute,
+} as any)
 const ConsoleQaSessionIdRoute = ConsoleQaSessionIdRouteImport.update({
   id: '/$sessionId',
   path: '/$sessionId',
   getParentRoute: () => ConsoleQaRoute,
 } as any)
+const PagesProjectNameSlugSplatRoute =
+  PagesProjectNameSlugSplatRouteImport.update({
+    id: '/$',
+    path: '/$',
+    getParentRoute: () => PagesProjectNameSlugRoute,
+  } as any)
 const ConsoleProjectProjectIdRepowikiRoute =
   ConsoleProjectProjectIdRepowikiRouteImport.update({
     id: '/$projectId/repowiki',
@@ -210,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/console': typeof ConsoleRouteWithChildren
   '/interact': typeof InteractRouteWithChildren
+  '/pages': typeof PagesRouteWithChildren
   '/preview': typeof PreviewRouteWithChildren
   '/oauth': typeof PublicOauthRoute
   '/start': typeof PublicStartRoute
@@ -227,19 +265,25 @@ export interface FileRoutesByFullPath {
   '/console/ssh': typeof ConsoleSshRoute
   '/console/workspace': typeof ConsoleWorkspaceRoute
   '/interact/thank': typeof InteractThankRoute
+  '/preview/$sessionHash': typeof PreviewSessionHashRouteWithChildren
   '/console/': typeof ConsoleIndexRoute
   '/interact/': typeof InteractIndexRoute
   '/preview/': typeof PreviewIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/pages/$projectName/$slug': typeof PagesProjectNameSlugRouteWithChildren
+  '/preview/$sessionHash/$': typeof PreviewSessionHashSplatRoute
+  '/console/pages/': typeof ConsolePagesIndexRoute
   '/console/preview/': typeof ConsolePreviewIndexRoute
   '/console/project/': typeof ConsoleProjectIndexRoute
   '/console/qa/': typeof ConsoleQaIndexRoute
   '/console/project/$projectId/repowiki': typeof ConsoleProjectProjectIdRepowikiRouteWithChildren
+  '/pages/$projectName/$slug/$': typeof PagesProjectNameSlugSplatRoute
   '/console/project/$projectId/repowiki/create': typeof ConsoleProjectProjectIdRepowikiCreateRoute
   '/console/project/$projectId/repowiki/': typeof ConsoleProjectProjectIdRepowikiIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
+  '/pages': typeof PagesRouteWithChildren
   '/oauth': typeof PublicOauthRoute
   '/start': typeof PublicStartRoute
   '/auth/login': typeof AuthLoginRoute
@@ -254,14 +298,19 @@ export interface FileRoutesByTo {
   '/console/ssh': typeof ConsoleSshRoute
   '/console/workspace': typeof ConsoleWorkspaceRoute
   '/interact/thank': typeof InteractThankRoute
+  '/preview/$sessionHash': typeof PreviewSessionHashRouteWithChildren
   '/': typeof PublicIndexRoute
   '/console': typeof ConsoleIndexRoute
   '/interact': typeof InteractIndexRoute
   '/preview': typeof PreviewIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/pages/$projectName/$slug': typeof PagesProjectNameSlugRouteWithChildren
+  '/preview/$sessionHash/$': typeof PreviewSessionHashSplatRoute
+  '/console/pages': typeof ConsolePagesIndexRoute
   '/console/preview': typeof ConsolePreviewIndexRoute
   '/console/project': typeof ConsoleProjectIndexRoute
   '/console/qa': typeof ConsoleQaIndexRoute
+  '/pages/$projectName/$slug/$': typeof PagesProjectNameSlugSplatRoute
   '/console/project/$projectId/repowiki/create': typeof ConsoleProjectProjectIdRepowikiCreateRoute
   '/console/project/$projectId/repowiki': typeof ConsoleProjectProjectIdRepowikiIndexRoute
 }
@@ -271,6 +320,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/console': typeof ConsoleRouteWithChildren
   '/interact': typeof InteractRouteWithChildren
+  '/pages': typeof PagesRouteWithChildren
   '/preview': typeof PreviewRouteWithChildren
   '/_public/oauth': typeof PublicOauthRoute
   '/_public/start': typeof PublicStartRoute
@@ -288,15 +338,20 @@ export interface FileRoutesById {
   '/console/ssh': typeof ConsoleSshRoute
   '/console/workspace': typeof ConsoleWorkspaceRoute
   '/interact/thank': typeof InteractThankRoute
+  '/preview/$sessionHash': typeof PreviewSessionHashRouteWithChildren
   '/_public/': typeof PublicIndexRoute
   '/console/': typeof ConsoleIndexRoute
   '/interact/': typeof InteractIndexRoute
   '/preview/': typeof PreviewIndexRoute
   '/console/qa/$sessionId': typeof ConsoleQaSessionIdRoute
+  '/pages/$projectName/$slug': typeof PagesProjectNameSlugRouteWithChildren
+  '/preview/$sessionHash/$': typeof PreviewSessionHashSplatRoute
+  '/console/pages/': typeof ConsolePagesIndexRoute
   '/console/preview/': typeof ConsolePreviewIndexRoute
   '/console/project/': typeof ConsoleProjectIndexRoute
   '/console/qa/': typeof ConsoleQaIndexRoute
   '/console/project/$projectId/repowiki': typeof ConsoleProjectProjectIdRepowikiRouteWithChildren
+  '/pages/$projectName/$slug/$': typeof PagesProjectNameSlugSplatRoute
   '/console/project/$projectId/repowiki/create': typeof ConsoleProjectProjectIdRepowikiCreateRoute
   '/console/project/$projectId/repowiki/': typeof ConsoleProjectProjectIdRepowikiIndexRoute
 }
@@ -307,6 +362,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/console'
     | '/interact'
+    | '/pages'
     | '/preview'
     | '/oauth'
     | '/start'
@@ -324,19 +380,25 @@ export interface FileRouteTypes {
     | '/console/ssh'
     | '/console/workspace'
     | '/interact/thank'
+    | '/preview/$sessionHash'
     | '/console/'
     | '/interact/'
     | '/preview/'
     | '/console/qa/$sessionId'
+    | '/pages/$projectName/$slug'
+    | '/preview/$sessionHash/$'
+    | '/console/pages/'
     | '/console/preview/'
     | '/console/project/'
     | '/console/qa/'
     | '/console/project/$projectId/repowiki'
+    | '/pages/$projectName/$slug/$'
     | '/console/project/$projectId/repowiki/create'
     | '/console/project/$projectId/repowiki/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/pages'
     | '/oauth'
     | '/start'
     | '/auth/login'
@@ -351,14 +413,19 @@ export interface FileRouteTypes {
     | '/console/ssh'
     | '/console/workspace'
     | '/interact/thank'
+    | '/preview/$sessionHash'
     | '/'
     | '/console'
     | '/interact'
     | '/preview'
     | '/console/qa/$sessionId'
+    | '/pages/$projectName/$slug'
+    | '/preview/$sessionHash/$'
+    | '/console/pages'
     | '/console/preview'
     | '/console/project'
     | '/console/qa'
+    | '/pages/$projectName/$slug/$'
     | '/console/project/$projectId/repowiki/create'
     | '/console/project/$projectId/repowiki'
   id:
@@ -367,6 +434,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/console'
     | '/interact'
+    | '/pages'
     | '/preview'
     | '/_public/oauth'
     | '/_public/start'
@@ -384,15 +452,20 @@ export interface FileRouteTypes {
     | '/console/ssh'
     | '/console/workspace'
     | '/interact/thank'
+    | '/preview/$sessionHash'
     | '/_public/'
     | '/console/'
     | '/interact/'
     | '/preview/'
     | '/console/qa/$sessionId'
+    | '/pages/$projectName/$slug'
+    | '/preview/$sessionHash/$'
+    | '/console/pages/'
     | '/console/preview/'
     | '/console/project/'
     | '/console/qa/'
     | '/console/project/$projectId/repowiki'
+    | '/pages/$projectName/$slug/$'
     | '/console/project/$projectId/repowiki/create'
     | '/console/project/$projectId/repowiki/'
   fileRoutesById: FileRoutesById
@@ -402,6 +475,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   ConsoleRoute: typeof ConsoleRouteWithChildren
   InteractRoute: typeof InteractRouteWithChildren
+  PagesRoute: typeof PagesRouteWithChildren
   PreviewRoute: typeof PreviewRouteWithChildren
 }
 
@@ -412,6 +486,13 @@ declare module '@tanstack/react-router' {
       path: '/preview'
       fullPath: '/preview'
       preLoaderRoute: typeof PreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pages': {
+      id: '/pages'
+      path: '/pages'
+      fullPath: '/pages'
+      preLoaderRoute: typeof PagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/interact': {
@@ -469,6 +550,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/preview/$sessionHash': {
+      id: '/preview/$sessionHash'
+      path: '/$sessionHash'
+      fullPath: '/preview/$sessionHash'
+      preLoaderRoute: typeof PreviewSessionHashRouteImport
+      parentRoute: typeof PreviewRoute
     }
     '/interact/thank': {
       id: '/interact/thank'
@@ -603,12 +691,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsolePreviewIndexRouteImport
       parentRoute: typeof ConsoleRoute
     }
+    '/console/pages/': {
+      id: '/console/pages/'
+      path: '/pages'
+      fullPath: '/console/pages/'
+      preLoaderRoute: typeof ConsolePagesIndexRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
+    '/preview/$sessionHash/$': {
+      id: '/preview/$sessionHash/$'
+      path: '/$'
+      fullPath: '/preview/$sessionHash/$'
+      preLoaderRoute: typeof PreviewSessionHashSplatRouteImport
+      parentRoute: typeof PreviewSessionHashRoute
+    }
+    '/pages/$projectName/$slug': {
+      id: '/pages/$projectName/$slug'
+      path: '/$projectName/$slug'
+      fullPath: '/pages/$projectName/$slug'
+      preLoaderRoute: typeof PagesProjectNameSlugRouteImport
+      parentRoute: typeof PagesRoute
+    }
     '/console/qa/$sessionId': {
       id: '/console/qa/$sessionId'
       path: '/$sessionId'
       fullPath: '/console/qa/$sessionId'
       preLoaderRoute: typeof ConsoleQaSessionIdRouteImport
       parentRoute: typeof ConsoleQaRoute
+    }
+    '/pages/$projectName/$slug/$': {
+      id: '/pages/$projectName/$slug/$'
+      path: '/$'
+      fullPath: '/pages/$projectName/$slug/$'
+      preLoaderRoute: typeof PagesProjectNameSlugSplatRouteImport
+      parentRoute: typeof PagesProjectNameSlugRoute
     }
     '/console/project/$projectId/repowiki': {
       id: '/console/project/$projectId/repowiki'
@@ -722,6 +838,7 @@ interface ConsoleRouteChildren {
   ConsoleSshRoute: typeof ConsoleSshRoute
   ConsoleWorkspaceRoute: typeof ConsoleWorkspaceRoute
   ConsoleIndexRoute: typeof ConsoleIndexRoute
+  ConsolePagesIndexRoute: typeof ConsolePagesIndexRoute
   ConsolePreviewIndexRoute: typeof ConsolePreviewIndexRoute
 }
 
@@ -737,6 +854,7 @@ const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleSshRoute: ConsoleSshRoute,
   ConsoleWorkspaceRoute: ConsoleWorkspaceRoute,
   ConsoleIndexRoute: ConsoleIndexRoute,
+  ConsolePagesIndexRoute: ConsolePagesIndexRoute,
   ConsolePreviewIndexRoute: ConsolePreviewIndexRoute,
 }
 
@@ -757,11 +875,45 @@ const InteractRouteWithChildren = InteractRoute._addFileChildren(
   InteractRouteChildren,
 )
 
+interface PagesProjectNameSlugRouteChildren {
+  PagesProjectNameSlugSplatRoute: typeof PagesProjectNameSlugSplatRoute
+}
+
+const PagesProjectNameSlugRouteChildren: PagesProjectNameSlugRouteChildren = {
+  PagesProjectNameSlugSplatRoute: PagesProjectNameSlugSplatRoute,
+}
+
+const PagesProjectNameSlugRouteWithChildren =
+  PagesProjectNameSlugRoute._addFileChildren(PagesProjectNameSlugRouteChildren)
+
+interface PagesRouteChildren {
+  PagesProjectNameSlugRoute: typeof PagesProjectNameSlugRouteWithChildren
+}
+
+const PagesRouteChildren: PagesRouteChildren = {
+  PagesProjectNameSlugRoute: PagesProjectNameSlugRouteWithChildren,
+}
+
+const PagesRouteWithChildren = PagesRoute._addFileChildren(PagesRouteChildren)
+
+interface PreviewSessionHashRouteChildren {
+  PreviewSessionHashSplatRoute: typeof PreviewSessionHashSplatRoute
+}
+
+const PreviewSessionHashRouteChildren: PreviewSessionHashRouteChildren = {
+  PreviewSessionHashSplatRoute: PreviewSessionHashSplatRoute,
+}
+
+const PreviewSessionHashRouteWithChildren =
+  PreviewSessionHashRoute._addFileChildren(PreviewSessionHashRouteChildren)
+
 interface PreviewRouteChildren {
+  PreviewSessionHashRoute: typeof PreviewSessionHashRouteWithChildren
   PreviewIndexRoute: typeof PreviewIndexRoute
 }
 
 const PreviewRouteChildren: PreviewRouteChildren = {
+  PreviewSessionHashRoute: PreviewSessionHashRouteWithChildren,
   PreviewIndexRoute: PreviewIndexRoute,
 }
 
@@ -773,6 +925,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   ConsoleRoute: ConsoleRouteWithChildren,
   InteractRoute: InteractRouteWithChildren,
+  PagesRoute: PagesRouteWithChildren,
   PreviewRoute: PreviewRouteWithChildren,
 }
 export const routeTree = rootRouteImport

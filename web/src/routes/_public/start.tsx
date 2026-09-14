@@ -90,6 +90,8 @@ function iconForModule(id: string) {
       return MessageCircle
     case 'preview':
       return MonitorPlay
+    case 'pages':
+      return Sparkles
     case 'pin':
       return Pin
     default:
@@ -346,7 +348,7 @@ function StartPage() {
             className="display-title mb-8 text-center text-2xl font-bold text-sea-ink sm:text-3xl"
             variants={fadeUp}
           >
-            27 个工具，按任务编排
+            30 个工具，按任务编排
           </motion.h2>
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
             {MCP_TOOL_MODULES.map((mod) => {

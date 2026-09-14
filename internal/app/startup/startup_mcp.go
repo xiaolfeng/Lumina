@@ -21,6 +21,7 @@ func (r *reg) mcpInit(ctx context.Context) (any, error) {
 	projectLogic := logic.NewProjectLogic(ctx)
 	pinLogic := logic.NewPinLogic(ctx)
 	previewLogic := logic.NewPreviewLogic(ctx)
+	pagesLogic := logic.NewPagesLogic(ctx)
 	workspaceLogic := logic.NewWorkspaceLogic(ctx)
 	repoWikiLogic := logic.GetRepoWikiLogicFromContext(ctx)
 	if repoWikiLogic == nil {
@@ -30,6 +31,7 @@ func (r *reg) mcpInit(ctx context.Context) (any, error) {
 	mcp.SetProjectLogic(projectLogic)
 	mcp.SetPinLogic(pinLogic)
 	mcp.SetPreviewLogic(previewLogic)
+	mcp.SetPagesLogic(pagesLogic)
 	mcp.SetWorkspaceLogic(workspaceLogic)
 	mcp.SetRepoWikiLogic(repoWikiLogic)
 

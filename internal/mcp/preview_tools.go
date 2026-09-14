@@ -209,16 +209,19 @@ func boolPtr(value bool) *bool {
 
 func previewSessionSchema() map[string]any {
 	return objectSchema(map[string]any{
-		"id":          map[string]any{"type": "string", "description": "Preview 会话雪花 ID。"},
-		"project_id":  map[string]any{"type": "string", "description": "关联项目雪花 ID。"},
-		"title":       map[string]any{"type": "string", "description": "会话标题。"},
-		"hash":        map[string]any{"type": "string", "description": "网页访问哈希标识；不可替代 Q&A file_id 引用。"},
-		"status":      map[string]any{"type": "string", "description": "会话状态。"},
-		"file_count":  map[string]any{"type": "integer", "minimum": 0, "description": "会话内文件数量（批量统计，避免 Agent 逐会话轮询）。"},
-		"expires_at":  map[string]any{"type": []string{"string", "null"}, "description": "会话过期时间。"},
-		"created_at":  map[string]any{"type": "string", "description": "RFC 3339 创建时间。"},
-		"updated_at":  map[string]any{"type": "string", "description": "RFC 3339 更新时间。"},
-		"preview_url": map[string]any{"type": "string", "format": "uri", "description": "绝对预览页 URL。"},
+		"id":                map[string]any{"type": "string", "description": "Preview 会话雪花 ID。"},
+		"project_id":        map[string]any{"type": "string", "description": "关联项目雪花 ID。"},
+		"title":             map[string]any{"type": "string", "description": "会话标题。"},
+		"hash":              map[string]any{"type": "string", "description": "网页访问哈希标识；不可替代 Q&A file_id 引用。"},
+		"status":            map[string]any{"type": "string", "description": "会话状态。"},
+		"file_count":        map[string]any{"type": "integer", "minimum": 0, "description": "会话内文件数量（批量统计，避免 Agent 逐会话轮询）。"},
+		"expires_at":        map[string]any{"type": []string{"string", "null"}, "description": "会话过期时间。"},
+		"source_page_id":    map[string]any{"type": []string{"string", "null"}, "description": "Fork 来源 Page ID。"},
+		"source_page_slug":  map[string]any{"type": []string{"string", "null"}, "description": "Fork 来源 Page slug。"},
+		"source_version_id": map[string]any{"type": []string{"string", "null"}, "description": "Fork 基准版本 ID。"},
+		"created_at":        map[string]any{"type": "string", "description": "RFC 3339 创建时间。"},
+		"updated_at":        map[string]any{"type": "string", "description": "RFC 3339 更新时间。"},
+		"preview_url":       map[string]any{"type": "string", "format": "uri", "description": "路径式绝对预览页 URL，如 /preview/<hash>/<filename>。"},
 	}, "id", "project_id", "title", "hash", "status", "file_count", "created_at", "updated_at", "preview_url")
 }
 
@@ -664,18 +667,37 @@ func handlePreviewFileGet(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 }
 
 func previewSessionData(session *apiPreview.PreviewSessionResponse, previewURL string) map[string]any {
-	return map[string]any{
+	data := map[string]any{
 		"id":          session.ID.String(),
 		"project_id":  session.ProjectID.String(),
 		"title":       session.Title,
 		"hash":        session.Hash,
 		"status":      session.Status,
 		"file_count":  session.FileCount,
-		"expires_at":  session.ExpiresAt,
+		"expires_at":  nullableString(session.ExpiresAt),
 		"created_at":  session.CreatedAt,
 		"updated_at":  session.UpdatedAt,
 		"preview_url": previewURL,
 	}
+	if session.SourcePageID != nil {
+		data["source_page_id"] = session.SourcePageID.String()
+	} else {
+		data["source_page_id"] = nil
+	}
+	data["source_page_slug"] = nullableString(session.SourcePageSlug)
+	if session.SourceVersionID != nil {
+		data["source_version_id"] = session.SourceVersionID.String()
+	} else {
+		data["source_version_id"] = nil
+	}
+	return data
+}
+
+func nullableString(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
 }
 
 func previewFileData(file *apiPreview.PreviewFileResponse) map[string]any {

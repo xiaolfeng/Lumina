@@ -167,8 +167,8 @@ function PreviewPage() {
                   <Eye className="size-3.5" />
                 </button>
                 <Link
-                  to="/preview"
-                  search={{ session: item.hash }}
+                  to="/preview/$sessionHash/$"
+                  params={{ sessionHash: item.hash, _splat: 'index.html' }}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"

@@ -97,7 +97,7 @@ export function PreviewSupplement({ content }: { content: string }) {
         const detail = res.data
         if (detail) {
           setSrc(
-            `/api/v1/preview/sessions/${detail.session_hash}/files/${detail.filename}`,
+            `/preview/${detail.session_hash}/${detail.filename}`,
           )
         } else {
           setError('预览文件不存在')

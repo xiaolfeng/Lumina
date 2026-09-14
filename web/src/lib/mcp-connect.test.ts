@@ -47,6 +47,11 @@ const expectedTools = [
   'preview_file_upload',
   'preview_file_list',
   'preview_file_get',
+  'workspace_list',
+  'workspace_get',
+  'pages_list',
+  'pages_promote',
+  'pages_fork',
 ]
 
 describe('resolveMcpOrigin', () => {
@@ -99,8 +104,8 @@ describe('api key helpers', () => {
 })
 
 describe('tool catalog', () => {
-  it('lists the 25 backend MCP tools', () => {
-    expect(MCP_TOOL_NAMES).toHaveLength(25)
+  it('lists the 30 backend MCP tools', () => {
+    expect(MCP_TOOL_NAMES).toHaveLength(30)
     expect([...MCP_TOOL_NAMES].sort()).toEqual([...expectedTools].sort())
     expect(MCP_TOOL_NAMES).not.toContain('qa_pushQuestion')
     expect(MCP_TOOL_NAMES).not.toContain('memory_create')

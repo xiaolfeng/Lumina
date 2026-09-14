@@ -24,6 +24,7 @@ import (
 type previewRepo struct {
 	session *repository.PreviewSessionRepo
 	file    *repository.PreviewFileRepo
+	page    *repository.PageRepo
 	info    *repository.InfoRepo
 }
 
@@ -51,6 +52,7 @@ func NewPreviewLogic(ctx context.Context) *PreviewLogic {
 		repo: previewRepo{
 			session: repository.NewPreviewSessionRepo(db),
 			file:    repository.NewPreviewFileRepo(db),
+			page:    repository.NewPageRepo(db),
 			info:    repository.NewInfoRepo(db),
 		},
 	}
@@ -82,7 +84,7 @@ func (l *PreviewLogic) CreateSession(ctx context.Context, projectID xSnowflake.S
 		return nil, xErr
 	}
 
-	return toPreviewSessionResponse(session), nil
+	return l.toPreviewSessionResponse(ctx, session), nil
 }
 
 // ListSessions 分页获取预览会话列表（projectID 为零值时不过滤），并批量填充各会话文件数。
@@ -104,9 +106,10 @@ func (l *PreviewLogic) ListSessions(ctx context.Context, projectID, workspaceID 
 		return nil, xErr
 	}
 
+	slugs := l.sourcePageSlugs(ctx, sessions)
 	items := make([]apiPreview.PreviewSessionResponse, 0, len(sessions))
 	for _, s := range sessions {
-		resp := toPreviewSessionResponse(s)
+		resp := toPreviewSessionResponse(s, slugs[sourcePageIDKey(s)])
 		resp.FileCount = fileCounts[s.ID.Int64()]
 		items = append(items, *resp)
 	}
@@ -132,7 +135,7 @@ func (l *PreviewLogic) GetSessionByID(ctx context.Context, sessionID xSnowflake.
 		return nil, xErr
 	}
 
-	resp := toPreviewSessionResponse(session)
+	resp := l.toPreviewSessionResponse(ctx, session)
 	resp.FileCount = counts[sessionID.Int64()]
 	return resp, nil
 }
@@ -227,7 +230,7 @@ func (l *PreviewLogic) GetSessionByHash(ctx context.Context, hash string) (*apiP
 		return nil, xErr
 	}
 
-	return toPreviewSessionResponse(session), nil
+	return l.toPreviewSessionResponse(ctx, session), nil
 }
 
 // GetSessionDetailByID 根据会话 ID 获取预览会话详情（含文件列表）
@@ -395,10 +398,12 @@ func (l *PreviewLogic) ExpireStaleSessions(ctx context.Context) {
 
 const defaultPreviewSessionTTL = 7 * 24 * time.Hour
 
-func (l *PreviewLogic) sessionTTL(ctx context.Context) time.Duration {
-	ttlStr, xErr := l.repo.info.GetByKey(ctx, bConst.InfoKeyPreviewSessionTTL)
+func previewSessionTTL(ctx context.Context, infoRepo *repository.InfoRepo) time.Duration {
+	if infoRepo == nil {
+		return defaultPreviewSessionTTL
+	}
+	ttlStr, xErr := infoRepo.GetByKey(ctx, bConst.InfoKeyPreviewSessionTTL)
 	if xErr != nil {
-		l.log.Warn(ctx, fmt.Sprintf("读取 preview.session.ttl 失败: %s，使用默认值", xErr.GetMessage()))
 		return defaultPreviewSessionTTL
 	}
 	sec, err := strconv.Atoi(ttlStr)
@@ -406,6 +411,10 @@ func (l *PreviewLogic) sessionTTL(ctx context.Context) time.Duration {
 		return defaultPreviewSessionTTL
 	}
 	return time.Duration(sec) * time.Second
+}
+
+func (l *PreviewLogic) sessionTTL(ctx context.Context) time.Duration {
+	return previewSessionTTL(ctx, l.repo.info)
 }
 
 func sessionDue(session *entity.PreviewSession, now time.Time) bool {
@@ -477,21 +486,74 @@ func inferMimeType(filename string) string {
 	}
 }
 
+func (l *PreviewLogic) toPreviewSessionResponse(ctx context.Context, session *entity.PreviewSession) *apiPreview.PreviewSessionResponse {
+	return toPreviewSessionResponse(session, l.sourcePageSlug(ctx, session))
+}
+
+func sourcePageIDKey(session *entity.PreviewSession) int64 {
+	if session == nil || session.SourcePageID == nil || session.SourcePageID.IsZero() {
+		return 0
+	}
+	return session.SourcePageID.Int64()
+}
+
+func (l *PreviewLogic) sourcePageSlug(ctx context.Context, session *entity.PreviewSession) string {
+	id := sourcePageIDKey(session)
+	if id == 0 {
+		return ""
+	}
+	page, xErr := l.repo.page.GetByID(ctx, *session.SourcePageID)
+	if xErr != nil {
+		l.log.Warn(ctx, xErr.Error())
+		return ""
+	}
+	return page.Slug
+}
+
+func (l *PreviewLogic) sourcePageSlugs(ctx context.Context, sessions []*entity.PreviewSession) map[int64]string {
+	ids := make([]xSnowflake.SnowflakeID, 0, len(sessions))
+	seen := make(map[int64]struct{}, len(sessions))
+	for _, session := range sessions {
+		id := sourcePageIDKey(session)
+		if id == 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, *session.SourcePageID)
+	}
+	pages, xErr := l.repo.page.GetByIDs(ctx, ids)
+	if xErr != nil {
+		l.log.Warn(ctx, xErr.Error())
+		return map[int64]string{}
+	}
+	slugs := make(map[int64]string, len(pages))
+	for _, page := range pages {
+		slugs[page.ID.Int64()] = page.Slug
+	}
+	return slugs
+}
+
 // toPreviewSessionResponse 将预览会话实体映射为响应 DTO
-func toPreviewSessionResponse(session *entity.PreviewSession) *apiPreview.PreviewSessionResponse {
+func toPreviewSessionResponse(session *entity.PreviewSession, sourcePageSlug string) *apiPreview.PreviewSessionResponse {
 	expiresAt := ""
 	if session.ExpiresAt != nil {
 		expiresAt = session.ExpiresAt.Format(time.RFC3339)
 	}
 	return &apiPreview.PreviewSessionResponse{
-		ID:        session.ID,
-		ProjectID: session.ProjectID,
-		Title:     session.Title,
-		Hash:      session.Hash,
-		Status:    session.Status,
-		ExpiresAt: expiresAt,
-		CreatedAt: session.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: session.UpdatedAt.Format(time.RFC3339),
+		ID:              session.ID,
+		ProjectID:       session.ProjectID,
+		Title:           session.Title,
+		Hash:            session.Hash,
+		Status:          session.Status,
+		ExpiresAt:       expiresAt,
+		SourcePageID:    session.SourcePageID,
+		SourcePageSlug:  sourcePageSlug,
+		SourceVersionID: session.SourceVersionID,
+		CreatedAt:       session.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       session.UpdatedAt.Format(time.RFC3339),
 	}
 }
 
