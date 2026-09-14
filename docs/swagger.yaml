@@ -4167,7 +4167,7 @@ paths:
       summary: '[管理] 切换生效版本'
       tags:
       - 页面接口
-  /api/v1/pages/{project_name}/{slug}/auth-check:
+  /api/v1/pages/by-project/{project_name}/{slug}/auth-check:
     get:
       description: 返回是否需要密码以及当前 Cookie 是否有效
       parameters:
@@ -4196,7 +4196,7 @@ paths:
       summary: '[公开] 检查页面认证状态'
       tags:
       - 页面接口
-  /api/v1/pages/{project_name}/{slug}/meta:
+  /api/v1/pages/by-project/{project_name}/{slug}/meta:
     get:
       description: 返回当前生效（或指定）版本的元信息与文件清单
       parameters:
@@ -4237,7 +4237,7 @@ paths:
       summary: '[公开] 获取页面元信息'
       tags:
       - 页面接口
-  /api/v1/pages/{project_name}/{slug}/unlock:
+  /api/v1/pages/by-project/{project_name}/{slug}/unlock:
     post:
       consumes:
       - application/json

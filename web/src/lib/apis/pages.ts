@@ -65,7 +65,9 @@ export function checkPageAuth(
   projectName: string,
   slug: string,
 ): Promise<BaseResponse<PageAuthCheckResponse>> {
-  return apiClient.get(`/api/v1/pages/${projectName}/${slug}/auth-check`)
+  return apiClient.get(
+    `/api/v1/pages/by-project/${projectName}/${slug}/auth-check`,
+  )
 }
 
 export function unlockPage(
@@ -73,9 +75,12 @@ export function unlockPage(
   slug: string,
   password: string,
 ): Promise<BaseResponse> {
-  return apiClient.post(`/api/v1/pages/${projectName}/${slug}/unlock`, {
-    password,
-  })
+  return apiClient.post(
+    `/api/v1/pages/by-project/${projectName}/${slug}/unlock`,
+    {
+      password,
+    },
+  )
 }
 
 export function getPageMeta(
@@ -83,7 +88,7 @@ export function getPageMeta(
   slug: string,
   version?: string,
 ): Promise<BaseResponse<PagePublicMetaResponse>> {
-  return apiClient.get(`/api/v1/pages/${projectName}/${slug}/meta`, {
+  return apiClient.get(`/api/v1/pages/by-project/${projectName}/${slug}/meta`, {
     params: version ? { v: version } : undefined,
   })
 }

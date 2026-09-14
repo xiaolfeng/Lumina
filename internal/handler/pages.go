@@ -218,7 +218,7 @@ func (h *PagesHandler) UpdateAccessPolicy(ctx *gin.Context) {
 // @Param       project_name  path  string  true  "项目名称"
 // @Param       slug          path  string  true  "页面标识"
 // @Success     200  {object}  apiCommon.BaseResponse{data=apiPages.PageAuthCheckResponse}  "认证状态"
-// @Router      /api/v1/pages/{project_name}/{slug}/auth-check [GET]
+// @Router      /api/v1/pages/by-project/{project_name}/{slug}/auth-check [GET]
 func (h *PagesHandler) CheckPageAuth(ctx *gin.Context) {
 	projectName := ctx.Param("project_name")
 	slug := ctx.Param("slug")
@@ -248,7 +248,7 @@ func (h *PagesHandler) CheckPageAuth(ctx *gin.Context) {
 // @Param       request       body  apiPages.UnlockPageRequest  true  "密码"
 // @Success     200  {object}  apiCommon.BaseResponse  "解锁成功"
 // @Failure     401  {object}  apiCommon.BaseResponse  "密码错误"
-// @Router      /api/v1/pages/{project_name}/{slug}/unlock [POST]
+// @Router      /api/v1/pages/by-project/{project_name}/{slug}/unlock [POST]
 func (h *PagesHandler) UnlockPage(ctx *gin.Context) {
 	var req apiPages.UnlockPageRequest
 	if !BindJSON(ctx, &req) {
@@ -278,7 +278,7 @@ func (h *PagesHandler) UnlockPage(ctx *gin.Context) {
 // @Success     200  {object}  apiCommon.BaseResponse{data=apiPages.PagePublicMetaResponse}  "查询成功"
 // @Failure     401  {object}  apiCommon.BaseResponse  "密码门未解锁"
 // @Failure     404  {object}  apiCommon.BaseResponse  "页面不存在"
-// @Router      /api/v1/pages/{project_name}/{slug}/meta [GET]
+// @Router      /api/v1/pages/by-project/{project_name}/{slug}/meta [GET]
 func (h *PagesHandler) GetPageMeta(ctx *gin.Context) {
 	projectName := ctx.Param("project_name")
 	slug := ctx.Param("slug")

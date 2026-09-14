@@ -2159,6 +2159,174 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/pages/by-project/{project_name}/{slug}/auth-check": {
+            "get": {
+                "description": "返回是否需要密码以及当前 Cookie 是否有效",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[公开] 检查页面认证状态",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "项目名称",
+                        "name": "project_name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面标识",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "认证状态",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.PageAuthCheckResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pages/by-project/{project_name}/{slug}/meta": {
+            "get": {
+                "description": "返回当前生效（或指定）版本的元信息与文件清单",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[公开] 获取页面元信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "项目名称",
+                        "name": "project_name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面标识",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "历史版本号",
+                        "name": "v",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.PagePublicMetaResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "密码门未解锁",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "页面不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/pages/by-project/{project_name}/{slug}/unlock": {
+            "post": {
+                "description": "校验密码后签发 HttpOnly Cookie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[公开] 解锁页面密码门",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "项目名称",
+                        "name": "project_name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面标识",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "密码",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/pages.UnlockPageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "解锁成功",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "密码错误",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/pages/{id}": {
             "get": {
                 "description": "根据页面 ID 获取详情（不含密码哈希）",
@@ -2518,174 +2686,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "未授权",
-                        "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/pages/{project_name}/{slug}/auth-check": {
-            "get": {
-                "description": "返回是否需要密码以及当前 Cookie 是否有效",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "页面接口"
-                ],
-                "summary": "[公开] 检查页面认证状态",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "项目名称",
-                        "name": "project_name",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "页面标识",
-                        "name": "slug",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "认证状态",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/common.BaseResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/pages.PageAuthCheckResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/pages/{project_name}/{slug}/meta": {
-            "get": {
-                "description": "返回当前生效（或指定）版本的元信息与文件清单",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "页面接口"
-                ],
-                "summary": "[公开] 获取页面元信息",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "项目名称",
-                        "name": "project_name",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "页面标识",
-                        "name": "slug",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "历史版本号",
-                        "name": "v",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "查询成功",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/common.BaseResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/pages.PagePublicMetaResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "密码门未解锁",
-                        "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "页面不存在",
-                        "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/pages/{project_name}/{slug}/unlock": {
-            "post": {
-                "description": "校验密码后签发 HttpOnly Cookie",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "页面接口"
-                ],
-                "summary": "[公开] 解锁页面密码门",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "项目名称",
-                        "name": "project_name",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "页面标识",
-                        "name": "slug",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "密码",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/pages.UnlockPageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "解锁成功",
-                        "schema": {
-                            "$ref": "#/definitions/common.BaseResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "密码错误",
                         "schema": {
                             "$ref": "#/definitions/common.BaseResponse"
                         }

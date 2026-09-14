@@ -13,7 +13,7 @@ import (
 func (r *route) pagesRouter(route gin.IRouter) {
 	pagesHandler := handler.NewHandler[handler.PagesHandler](r.context, "PagesHandler")
 
-	public := route.Group("/pages")
+	public := route.Group("/pages/by-project")
 	public.GET("/:project_name/:slug/auth-check", pagesHandler.CheckPageAuth)
 	public.POST("/:project_name/:slug/unlock", pagesHandler.UnlockPage)
 	public.GET("/:project_name/:slug/meta", pagesHandler.GetPageMeta)

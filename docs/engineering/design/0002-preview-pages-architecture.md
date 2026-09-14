@@ -274,7 +274,7 @@ Project (已有, Gene=32)
     - 支持密码重置、清除密码恢复公开、失效历史会话等完整的运维管控能力；
 - **密码门拦截与无感会话流程**：
   1. 访客首次访问受密码保护的 `/pages/:project/:slug/*` 时，`middleware.PagesAuth` 拦截请求并渲染微明标准「密码门」界面（展示输入框与解锁按钮）；
-  2. 访客输入密码提交至 `POST /api/v1/pages/:project/:slug/unlock`；
+  2. 访客输入密码提交至 `POST /api/v1/pages/by-project/:project/:slug/unlock`；
   3. 后端比对密码哈希通过后，签发有时效签名的安全 HttpOnly Cookie（`lum_pages_auth`，默认 24 小时有效）；
   4. 访客浏览器在有效期内可免密畅通访问该快照下的全量 HTML、Markdown 以及相对引用的 CSS、JS、图片资产，无需重复输入密码；
   5. 整体架构复用成熟的 `WikiAuth` 密码门设计，保持系统底层安全模型统一。
@@ -300,7 +300,7 @@ Project (已有, Gene=32)
 
 ### 9.2 Pages 模块接口
 - `GET /api/v1/pages/:project_name/:slug/*filepath`：按路径读取当前线上生效版本的文件（公开或密码校验）；
-- `POST /api/v1/pages/:project_name/:slug/unlock`：公开接口，提交密码解锁密码门，返回 Session Cookie；
+- `POST /api/v1/pages/by-project/:project_name/:slug/unlock`：公开接口，提交密码解锁密码门，返回 Session Cookie；
 - `PUT /api/v1/pages/:id/access-policy`：管理员接口（需控制台登录），修改页面访问策略与密码保护：
   ```json
   {
