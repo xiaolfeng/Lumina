@@ -158,9 +158,10 @@ func (l *PreviewLogic) UploadFile(ctx context.Context, sessionID xSnowflake.Snow
 		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(err.Error()), false, nil)
 	}
 
-	// 校验文件大小
-	if len(content) > bConst.PreviewFileMaxSize {
-		return nil, xError.NewError(ctx, xError.ParameterError, "文件大小超出上限(256KB)", false, nil)
+	// 校验文件大小（MySQL TEXT 列上限低于通用上限，按驱动收窄有效上限）
+	maxBytes := l.repo.file.MaxContentBytes()
+	if len(content) > maxBytes {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(fmt.Sprintf("文件大小超出上限(%dKB)", maxBytes/1024)), false, nil)
 	}
 
 	session, xErr := l.repo.session.GetByID(ctx, sessionID)

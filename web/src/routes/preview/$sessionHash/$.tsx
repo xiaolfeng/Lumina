@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useNavigate, useParams } from '@tanstack/react-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FileCode2, FolderOpen, Rocket } from 'lucide-react'
 import Cookies from 'js-cookie'
 
@@ -7,6 +7,7 @@ import { WorkbenchCanvas } from '#/components/preview/workbench-canvas'
 import { PromoteDialog } from '#/components/preview/promote-dialog'
 import { usePreviewHeader } from '#/hooks/usePreviewHeader'
 import { usePreviewWebSocket } from '#/hooks/usePreviewWebSocket'
+import { getPreviewSessionDetail } from '#/lib/apis/preview'
 import { getSafeRedirect } from '#/lib/apis/client'
 import type {
   PreviewFileItem,
@@ -44,6 +45,8 @@ function PreviewWorkbenchPage() {
   const [error, setError] = useState('')
   const [sourceMode, setSourceMode] = useState(false)
   const [promoteOpen, setPromoteOpen] = useState(false)
+  // 同步序号单调递增：updated_at 仅秒级精度，同秒覆写文件时靠它强制 iframe 重载
+  const [syncSeq, setSyncSeq] = useState(0)
 
   const requestedFile = useMemo(() => {
     const raw = (splat as { _splat?: string })._splat ?? ''
@@ -65,6 +68,7 @@ function PreviewWorkbenchPage() {
       const syncData = data as PreviewSyncData
       setSession(syncData.session)
       setFiles(syncData.files)
+      setSyncSeq((seq) => seq + 1)
       let next = ''
       if (activeFile && syncData.files.some((file) => file.filename === activeFile)) {
         next = activeFile
@@ -95,6 +99,23 @@ function PreviewWorkbenchPage() {
   )
 
   const { status } = usePreviewWebSocket(sessionHash, { onSync: handleSync })
+
+  // REST 兜底数据通道：挂载时即用快照接口填充 session/files（改善首屏，也覆盖
+  // WS 被环境禁用的场景），WS 的 preview_sync 到达后照旧经 handleSync 覆盖；
+  // 经同一入口合并可保留 activeFile 选择，不产生闪跳
+  const handleSyncRef = useRef(handleSync)
+  handleSyncRef.current = handleSync
+  useEffect(() => {
+    let cancelled = false
+    void getPreviewSessionDetail(sessionHash)
+      .then((res) => {
+        if (!cancelled && res.data?.session) handleSyncRef.current(res.data)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [sessionHash])
 
   useEffect(() => {
     if (status === 'rejected') {
@@ -136,11 +157,15 @@ function PreviewWorkbenchPage() {
     })
   }
 
-  const isLoading = status === 'idle' || status === 'connecting'
+  // REST 已带回数据时即使 WS 仍在连接也直接渲染内容，不展示无限「加载中…」
+  const isLoading =
+    session === null && (status === 'idle' || status === 'connecting')
   const activeUpdatedAt =
     files.find((file) => file.filename === activeFile)?.updated_at ?? ''
   const src = activeFile
-    ? `/preview/${sessionHash}/${encodeURIComponent(activeFile)}?v=${encodeURIComponent(activeUpdatedAt)}`
+    ? `/preview/${sessionHash}/${encodeURIComponent(activeFile)}?v=${encodeURIComponent(
+        activeUpdatedAt,
+      )}&_lumina_sync=${syncSeq}&lumina_frame=1`
     : ''
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -154,6 +179,21 @@ function PreviewWorkbenchPage() {
             正在迭代
             {session.source_page_slug ? ` /${session.source_page_slug}` : ''}
           </span>
+        ) : null}
+        {/* 窄屏（md 以下）侧栏隐藏，用紧凑下拉切换文件；桌面端仍走左侧文件列表 */}
+        {files.length > 0 ? (
+          <select
+            aria-label="切换预览文件"
+            className="max-w-40 border border-line bg-transparent px-1.5 py-0.5 text-xs md:hidden"
+            value={activeFile}
+            onChange={(event) => selectFile(event.target.value)}
+          >
+            {files.map((file) => (
+              <option key={file.id} value={file.filename}>
+                {file.filename}
+              </option>
+            ))}
+          </select>
         ) : null}
         <div className="flex-1" />
         <button
@@ -173,7 +213,7 @@ function PreviewWorkbenchPage() {
         </button>
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-surface/50">
+        <aside className="hidden w-60 shrink-0 flex-col border-r border-line bg-surface/50 md:flex">
           <div className="border-b border-line px-4 py-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-lagoon-deep">
               文件

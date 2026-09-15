@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { ExternalLink, Shield } from 'lucide-react'
 import { Button } from '@lumina/components/ui/button'
 import { Input } from '@lumina/components/ui/input'
@@ -82,18 +82,16 @@ function ConsolePagesPage() {
                   {formatDateTime(item.updated_at)}
                 </p>
               </div>
-              <Link
-                to="/pages/$projectName/$slug/$"
-                params={{
-                  projectName: item.project_name,
-                  slug: item.slug,
-                  _splat: 'index.html',
-                }}
+              {/* page_url 的域名在 site.domain 未配置时回退 localhost，跨部署不可靠；
+                  改用相对裸路径，入口由展示页按 version.entry_filename 兜底解析 */}
+              <a
+                href={`/pages/${item.project_name}/${item.slug}/`}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="grid size-11 place-items-center text-sea-ink-soft"
               >
                 <ExternalLink className="size-3.5" />
-              </Link>
+              </a>
               <button
                 type="button"
                 className="grid size-11 place-items-center text-sea-ink-soft"

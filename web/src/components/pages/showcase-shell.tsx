@@ -11,6 +11,18 @@ function isRenderable(filename: string) {
   return /\.(html|htm|md)$/i.test(filename)
 }
 
+/** 解析当前激活文件：URL 中的文件名必须存在于版本文件清单，否则回退版本入口，再回退首个文件 */
+export function resolveActiveFile(
+  filepath: string,
+  entryFilename: string,
+  files: { filename: string }[],
+): string {
+  const names = new Set(files.map((file) => file.filename))
+  if (filepath && names.has(filepath)) return filepath
+  if (entryFilename && names.has(entryFilename)) return entryFilename
+  return files[0]?.filename ?? ''
+}
+
 export function ShowcaseShell({
   projectName,
   slug,
@@ -33,12 +45,14 @@ export function ShowcaseShell({
   const [advanced, setAdvanced] = useState(false)
   const [pos, setPos] = useState({ x: 24, y: 24 })
   const drag = useRef<{ ox: number; oy: number; moved: boolean } | null>(null)
+  const pillRef = useRef<HTMLButtonElement | null>(null)
   const fork = useForkPage()
   const switchActive = useSwitchActiveVersion()
 
-  const activeFile = filepath || version.entry_filename || files[0]?.filename || ''
+  const activeFile = resolveActiveFile(filepath, version.entry_filename, files)
+  // lumina_frame=1 标记 iframe 场景，后端据此直出文件，规避 Accept 启发式误判
   const src = activeFile
-    ? `/pages/${projectName}/${slug}/${encodeURIComponent(activeFile)}?v=${encodeURIComponent(version.created_at)}`
+    ? `/pages/${projectName}/${slug}/${encodeURIComponent(activeFile)}?v=${encodeURIComponent(version.created_at)}&lumina_frame=1`
     : ''
   const renderable = files.filter((file) => isRenderable(file.filename))
   const advancedFiles = files.filter((file) => !isRenderable(file.filename))
@@ -90,6 +104,7 @@ export function ShowcaseShell({
       ) : null}
 
       <button
+        ref={pillRef}
         type="button"
         className="absolute z-30 flex items-center gap-2 border border-line bg-foam/95 px-3 py-1.5 text-xs text-sea-ink shadow-sm"
         style={{ right: pos.x, top: pos.y }}
@@ -102,10 +117,17 @@ export function ShowcaseShell({
           const dy = event.clientY - drag.current.oy
           if (Math.hypot(dx, dy) > 4) drag.current.moved = true
           if (drag.current.moved) {
-            setPos({
-              x: Math.max(8, pos.x - dx),
-              y: Math.max(8, pos.y + dy),
-            })
+            // x 为 right 偏移（向左拖增大）：钳制在视口内，防止胶囊被拖出后无法找回
+            const { width, height } = pillRef.current?.getBoundingClientRect() ?? {
+              width: 0,
+              height: 0,
+            }
+            const maxX = window.innerWidth - width - 8
+            const maxY = window.innerHeight - height - 8
+            setPos((prev) => ({
+              x: Math.max(8, Math.min(prev.x - dx, maxX)),
+              y: Math.max(8, Math.min(prev.y + dy, maxY)),
+            }))
             drag.current.ox = event.clientX
             drag.current.oy = event.clientY
           }

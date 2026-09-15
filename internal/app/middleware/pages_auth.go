@@ -66,6 +66,11 @@ func PagesAuth(authToken *service.PageAuthTokenService, getter PagePasswordGette
 }
 
 func isTopLevelDocument(ctx *gin.Context) bool {
+	// 前端预览 iframe 会追加 lumina_frame 查询参数：带参请求一律按非顶层文档处理，
+	// 密码未解锁时返回 401 而非放行渲染 SPA（老浏览器缺少 Sec-Fetch-Dest 的兜底）
+	if ctx.Query("lumina_frame") != "" {
+		return false
+	}
 	dest := strings.ToLower(strings.TrimSpace(ctx.GetHeader("Sec-Fetch-Dest")))
 	switch dest {
 	case "document":

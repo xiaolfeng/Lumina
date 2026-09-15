@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -37,6 +38,7 @@ type PagesLogic struct {
 	logic
 	repo      pagesRepo
 	authToken *service.PageAuthTokenService
+	authLimit *pagesAuthLimiter
 }
 
 // NewPagesLogic 创建 PagesLogic 实例
@@ -55,6 +57,7 @@ func NewPagesLogic(ctx context.Context) *PagesLogic {
 			info:           repository.NewInfoRepo(db),
 		},
 		authToken: service.NewPageAuthTokenService(),
+		authLimit: pagesAuthLimit,
 	}
 }
 
@@ -115,10 +118,15 @@ func (l *PagesLogic) GetPasswordHash(ctx context.Context, pageID int64) (string,
 }
 
 // LookupAuth 按项目名与 slug 解析页面 ID 与密码哈希（空串=公开）
+//
+// 与 PublicMeta/ServeFile 对齐：非 published 页面对外整体 404，归档页不可探测。
 func (l *PagesLogic) LookupAuth(ctx context.Context, projectName, slug string) (int64, string, error) {
 	page, _, xErr := l.GetByProjectNameAndSlug(ctx, projectName, slug)
 	if xErr != nil {
 		return 0, "", xErr
+	}
+	if page.Status != bConst.PageStatusPublished {
+		return 0, "", xError.NewError(ctx, xError.NotFound, "页面不存在", false, nil)
 	}
 	if page.AccessMode != bConst.PageAccessModePassword {
 		return page.ID.Int64(), "", nil
@@ -305,6 +313,7 @@ func (l *PagesLogic) Promote(ctx context.Context, sessionID xSnowflake.Snowflake
 		CreatedBy:       createdBy,
 	}
 
+	// 复制文件无需重复大小校验：来源均为已通过 UploadFile 驱动感知上限校验的预览文件
 	pageFiles := make([]*entity.PageFile, 0, len(previewFiles))
 	var totalSize int64
 	for _, previewFile := range previewFiles {
@@ -420,6 +429,7 @@ func (l *PagesLogic) Fork(ctx context.Context, pageID xSnowflake.SnowflakeID, ve
 		SourceVersionID: &sourceVersionID,
 	}
 
+	// 复制文件无需重复大小校验：来源均为已通过 UploadFile 驱动感知上限校验的页面快照文件
 	previewFiles := make([]*entity.PreviewFile, 0, len(files))
 	for _, file := range files {
 		previewFiles = append(previewFiles, &entity.PreviewFile{
@@ -524,6 +534,10 @@ func (l *PagesLogic) CheckAuth(ctx context.Context, projectName, slug, cookieVal
 	if xErr != nil {
 		return nil, xErr
 	}
+	// 与 PublicMeta/ServeFile 对齐：归档页不可探测，公开端点一律 404
+	if page.Status != bConst.PageStatusPublished {
+		return nil, xError.NewError(ctx, xError.NotFound, "页面不存在", false, nil)
+	}
 	required := page.AccessMode == bConst.PageAccessModePassword && page.PasswordHash != ""
 	authenticated := !required
 	if required && cookieValue != "" {
@@ -535,18 +549,84 @@ func (l *PagesLogic) CheckAuth(ctx context.Context, projectName, slug, cookieVal
 	}, nil
 }
 
+// ── Pages 密码门暴力破解限流 ──
+//
+// 内存级失败计数限流（Lumina 为单实例单用户部署，内存态即可），
+// 对每个页面的解锁失败次数计数，超过阈值后锁定一段时间。
+// 与 Wiki 限流器（handler 层）不同：Pages 的密码校验与 pageID 解析都在 logic 层
+// 的 Unlock 内完成，handler 无法先于校验拿到限流维度，故限流器内聚在 logic 层。
+const (
+	pagesAuthMaxFailures  = 10               // 最大连续失败次数（与 Wiki 密码门阈值对齐）
+	pagesAuthLockDuration = 15 * time.Minute // 失败锁定窗口
+)
+
+type pagesAuthLimiter struct {
+	mu       sync.Mutex
+	failures map[int64]int       // pageID → 连续失败次数
+	lockedAt map[int64]time.Time // pageID → 锁定截止时间
+}
+
+// pagesAuthLimit 进程级共享限流器（PagesLogic 存在多处构造，计数必须全进程归一）
+var pagesAuthLimit = newPagesAuthLimiter()
+
+func newPagesAuthLimiter() *pagesAuthLimiter {
+	return &pagesAuthLimiter{
+		failures: make(map[int64]int),
+		lockedAt: make(map[int64]time.Time),
+	}
+}
+
+// allow 返回该页面是否允许继续尝试解锁
+func (l *pagesAuthLimiter) allow(pageID int64) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if t, ok := l.lockedAt[pageID]; ok && time.Now().Before(t) {
+		return false
+	}
+	return true
+}
+
+// recordFailure 记录一次失败，累计达到阈值则锁定
+func (l *pagesAuthLimiter) recordFailure(pageID int64) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.failures[pageID]++
+	if l.failures[pageID] >= pagesAuthMaxFailures {
+		l.lockedAt[pageID] = time.Now().Add(pagesAuthLockDuration)
+		l.failures[pageID] = 0
+	}
+}
+
+// reset 解锁成功后清零计数
+func (l *pagesAuthLimiter) reset(pageID int64) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.failures, pageID)
+	delete(l.lockedAt, pageID)
+}
+
 // Unlock 校验密码并签发 Cookie
 func (l *PagesLogic) Unlock(ctx context.Context, projectName, slug, password string) (pageID int64, token string, maxAge int, xErr *xError.Error) {
 	page, _, xErr := l.GetByProjectNameAndSlug(ctx, projectName, slug)
 	if xErr != nil {
 		return 0, "", 0, xErr
 	}
+	// 与 PublicMeta/ServeFile 对齐：归档页不可探测、不可解锁，一律 404
+	if page.Status != bConst.PageStatusPublished {
+		return 0, "", 0, xError.NewError(ctx, xError.NotFound, "页面不存在", false, nil)
+	}
 	if page.AccessMode != bConst.PageAccessModePassword || page.PasswordHash == "" {
 		return page.ID.Int64(), "", 0, nil
 	}
+	// 锁定期内直接拒绝，防止匿名无限爆破 bcrypt 比对
+	if !l.authLimit.allow(page.ID.Int64()) {
+		return 0, "", 0, xError.NewError(ctx, xError.TooManyRequests, "尝试次数过多，请稍后再试", false, nil)
+	}
 	if !service.VerifyPassword(password, page.PasswordHash) {
+		l.authLimit.recordFailure(page.ID.Int64())
 		return 0, "", 0, xError.NewError(ctx, xError.Unauthorized, "页面密码错误", false, nil)
 	}
+	l.authLimit.reset(page.ID.Int64())
 	maxAge = l.cookieMaxAge(ctx)
 	token, err := l.authToken.GenerateToken(page.ID.Int64(), maxAge)
 	if err != nil {

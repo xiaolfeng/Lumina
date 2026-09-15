@@ -8,6 +8,7 @@ import (
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -64,6 +65,19 @@ func (r *PreviewFileRepo) CreateOrUpdate(ctx context.Context, file *entity.Previ
 		return nil, xError.NewError(ctx, xError.DatabaseError, "创建预览文件失败", false, err)
 	}
 	return file, nil
+}
+
+// MaxContentBytes 返回当前数据库驱动下预览文件内容的有效大小上限。
+//
+// MySQL TEXT 列上限 65535 字节，低于通用上限 256KB；为避免硬编码 mediumtext
+// 破坏 PostgreSQL 默认部署的 AutoMigrate，按驱动在应用层收窄有效上限，
+// 使超限上传在上传入口即返回清晰提示而非落库时报数据库错误。
+// Promote/Fork 复制的文件均来自已通过上传校验的会话文件，天然满足该上限。
+func (r *PreviewFileRepo) MaxContentBytes() int {
+	if r.db.Dialector.Name() == "mysql" {
+		return 60 * 1024 // MySQL TEXT 列上限 64KB，预留余量
+	}
+	return bConst.PreviewFileMaxSize
 }
 
 // GetByID 根据 ID 获取预览文件

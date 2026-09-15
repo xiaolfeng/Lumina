@@ -12,6 +12,22 @@ const PRESETS: { id: Device; label: string; width: number }[] = [
 
 const QUICK_WIDTHS = [375, 414, 768, 1024]
 
+const MIN_DEVICE_WIDTH = 320
+const MAX_DEVICE_WIDTH = 1280
+const VIEWPORT_SIDE_GAP = 32
+
+/**
+ * 设备框宽度钳制：下限固定 320，上限随视口动态收缩为 min(1280, 视口宽 - 32)，
+ * 窄视口下设备框不允许超出可视区域；拖拽 / 滑杆 / 快捷宽度共用本函数
+ */
+export function clampDeviceWidth(width: number, viewportWidth: number): number {
+  const upperBound = Math.min(
+    MAX_DEVICE_WIDTH,
+    Math.max(MIN_DEVICE_WIDTH, viewportWidth - VIEWPORT_SIDE_GAP),
+  )
+  return Math.min(upperBound, Math.max(MIN_DEVICE_WIDTH, Math.round(width)))
+}
+
 export function WorkbenchCanvas({
   src,
   filename,
@@ -22,7 +38,10 @@ export function WorkbenchCanvas({
   sourceMode: boolean
 }) {
   const [device, setDevice] = useState<Device>('desktop')
-  const [width, setWidth] = useState(375)
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? MAX_DEVICE_WIDTH : window.innerWidth,
+  )
+  const [width, setWidth] = useState(() => clampDeviceWidth(375, viewportWidth))
   const dragging = useRef(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
@@ -30,12 +49,21 @@ export function WorkbenchCanvas({
     if (sourceMode) setDevice('desktop')
   }, [sourceMode])
 
+  // 视口变化时同步动态上限，并把已超限的当前宽度收拢
+  useEffect(() => {
+    const onResize = () => {
+      setViewportWidth(window.innerWidth)
+      setWidth((current) => clampDeviceWidth(current, window.innerWidth))
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   useEffect(() => {
     const onMove = (event: PointerEvent) => {
       if (!dragging.current || !wrapperRef.current) return
       const rect = wrapperRef.current.getBoundingClientRect()
-      const next = Math.min(1200, Math.max(320, event.clientX - rect.left))
-      setWidth(next)
+      setWidth(clampDeviceWidth(event.clientX - rect.left, viewportWidth))
     }
     const onUp = () => {
       dragging.current = false
@@ -46,11 +74,13 @@ export function WorkbenchCanvas({
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
     }
-  }, [])
+  }, [viewportWidth])
 
   const kind = sourceMode ? 'code' : previewKindFromFilename(filename)
   const isDevice = !sourceMode && device !== 'desktop'
   const frameWidth = sourceMode || device === 'desktop' ? '100%' : `${width}px`
+  // 动态上限：min(1280, 视口宽 - 32)，滑杆最大值再与 1100 取小
+  const widthUpperBound = clampDeviceWidth(MAX_DEVICE_WIDTH, viewportWidth)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -62,7 +92,7 @@ export function WorkbenchCanvas({
               type="button"
               onClick={() => {
                 setDevice(item.id)
-                if (item.width) setWidth(item.width)
+                if (item.width) setWidth(clampDeviceWidth(item.width, viewportWidth))
               }}
               className={`shrink-0 px-2 py-1 text-[11px] font-semibold ${
                 device === item.id
@@ -119,16 +149,18 @@ export function WorkbenchCanvas({
             <input
               type="range"
               min={320}
-              max={1100}
+              max={Math.min(1100, widthUpperBound)}
               value={width}
-              onChange={(event) => setWidth(Number(event.target.value))}
+              onChange={(event) =>
+                setWidth(clampDeviceWidth(Number(event.target.value), viewportWidth))
+              }
             />
             {QUICK_WIDTHS.map((value) => (
               <button
                 key={value}
                 type="button"
                 className="border border-line px-1.5 py-0.5"
-                onClick={() => setWidth(value)}
+                onClick={() => setWidth(clampDeviceWidth(value, viewportWidth))}
               >
                 {value}
               </button>

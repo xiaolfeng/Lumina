@@ -27,10 +27,9 @@ var (
 
 func ensurePageAuthSecret() string {
 	pageAuthSecretOnce.Do(func() {
+		// 仅回退到进程级随机密钥，禁止复用 REPOWIKI_HMAC_SECRET：
+		// Webhook 密钥与 Git 托管平台共享（跨信任域），持有方不应能伪造密码门 Cookie
 		secret := xEnv.GetEnvString("PAGES_HMAC_SECRET", "")
-		if secret == "" {
-			secret = xEnv.GetEnvString("REPOWIKI_HMAC_SECRET", "")
-		}
 		if secret == "" {
 			buf := make([]byte, 32)
 			if _, err := rand.Read(buf); err == nil {

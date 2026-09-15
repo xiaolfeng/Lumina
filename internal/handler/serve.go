@@ -23,8 +23,13 @@ const navigateShim = `<script data-lumina-nav="1">
 
 // IsDocumentRequest 判断是否为顶层文档导航。
 // iframe / style / script 等资源请求必须直出文件，不能回落 SPA。
+// 前端预览 iframe 会追加 lumina_frame 查询参数：带参请求一律按非顶层文档处理，
+// 避免老浏览器缺少 Sec-Fetch-Dest 时被 Accept 误判为顶层文档而回落 SPA。
 // 缺少 Sec-Fetch-Dest 时仅当 Accept 含 text/html 才视为文档，避免 curl 拉 CSS 时误返回 index.html。
 func IsDocumentRequest(ctx *gin.Context) bool {
+	if ctx.Query("lumina_frame") != "" {
+		return false
+	}
 	dest := strings.ToLower(strings.TrimSpace(ctx.GetHeader("Sec-Fetch-Dest")))
 	switch dest {
 	case "document":

@@ -96,8 +96,12 @@ export function PreviewSupplement({ content }: { content: string }) {
         if (cancelledRef.current) return
         const detail = res.data
         if (detail) {
+          // filename 需编码（含 #/? 时原样拼接会 404）；lumina_frame=1 标记为
+          // 非顶层文档，后端直出文件内容而不回落 SPA
           setSrc(
-            `/preview/${detail.session_hash}/${detail.filename}`,
+            `/preview/${detail.session_hash}/${encodeURIComponent(
+              detail.filename,
+            )}?lumina_frame=1`,
           )
         } else {
           setError('预览文件不存在')

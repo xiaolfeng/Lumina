@@ -17,6 +17,7 @@ func TestIsDocumentRequest(t *testing.T) {
 		name   string
 		dest   string
 		accept string
+		query  string
 		want   bool
 	}{
 		{name: "top-level document", dest: "document", want: true},
@@ -26,12 +27,17 @@ func TestIsDocumentRequest(t *testing.T) {
 		{name: "empty dest html accept", accept: "text/html,application/xhtml+xml", want: true},
 		{name: "empty dest css accept", accept: "text/css,*/*", want: false},
 		{name: "empty dest and accept", want: false},
+		{name: "frame param html accept no dest", accept: "text/html", query: "lumina_frame=1", want: false},
+		{name: "frame param html accept with dest", dest: "document", accept: "text/html", query: "lumina_frame=1", want: false},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(w)
 			req := httptest.NewRequest(http.MethodGet, "/preview/abc/style.css", nil)
+			if tt.query != "" {
+				req.URL.RawQuery = tt.query
+			}
 			if tt.dest != "" {
 				req.Header.Set("Sec-Fetch-Dest", tt.dest)
 			}
