@@ -60,6 +60,13 @@ func PagesAuth(authToken *service.PageAuthTokenService, getter PagePasswordGette
 			return
 		}
 
+		// 与 Preview 相同：沙盒 iframe 内相对 CSS/JS 不携带 Lax Cookie，
+		// 密码门仍挡住 HTML 文档；静态子资源凭路径直出才能完成渲染。
+		if IsSandboxStaticSubresource(ctx) {
+			ctx.Next()
+			return
+		}
+
 		log.Info(ctx, fmt.Sprintf("PagesAuth - Cookie 校验失败 [%d]", pageID))
 		xResult.AbortError(ctx, xError.Unauthorized, "page authentication required", false)
 	}

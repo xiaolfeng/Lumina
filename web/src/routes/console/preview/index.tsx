@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Button } from '@lumina/components/ui/button'
 import { Skeleton } from '@lumina/components/ui/skeleton'
@@ -166,16 +166,15 @@ function PreviewPage() {
                 >
                   <Eye className="size-3.5" />
                 </button>
-                <Link
-                  to="/preview/$sessionHash/$"
-                  params={{ sessionHash: item.hash, _splat: 'index.html' }}
+                <a
+                  href={`/preview/${item.hash}/`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
                   aria-label={`打开 ${item.title} 预览`}
                 >
                   <ExternalLink className="size-3.5" />
-                </Link>
+                </a>
                 <button
                   type="button"
                   onClick={() => setDeleteTarget(item)}

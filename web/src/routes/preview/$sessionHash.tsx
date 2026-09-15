@@ -1,9 +1,10 @@
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+import { createFileRoute, Outlet, redirect, useMatches, useParams } from '@tanstack/react-router'
 import Cookies from 'js-cookie'
+import { PreviewWorkbenchPage } from '#/components/preview/workbench-page'
 import { getSafeRedirect } from '#/lib/apis/client'
 
 export const Route = createFileRoute('/preview/$sessionHash')({
-  beforeLoad: ({ location, params }) => {
+  beforeLoad: ({ location }) => {
     const token = Cookies.get('access_token')
     const refreshToken = Cookies.get('refresh_token')
     if (!token && !refreshToken) {
@@ -14,13 +15,15 @@ export const Route = createFileRoute('/preview/$sessionHash')({
         },
       })
     }
-    const rest = location.pathname.replace(`/preview/${params.sessionHash}`, '')
-    if (rest === '' || rest === '/') {
-      throw redirect({
-        to: '/preview/$sessionHash/$',
-        params: { sessionHash: params.sessionHash, _splat: 'index.html' },
-      })
-    }
   },
-  component: () => <Outlet />,
+  component: PreviewHashRoute,
 })
+
+function PreviewHashRoute() {
+  const { sessionHash } = useParams({ from: '/preview/$sessionHash' })
+  const matches = useMatches()
+  if (matches.some((match) => match.routeId === '/preview/$sessionHash/$')) {
+    return <Outlet />
+  }
+  return <PreviewWorkbenchPage sessionHash={sessionHash} requestedFile="" />
+}

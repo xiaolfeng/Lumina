@@ -11,7 +11,7 @@ export const Route = createFileRoute('/preview/')({
         to: '/preview/$sessionHash/$',
         params: {
           sessionHash: search.session,
-          _splat: search.file || 'index.html',
+          _splat: search.file || '',
         },
       })
     }

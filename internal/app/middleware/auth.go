@@ -57,6 +57,13 @@ func AuthOrRedirectLogin(ctx context.Context) gin.HandlerFunc {
 	authLogic := logic.NewAuthLogic(ctx)
 
 	return func(c *gin.Context) {
+		// 沙盒 iframe 内相对 CSS/JS 不会携带 SameSite=Lax 登录 Cookie；
+		// 静态子资源凭会话 hash 直出，HTML 文档导航仍走登录态。
+		if IsSandboxStaticSubresource(c) {
+			c.Next()
+			return
+		}
+
 		accessToken, err := xHttp.GetAuthorization(c)
 		if err != nil {
 			if cookie, cErr := c.Cookie("access_token"); cErr == nil && cookie != "" {
