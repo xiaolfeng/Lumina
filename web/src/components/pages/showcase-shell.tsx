@@ -2,10 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Copy, GitBranch, GripVertical, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { PagesBrandHeader } from '#/components/pages/brand-header'
 import { PreviewFileViewer } from '#/components/preview/file-viewer'
 import { previewKindFromFilename } from '#/lib/preview-file'
 import { useForkPage, useSwitchActiveVersion } from '#/hooks/usePages'
-import type { PageFileItem, PageItem, PageVersionItem } from '#/lib/models/response/pages'
+import type {
+  PageFileItem,
+  PageItem,
+  PageVersionItem,
+} from '#/lib/models/response/pages'
 
 function isRenderable(filename: string) {
   return /\.(html|htm|md)$/i.test(filename)
@@ -59,14 +64,21 @@ export function ShowcaseShell({
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [advanced, setAdvanced] = useState(false)
-  const [pos, setPos] = useState({ x: 24, y: 24 })
-  const drag = useRef<{ ox: number; oy: number; moved: boolean } | null>(null)
-  const pillRef = useRef<HTMLButtonElement | null>(null)
+  const [pos, setPos] = useState({ x: 20, y: 16 })
+  const drag = useRef<{ ox: number; oy: number } | null>(null)
+  const isDraggingRef = useRef(false)
+  const dragMovedRef = useRef(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const fork = useForkPage()
   const switchActive = useSwitchActiveVersion()
 
   const activeFile = resolveActiveFile(filepath, version.entry_filename, files)
-  const src = buildShowcaseSrc(projectName, slug, activeFile, version.created_at)
+  const src = buildShowcaseSrc(
+    projectName,
+    slug,
+    activeFile,
+    version.created_at,
+  )
   const renderable = files.filter((file) => isRenderable(file.filename))
   const advancedFiles = files.filter((file) => !isRenderable(file.filename))
   const inspectorFile = useMemo(() => {
@@ -76,7 +88,10 @@ export function ShowcaseShell({
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.data?.type !== 'lumina:navigate' || typeof event.data.href !== 'string') {
+      if (
+        event.data?.type !== 'lumina:navigate' ||
+        typeof event.data.href !== 'string'
+      ) {
         return
       }
       const href = event.data.href.split(/[?#]/)[0].split('/').pop()
@@ -91,6 +106,22 @@ export function ShowcaseShell({
     return () => window.removeEventListener('message', onMessage)
   }, [navigate, projectName, slug])
 
+  useEffect(() => {
+    if (!open) return
+    const handlePointerDownOutside = (event: PointerEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false)
+      }
+    }
+    window.addEventListener('pointerdown', handlePointerDownOutside)
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDownOutside)
+    }
+  }, [open])
+
   const selectFile = (filename: string) => {
     navigate({
       to: '/pages/$projectName/$slug/$',
@@ -101,184 +132,264 @@ export function ShowcaseShell({
   }
 
   return (
-    <div className="relative h-screen overflow-hidden bg-sand">
-      {inspectorFile ? (
-        <PreviewFileViewer
-          kind={previewKindFromFilename(inspectorFile)}
-          src={`/pages/${projectName}/${slug}/${encodeURIComponent(inspectorFile)}`}
-          filename={inspectorFile}
-        />
-      ) : src ? (
-        <PreviewFileViewer
-          kind={previewKindFromFilename(activeFile)}
-          src={src}
-          filename={activeFile}
-        />
-      ) : null}
+    <div className="flex h-screen flex-col overflow-hidden bg-sand">
+      {/* 顶部 Header：遵循设计稿与 Lumina 规范 */}
+      <PagesBrandHeader
+        projectName={projectName}
+        slug={slug}
+        title={page.title}
+      />
 
-      <button
-        ref={pillRef}
-        type="button"
-        className="absolute z-30 flex items-center gap-2 border border-line bg-foam/95 px-3 py-1.5 text-xs text-sea-ink shadow-sm"
-        style={{ right: pos.x, top: pos.y }}
-        onPointerDown={(event) => {
-          drag.current = { ox: event.clientX, oy: event.clientY, moved: false }
-        }}
-        onPointerMove={(event) => {
-          if (!drag.current) return
-          const dx = event.clientX - drag.current.ox
-          const dy = event.clientY - drag.current.oy
-          if (Math.hypot(dx, dy) > 4) drag.current.moved = true
-          if (drag.current.moved) {
-            // x 为 right 偏移（向左拖增大）：钳制在视口内，防止胶囊被拖出后无法找回
-            const { width, height } = pillRef.current?.getBoundingClientRect() ?? {
-              width: 0,
-              height: 0,
-            }
-            const maxX = window.innerWidth - width - 8
-            const maxY = window.innerHeight - height - 8
-            setPos((prev) => ({
-              x: Math.max(8, Math.min(prev.x - dx, maxX)),
-              y: Math.max(8, Math.min(prev.y + dy, maxY)),
-            }))
-            drag.current.ox = event.clientX
-            drag.current.oy = event.clientY
-          }
-        }}
-        onPointerUp={() => {
-          if (drag.current && !drag.current.moved) setOpen(true)
-          drag.current = null
-        }}
-      >
-        <GripVertical className="size-3.5 text-sea-ink-soft" />
-        ✦ {page.project_name} / {page.slug} {version.version}
-      </button>
+      {/* 主画布与悬浮动 Bar 容器 */}
+      <main className="relative min-h-0 flex-1 overflow-hidden">
+        {inspectorFile ? (
+          <PreviewFileViewer
+            kind={previewKindFromFilename(inspectorFile)}
+            src={`/pages/${projectName}/${slug}/${encodeURIComponent(inspectorFile)}`}
+            filename={inspectorFile}
+          />
+        ) : src ? (
+          <PreviewFileViewer
+            kind={previewKindFromFilename(activeFile)}
+            src={src}
+            filename={activeFile}
+          />
+        ) : null}
 
-      {open ? (
-        <aside className="absolute inset-y-0 right-0 z-40 flex w-[min(360px,92vw)] flex-col border-l border-line bg-foam">
-          <div className="flex items-center justify-between border-b border-line px-4 py-3">
-            <p className="text-sm font-semibold text-sea-ink">Pages</p>
-            <button type="button" onClick={() => setOpen(false)} className="text-xs">
-              关闭
-            </button>
+        {/* 悬浮动 Bar（点击展开悬浮卡片面板，随 Bar 悬浮而不是全屏右侧展开） */}
+        <div
+          ref={containerRef}
+          className="absolute z-30 flex flex-col border border-line bg-foam/95 shadow-md backdrop-blur-xs transition-shadow duration-150"
+          style={{ right: pos.x, top: pos.y }}
+        >
+          {/* 胶囊 Bar 头部：支持拖拽，点击展开/折叠 */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="展开或折叠页面管理卡片"
+            className="flex cursor-grab select-none items-center gap-2 px-3 py-1.5 text-xs text-sea-ink transition-colors hover:bg-sand/60 active:cursor-grabbing"
+            onPointerDown={(event) => {
+              drag.current = { ox: event.clientX, oy: event.clientY }
+              isDraggingRef.current = true
+              dragMovedRef.current = false
+            }}
+            onPointerMove={(event) => {
+              if (!isDraggingRef.current || !drag.current) return
+              const dx = event.clientX - drag.current.ox
+              const dy = event.clientY - drag.current.oy
+              if (Math.hypot(dx, dy) > 4) {
+                dragMovedRef.current = true
+              }
+              if (dragMovedRef.current) {
+                const { width, height } =
+                  containerRef.current?.getBoundingClientRect() ?? {
+                    width: 0,
+                    height: 0,
+                  }
+                const maxX = window.innerWidth - width - 8
+                const maxY = window.innerHeight - height - 8
+                setPos((prev) => ({
+                  x: Math.max(8, Math.min(prev.x - dx, maxX)),
+                  y: Math.max(8, Math.min(prev.y + dy, maxY)),
+                }))
+                drag.current.ox = event.clientX
+                drag.current.oy = event.clientY
+              }
+            }}
+            onPointerUp={() => {
+              isDraggingRef.current = false
+              setTimeout(() => {
+                dragMovedRef.current = false
+              }, 100)
+            }}
+            onClick={() => {
+              if (dragMovedRef.current) return
+              setOpen((prev) => !prev)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setOpen((prev) => !prev)
+              }
+            }}
+          >
+            <GripVertical className="size-3.5 shrink-0 text-sea-ink-soft" />
+            <span className="font-bold text-lagoon">✦</span>
+            <span className="font-mono font-semibold">
+              {page.project_name} / {page.slug}
+            </span>
+            <span className="bg-sand-tint px-1.5 py-0.5 text-[10px] text-sea-ink-soft">
+              {version.version}
+            </span>
+            <span className="ml-0.5 text-[10px] text-sea-ink-soft transition-transform duration-200">
+              {open ? '▴' : '▾'}
+            </span>
           </div>
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 text-sm">
-            <section>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lagoon-deep">
-                元信息
-              </p>
-              <p className="mt-2 font-medium text-sea-ink">{page.title}</p>
-              <p className="text-xs text-sea-ink-soft">
-                {page.access_mode === 'password' ? '密码保护' : '公开访问'} · {version.version}
-              </p>
-            </section>
-            <section>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lagoon-deep">
-                版本
-              </p>
-              <ul className="mt-2 space-y-1">
-                {versions.map((item) => (
-                  <li key={item.id} className="flex items-center justify-between gap-2">
-                    <span className={item.is_active ? 'text-lagoon-deep' : 'text-sea-ink-soft'}>
-                      {item.version}
-                    </span>
-                    {!item.is_active ? (
-                      <button
-                        type="button"
-                        className="text-xs"
-                        onClick={() =>
-                          switchActive.mutate({ id: page.id, versionId: item.id })
+
+          {/* 展开悬浮面板卡片（挂在 Bar 容器内部，跟随 Bar 悬浮展开） */}
+          {open ? (
+            <div className="max-h-[min(540px,calc(100vh-130px))] w-[min(340px,calc(100vw-32px))] space-y-4 overflow-y-auto border-t border-line bg-foam p-3.5 text-xs animate-in fade-in zoom-in-95 duration-150">
+              {/* 元信息区 */}
+              <section>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lagoon-deep">
+                  元信息
+                </p>
+                <p className="mt-1 text-sm font-medium text-sea-ink">
+                  {page.title}
+                </p>
+                <p className="mt-0.5 text-[11px] text-sea-ink-soft">
+                  {page.access_mode === 'password'
+                    ? '🔒 密码保护'
+                    : '🌐 公开访问'}{' '}
+                  · 不可变快照
+                </p>
+              </section>
+
+              {/* 生效指针与版本历史 */}
+              <section>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lagoon-deep">
+                    版本
+                  </p>
+                  <span className="font-mono text-[10px] font-bold text-emerald-700">
+                    当前生效: {version.version}
+                  </span>
+                </div>
+                <ul className="mt-1.5 space-y-1">
+                  {versions.map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex items-center justify-between gap-2 py-0.5"
+                    >
+                      <span
+                        className={
+                          item.is_active
+                            ? 'font-semibold text-lagoon-deep'
+                            : 'text-sea-ink-soft'
                         }
                       >
-                        设为生效
-                      </button>
-                    ) : (
-                      <span className="text-[10px] text-lagoon-deep">当前</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-            <section>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lagoon-deep">
-                可渲染页面
-              </p>
-              <ul className="mt-2 space-y-1">
-                {renderable.map((file) => (
-                  <li key={file.id}>
-                    <button
-                      type="button"
-                      className={`w-full text-left ${file.filename === activeFile ? 'text-lagoon-deep' : 'text-sea-ink'}`}
-                      onClick={() => selectFile(file.filename)}
-                    >
-                      {file.filename}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-            <section>
-              <button
-                type="button"
-                className="text-[10px] font-semibold uppercase tracking-[0.16em] text-sea-ink-soft"
-                onClick={() => setAdvanced((value) => !value)}
-              >
-                高级资源 {advanced ? '▾' : '▸'}
-              </button>
-              {advanced ? (
-                <ul className="mt-2 space-y-1">
-                  {advancedFiles.map((file) => (
-                    <li key={file.id}>
-                      <button
-                        type="button"
-                        className="w-full text-left text-sea-ink-soft"
-                        onClick={() => selectFile(file.filename)}
-                      >
-                        {file.filename}
-                      </button>
+                        {item.version}
+                      </span>
+                      {!item.is_active ? (
+                        <button
+                          type="button"
+                          className="cursor-pointer text-[11px] text-sea-ink-soft underline hover:text-sea-ink"
+                          onClick={() =>
+                            switchActive.mutate({
+                              id: page.id,
+                              versionId: item.id,
+                            })
+                          }
+                        >
+                          设为生效
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-emerald-700">
+                          当前
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
+              </section>
+
+              {/* 可渲染页面直切区 */}
+              <section>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lagoon-deep">
+                  可渲染页面
+                </p>
+                <ul className="mt-1.5 space-y-1">
+                  {renderable.map((file) => {
+                    const isSelected = file.filename === activeFile
+                    return (
+                      <li key={file.id}>
+                        <button
+                          type="button"
+                          className={`block w-full cursor-pointer truncate border px-2 py-1.5 text-left transition-colors ${
+                            isSelected
+                              ? 'border-lagoon bg-sand-tint font-semibold text-lagoon-deep'
+                              : 'border-line/60 text-sea-ink hover:border-line hover:bg-sand/60'
+                          }`}
+                          onClick={() => selectFile(file.filename)}
+                        >
+                          {file.filename}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+
+              {/* 高级资源折叠区 */}
+              {advancedFiles.length > 0 ? (
+                <section>
+                  <button
+                    type="button"
+                    className="flex cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sea-ink-soft hover:text-sea-ink"
+                    onClick={() => setAdvanced((value) => !value)}
+                  >
+                    <span>高级资源</span>
+                    <span>{advanced ? '▾' : '▸'}</span>
+                  </button>
+                  {advanced ? (
+                    <ul className="mt-1.5 space-y-1">
+                      {advancedFiles.map((file) => (
+                        <li key={file.id}>
+                          <button
+                            type="button"
+                            className="block w-full cursor-pointer truncate font-mono text-[11px] text-sea-ink-soft hover:bg-sand/60 hover:text-sea-ink"
+                            onClick={() => selectFile(file.filename)}
+                          >
+                            {file.filename}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
               ) : null}
-            </section>
-          </div>
-          <div className="space-y-2 border-t border-line p-4">
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 text-left text-sm"
-              onClick={async () => {
-                await navigator.clipboard.writeText(window.location.href)
-                toast.success('已复制当前路径')
-              }}
-            >
-              <Copy className="size-3.5" /> 复制当前路径
-            </button>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 text-left text-sm"
-              onClick={() =>
-                fork.mutate(
-                  { id: page.id, versionId: version.id },
-                  {
-                    onSuccess: (res) => {
-                      const url = res.data?.preview_url
-                      if (url) window.location.href = url
-                    },
-                  },
-                )
-              }
-            >
-              <GitBranch className="size-3.5" /> Fork 到新预览
-            </button>
-            <a
-              href="/console/pages"
-              className="flex items-center gap-2 text-sm text-sea-ink-soft"
-            >
-              <Settings2 className="size-3.5" /> 管理员端口 · 页面安全设置
-            </a>
-          </div>
-        </aside>
-      ) : null}
+
+              {/* 底部快捷操作条 */}
+              <div className="space-y-1.5 border-t border-line pt-3">
+                <button
+                  type="button"
+                  className="flex w-full cursor-pointer items-center gap-2 text-left text-xs text-sea-ink hover:text-lagoon-deep"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(window.location.href)
+                    toast.success('已复制当前路径')
+                  }}
+                >
+                  <Copy className="size-3.5 text-sea-ink-soft" /> 复制当前路径
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full cursor-pointer items-center gap-2 text-left text-xs text-sea-ink hover:text-lagoon-deep"
+                  onClick={() =>
+                    fork.mutate(
+                      { id: page.id, versionId: version.id },
+                      {
+                        onSuccess: (res) => {
+                          const url = res.data?.preview_url
+                          if (url) window.location.href = url
+                        },
+                      },
+                    )
+                  }
+                >
+                  <GitBranch className="size-3.5 text-sea-ink-soft" /> Fork
+                  到新预览
+                </button>
+                <a
+                  href="/console/pages"
+                  className="flex items-center gap-2 text-xs text-sea-ink-soft hover:text-sea-ink"
+                >
+                  <Settings2 className="size-3.5" /> 管理员端口 · 页面安全设置
+                </a>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </main>
     </div>
   )
 }

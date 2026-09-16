@@ -1,12 +1,9 @@
 import { useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { FileCode2, FolderOpen, Rocket } from 'lucide-react'
+import { FileCode2, FolderOpen } from 'lucide-react'
 
-import {
-  DEVICE_PRESETS,
-  WorkbenchCanvas,
-  type WorkbenchDevice,
-} from '#/components/preview/workbench-canvas'
+import type { WorkbenchDevice } from '#/components/preview/workbench-canvas'
+import { WorkbenchCanvas } from '#/components/preview/workbench-canvas'
 import { PromoteDialog } from '#/components/preview/promote-dialog'
 import { usePreviewHeader } from '#/hooks/usePreviewHeader'
 import { usePreviewWebSocket } from '#/hooks/usePreviewWebSocket'
@@ -29,7 +26,7 @@ export function PreviewWorkbenchPage({
   requestedFile: string
 }) {
   const navigate = useNavigate()
-  const { setTitle } = usePreviewHeader()
+  const { setTitle, setControls } = usePreviewHeader()
   const [files, setFiles] = useState<PreviewFileItem[]>([])
   const [session, setSession] = useState<PreviewSessionItem | null>(null)
   const [error, setError] = useState('')
@@ -54,7 +51,10 @@ export function PreviewWorkbenchPage({
       setFiles(syncData.files)
       setSyncSeq((seq) => seq + 1)
       let next = ''
-      if (activeFile && syncData.files.some((file) => file.filename === activeFile)) {
+      if (
+        activeFile &&
+        syncData.files.some((file) => file.filename === activeFile)
+      ) {
         next = activeFile
       } else if (
         requestedFile &&
@@ -66,7 +66,9 @@ export function PreviewWorkbenchPage({
           (file) =>
             file.filename.endsWith('.html') || file.filename.endsWith('.htm'),
         )
-        next = htmlFile ? htmlFile.filename : (syncData.files[0]?.filename ?? '')
+        next = htmlFile
+          ? htmlFile.filename
+          : (syncData.files[0]?.filename ?? '')
       }
       if (next && next !== activeFile) {
         setActiveFile(next)
@@ -112,8 +114,23 @@ export function PreviewWorkbenchPage({
   }, [session?.title, setTitle])
 
   useEffect(() => {
+    setControls({
+      device,
+      setDevice,
+      sourceMode,
+      setSourceMode,
+      onPromoteClick: () => setPromoteOpen(true),
+      sourcePageSlug: session?.source_page_slug,
+    })
+    return () => setControls(null)
+  }, [device, sourceMode, session?.source_page_slug, setControls])
+
+  useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.data?.type !== 'lumina:navigate' || typeof event.data.href !== 'string') {
+      if (
+        event.data?.type !== 'lumina:navigate' ||
+        typeof event.data.href !== 'string'
+      ) {
         return
       }
       const href = event.data.href.split(/[?#]/)[0].split('/').pop()
@@ -149,19 +166,12 @@ export function PreviewWorkbenchPage({
     : ''
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex shrink-0 flex-wrap items-center gap-2 overflow-x-auto border-b border-line px-3 py-2">
-        <span className="border border-lagoon/40 bg-[#fdf5ea] px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-lagoon-deep">
-          草稿
-        </span>
-        {session?.source_page_id ? (
-          <span className="border border-green-600/30 bg-green-600/10 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
-            迭代{session.source_page_slug ? ` /${session.source_page_slug}` : ''}
-          </span>
-        ) : null}
-        {files.length > 0 ? (
+      {files.length > 1 ? (
+        <div className="flex shrink-0 items-center gap-2 border-b border-line bg-sand px-3 py-1.5 md:hidden">
+          <span className="text-[11px] text-sea-ink-soft">文件:</span>
           <select
             aria-label="切换预览文件"
-            className="max-w-40 border border-line bg-transparent px-1.5 py-0.5 text-xs md:hidden"
+            className="border border-line bg-foam px-2 py-0.5 text-xs text-sea-ink"
             value={activeFile}
             onChange={(event) => selectFile(event.target.value)}
           >
@@ -171,58 +181,8 @@ export function PreviewWorkbenchPage({
               </option>
             ))}
           </select>
-        ) : null}
-        {!sourceMode ? (
-          <div className="flex items-center gap-px border border-line bg-chip-bg p-0.5">
-            {DEVICE_PRESETS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setDevice(item.id)}
-                className={`px-2 py-0.5 text-[11px] ${
-                  device === item.id
-                    ? 'bg-foam font-semibold text-sea-ink'
-                    : 'text-sea-ink-soft hover:text-sea-ink'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <div className="flex-1" />
-        <div className="flex border border-line bg-chip-bg p-0.5">
-          <button
-            type="button"
-            className={`px-2 py-0.5 text-[11px] ${
-              !sourceMode ? 'bg-foam font-semibold text-sea-ink' : 'text-sea-ink-soft'
-            }`}
-            onClick={() => setSourceMode(false)}
-          >
-            视口
-          </button>
-          <button
-            type="button"
-            className={`px-2 py-0.5 text-[11px] ${
-              sourceMode ? 'bg-foam font-semibold text-sea-ink' : 'text-sea-ink-soft'
-            }`}
-            onClick={() => {
-              setSourceMode(true)
-              setDevice('desktop')
-            }}
-          >
-            源码
-          </button>
         </div>
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 bg-lagoon px-2.5 py-1 text-xs font-semibold text-white"
-          onClick={() => setPromoteOpen(true)}
-        >
-          <Rocket className="size-3.5" />
-          晋升为 Pages
-        </button>
-      </div>
+      ) : null}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <aside className="hidden w-60 shrink-0 flex-col border-r border-line bg-surface/50 md:flex">
           <div className="border-b border-line px-4 py-3">
