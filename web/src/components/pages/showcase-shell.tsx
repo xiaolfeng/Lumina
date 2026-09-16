@@ -23,6 +23,22 @@ export function resolveActiveFile(
   return files[0]?.filename ?? ''
 }
 
+/**
+ * 拼接展示态 iframe src。
+ * v 是后端语义化版本号（如 v1.0.0），生效版本渲染必须省略 v（空标签走 LatestVersionID）；
+ * 缓存戳用独立的 _t 承载，禁止把 created_at 时间戳塞进 v，否则后端按版本号查库必然 404。
+ * lumina_frame=1 标记 iframe 场景，后端据此直出文件，规避 Accept 启发式误判。
+ */
+export function buildShowcaseSrc(
+  projectName: string,
+  slug: string,
+  filename: string,
+  cacheKey: string,
+): string {
+  if (!filename) return ''
+  return `/pages/${projectName}/${slug}/${encodeURIComponent(filename)}?_t=${encodeURIComponent(cacheKey)}&lumina_frame=1`
+}
+
 export function ShowcaseShell({
   projectName,
   slug,
@@ -50,10 +66,7 @@ export function ShowcaseShell({
   const switchActive = useSwitchActiveVersion()
 
   const activeFile = resolveActiveFile(filepath, version.entry_filename, files)
-  // lumina_frame=1 标记 iframe 场景，后端据此直出文件，规避 Accept 启发式误判
-  const src = activeFile
-    ? `/pages/${projectName}/${slug}/${encodeURIComponent(activeFile)}?v=${encodeURIComponent(version.created_at)}&lumina_frame=1`
-    : ''
+  const src = buildShowcaseSrc(projectName, slug, activeFile, version.created_at)
   const renderable = files.filter((file) => isRenderable(file.filename))
   const advancedFiles = files.filter((file) => !isRenderable(file.filename))
   const inspectorFile = useMemo(() => {

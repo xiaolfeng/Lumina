@@ -9,6 +9,7 @@ import (
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
+	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"gorm.io/gorm"
 )
@@ -171,9 +172,16 @@ func (r *PageRepo) UpdateStatus(ctx context.Context, id xSnowflake.SnowflakeID, 
 	return nil
 }
 
-// PersistPromotion 在同一事务内写入页面（可选）、版本与快照文件，并按需切换生效指针。
-func (r *PageRepo) PersistPromotion(ctx context.Context, page *entity.Page, createPage bool, version *entity.PageVersion, files []*entity.PageFile, setAsActive bool) *xError.Error {
-	r.log.Info(ctx, fmt.Sprintf("PersistPromotion - 写入晋升快照 [page=%d, version=%s, createPage=%v, active=%v]", page.ID.Int64(), version.Version, createPage, setAsActive))
+// errPromoteSessionMissing 晋升事务内源预览会话缺失（并发删除竞态），用于与页面缺失的 404 语义区分
+var errPromoteSessionMissing = errors.New("source preview session missing")
+
+// PersistPromotion 在同一事务内写入页面（可选）、版本与快照文件，按需切换生效指针，
+// 并将源预览会话软删除（consumeSessionID 零值表示不消耗，供非晋升场景复用）。
+//
+// 「写快照 + 消耗草稿」同事务原子提交：晋升即消耗草稿，快照为深拷贝不可变，
+// 软删除保留预览文件与 SourceSessionID 审计（与 ExpireStaleSessions 一致）。
+func (r *PageRepo) PersistPromotion(ctx context.Context, page *entity.Page, createPage bool, version *entity.PageVersion, files []*entity.PageFile, setAsActive bool, consumeSessionID xSnowflake.SnowflakeID) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("PersistPromotion - 写入晋升快照 [page=%d, version=%s, createPage=%v, active=%v, consumeSession=%d]", page.ID.Int64(), version.Version, createPage, setAsActive, consumeSessionID.Int64()))
 
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if createPage {
@@ -202,11 +210,25 @@ func (r *PageRepo) PersistPromotion(ctx context.Context, page *entity.Page, crea
 			}
 			page.LatestVersionID = version.ID
 		}
+		if !consumeSessionID.IsZero() {
+			result := tx.Model(&entity.PreviewSession{}).
+				Where("id = ?", consumeSessionID).
+				Update("status", bConst.PreviewSessionStatusDeleted)
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				return errPromoteSessionMissing
+			}
+		}
 		return nil
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return xError.NewError(ctx, xError.NotFound, "页面不存在", false, nil)
+		}
+		if errors.Is(err, errPromoteSessionMissing) {
+			return xError.NewError(ctx, xError.NotFound, "预览会话不存在", false, nil)
 		}
 		r.log.Warn(ctx, err.Error())
 		return xError.NewError(ctx, xError.DatabaseError, "写入页面快照失败", false, err)

@@ -329,8 +329,16 @@ func (l *PagesLogic) Promote(ctx context.Context, sessionID xSnowflake.Snowflake
 	}
 	version.TotalSize = totalSize
 
-	if xErr := l.repo.page.PersistPromotion(ctx, page, createPage, version, pageFiles, setAsActive); xErr != nil {
+	// 晋升即消耗草稿：PersistPromotion 在同一事务内写入快照并将源会话软删除，
+	// 保证「快照落库」与「草稿下线」原子提交，杜绝半提交态（快照已出、草稿仍 active）；
+	// Pages 快照为深拷贝，消耗草稿不影响已发布文件
+	if xErr := l.repo.page.PersistPromotion(ctx, page, createPage, version, pageFiles, setAsActive, session.ID); xErr != nil {
 		return nil, xErr
+	}
+
+	// 草稿已被消耗，广播会话结束让工作台 WS 及时下线（与 DeleteSession / ExpireStaleSessions 一致）
+	if OnPreviewChanged != nil {
+		OnPreviewChanged(sessionID.String(), "delete_session")
 	}
 
 	pageResp, xErr := l.toPageResponse(ctx, page)
@@ -667,16 +675,46 @@ func (l *PagesLogic) validateSlug(ctx context.Context, slug string) *xError.Erro
 
 func (l *PagesLogic) resolveVersion(ctx context.Context, page *entity.Page, versionLabel string) (*entity.PageVersion, *xError.Error) {
 	label := strings.TrimSpace(versionLabel)
-	if label == "" {
-		if page.LatestVersionID.IsZero() {
-			return nil, xError.NewError(ctx, xError.NotFound, "页面尚未发布版本", false, nil)
+	// 合法语义化版本按标签精确查询；垃圾输入（如前端误传的 RFC3339 缓存戳）回退生效指针，
+	// 避免展示页因错误缓存参数整页 404
+	if normalized, ok := normalizeVersionLabel(label); ok {
+		return l.repo.version.GetByPageAndVersionLabel(ctx, page.ID, normalized)
+	}
+	if page.LatestVersionID.IsZero() {
+		return nil, xError.NewError(ctx, xError.NotFound, "页面尚未发布版本", false, nil)
+	}
+	return l.repo.version.GetByID(ctx, page.LatestVersionID)
+}
+
+// normalizeVersionLabel 将外部传入的版本标签规范化为 vX.Y.Z 形态（兼容无 v 前缀写法）。
+//
+// 仅接受三段非负整数的语义化版本（如 v1.0.0 / 1.2.3，对齐 incrementPatchVersion 的解析口径）；
+// 其余输入（缓存时间戳、随机串等）返回 false，由 resolveVersion 回退生效版本指针。
+func normalizeVersionLabel(label string) (string, bool) {
+	body := strings.TrimPrefix(strings.TrimSpace(label), "v")
+	parts := strings.Split(body, ".")
+	if len(parts) != 3 {
+		return "", false
+	}
+	for _, part := range parts {
+		if !isDigits(part) {
+			return "", false
 		}
-		return l.repo.version.GetByID(ctx, page.LatestVersionID)
 	}
-	if !strings.HasPrefix(label, "v") {
-		label = "v" + strings.TrimPrefix(label, "v")
+	return "v" + body, true
+}
+
+// isDigits 判断字符串是否为非空纯数字（拒绝符号、空白与字母，比 strconv.Atoi 更严）
+func isDigits(s string) bool {
+	if s == "" {
+		return false
 	}
-	return l.repo.version.GetByPageAndVersionLabel(ctx, page.ID, label)
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func (l *PagesLogic) toPageResponse(ctx context.Context, page *entity.Page) (*apiPages.PageResponse, *xError.Error) {
