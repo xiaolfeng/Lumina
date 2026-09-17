@@ -219,6 +219,83 @@ func (l *PreviewLogic) ListFiles(ctx context.Context, sessionID xSnowflake.Snowf
 	return items, nil
 }
 
+// EditFile 行级编辑既有预览文件（insert/replace/delete，1 起始闭区间，无需全量重传）
+//
+// 编辑基于服务端存储内容按行变换后整体写回：换行统一归一为 LF，原文件结尾换行符原样保留；
+// startLine 传 0 时仅 insert 允许（表示追加到文件末尾）。文件必须已存在，创建新文件请走 UploadFile。
+// 返回编辑后的文件元数据、总行数与编辑落点区域（变更主体 ±3 行上下文、上限 40 行，带行号）。
+func (l *PreviewLogic) EditFile(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename, operation string, startLine, endLine int, content string) (*apiPreview.PreviewFileEditResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("EditFile - 行级编辑预览文件 [sessionID=%d, filename=%s, operation=%s, start=%d, end=%d]", sessionID.Int64(), filename, operation, startLine, endLine))
+
+	// 校验文件名（扁平单层）
+	if err := validateFilename(filename); err != nil {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(err.Error()), false, nil)
+	}
+	// delete 操作不接受 content（防误传导致意图歧义）
+	if operation == bConst.PreviewEditOperationDelete && content != "" {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage("delete 操作不接受 content 参数"), false, nil)
+	}
+
+	session, xErr := l.repo.session.GetByID(ctx, sessionID)
+	if xErr != nil {
+		return nil, xErr
+	}
+	if xErr := l.rejectIfUnusable(ctx, session); xErr != nil {
+		return nil, xErr
+	}
+
+	file, xErr := l.repo.file.GetBySessionAndFilename(ctx, sessionID, filename)
+	if xErr != nil {
+		return nil, xErr
+	}
+
+	// 行变换（CRLF 归一 + 边界校验 + 应用操作）
+	parsed := splitFileLines(file.Content)
+	newLines, changedStart, changedEnd, err := applyLineEdit(parsed.lines, previewLineEdit{
+		operation: operation,
+		startLine: startLine,
+		endLine:   endLine,
+		content:   content,
+	})
+	if err != nil {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(err.Error()), false, nil)
+	}
+	newContent := joinFileLines(newLines, parsed.trailingNewline)
+
+	// 校验编辑后大小上限（MySQL TEXT 列上限低于通用上限，按驱动收窄有效上限）
+	maxBytes := l.repo.file.MaxContentBytes()
+	if len(newContent) > maxBytes {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(fmt.Sprintf("编辑后文件大小超出上限(%dKB)", maxBytes/1024)), false, nil)
+	}
+
+	// 原位写回（保留原文件 ID 与创建时间）
+	file.Content = newContent
+	file.Size = len(newContent)
+	result, xErr := l.repo.file.CreateOrUpdate(ctx, file)
+	if xErr != nil {
+		return nil, xErr
+	}
+
+	// 触摸会话更新时间，使会话 updated_at 与内容变更保持一致（失败降级为警告，文件已落库不应标失败）
+	if xErr := l.repo.session.TouchUpdatedAt(ctx, sessionID); xErr != nil {
+		l.log.Warn(ctx, xErr.Error())
+	}
+
+	// 广播预览同步（编辑属内容变更，复用 upload 事件类型，前端按全量详情刷新）
+	if OnPreviewChanged != nil {
+		OnPreviewChanged(sessionID.String(), "upload")
+	}
+
+	regionStart, regionEnd := editRegionWindow(len(newLines), changedStart, changedEnd)
+	return &apiPreview.PreviewFileEditResponse{
+		PreviewFileResponse: *toPreviewFileResponse(result),
+		TotalLines:          len(newLines),
+		RegionStart:         regionStart,
+		RegionEnd:           regionEnd,
+		Region:              numberedRegion(newLines, regionStart, regionEnd),
+	}, nil
+}
+
 // GetSessionByHash 根据访问哈希获取预览会话（公开访问鉴权用）
 func (l *PreviewLogic) GetSessionByHash(ctx context.Context, hash string) (*apiPreview.PreviewSessionResponse, *xError.Error) {
 	l.log.Info(ctx, fmt.Sprintf("GetSessionByHash - 根据哈希获取预览会话 [%s]", hash))
@@ -283,9 +360,12 @@ func (l *PreviewLogic) GetFileContent(ctx context.Context, hash, filename string
 	}, nil
 }
 
-// GetFileContentBySession 根据会话 ID 与文件名获取预览文件完整内容（MCP 提取代码用）
-func (l *PreviewLogic) GetFileContentBySession(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string) (*apiPreview.PreviewFileContentResponse, *xError.Error) {
-	l.log.Info(ctx, fmt.Sprintf("GetFileContentBySession - 获取预览文件内容 [sessionID=%d, filename=%s]", sessionID.Int64(), filename))
+// GetFileLinesBySession 根据会话 ID 与文件名读取预览文件内容，支持行区间（MCP 行级读取入口）
+//
+// startLine/endLine 均为 0 时返回原始全量内容（与既有行为兼容）；指定区间时内容按「行号| 文本」
+// 格式返回（1 起始闭区间），endLine 传 0 或超出总行数时钳制到末行，便于「从第 N 行读到末尾」。
+func (l *PreviewLogic) GetFileLinesBySession(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string, startLine, endLine int) (*apiPreview.PreviewFileLinesResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("GetFileLinesBySession - 行级读取预览文件 [sessionID=%d, filename=%s, start=%d, end=%d]", sessionID.Int64(), filename, startLine, endLine))
 
 	session, xErr := l.repo.session.GetByID(ctx, sessionID)
 	if xErr != nil {
@@ -300,11 +380,42 @@ func (l *PreviewLogic) GetFileContentBySession(ctx context.Context, sessionID xS
 		return nil, xErr
 	}
 
-	return &apiPreview.PreviewFileContentResponse{
-		Filename: file.Filename,
-		MimeType: file.MimeType,
-		Content:  file.Content,
-	}, nil
+	parsed := splitFileLines(file.Content)
+	resp := &apiPreview.PreviewFileLinesResponse{
+		Filename:   file.Filename,
+		MimeType:   file.MimeType,
+		Size:       file.Size,
+		TotalLines: len(parsed.lines),
+	}
+
+	// 全量模式：原始内容原样返回（兼容既有消费方对源码做字符串匹配）
+	if startLine == 0 && endLine == 0 {
+		if len(parsed.lines) > 0 {
+			resp.StartLine, resp.EndLine = 1, len(parsed.lines)
+		}
+		resp.Content = file.Content
+		return resp, nil
+	}
+
+	// 区间模式：带行号返回（空文件无行可读，明确报错）
+	if len(parsed.lines) == 0 {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage("文件为空，没有可读取的行"), false, nil)
+	}
+	if startLine < 1 || startLine > len(parsed.lines) {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(fmt.Sprintf("start_line 无效：需要 1 ≤ start_line ≤ %d（当前 %d）", len(parsed.lines), startLine)), false, nil)
+	}
+	effectiveEnd := endLine
+	if effectiveEnd == 0 || effectiveEnd > len(parsed.lines) {
+		effectiveEnd = len(parsed.lines)
+	}
+	if effectiveEnd < startLine {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(fmt.Sprintf("end_line 不能小于 start_line（start=%d, end=%d）", startLine, endLine)), false, nil)
+	}
+
+	resp.StartLine = startLine
+	resp.EndLine = effectiveEnd
+	resp.Content = formatNumberedLines(startLine, parsed.lines[startLine-1:effectiveEnd])
+	return resp, nil
 }
 
 // GetFileByID 根据文件 ID 获取预览文件详情（含关联会话哈希）
@@ -374,6 +485,48 @@ func (l *PreviewLogic) DeleteFile(ctx context.Context, fileID xSnowflake.Snowfla
 	}
 
 	return nil
+}
+
+// DeleteFileByName 根据会话 ID 与文件名删除单个预览文件（MCP 按名删除入口）
+//
+// 与 DeleteFile(fileID) 语义等价：先解析实体再做会话可用性校验，返回被删文件快照供调用方回显。
+func (l *PreviewLogic) DeleteFileByName(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string) (*apiPreview.PreviewFileResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("DeleteFileByName - 按名删除预览文件 [sessionID=%d, filename=%s]", sessionID.Int64(), filename))
+
+	// 校验文件名（扁平单层）
+	if err := validateFilename(filename); err != nil {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(err.Error()), false, nil)
+	}
+
+	session, xErr := l.repo.session.GetByID(ctx, sessionID)
+	if xErr != nil {
+		return nil, xErr
+	}
+	if xErr := l.rejectIfUnusable(ctx, session); xErr != nil {
+		return nil, xErr
+	}
+
+	file, xErr := l.repo.file.GetBySessionAndFilename(ctx, sessionID, filename)
+	if xErr != nil {
+		return nil, xErr
+	}
+	snapshot := toPreviewFileResponse(file)
+
+	if xErr := l.repo.file.Delete(ctx, file.ID); xErr != nil {
+		return nil, xErr
+	}
+
+	// 触摸会话更新时间，使会话 updated_at 与内容变更保持一致（失败降级为警告，文件已删除不应标失败）
+	if xErr := l.repo.session.TouchUpdatedAt(ctx, sessionID); xErr != nil {
+		l.log.Warn(ctx, xErr.Error())
+	}
+
+	// 广播预览同步（文件删除为内容变更）
+	if OnPreviewChanged != nil {
+		OnPreviewChanged(sessionID.String(), "delete")
+	}
+
+	return snapshot, nil
 }
 
 // ExpireStaleSessions 将已到期仍为 active 的预览会话改为 deleted（保留文件）

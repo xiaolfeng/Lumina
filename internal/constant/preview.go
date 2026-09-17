@@ -19,3 +19,10 @@ const (
 
 // PreviewFileMaxSize 预览文件单文件大小上限（256KB），超出拒绝上传
 const PreviewFileMaxSize = 256 * 1024
+
+// Preview 行级编辑操作常量（MCP preview_file_edit 的 operation 取值）
+const (
+	PreviewEditOperationInsert  = "insert"  // 在 start_line 前插入内容行
+	PreviewEditOperationReplace = "replace" // 替换 [start_line, end_line] 闭区间
+	PreviewEditOperationDelete  = "delete"  // 删除 [start_line, end_line] 闭区间
+)

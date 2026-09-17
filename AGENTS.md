@@ -556,7 +556,7 @@ pnpm test         # 运行 Vitest 测试（markdown/remark-fenced-blocks）
 - Webhook 模块已实现（Git Push 事件接收 + HMAC 校验 + RepoWiki 触发 + 事件历史查询）。
 - 系统设置已实现（站点/安全/Q&A/RepoWiki 分组配置读写 + 前端多标签页设置页）。
 - 安全中间件已实现（CORS 白名单 + 安全响应头 + WebAuthn Origin 解析）。
-- MCP Server 已实现，注册了 Workspace（2 只读工具）、QA（10 工具）、Project（3 工具）、Pin（5 工具）、RepoWiki（2 只读工具）、Preview（5 工具）、Pages（3 工具）七套工具共 30 个；认证为 OAuth 2.1 优先、API Key 回退。
+- MCP Server 已实现，注册了 Workspace（2 只读工具）、QA（10 工具）、Project（3 工具）、Pin（5 工具）、RepoWiki（2 只读工具）、Preview（8 工具，含行级编辑/删除/行区间读取）、Pages（3 工具）七套工具共 33 个；认证为 OAuth 2.1 优先、API Key 回退。
 - MCP OAuth 2.1 已实现（RFC 8414 / 9728 / 7591 / 8707，PKCE S256，consent 页 `/oauth`）。
 - AI 插件动态分发已实现（marketplace.json、ZCode 专用清单、lumina.zip、`.well-known/skills`）。
 - WebSocket Hub 已实现，支持 sessionID → deviceID 二级索引，连接 `Kind` 区分 qa/preview，心跳检测，优雅关闭，断线重连和会话恢复。

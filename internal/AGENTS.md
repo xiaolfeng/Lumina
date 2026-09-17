@@ -93,6 +93,7 @@ internal/
 │   ├── ssh_key.go            # SSH Key 逻辑（CRUD + 密钥对生成/公钥导出）
 │   ├── settings.go           # 系统设置逻辑（分组配置读写 + Info 表编排）
     │   ├── preview_logic.go      # Preview 逻辑（会话/文件管理 + WebSocket 同步回调）
+    │   ├── preview_lines.go     # Preview 行级编辑纯函数（拆行/合并/行变换/行号格式化）
     │   ├── pages_logic.go        # Pages 逻辑（晋升快照、Fork、版本指针、密码门）
 │   ├── dashboard.go          # Dashboard 逻辑（六类指标聚合）
     │   ├── runtime_url.go        # 运行时域名解析 + Preview/Pages 路径式深链构建
@@ -185,8 +186,10 @@ internal/
 │   ├── workspace_tools.go    # Workspace MCP 工具（只读：list/get）
 │   ├── pin_tools.go          # Pin MCP 工具（Push/Consume/List/Update/Peek）
 │   ├── repowiki_tools.go     # RepoWiki MCP 工具（只读：query/list）
-    │   ├── preview_tools.go      # Preview MCP 工具（5 个：会话创建/列表 + 文件上传/列表/读取）
-    │   └── pages_tools.go        # Pages MCP 工具（3 个：pages_list / pages_promote / pages_fork）
+│   ├── preview_tools.go      # Preview MCP 工具注册（7 个：会话创建/列表 + 文件上传/行级编辑/删除/清单/行区间读取）
+│   ├── preview_handlers.go   # Preview MCP 工具 handler 实现（会话快照 + 写入工作流 + 数据组装）
+│   ├── preview_schemas.go    # Preview MCP 输出 Schema 构建器
+│   └── pages_tools.go        # Pages MCP 工具（3 个：pages_list / pages_promote / pages_fork）
 ├── websocket/                # WebSocket 实时通信层
 │   ├── hub.go                # 连接管理器（sessionID → deviceID 二级索引 + 心跳检测）
 │   ├── handler.go            # WebSocket 升级处理器 + 业务消息分发

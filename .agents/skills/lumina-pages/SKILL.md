@@ -7,7 +7,7 @@ metadata:
   author: lumina
   version: "0.1.0"
 argument-hint: [ session-id | slug | page-id ]
-allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__preview_file_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_get, mcp__lumina__pages_list, mcp__lumina__pages_promote, mcp__lumina__pages_fork, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__preview_file_list, mcp__plugin_lumina_lumina__preview_file_upload, mcp__plugin_lumina_lumina__preview_file_get, mcp__plugin_lumina_lumina__pages_list, mcp__plugin_lumina_lumina__pages_promote, mcp__plugin_lumina_lumina__pages_fork
+allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__preview_file_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_edit, mcp__lumina__preview_file_delete, mcp__lumina__preview_file_get, mcp__lumina__pages_list, mcp__lumina__pages_promote, mcp__lumina__pages_fork, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__preview_file_list, mcp__plugin_lumina_lumina__preview_file_upload, mcp__plugin_lumina_lumina__preview_file_edit, mcp__plugin_lumina_lumina__preview_file_delete, mcp__plugin_lumina_lumina__preview_file_get, mcp__plugin_lumina_lumina__pages_list, mcp__plugin_lumina_lumina__pages_promote, mcp__plugin_lumina_lumina__pages_fork
 ---
 
 # Lumina 持久即时页面晋升与版本迭代指南 (lumina-pages)
@@ -67,7 +67,7 @@ preview_file_upload 迭代 → pages_promote（slug 可省略）
 ### 基于线上页面继续改
 
 1. `pages_fork({ "page_id": "<id>" })`，默认拷贝生效版本。
-2. 返回会话带 `source_page_id` / `source_page_slug`。用 `preview_file_get` / `preview_file_upload` 改草稿。
+2. 返回会话带 `source_page_id` / `source_page_slug`。用 `preview_file_get`（可传行区间）/ `preview_file_edit` 局部改草稿，整文件重写才用 `preview_file_upload`。
 3. 再 `pages_promote`。Fork 会话 **不必再传 slug**，后端锁定来源页面并递增 patch（`v1.0.0` → `v1.1.0`）。
 4. 若返回 `conflict`，向用户说明线上已有更新，确认后再带 `confirm_conflict: true`。
 

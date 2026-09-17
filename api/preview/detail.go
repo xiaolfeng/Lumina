@@ -36,6 +36,17 @@ type PreviewFileContentResponse struct {
 	Content  string `json:"content"`   // 文件内容
 }
 
+// PreviewFileLinesResponse 预览文件行级读取响应（MCP 行区间读取用；区间模式下内容带行号）
+type PreviewFileLinesResponse struct {
+	Filename   string `json:"filename"`    // 文件名
+	MimeType   string `json:"mime_type"`   // MIME类型
+	Size       int    `json:"size"`        // 文件大小(字节)
+	TotalLines int    `json:"total_lines"` // 总行数
+	StartLine  int    `json:"start_line"`  // 返回内容起始行（1 起始；空文件为 0）
+	EndLine    int    `json:"end_line"`    // 返回内容结束行（闭区间；空文件为 0）
+	Content    string `json:"content"`     // 文件内容（区间模式按「行号| 文本」格式，全量模式为原始内容）
+}
+
 // PreviewSessionDetailResponse 预览会话详情响应（含文件列表，公开访问用）
 type PreviewSessionDetailResponse struct {
 	Session PreviewSessionResponse `json:"session"` // 会话信息
