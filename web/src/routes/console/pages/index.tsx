@@ -106,7 +106,7 @@ function ConsolePagesPage() {
       </motion.div>
 
       {/* ─── 页面列表区域（方案 A：Tab 隔离收纳） ─── */}
-      <motion.div variants={staggerItem} className="space-y-6">
+      <motion.div variants={staggerItem} className="space-y-4">
         <div className="flex items-center justify-between border-b border-line">
           <div className="-mb-px flex items-center gap-2">
             <button
@@ -156,7 +156,7 @@ function ConsolePagesPage() {
           </span>
         </div>
 
-        <div className="border-t border-line">
+        <div>
           {isLoading ? (
             <div className="space-y-2 py-4">
               <Skeleton className="h-12 w-full" />
