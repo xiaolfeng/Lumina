@@ -107,19 +107,31 @@ export function PreviewSessionDetailDrawer({
                 </div>
               </div>
 
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() =>
-                  window.open(
-                    `/preview/${detail.session.hash}/`,
-                    '_blank',
-                  )
-                }
-              >
-                <ExternalLink className="mr-2 size-4" aria-hidden />
-                打开预览
-              </Button>
+              {(() => {
+                const isExpired =
+                  detail.session.status !== 'active' ||
+                  (detail.session.expires_at
+                    ? new Date(detail.session.expires_at).getTime() <=
+                      Date.now()
+                    : false)
+                return (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    disabled={isExpired}
+                    onClick={() => {
+                      if (isExpired) return
+                      window.open(`/preview/${detail.session.hash}/`, '_blank')
+                    }}
+                    title={
+                      isExpired ? '该会话已过期，访问链接已收回' : '打开预览'
+                    }
+                  >
+                    <ExternalLink className="mr-2 size-4" aria-hidden />
+                    {isExpired ? '预览已过期（链接已收回）' : '打开预览'}
+                  </Button>
+                )
+              })()}
 
               <div>
                 <h3 className="mb-3 text-sm font-semibold">

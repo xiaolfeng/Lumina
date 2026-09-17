@@ -163,23 +163,36 @@ function PreviewPage() {
                   onClick={() => setViewTarget(item)}
                   className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
                   aria-label={`打开 ${item.title} 详情`}
+                  title="查看会话详情与文件"
                 >
                   <Eye className="size-3.5" />
                 </button>
-                <a
-                  href={`/preview/${item.hash}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
-                  aria-label={`打开 ${item.title} 预览`}
-                >
-                  <ExternalLink className="size-3.5" />
-                </a>
+                {isPreviewExpired(item) ? (
+                  <span
+                    className="grid size-11 place-items-center text-sea-ink-soft/30 cursor-not-allowed"
+                    title="会话已过期，预览地址已收回"
+                    aria-label={`${item.title} 预览已过期不可打开`}
+                  >
+                    <ExternalLink className="size-3.5" />
+                  </span>
+                ) : (
+                  <a
+                    href={`/preview/${item.hash}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
+                    aria-label={`打开 ${item.title} 预览`}
+                    title="在独立标签页打开预览"
+                  >
+                    <ExternalLink className="size-3.5" />
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={() => setDeleteTarget(item)}
                   className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-destructive"
                   aria-label={`删除 ${item.title}`}
+                  title="删除此会话"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -224,7 +237,10 @@ function PreviewPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label className="text-xs text-sea-ink-soft">关联项目</Label>
-              <Select value={createProjectId} onValueChange={setCreateProjectId}>
+              <Select
+                value={createProjectId}
+                onValueChange={setCreateProjectId}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="选择项目" />
                 </SelectTrigger>
@@ -302,7 +318,9 @@ function Kpi({
   last?: boolean
 }) {
   return (
-    <div className={`py-7 ${last ? '' : 'border-r border-line'} first:pl-0 md:px-6`}>
+    <div
+      className={`py-7 ${last ? '' : 'border-r border-line'} first:pl-0 md:px-6`}
+    >
       <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
         {label}
       </p>
@@ -313,9 +331,7 @@ function Kpi({
           {value ?? 0}
         </p>
       )}
-      {delta && (
-        <p className="mt-2 text-[11.5px] text-sea-ink-soft">{delta}</p>
-      )}
+      {delta && <p className="mt-2 text-[11.5px] text-sea-ink-soft">{delta}</p>}
     </div>
   )
 }
