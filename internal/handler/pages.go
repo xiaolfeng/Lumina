@@ -305,6 +305,35 @@ func (h *PagesHandler) GetPageMeta(ctx *gin.Context) {
 	xResult.SuccessHasData(ctx, "查询成功", resp)
 }
 
+// ListPageVersionsPublic 展示态版本列表
+//
+// @Summary     [公开] 获取页面版本列表
+// @Description 列出指定页面的全部不可变快照版本；密码页需先解锁 Cookie
+// @Tags        页面接口
+// @Produce     json
+// @Param       project_name  path   string  true  "项目名称"
+// @Param       slug          path   string  true  "页面标识"
+// @Success     200  {object}  apiCommon.BaseResponse{data=apiPages.PageVersionListResponse}  "查询成功"
+// @Failure     401  {object}  apiCommon.BaseResponse  "密码门未解锁"
+// @Failure     404  {object}  apiCommon.BaseResponse  "页面不存在"
+// @Router      /api/v1/pages/by-project/{project_name}/{slug}/versions [GET]
+func (h *PagesHandler) ListPageVersionsPublic(ctx *gin.Context) {
+	projectName := ctx.Param("project_name")
+	slug := ctx.Param("slug")
+	page, _, xErr := h.service.pagesLogic.GetByProjectNameAndSlug(ctx.Request.Context(), projectName, slug)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+	cookieValue, _ := ctx.Cookie(pageService.CookieName(page.ID.Int64()))
+	resp, xErr := h.service.pagesLogic.ListVersionsPublic(ctx.Request.Context(), projectName, slug, cookieValue)
+	if xErr != nil {
+		_ = ctx.Error(xErr)
+		return
+	}
+	xResult.SuccessHasData(ctx, "查询成功", resp)
+}
+
 // ServePagesPath 引擎级路径直出
 func (h *PagesHandler) ServePagesPath(ctx *gin.Context) {
 	projectName := ctx.Param("project_name")

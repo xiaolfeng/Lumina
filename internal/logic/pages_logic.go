@@ -151,6 +151,33 @@ func (l *PagesLogic) ListVersions(ctx context.Context, pageID xSnowflake.Snowfla
 	return &apiPages.PageVersionListResponse{Items: items}, nil
 }
 
+// ListVersionsPublic 展示态版本列表（密码门校验，供公开端点调用）
+//
+// 与 PublicMeta 对齐：非 published 页面对外整体 404，归档页不可探测；
+// 密码页需携带有效解锁 Cookie，否则 401。
+func (l *PagesLogic) ListVersionsPublic(ctx context.Context, projectName, slug, cookieValue string) (*apiPages.PageVersionListResponse, *xError.Error) {
+	page, _, xErr := l.GetByProjectNameAndSlug(ctx, projectName, slug)
+	if xErr != nil {
+		return nil, xErr
+	}
+	if page.Status != bConst.PageStatusPublished {
+		return nil, xError.NewError(ctx, xError.NotFound, "页面不存在", false, nil)
+	}
+	required := page.AccessMode == bConst.PageAccessModePassword && page.PasswordHash != ""
+	if required && !l.authToken.ValidateToken(cookieValue, page.ID.Int64()) {
+		return nil, xError.NewError(ctx, xError.Unauthorized, "page authentication required", false, nil)
+	}
+	versions, xErr := l.repo.version.ListByPage(ctx, page.ID)
+	if xErr != nil {
+		return nil, xErr
+	}
+	items := make([]apiPages.PageVersionResponse, 0, len(versions))
+	for _, version := range versions {
+		items = append(items, *toPageVersionResponse(version, page.LatestVersionID))
+	}
+	return &apiPages.PageVersionListResponse{Items: items}, nil
+}
+
 // PublicMeta 展示态元信息（不含密码哈希）
 func (l *PagesLogic) PublicMeta(ctx context.Context, projectName, slug, versionLabel string) (*apiPages.PagePublicMetaResponse, *xError.Error) {
 	page, project, xErr := l.GetByProjectNameAndSlug(ctx, projectName, slug)

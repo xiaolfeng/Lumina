@@ -26,6 +26,9 @@ func TestPagesRouteStructure(t *testing.T) {
 	public.GET("/:project_name/:slug/meta", func(c *gin.Context) {
 		c.String(http.StatusOK, "meta:"+c.Param("project_name")+":"+c.Param("slug"))
 	})
+	public.GET("/:project_name/:slug/versions", func(c *gin.Context) {
+		c.String(http.StatusOK, "public-versions:"+c.Param("project_name")+":"+c.Param("slug"))
+	})
 
 	admin := apiRouter.Group("/pages")
 	admin.GET("", func(c *gin.Context) {
@@ -65,6 +68,7 @@ func TestPagesRouteStructure(t *testing.T) {
 		{"GET", "/api/v1/pages/by-project/lumina-web/overview/auth-check", "auth-check:lumina-web:overview"},
 		{"POST", "/api/v1/pages/by-project/lumina-web/overview/unlock", "unlock:lumina-web:overview"},
 		{"GET", "/api/v1/pages/by-project/lumina-web/overview/meta", "meta:lumina-web:overview"},
+		{"GET", "/api/v1/pages/by-project/lumina-web/overview/versions", "public-versions:lumina-web:overview"},
 	}
 
 	for _, tt := range tests {

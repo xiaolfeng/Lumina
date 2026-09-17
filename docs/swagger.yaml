@@ -4273,6 +4273,43 @@ paths:
       summary: '[公开] 解锁页面密码门'
       tags:
       - 页面接口
+  /api/v1/pages/by-project/{project_name}/{slug}/versions:
+    get:
+      description: 列出指定页面的全部不可变快照版本；密码页需先解锁 Cookie
+      parameters:
+      - description: 项目名称
+        in: path
+        name: project_name
+        required: true
+        type: string
+      - description: 页面标识
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/pages.PageVersionListResponse'
+              type: object
+        "401":
+          description: 密码门未解锁
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+        "404":
+          description: 页面不存在
+          schema:
+            $ref: '#/definitions/common.BaseResponse'
+      summary: '[公开] 获取页面版本列表'
+      tags:
+      - 页面接口
   /api/v1/pin:
     get:
       consumes:

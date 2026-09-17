@@ -634,3 +634,64 @@ func TestForkCreatesNewActiveSession(t *testing.T) {
 		t.Fatalf("源快照文件数 = %d, want 1", pageFiles)
 	}
 }
+
+// TestListVersionsPublic 展示态版本列表：公开页访客免登录可读，密码页需解锁 Cookie，归档页不可探测
+func TestListVersionsPublic(t *testing.T) {
+	l, db := setupPagesPromoteTest(t)
+	ctx := context.Background()
+
+	project := seedPromoteProject(t, db)
+	page, latest, extra := seedPromotePageWithVersions(t, db, project.ID)
+
+	// 公开页：无任何 Cookie 的访客直接读全量版本，生效指针标记正确
+	resp, xErr := l.ListVersionsPublic(ctx, "promote-test", "site", "")
+	if xErr != nil {
+		t.Fatalf("public page versions failed: %v", xErr)
+	}
+	if len(resp.Items) != 2 {
+		t.Fatalf("versions count = %d, want 2", len(resp.Items))
+	}
+	activeFlags := map[int64]bool{
+		latest.ID.Int64(): true,
+		extra.ID.Int64():  false,
+	}
+	for _, item := range resp.Items {
+		want, ok := activeFlags[item.ID.Int64()]
+		if !ok {
+			t.Fatalf("unexpected version %d in response", item.ID.Int64())
+		}
+		if item.IsActive != want {
+			t.Fatalf("version %d is_active = %v, want %v", item.ID.Int64(), item.IsActive, want)
+		}
+	}
+
+	// 改为密码页：未解锁 401，解锁后凭 Cookie 放行
+	hash, err := service.HashPassword("gate-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Model(page).Updates(map[string]any{
+		"access_mode":   bConst.PageAccessModePassword,
+		"password_hash": hash,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, xErr := l.ListVersionsPublic(ctx, "promote-test", "site", ""); xErr == nil || xErr.GetErrorCode() != xError.Unauthorized {
+		t.Fatalf("locked page should 401, got %v", xErr)
+	}
+	_, token, _, xErr := l.Unlock(ctx, "promote-test", "site", "gate-secret")
+	if xErr != nil || token == "" {
+		t.Fatalf("unlock failed: token=%q xErr=%v", token, xErr)
+	}
+	if _, xErr := l.ListVersionsPublic(ctx, "promote-test", "site", token); xErr != nil {
+		t.Fatalf("unlocked page versions failed: %v", xErr)
+	}
+
+	// 归档页：整体 404，不可探测
+	if err := db.Model(page).Update("status", bConst.PageStatusArchived).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, xErr := l.ListVersionsPublic(ctx, "promote-test", "site", token); xErr == nil || xErr.GetErrorCode() != xError.NotFound {
+		t.Fatalf("archived page should 404, got %v", xErr)
+	}
+}

@@ -19,6 +19,19 @@ export function usePageVersions(id?: string) {
   })
 }
 
+// 展示态版本列表走公开端点（带密码门校验），避免访客触发管理接口 401 被甩到登录页
+export function usePageVersionsByProject(
+  projectName?: string,
+  slug?: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['pages', 'versions-public', projectName, slug],
+    queryFn: () => api.getPageVersionsByProject(projectName!, slug!),
+    enabled: Boolean(projectName && slug) && enabled,
+  })
+}
+
 export function usePageMeta(
   projectName?: string,
   slug?: string,

@@ -1,7 +1,11 @@
 import { isAxiosError } from 'axios'
 import { PagesPasswordGate } from '#/components/pages/password-gate'
 import { ShowcaseShell } from '#/components/pages/showcase-shell'
-import { usePageAuthCheck, usePageMeta, usePageVersions } from '#/hooks/usePages'
+import {
+  usePageAuthCheck,
+  usePageMeta,
+  usePageVersionsByProject,
+} from '#/hooks/usePages'
 
 // client.ts 拦截器会把带 error_message 的错误重包成裸 Error（HTTP status 丢失），
 // 仅透传 AxiosError 时可辨认 404；拿不到 status 时一律按可重试处理，避免误报「页面不存在」
@@ -54,7 +58,7 @@ export function PagesShowcasePage({
     ? !authData.password_required || Boolean(authData.authenticated)
     : false
   const meta = usePageMeta(projectName, slug, undefined, unlocked)
-  const versions = usePageVersions(meta.data?.data?.page.id)
+  const versions = usePageVersionsByProject(projectName, slug, unlocked)
 
   if (auth.isError) {
     if (isHttpNotFound(auth.error)) {

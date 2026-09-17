@@ -17,6 +17,7 @@ func (r *route) pagesRouter(route gin.IRouter) {
 	public.GET("/:project_name/:slug/auth-check", pagesHandler.CheckPageAuth)
 	public.POST("/:project_name/:slug/unlock", pagesHandler.UnlockPage)
 	public.GET("/:project_name/:slug/meta", pagesHandler.GetPageMeta)
+	public.GET("/:project_name/:slug/versions", pagesHandler.ListPageVersionsPublic)
 
 	admin := route.Group("/pages")
 	admin.Use(middleware.Auth(r.context))

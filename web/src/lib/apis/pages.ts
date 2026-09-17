@@ -34,6 +34,13 @@ export function getPageVersions(
   return apiClient.get(`/api/v1/pages/${id}/versions`)
 }
 
+export function getPageVersionsByProject(
+  projectName: string,
+  slug: string,
+): Promise<BaseResponse<PageVersionListResponse>> {
+  return apiClient.get(`/api/v1/pages/by-project/${projectName}/${slug}/versions`)
+}
+
 export function switchActiveVersion(
   id: string,
   versionId: string,

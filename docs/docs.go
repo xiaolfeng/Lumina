@@ -2327,6 +2327,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/pages/by-project/{project_name}/{slug}/versions": {
+            "get": {
+                "description": "列出指定页面的全部不可变快照版本；密码页需先解锁 Cookie",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "页面接口"
+                ],
+                "summary": "[公开] 获取页面版本列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "项目名称",
+                        "name": "project_name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "页面标识",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/common.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/pages.PageVersionListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "密码门未解锁",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "页面不存在",
+                        "schema": {
+                            "$ref": "#/definitions/common.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/pages/{id}": {
             "get": {
                 "description": "根据页面 ID 获取详情（不含密码哈希）",
