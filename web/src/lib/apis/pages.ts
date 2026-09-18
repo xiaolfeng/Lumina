@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { apiClient, publicApiClient } from './client'
 import type { BaseResponse } from '../models/response/common'
 import type {
   ForkPageResponse,
@@ -18,6 +18,8 @@ export interface PageListParams {
   size?: number
 }
 
+// ── 管理端接口（需控制台授权登录） ──
+
 export function getPages(
   params?: PageListParams,
 ): Promise<BaseResponse<PageListResponse>> {
@@ -32,13 +34,6 @@ export function getPageVersions(
   id: string,
 ): Promise<BaseResponse<PageVersionListResponse>> {
   return apiClient.get(`/api/v1/pages/${id}/versions`)
-}
-
-export function getPageVersionsByProject(
-  projectName: string,
-  slug: string,
-): Promise<BaseResponse<PageVersionListResponse>> {
-  return apiClient.get(`/api/v1/pages/by-project/${projectName}/${slug}/versions`)
 }
 
 export function switchActiveVersion(
@@ -68,11 +63,27 @@ export function updatePageAccessPolicy(
   return apiClient.put(`/api/v1/pages/${id}/access-policy`, data)
 }
 
+export function promotePreviewSession(
+  id: string,
+  data: PromotePreviewSessionRequest,
+): Promise<BaseResponse<PromoteSessionResponse>> {
+  return apiClient.post(`/api/v1/preview/sessions/${id}/promote`, data)
+}
+
+// ── 展示端公开接口（无需控制台授权登录，凭密码门 Cookie 鉴权） ──
+
+export function getPageVersionsByProject(
+  projectName: string,
+  slug: string,
+): Promise<BaseResponse<PageVersionListResponse>> {
+  return publicApiClient.get(`/api/v1/pages/by-project/${projectName}/${slug}/versions`)
+}
+
 export function checkPageAuth(
   projectName: string,
   slug: string,
 ): Promise<BaseResponse<PageAuthCheckResponse>> {
-  return apiClient.get(
+  return publicApiClient.get(
     `/api/v1/pages/by-project/${projectName}/${slug}/auth-check`,
   )
 }
@@ -82,7 +93,7 @@ export function unlockPage(
   slug: string,
   password: string,
 ): Promise<BaseResponse> {
-  return apiClient.post(
+  return publicApiClient.post(
     `/api/v1/pages/by-project/${projectName}/${slug}/unlock`,
     {
       password,
@@ -95,14 +106,8 @@ export function getPageMeta(
   slug: string,
   version?: string,
 ): Promise<BaseResponse<PagePublicMetaResponse>> {
-  return apiClient.get(`/api/v1/pages/by-project/${projectName}/${slug}/meta`, {
+  return publicApiClient.get(`/api/v1/pages/by-project/${projectName}/${slug}/meta`, {
     params: version ? { v: version } : undefined,
   })
 }
 
-export function promotePreviewSession(
-  id: string,
-  data: PromotePreviewSessionRequest,
-): Promise<BaseResponse<PromoteSessionResponse>> {
-  return apiClient.post(`/api/v1/preview/sessions/${id}/promote`, data)
-}

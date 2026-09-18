@@ -67,11 +67,32 @@ export function useUnlockPage() {
     }) => api.unlockPage(projectName, slug, password),
     onSuccess: (_data, variables) => {
       toast.success('已解锁')
+      queryClient.setQueryData(
+        ['pages', 'auth-check', variables.projectName, variables.slug],
+        (old: any) => ({
+          code: 200,
+          message: 'OK',
+          ...old,
+          data: {
+            authenticated: true,
+            password_required: true,
+            ...old?.data,
+          },
+        }),
+      )
       queryClient.invalidateQueries({
         queryKey: ['pages', 'auth-check', variables.projectName, variables.slug],
       })
       queryClient.invalidateQueries({
         queryKey: ['pages', 'meta', variables.projectName, variables.slug],
+      })
+      queryClient.invalidateQueries({
+        queryKey: [
+          'pages',
+          'versions-public',
+          variables.projectName,
+          variables.slug,
+        ],
       })
     },
     onError: (error: Error) => {

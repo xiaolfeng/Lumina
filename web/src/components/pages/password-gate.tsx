@@ -44,9 +44,16 @@ export function PagesPasswordGate({
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="访问密码"
+            disabled={unlock.isPending}
+            autoFocus
           />
-          <Button type="submit" className="w-full" disabled={unlock.isPending}>
-            解锁
+          {unlock.isError && (
+            <p className="text-center text-xs text-red-500">
+              {unlock.error.message || '密码错误，请重试'}
+            </p>
+          )}
+          <Button type="submit" className="w-full" disabled={unlock.isPending || !password.trim()}>
+            {unlock.isPending ? '解锁中…' : '解锁'}
           </Button>
         </form>
       </div>
