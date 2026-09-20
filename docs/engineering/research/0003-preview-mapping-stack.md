@@ -136,6 +136,21 @@ LPW 渲染链路分为四段：JSON 解析与 Schema 校验、类型映射分发
 
 在上述需求出现之前，引入 json-render 属于过度设计。[R1][R2]
 
+### 6. 2026-09-20 合并后复核：React 直渲管线现状
+
+同步 master（合并提交 `7ce1551`，含 `ec7f904`）后，本仓库前端已存在一条 React 直接渲染管线，与本调研的自建分发方案直接相关。以下为静态代码事实：
+
+| 位置 | 现状 | 与 LPW 的关系 |
+| --- | --- | --- |
+| `web/src/components/preview/file-viewer.tsx` | `PreviewFileViewer` 统一分发：html/svg → `PreviewFrame`（iframe `sandbox="allow-scripts"`）；markdown → `PreviewMarkdownView`（`@lumina/components/markdown`，React 树内直渲）；其余 → CodeMirror 源码视图 | `.md` 的直渲分支就是 LPW 分发的现成落点：`'lpw'` kind 增加同层分支即可 |
+| `web/src/components/preview/workbench-canvas.tsx` | Preview 工作台画布复用 `PreviewFileViewer`，源码检查态强制 `kind='code'` | LPW 在工作台自动获得渲染/源码双态 |
+| `web/src/components/pages/showcase-shell.tsx` | Pages 展示态复用同一 `PreviewFileViewer`；`isRenderable` 仅匹配 `html\|htm\|md`，其余文件进「高级资源」折叠区 | `.lpw` 需加入 `isRenderable` 才能进入展示态页面直切区 |
+| `web/src/components/interact/primitives/preview-frame.tsx` | Q&A `PreviewSupplement` 解析 `file_id` 后统一构造 `/preview/:hash/:file?lumina_frame=1` 交给 iframe，未按文件类型分流 | LPW 内嵌 Q&A 需要在此处按 kind 分流到 React 直渲 |
+| `internal/mcp/preview_handlers.go` | 入口判定移入 snapshot 构建；`previewWriteWorkflow` 仍只有 HTML 入口语义（`awaiting_html_entry` / `reviewable_unverified`）；preview 工具增至 7 个（新增 `preview_file_edit` / `preview_file_delete`） | 原 `findPreviewEntry`（`preview_tools.go`）已不存在；LPW 入口判定需改在 snapshot 构建处扩展 |
+| Pages 晋升（`internal/logic/pages_logic.go`） | 会话文件全量深拷贝为 `PageFile` 不可变快照；版本有 `EntryFilename` 入口字段 | 会话内 `.lpw` 会自然进入快照；版本入口选择需考虑 `.lpw` |
+
+寻址已全面路径式化：Preview 为 `/preview/:session_hash/:filename`（登录态），Pages 为 `/pages/:project_name/:slug/:filename`（公开或密码门）。[R6]
+
 ## 结论
 
 事实结论：
@@ -157,3 +172,4 @@ LPW 渲染链路分为四段：JSON 解析与 Schema 校验、类型映射分发
 - **R3** · json-render Custom Schema & Specs · https://json-render.dev/docs/custom-schema · https://json-render.dev/docs/specs
 - **R4** · json-render 源码 (commit `6c7164342a37fab055907f1666658e1333e2cb86`) · https://github.com/vercel-labs/json-render/blob/6c7164342a37fab055907f1666658e1333e2cb86/packages/react/src/renderer.tsx
 - **R5** · 本地组件库配置 · `components/package.json` 与 `components/src/`
+- **R6** · 本地合并后代码 · 合并提交 `7ce1551`（含 origin/master `ec7f904`）· `web/src/components/preview/file-viewer.tsx` · `web/src/components/pages/showcase-shell.tsx` · `web/src/components/interact/primitives/preview-frame.tsx` · `internal/mcp/preview_handlers.go`

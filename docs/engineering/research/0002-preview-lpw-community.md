@@ -64,6 +64,8 @@ Q&A 的 Preview 引用当前包含 `session_id + file_id`。支持 LPW 显示不
 
 ## 结论
 
+> 2026-09-20 复核：本节及第 4 节表格基于基线 `789812a`。同步 master（合并提交 `7ce1551`）后，部分行为已变化——寻址改为路径式（`/preview/:session_hash/:filename`，登录态）、MCP 入口判定移至 `internal/mcp/preview_handlers.go`、Q&A 引用统一构造 `lumina_frame=1` 的 iframe 地址、前端新增 React 直渲管线与 Pages 展示态。最新事实见 [调研 0003 的合并后复核](./0003-preview-mapping-stack.md)。
+
 **确定：** 类型化 JSON 到已注册组件的机制有社区实现；文档块与通用 UI 组件是组件目录的不同颗粒度，不是由 JSON 本身决定。json-render/Puck 的映射机制与 Editor.js/Adaptive Cards 的内容模型提供了相互独立的参照。
 
 **倾向：** LPW 重点定义文档文件契约与专用组件目录。json-render 可作为复用候选，但当前需求不要求它的状态表达式、动作或流式消息能力；是否引入，留待具体结构与兼容验证。自建有限渲染分发与使用社区渲染器都是仍可比较的实现方式。

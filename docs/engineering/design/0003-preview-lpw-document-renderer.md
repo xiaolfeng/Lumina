@@ -5,7 +5,7 @@
 | 项 | 值 |
 | --- | --- |
 | 作者 | Lumina |
-| 日期 | 2026-09-14 |
+| 日期 | 2026-09-14（2026-09-20 修订：同步 master 后确立 React 直渲优先） |
 | 状态 | Draft |
 | 范围词 | 预览 / 文件预览 / `preview`（已登记于 `docs/scope-manage.md`） |
 
@@ -15,12 +15,14 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 
 本设计基于 [ADR-0008](../adr/0008-preview-lpw-document-contract.md) 与 [调研 0003](../research/0003-preview-mapping-stack.md) 的结论，定义 `.lpw`（Lumina Preview 文档）文件的端到端渲染架构。核心方案为：**自建极简类型映射分发引擎（`LpwRegistry` + `LpwBlockRenderer` + `BlockErrorBoundary`）**，结合版本化 JSON Schema 约束，驱动专用 React 组件库进行长文排版与本地安全交互。方案具备零外部框架依赖、天然对齐 React 19、块级错误严格可见（绝不静默吞块）的特征，并将 `json-render` 保留为未来跨端/流式场景的演进候选。
 
+**运行环境首选 React 直渲管线（ADR-0008 第 8 条）**：LPW 与 Markdown 同级，经前端统一文件分发在 React 组件树内渲染，不转 HTML、不进沙盒 iframe；Preview 工作台与 Pages 展示态复用同一实现。master 合入的 Pages 架构（[ADR-0007](../adr/0007-preview-pages-separation.md)）已把 `.md` 直渲验证为可行路径，LPW 沿用该管线接入。
+
 ## Background & Motivation
 
-在现网实现（基线 `789812a`）中，Preview 模块存在以下既有约束与痛点：
+在合并后实现（基线 `789812a`，2026-09-20 同步 master `ec7f904`，合并提交 `7ce1551`）中，Preview/Pages 存在以下既有约束与痛点：
 1. **类型分流缺失**：`web/src/lib/preview-file.ts` 将 `.lpw` 误判为普通 `code` 文件，回退至 CodeMirror 代码高亮，无法渲染结构化文档；
-2. **iframe 假设硬编码**：`web/src/components/interact/primitives/preview-frame.tsx` 在 Q&A 引用预览时默认将文件交给 iframe 加载，若直接传入 `.lpw` 将导致浏览器下载或展示裸 JSON；
-3. **MCP 入口感知盲区**：`internal/mcp/preview_tools.go` 的 `findPreviewEntry` 仅以 `PreviewMimeHTML` 作为预览入口，导致 `.lpw` 无法独立作为会话的主展示入口；
+2. **Q&A iframe 单通道**：`web/src/components/interact/primitives/preview-frame.tsx` 的 `PreviewSupplement` 解析文件详情后统一构造 `/preview/:session_hash/:filename?lumina_frame=1` 交给 iframe，若直接传入 `.lpw` 将导致浏览器下载或展示裸 JSON；
+3. **MCP 入口感知盲区**：入口判定现位于 `internal/mcp/preview_handlers.go` 的 snapshot 构建与 `previewWriteWorkflow`，仅以 HTML 入口（`PreviewMimeHTML`）为可评审语义（`awaiting_html_entry` / `reviewable_unverified`），`.lpw` 无法独立作为会话的主展示入口；Pages 版本的 `EntryFilename` 同样默认 HTML；
 4. **错误边界缺失**：调研 0003 证实社区库 `json-render` 内置的 `ElementErrorBoundary` 在捕获异常后直接返回 `null`，不满足 ADR-0008 要求的「渲染失败必须可见、可定位、绝不丢块」原则。
 
 本设计旨在补齐上述技术缺口，给出可直接编码落地的完整工程实现方案。
@@ -29,12 +31,12 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 
 ### Goals
 
-- **文件与入口闭环**：后端识别 `.lpw` 扩展名与专用 MIME，MCP `findPreviewEntry` 将 `.lpw` 纳为合法首屏入口；
+- **文件与入口闭环**：后端识别 `.lpw` 扩展名与专用 MIME，MCP snapshot 入口判定（`preview_handlers.go`）将 `.lpw` 纳为合法首屏入口；
 - **版本化文档 Schema**：制定 LPW v1 规范，支持声明式元数据（`version`, `meta`）与顺序文档块（`blocks`）；
 - **自建映射分发引擎**：在 `web/src/components/preview/lpw/` 下实现解析器、注册表、块级分发器与错误边界；
 - **全量专用组件库（首期 10 种）**：交付 Markdown、Callout、Metrics、Steps、Timeline、Diff、Table 7 种内容块，以及 Section、Tabs、Columns 3 种容器块；
 - **严格错误可见性**：单个块渲染崩溃时，就地展示包含块 ID、类型与错误原因的内嵌诊断卡片，不阻断整篇文档；
-- **多端渲染一致性**：公开分享页（`/preview?session=...`）、控制台文件查看器、Q&A 交互引用均统一接入 LPW 渲染器。
+- **多端渲染一致性**：Preview 工作台（`/preview/:session_hash/:filename`，登录态）、Pages 展示态（`/pages/:project_name/:slug/:filename`，`.lpw` 随晋升进入不可变快照并纳入页面直切区）、Q&A 交互引用均经同一 React 直渲管线接入 LPW 渲染器。
 
 ### Non-Goals
 
@@ -55,6 +57,7 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 | 5 | **专用组件样式与底层原语 100% 消费 `@lumina/components`**。 | 保证全站视觉语言严格符合「静烛 v1」（全平直角、`--sea-ink`、`--lagoon` 色盘）。 |
 | 6 | **Q&A 预览引用根据文件类型动态分流**：HTML/SVG 走 iframe，LPW 走 React 原生渲染。 | 解决 Q&A 内嵌展示 LPW 时的格式错位问题。 |
 | 7 | **单文件大小维持 256 KiB**，块数量软上限 500。 | 契合既有 Preview 基础设施配额，单文档足够承载中长篇方案。 |
+| 8 | **React 直渲优先**：`.lpw` 与 Markdown 同级进入 `PreviewFileViewer` 的 React 直渲分支，禁止「转 HTML 进 iframe」作为主交付路径。 | 落实 ADR-0008 第 8 条；直渲管线已被 `.md` 验证，直接复用 `@lumina/components` 主题与排版，并保留组件级状态、错误边界与可测试性。 |
 
 ## System Architecture & Data Flow
 
@@ -65,7 +68,7 @@ flowchart TB
   subgraph S1 ["1. 存储与接入层"]
     LPWFile["lpw 文档文件 (JSON ≤ 256KB)"]
     Logic["PreviewLogic (校验与落库)"]
-    MCP["findPreviewEntry (识别入口)"]
+    MCP["preview_handlers snapshot 入口判定"]
     WS["WebSocket (preview_sync 广播)"]
     LPWFile --> Logic
     Logic --> MCP
@@ -74,8 +77,8 @@ flowchart TB
 
   subgraph S2 ["2. 前端文件识别与分流"]
     Kind["previewKindFromFilename: lpw"]
-    Viewer["PreviewFileViewer (分流至 LPW)"]
-    QAPrev["PreviewSupplement (Q&A 专用内嵌)"]
+    Viewer["PreviewFileViewer (工作台 + Pages 展示态共用分流)"]
+    QAPrev["PreviewSupplement (Q&A 专用内嵌，按 kind 分流)"]
     Kind --> Viewer
     Kind --> QAPrev
   end
@@ -224,25 +227,16 @@ func inferMimeType(filename string) string {
 
 ### 3. MCP 入口判定增强
 
-在 `internal/mcp/preview_tools.go` 的 `findPreviewEntry` 中，增加对 `.lpw` 入口的支持：
+入口判定已随 master 迁移至 `internal/mcp/preview_handlers.go` 的 snapshot 构建（`snapshot.entry` / `entryFilename`），并由 `previewWriteWorkflow` 产出 `awaiting_html_entry` / `reviewable_unverified` 状态。扩展方式：
 
 ```go
-func findPreviewEntry(files []apiPreview.PreviewFileResponse) *apiPreview.PreviewFileResponse {
-    // 1. 优先寻找 index.lpw 或首个 .lpw 文件
-    for i := range files {
-        if files[i].MimeType == bConst.PreviewMimeLPW {
-            return &files[i]
-        }
-    }
-    // 2. 回退寻找 HTML 入口
-    for i := range files {
-        if files[i].MimeType == bConst.PreviewMimeHTML {
-            return &files[i]
-        }
-    }
-    return nil
-}
+// buildPreviewSessionSnapshot 内的入口选择（示意）：
+// 1. 优先寻找 index.lpw 或首个 .lpw 文件
+// 2. 回退寻找 HTML 入口（PreviewMimeHTML）
+// 3. 均无 → snapshot.entry 为空，保持 awaiting_html_entry
 ```
+
+配套调整：`previewWriteWorkflow` 的状态文案与指引需把「HTML 入口」泛化为「可评审入口」；Pages 侧 `pages_promote` 生成的 `PageVersion.EntryFilename` 同样允许 `.lpw`。`internal/mcp/preview_schemas.go` 中 `entry_file` 字段描述一并更新，禁止残留「仅 HTML」语义。
 
 ## Frontend Mapping Engine Design
 
@@ -422,7 +416,7 @@ if (kind === 'lpw') {
 
 ### 3. `web/src/components/interact/primitives/preview-frame.tsx`
 
-在 `PreviewSupplement` 中，解析文件详情后根据扩展名分支处理：
+`PreviewSupplement` 现统一构造 `/preview/:session_hash/:filename?lumina_frame=1` 交给 iframe。Q&A 内嵌需在解析文件详情后按 kind 分流：
 
 ```typescript
 if (previewKindFromFilename(detail.filename) === 'lpw') {
@@ -432,6 +426,18 @@ return <PreviewFrame src={src} title={detail.filename} />
 ```
 
 彻底杜绝将 `.lpw` 文件喂给 HTML iframe 的历史问题。
+
+### 4. `web/src/components/pages/showcase-shell.tsx`
+
+Pages 展示态与 Preview 工作台复用同一个 `PreviewFileViewer`，因此 LPW 分支天然双端生效。还需把直切区判定从 `html|htm|md` 扩展为 `html|htm|md|lpw`：
+
+```typescript
+function isRenderable(filename: string) {
+  return /\.(html|htm|md|lpw)$/i.test(filename)
+}
+```
+
+会话内 `.lpw` 随 `pages_promote` 全量深拷贝进入不可变快照，展示态直切区将其视为可渲染页面；源码检查仍走 CodeMirror 分支，不受影响。
 
 ## Security & Performance Boundaries
 
@@ -467,9 +473,10 @@ flowchart LR
   - 实现 Section, Tabs, Columns 容器块；
   - 支持 `depth` 递归限制与本地标签/折叠状态；
   - 交付典型 LPW 长文样例。
-- **PR 4：后端校验、MCP 入口与 Q&A 嵌入**
+- **PR 4：后端校验、MCP 入口、Pages 直切与 Q&A 嵌入**
   - 修改 `internal/constant/preview.go` 与 `internal/logic/preview_logic.go`；
-  - 修改 `internal/mcp/preview_tools.go` 的 `findPreviewEntry`；
+  - 扩展 `internal/mcp/preview_handlers.go` 的 snapshot 入口判定与 `previewWriteWorkflow` 文案，同步 `preview_schemas.go` 描述与 Pages `EntryFilename` 语义；
+  - 调整 `web/src/components/pages/showcase-shell.tsx` 的 `isRenderable` 纳入 `.lpw`；
   - 调整 `web/src/components/interact/primitives/preview-frame.tsx` 支持 Q&A 内嵌。
 
 ## Verification & Testing Strategy
@@ -479,6 +486,6 @@ flowchart LR
    - `lpw-registry.test.ts`：验证组件注册、重复注册覆盖、未注册类型查询；
    - `block-error-boundary.test.tsx`：模拟组件内部 `throw new Error()`，断言页面呈现错误卡片且文档其他块正常渲染。
 2. **场景用例回归**：
-   - 构造包含 10 种块的完整 `.lpw` 文档，在控制台 Preview 与公开分享页验证渲染一致性；
+   - 构造包含 10 种块的完整 `.lpw` 文档，在 Preview 工作台（`/preview/:session_hash/:filename`）与 Pages 展示态（晋升快照后的 `/pages/:project/:slug/:filename`）验证渲染一致性；
    - 在 Q&A 交互中推送包含 `.lpw` 引用的 supplement，验证原生内嵌展示正常；
    - 上传超限文档（>256KB 或深度 >3），验证错误提示明晰可见。
