@@ -63,3 +63,52 @@ func TestInjectNavigateShim(t *testing.T) {
 		t.Fatal("shim missing navigate postMessage")
 	}
 }
+
+func TestRenderTSXVirtualHost(t *testing.T) {
+	t.Parallel()
+	tsx := `import React, { useState } from 'react'; export default function App() { return <h1>Hello Lumina</h1> }`
+	got := renderTSXVirtualHost("App.tsx", tsx)
+	if !strings.Contains(got, "<title>App.tsx · Lumina Preview</title>") {
+		t.Fatal("missing title in virtual host")
+	}
+	if !strings.Contains(got, "babel.min.js") {
+		t.Fatal("missing babel standalone in virtual host")
+	}
+	if !strings.Contains(got, "ReactDOM.createRoot") {
+		t.Fatal("missing ReactDOM createRoot in virtual host")
+	}
+	if !strings.Contains(got, "modules: 'commonjs'") {
+		t.Fatal("missing commonjs module transformation in babel preset")
+	}
+	if !strings.Contains(got, "function require(name)") {
+		t.Fatal("missing runtime mock require implementation")
+	}
+}
+
+func TestRenderTSXVirtualHost_SecurityEscaping(t *testing.T) {
+	t.Parallel()
+	maliciousFilename := `demo</title><script>alert(1)</script>.tsx`
+	maliciousContent := `export default function App() { return <div></Script><script>alert(2)</script></div> }`
+	got := renderTSXVirtualHost(maliciousFilename, maliciousContent)
+
+	if strings.Contains(got, "<title>demo</title>") {
+		t.Fatal("filename XSS was not escaped")
+	}
+	if !strings.Contains(got, "&lt;/title&gt;&lt;script&gt;") {
+		t.Fatal("filename did not have HTML entity escaping")
+	}
+	// Content must not have raw unescaped closing script tag
+	if strings.Contains(got, "</Script>") || strings.Contains(got, "</script>") {
+		// Only the script closing tag of the container is allowed, inside the container must be safe
+		sourceTagStart := strings.Index(got, `id="__lumina_tsx_source__"`)
+		if sourceTagStart != -1 {
+			sourceTagEnd := strings.Index(got[sourceTagStart:], `</script>`)
+			if sourceTagEnd != -1 {
+				inner := got[sourceTagStart : sourceTagStart+sourceTagEnd]
+				if strings.Contains(strings.ToLower(inner), "</script") {
+					t.Fatal("raw closing script tag found inside tsx source container")
+				}
+			}
+		}
+	}
+}

@@ -286,7 +286,7 @@ func (l *PagesLogic) Promote(ctx context.Context, sessionID xSnowflake.Snowflake
 	}
 	entry := FindPreviewEntryFromPreviewFiles(previewFiles)
 	if entry == "" {
-		return nil, xError.NewError(ctx, xError.ParameterError, "会话内没有可评审入口（HTML 或 LPW），无法晋升", false, nil)
+		return nil, xError.NewError(ctx, xError.ParameterError, "会话内没有可评审入口（HTML、LPW 或 TSX），无法晋升", false, nil)
 	}
 
 	project, xErr := l.repo.project.GetByID(ctx, session.ProjectID)
@@ -818,6 +818,11 @@ func findHTMLEntryFromPageFiles(files []*entity.PageFile) string {
 func isHTMLFilename(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
 	return ext == ".html" || ext == ".htm"
+}
+
+func isTSXFilename(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	return ext == ".tsx" || ext == ".jsx"
 }
 
 func incrementPatchVersion(current string) string {

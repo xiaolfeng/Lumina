@@ -20,7 +20,7 @@ export function PreviewFileViewer({
     return <PreviewLpwViewer src={src} filename={filename} />
   }
 
-  if (kind === 'html' || kind === 'svg') {
+  if (kind === 'html' || kind === 'svg' || kind === 'tsx') {
     return <PreviewFrame src={src} className="flex-1" title={filename} />
   }
 
@@ -45,7 +45,8 @@ function PreviewSourceViewer({
     setError('')
     void (async () => {
       try {
-        const res = await fetch(src, { signal: ac.signal })
+        const rawUrl = src.includes('?') ? `${src}&raw=1` : `${src}?raw=1`
+        const res = await fetch(rawUrl, { signal: ac.signal })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const text = await res.text()
         setSource(formatPreviewSource(filename, text))

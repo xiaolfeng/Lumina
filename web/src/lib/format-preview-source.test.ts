@@ -17,6 +17,8 @@ describe('previewKindFromFilename', () => {
     expect(previewKindFromFilename('README.md')).toBe('markdown')
     expect(previewKindFromFilename('icon.svg')).toBe('svg')
     expect(previewKindFromFilename('index.lpw')).toBe('lpw')
+    expect(previewKindFromFilename('App.tsx')).toBe('tsx')
+    expect(previewKindFromFilename('App.jsx')).toBe('tsx')
     expect(previewKindFromFilename('app.ts')).toBe('code')
     expect(previewKindFromFilename('theme.css')).toBe('code')
   })

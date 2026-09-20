@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
@@ -287,10 +288,23 @@ func (h *PreviewHandler) ServePreviewPath(ctx *gin.Context) {
 			return
 		}
 		entry := ""
+		// 1. 优先匹配 HTML
 		for _, file := range files {
 			if strings.HasPrefix(strings.ToLower(file.MimeType), "text/html") {
 				entry = file.Filename
 				break
+			}
+		}
+		// 2. 若无 HTML，寻找 TSX / JSX 入口
+		if entry == "" {
+			for _, file := range files {
+				ext := strings.ToLower(filepath.Ext(file.Filename))
+				if ext == ".tsx" || ext == ".jsx" {
+					entry = file.Filename
+					if strings.HasPrefix(strings.ToLower(file.Filename), "app.") || strings.HasPrefix(strings.ToLower(file.Filename), "index.") {
+						break
+					}
+				}
 			}
 		}
 		if entry == "" && len(files) > 0 {
@@ -308,5 +322,5 @@ func (h *PreviewHandler) ServePreviewPath(ctx *gin.Context) {
 		_ = ctx.Error(xErr)
 		return
 	}
-	writeServedFile(ctx, file.MimeType, file.Content)
+	writeServedFile(ctx, file.Filename, file.MimeType, file.Content)
 }

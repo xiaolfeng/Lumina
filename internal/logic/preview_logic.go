@@ -657,7 +657,11 @@ func inferMimeType(filename string) string {
 		return bConst.PreviewMimeLPW
 	case ".md", ".markdown":
 		return bConst.PreviewMimeMarkdown
-	case ".ts", ".tsx", ".mts", ".cts":
+	case ".tsx":
+		return bConst.PreviewMimeTSX
+	case ".jsx":
+		return bConst.PreviewMimeJSX
+	case ".ts", ".mts", ".cts":
 		return bConst.PreviewMimePlain
 	case ".svg":
 		return bConst.PreviewMimeSVG

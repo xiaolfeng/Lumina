@@ -1,5 +1,9 @@
 # Pages 晋升与 Fork 字段
 
+## 静态运行时继承
+
+晋升会深拷贝 Preview 文件内容与 MIME 类型，因此原生 HTML/CSS/JS 以及浏览器端 React/Vue 页面可保持相同运行方式。Pages 不执行 npm 安装、构建命令、SSR 或服务端代码，也不会把外部 CDN 资源收进快照。框架 CDN 必须固定版本，并确保页面受众所在网络可访问；完整边界见 [`../../lumina-preview/references/framework-runtime.md`](../../lumina-preview/references/framework-runtime.md)。
+
 ## pages_promote
 
 | 字段 | 必填 | 说明 |

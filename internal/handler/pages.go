@@ -361,5 +361,5 @@ func (h *PagesHandler) ServePagesPath(ctx *gin.Context) {
 		_ = ctx.Error(xErr)
 		return
 	}
-	writeServedFile(ctx, file.MimeType, file.Content)
+	writeServedFile(ctx, file.Filename, file.MimeType, file.Content)
 }

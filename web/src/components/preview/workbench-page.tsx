@@ -35,6 +35,7 @@ export function PreviewWorkbenchPage({
   const [promoteOpen, setPromoteOpen] = useState(false)
   const [syncSeq, setSyncSeq] = useState(0)
   const [activeFile, setActiveFile] = useState(requestedFile)
+  const internalNavRef = useRef<string | null>(null)
 
   const handleSync = useCallback(
     (data: any) => {
@@ -133,8 +134,16 @@ export function PreviewWorkbenchPage({
       ) {
         return
       }
-      const href = event.data.href.split(/[?#]/)[0].split('/').pop()
+      const rawHref = event.data.href.split(/[?#]/)[0]
+      const href = rawHref.split('/').pop()
       if (!href) return
+
+      // 存在性守卫：只在当前会话物理文件中存在时才联动，避免外部虚拟路由或无效链接导致 404
+      if (!files.some((file) => file.filename === href)) {
+        return
+      }
+
+      internalNavRef.current = href
       setActiveFile(href)
       navigate({
         to: '/preview/$sessionHash/$',
@@ -144,9 +153,10 @@ export function PreviewWorkbenchPage({
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [navigate, sessionHash])
+  }, [files, navigate, sessionHash])
 
   const selectFile = (filename: string) => {
+    internalNavRef.current = null
     setActiveFile(filename)
     navigate({
       to: '/preview/$sessionHash/$',
@@ -159,11 +169,22 @@ export function PreviewWorkbenchPage({
     session === null && (status === 'idle' || status === 'connecting')
   const activeUpdatedAt =
     files.find((file) => file.filename === activeFile)?.updated_at ?? ''
-  const src = activeFile
+  const computedSrc = activeFile
     ? `/preview/${sessionHash}/${encodeURIComponent(activeFile)}?v=${encodeURIComponent(
         activeUpdatedAt,
       )}&_lumina_sync=${syncSeq}&lumina_frame=1`
     : ''
+
+  const [frameSrc, setFrameSrc] = useState(computedSrc)
+
+  useEffect(() => {
+    if (internalNavRef.current === activeFile) {
+      // 来自 iframe 内部导航：iframe 已完成或正在自然加载目标文件，避免重设 src 触发二次硬重载
+      internalNavRef.current = null
+      return
+    }
+    setFrameSrc(computedSrc)
+  }, [activeFile, computedSrc])
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {files.length > 1 ? (
@@ -226,9 +247,9 @@ export function PreviewWorkbenchPage({
             <div className="flex flex-1 items-center justify-center">
               <p className="text-sm text-sea-ink-soft/50">加载中…</p>
             </div>
-          ) : src ? (
+          ) : frameSrc ? (
             <WorkbenchCanvas
-              src={src}
+              src={frameSrc}
               filename={activeFile}
               sourceMode={sourceMode}
               device={device}

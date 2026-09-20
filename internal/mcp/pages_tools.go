@@ -58,7 +58,7 @@ var pagesToolDefs = []pagesToolDef{
 		title: "将预览会话晋升为 Pages",
 		description: `用途：把维护完成的 Preview 会话深拷贝为项目级不可变 Pages 快照。不设置密码；访问策略由控制台 /console/pages 管理。
 
-何时调用：Preview 文件齐全、用户确认将该草稿发布为持久页面时调用。无 HTML 入口时会被拒绝。
+何时调用：Preview 文件齐全、用户确认将该草稿发布为持久页面时调用。无 HTML 入口时会被拒绝。React/Vue 等浏览器端框架随静态文件一起工作，但外部 CDN 资源不会复制进快照；Pages 不执行 npm、构建器、SSR 或服务端代码，也不提供 Preview 的实时自动刷新。
 
 副作用：创建 Page 或追加 PageVersion；勾选 set_as_active 时切换线上生效指针。线上指针已前进且未 confirm_conflict 时返回冲突，不会改指针。`,
 		inputSchema: map[string]any{
@@ -88,7 +88,7 @@ var pagesToolDefs = []pagesToolDef{
 
 副作用：新建 Preview 会话与文件副本，不改线上指针。新会话仍须登录访问。密码策略不会带到草稿里。
 
-下一步：用 preview_file_get / preview_file_upload 修改草稿，核对后调用 pages_promote（slug 可省略，锁定来源页面）。`,
+下一步：用 preview_file_get / preview_file_upload 修改草稿，核对后调用 pages_promote（slug 可省略，锁定来源页面）。浏览器端 React/Vue 的修改规则与普通 Preview 相同；需要构建链时先在真实项目构建再上传静态产物。`,
 		inputSchema: map[string]any{
 			"type":                 "object",
 			"additionalProperties": false,

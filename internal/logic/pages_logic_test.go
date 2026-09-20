@@ -61,6 +61,15 @@ func TestFindHTMLEntry(t *testing.T) {
 	if got := findHTMLEntry([]*entity.PreviewFile{{Filename: "app.js", MimeType: bConst.PreviewMimeJS}}); got != "" {
 		t.Fatalf("findHTMLEntry(no html) = %q, want empty", got)
 	}
+
+	// 验证 TSX 优先寻找 App.tsx / Index.tsx
+	tsxFiles := []*entity.PreviewFile{
+		{Filename: "Button.tsx", MimeType: bConst.PreviewMimeTSX},
+		{Filename: "App.tsx", MimeType: bConst.PreviewMimeTSX},
+	}
+	if got := findHTMLEntry(tsxFiles); got != "App.tsx" {
+		t.Fatalf("findHTMLEntry(tsxFiles) = %q, want App.tsx", got)
+	}
 }
 
 func TestValidateSlug(t *testing.T) {

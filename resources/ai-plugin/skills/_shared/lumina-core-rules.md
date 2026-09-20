@@ -9,7 +9,7 @@
 | 任务 | 技能 |
 |---|---|
 | 向用户提问并等待裁决 | `lumina-qa` |
-| 展示 HTML/CSS/JS 原型 | `lumina-preview` |
+| 展示原生 HTML/CSS/JS 或浏览器端 React/Vue 原型 | `lumina-preview` |
 | 把核对过的预览晋升为持久页面 | `lumina-pages` |
 | 跨项目约束推送 / 消费 | `lumina-pin` |
 | 读已生成的仓库 Wiki | `lumina-repowiki` |

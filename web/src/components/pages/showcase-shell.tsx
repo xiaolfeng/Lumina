@@ -13,7 +13,7 @@ import type {
 } from '#/lib/models/response/pages'
 
 export function isRenderable(filename: string) {
-  return /\.(html|htm|md|lpw)$/i.test(filename)
+  return /\.(html|htm|md|lpw|tsx|jsx)$/i.test(filename)
 }
 
 /** 解析当前激活文件：URL 中的文件名必须存在于版本文件清单，否则回退版本入口，再回退首个文件 */
@@ -94,8 +94,15 @@ export function ShowcaseShell({
       ) {
         return
       }
-      const href = event.data.href.split(/[?#]/)[0].split('/').pop()
+      const rawHref = event.data.href.split(/[?#]/)[0]
+      const href = rawHref.split('/').pop()
       if (!href) return
+
+      // 存在性守卫：只在版本文件列表中存在时才响应，避免外部虚拟路由或无效链接导致展示态 404
+      if (!files.some((file) => file.filename === href)) {
+        return
+      }
+
       navigate({
         to: '/pages/$projectName/$slug/$',
         params: { projectName, slug, _splat: href },
@@ -104,7 +111,7 @@ export function ShowcaseShell({
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [navigate, projectName, slug])
+  }, [files, navigate, projectName, slug])
 
   useEffect(() => {
     if (!open) return

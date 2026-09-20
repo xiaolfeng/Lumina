@@ -1,18 +1,18 @@
 ---
 name: lumina-preview
-description: Lumina Preview 把 HTML/CSS/JS 原型推到沙盒页给用户看。需要展示组件、线框、交互稿或把预览挂到 Q&A 详情时使用。Preview 只是评审媒介，不能代替改真实仓库。
+description: Lumina Preview 把原生 HTML/CSS/JS 或浏览器端 React/Vue 原型推到沙盒页给用户看。需要展示组件、线框、交互稿或把预览挂到 Q&A 详情时使用。Preview 只是评审媒介，不能代替改真实仓库。
 license: MIT
 compatibility: Requires Lumina MCP (Streamable HTTP) and network access to the Lumina instance.
 metadata:
   author: lumina
-  version: "0.1.1"
+  version: "0.1.2"
 argument-hint: [ session-id | filename ]
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__project_create, mcp__lumina__preview_session_create, mcp__lumina__preview_session_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_edit, mcp__lumina__preview_file_delete, mcp__lumina__preview_file_list, mcp__lumina__preview_file_get, mcp__lumina__preview_lpw_init, mcp__lumina__preview_lpw_block_add, mcp__lumina__preview_lpw_block_edit, mcp__lumina__preview_lpw_block_remove, mcp__lumina__preview_lpw_block_sort, mcp__lumina__preview_lpw_meta_set, mcp__lumina__preview_lpw_outline, mcp__lumina__qa_push_supplement, mcp__lumina__qa_get_answer, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__project_create, mcp__plugin_lumina_lumina__preview_session_create, mcp__plugin_lumina_lumina__preview_session_list, mcp__plugin_lumina_lumina__preview_file_upload, mcp__plugin_lumina_lumina__preview_file_edit, mcp__plugin_lumina_lumina__preview_file_delete, mcp__plugin_lumina_lumina__preview_file_list, mcp__plugin_lumina_lumina__preview_file_get, mcp__plugin_lumina_lumina__preview_lpw_init, mcp__plugin_lumina_lumina__preview_lpw_block_add, mcp__plugin_lumina_lumina__preview_lpw_block_edit, mcp__plugin_lumina_lumina__preview_lpw_block_remove, mcp__plugin_lumina_lumina__preview_lpw_block_sort, mcp__plugin_lumina_lumina__preview_lpw_meta_set, mcp__plugin_lumina_lumina__preview_lpw_outline, mcp__plugin_lumina_lumina__qa_push_supplement, mcp__plugin_lumina_lumina__qa_get_answer
 ---
 
 # Lumina 前端原型实时预览与可视化评审指南 (lumina-preview)
 
-用于指导 AI Agent 构建轻量级前端原型预览会话，通过单层文件上传与沙盒隔离，向用户实时展示可视化的 HTML/CSS/JS 页面，并支持独立浏览器评审与 Q&A 题目挂载。
+用于指导 AI Agent 构建轻量级前端原型预览会话，通过单层文件上传与沙盒隔离，向用户实时展示原生 HTML/CSS/JavaScript 或浏览器端 React/Vue 页面，并支持独立浏览器评审与 Q&A 题目挂载。
 
 项目解析见 [`../_shared/project-resolver.md`](../_shared/project-resolver.md)。挂到 Q&A 时只读 [`../_shared/preview-qa-contract.md`](../_shared/preview-qa-contract.md)，不要另造字段。
 
@@ -21,6 +21,9 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 | 需要 | 读取 |
 |---|---|
 | 扁平文件名、相对引用、256 KiB、MIME | [`references/file-layout.md`](./references/file-layout.md) |
+| React/Vue、CDN、ESM、自动刷新边界 | [`references/framework-runtime.md`](./references/framework-runtime.md) |
+| React 无构建浏览器示例 | [`examples/react-browser-runtime.md`](./examples/react-browser-runtime.md) |
+| Vue 无构建浏览器示例 | [`examples/vue-browser-runtime.md`](./examples/vue-browser-runtime.md) |
 | 独立浏览器评审走查 | [`examples/standalone-review.md`](./examples/standalone-review.md) |
 | 挂到 Q&A 详情走查 | [`examples/qa-mount.md`](./examples/qa-mount.md) |
 | 入口 HTML 模板 | [`assets/index.html`](./assets/index.html) |
@@ -30,9 +33,11 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 ## 🎯 核心定位与设计哲学
 
 - **媒介定位**：Preview 是快速对齐视觉和交互的**沟通与评审媒介**，不能替代对本地仓库真实源文件的实现、单元测试与交付。
-- **运行环境**：前端采用 `iframe sandbox="allow-scripts"` 隔离环境渲染，同层文件通过相对路径互相引用。
+- **运行环境**：前端采用 `iframe sandbox="allow-scripts"` 隔离环境渲染，同层 HTML 可通过相对路径加载经典 CSS/JS；完整加载边界见框架运行约束。
 - **文件支持**：HTML、CSS、JavaScript/MJS、JSON、SVG 与纯文本。
 - **LPW 文档支持**：结构化交互文档（`.lpw`）支持分块增量生成与渐进生长，直渲 30 种微明视觉组件与容器。
+- **框架支持**：React/Vue 可使用固定版本 CDN 的浏览器构建，无需在 Lumina 安装 npm 依赖；这不等于提供 Node.js、打包器、SSR、Vue SFC 或本地多文件 ESM 运行时。
+- **实时含义**：文件变更经 WebSocket 通知工作台重新加载 iframe；这是自动刷新，不是保留组件状态的 HMR。
 
 ---
 
@@ -87,7 +92,8 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 ```
 **文件编写核心约束**：
 - **扁平单层文件名**：文件名只能包含合法名称（如 `index.html`、`style.css`、`app.js`、`data.json`），**严禁出现 `/`、`\` 或 `..`**。
-- **同层相对引用**：HTML 引入 CSS/JS 时一律使用同层文件名（如 `href="style.css"`，不要写成 `/style.css` 或 `assets/style.css`）。
+- **同层相对引用**：HTML 可用同层相对路径引入经典 CSS/JS（如 `href="style.css"`、`src="app.js"`）；不要写 `/style.css` 或 `assets/app.js`。沙盒是 opaque origin，本地多文件 ESM 不属于可靠支持范围。
+- **框架依赖**：React/Vue 优先使用固定版本 CDN 的浏览器构建；需要 JSX/TSX、Vue SFC、npm 包解析或构建插件时，先在真实项目构建，再上传静态产物。具体读 [`references/framework-runtime.md`](./references/framework-runtime.md)。
 - **文件大小上限**：单文件 UTF-8 编码字节数不得超过 **256 KiB**。
 
 ### 阶段 ④ 最终清单与入口核对 (`preview_file_list`)
@@ -152,6 +158,8 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 1. **MUST**: 独立评审交付时，必须立即通过 Bash 执行 `open "<preview_url>"`（macOS）/ `xdg-open` / `start` 主动打开浏览器，严禁让用户手动复制输入。
 2. **MUST**: 文件名严格扁平单层，禁止任何路径分隔符。
 3. **MUST**: 必须上传至少一个 `.html` 文件作为渲染入口，且上传完必须用 `preview_file_list` 核对。
-4. **NEVER**: 严禁向用户交付空的 `preview_url`。
-5. **NEVER**: 挂载到 Q&A 时，严禁传递 URL 或 Hash，严禁给 JSON 添加 Markdown 代码围栏。
-6. **NEVER**: 禁止用 `preview_file_upload` 整体覆写已有的分块构建 LPW 文档（除非修复严重损坏的 JSON）。
+4. **MUST**: 使用外部框架时固定 CDN 版本，并向用户说明运行依赖网络；需要 npm 构建链时先在真实项目构建。
+5. **NEVER**: 不要把自动刷新描述成 React Fast Refresh、Vue HMR 或状态保持热更新。
+6. **NEVER**: 严禁向用户交付空的 `preview_url`。
+7. **NEVER**: 挂载到 Q&A 时，严禁传递 URL 或 Hash，严禁给 JSON 添加 Markdown 代码围栏。
+8. **NEVER**: 禁止用 `preview_file_upload` 整体覆写已有的分块构建 LPW 文档（除非修复严重损坏的 JSON）。

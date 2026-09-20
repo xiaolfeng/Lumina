@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Lumina MCP (Streamable HTTP) and network access to the Lumina instance.
 metadata:
   author: lumina
-  version: "0.1.0"
+  version: "0.1.1"
 argument-hint: [ session-id | slug | page-id ]
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__preview_file_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_edit, mcp__lumina__preview_file_delete, mcp__lumina__preview_file_get, mcp__lumina__pages_list, mcp__lumina__pages_promote, mcp__lumina__pages_fork, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__preview_file_list, mcp__plugin_lumina_lumina__preview_file_upload, mcp__plugin_lumina_lumina__preview_file_edit, mcp__plugin_lumina_lumina__preview_file_delete, mcp__plugin_lumina_lumina__preview_file_get, mcp__plugin_lumina_lumina__pages_list, mcp__plugin_lumina_lumina__pages_promote, mcp__plugin_lumina_lumina__pages_fork
 ---
@@ -27,8 +27,9 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 
 ## 核心定位
 
-- **Preview** 是 7 天 TTL 的登录草稿工作台。
+- **Preview** 是 7 天 TTL 的登录草稿工作台；文件变更会自动刷新 iframe，但不提供框架 HMR。
 - **Pages** 是项目级持久快照：`/pages/<project_name>/<slug>/<file>`，可选密码，密码只在控制台 `/console/pages` 配置。
+- **运行能力继承**：Pages 深拷贝 Preview 的静态文本文件，因此浏览器端 React/Vue 仍可运行；Pages 不复制 CDN 依赖，也不运行 npm、构建器、SSR 或服务端代码。
 - MCP 不设置密码，也不改访问策略。
 
 ## 标准流程
@@ -77,4 +78,5 @@ preview_file_upload 迭代 → pages_promote（slug 可省略）
 2. **MUST**: 晋升前用 `pages_list` 核对 slug；新建必须给合法 slug（小写字母、数字、短横线）。
 3. **NEVER**: 不要在 MCP 调用里传密码或访问策略。
 4. **NEVER**: 不要把 Pages 当成热更新工作台；改内容先 Fork。
-5. **MUST**: 独立打开 `page_url` / Fork 后的 `preview_url` 时，立即用系统命令弹出浏览器。
+5. **MUST**: 页面使用外部框架 CDN 时，确认 URL 固定版本且目标网络可访问；CDN 资源不会随快照保存。
+6. **MUST**: 独立打开 `page_url` / Fork 后的 `preview_url` 时，立即用系统命令弹出浏览器。

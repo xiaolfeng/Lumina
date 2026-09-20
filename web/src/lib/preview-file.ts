@@ -1,7 +1,8 @@
-export type PreviewKind = 'html' | 'markdown' | 'code' | 'svg' | 'lpw'
+export type PreviewKind = 'html' | 'markdown' | 'code' | 'svg' | 'lpw' | 'tsx'
 
 const LPW_EXT = new Set(['lpw'])
 const HTML_EXT = new Set(['html', 'htm'])
+const TSX_EXT = new Set(['tsx', 'jsx'])
 const MARKDOWN_EXT = new Set(['md', 'markdown'])
 const SVG_EXT = new Set(['svg'])
 const CODE_EXT = new Set([
@@ -44,6 +45,7 @@ export function previewKindFromFilename(filename: string): PreviewKind {
   const ext = fileExtension(filename)
   if (LPW_EXT.has(ext)) return 'lpw'
   if (HTML_EXT.has(ext)) return 'html'
+  if (TSX_EXT.has(ext)) return 'tsx'
   if (MARKDOWN_EXT.has(ext)) return 'markdown'
   if (SVG_EXT.has(ext)) return 'svg'
   if (CODE_EXT.has(ext) || ext !== '') return 'code'

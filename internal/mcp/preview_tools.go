@@ -23,7 +23,7 @@ var previewToolDefs = []previewToolDef{
 		title: "创建前端预览会话",
 		description: `用途：为已注册项目创建一个独立的前端预览会话；一个项目可以有多个会话。它只创建空会话，不会生成代码、上传文件、修改本地仓库，也不代表用户已确认设计。
 
-何时调用：用户要求可视化查看 HTML/CSS/JavaScript 原型，且没有合适的现有 Preview 会话时调用。调用前先用 project_get/project_list 确定 project_id，并优先用 preview_session_list 检查能否复用当前任务的会话。
+何时调用：用户要求可视化查看原生 HTML/CSS/JavaScript，或通过浏览器端构建运行 React/Vue 等框架原型，且没有合适的现有 Preview 会话时调用。调用前先用 project_get/project_list 确定 project_id，并优先用 preview_session_list 检查能否复用当前任务的会话。Preview 不提供 Node.js、npm 安装、打包器、SSR 或服务端执行。
 
 不要调用：仅需展示 Markdown、代码片段或单个静态说明时无需创建 Preview；用户要求实现现有产品功能时，Preview 只能用于评审，不能替代对真实项目文件的修改和验证。
 
@@ -91,9 +91,9 @@ var previewToolDefs = []previewToolDef{
 		title: "上传或覆写预览文件",
 		description: `用途：向指定 Preview 会话整体写入一个文本型前端文件；同一 session_id 与 filename 已存在时会原位覆写。支持 HTML、CSS、JavaScript/MJS、JSON、SVG 和纯文本，多文件必须逐个调用。
 
-何时调用：已经掌握完整文件内容，需要创建预览、补齐 HTML 的相对依赖，或将整文件重写时调用。只修改局部内容时不要全量重传，改用 preview_file_get 读取目标行区间后调用 preview_file_edit 增量编辑。HTML 内应使用同层相对路径引用 CSS/JS，例如 style.css 和 app.js。
+何时调用：已经掌握完整文件内容，需要创建预览、补齐 HTML 的静态依赖，或将整文件重写时调用。只修改局部内容时不要全量重传，改用 preview_file_get 读取目标行区间后调用 preview_file_edit 增量编辑。HTML 可用同层相对路径加载经典 CSS/JS，例如 style.css 和 app.js；React/Vue 可引用固定版本 CDN 的浏览器构建，或者上传预先构建且可由浏览器直接执行的静态产物。文件变更会通过 WebSocket 通知工作台重新加载 iframe，这是自动刷新，不是 React Fast Refresh、Vue HMR 或状态保持热更新。
 
-限制：文件名只能是扁平单层名称，禁止 /、\\ 和 ..；最长 255 字符；content 按 UTF-8 字节计最大 256 KiB。它不支持目录、二进制附件、构建命令或 npm 依赖安装，也不会修改 Agent 当前项目路径下的真实源文件。
+限制：文件名只能是扁平单层名称，禁止 /、\\ 和 ..；最长 255 字符；content 按 UTF-8 字节计最大 256 KiB。它不支持目录、二进制附件、Node.js、npm 依赖安装、构建命令、SSR 或服务端代码，也不会修改 Agent 当前项目路径下的真实源文件。沙盒没有 allow-same-origin，本地多文件 ESM 不属于可靠支持范围；外部 CDN 必须允许跨源加载且应固定版本，网络不可用时依赖无法加载。
 
 副作用：可能创建新文件，也可能覆盖既有内容；同参数重试后的最终文件内容相同，但覆盖前应确认会话属于当前任务。返回 file_id；preview_url 指向当前可预览文件——会话已有 HTML 入口时指向入口文件，否则指向本次上传的文件；仅当存在 HTML 入口时，qa_supplement.content 才会返回可直接传给 qa_push_supplement 的非空引用 JSON。
 
