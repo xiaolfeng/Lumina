@@ -166,9 +166,7 @@ sequenceDiagram
 
 ## Document Specification & JSON Schema (v1)
 
-### TypeScript 类型契约
-
-文件定义在 `web/src/components/preview/lpw/types.ts`：
+### TypeScript 类型契约（`web/src/components/preview/lpw/types.ts`）
 
 ```typescript
 export interface LpwMeta {
@@ -183,23 +181,398 @@ export interface LpwBlock<TProps = Record<string, unknown>> {
   id: string
   type: string
   props: TProps
-  children?: LpwBlock[]
+  children?: LpwBlock[] // 仅容器类型允许出现
 }
 
 export interface LpwDocument {
   version: '1.0'
-  meta: LpwMeta
+  meta?: LpwMeta
   blocks: LpwBlock[]
 }
+
+// ── 内容块 props ──────────────────────────────────────────────
+export interface LpwMarkdownProps {
+  content: string
+}
+
+export interface LpwCalloutProps {
+  level?: 'info' | 'success' | 'warning' | 'error'
+  title?: string
+  content: string
+}
+
+export interface LpwMetricItem {
+  label: string
+  value: string | number
+  unit?: string
+  trend?: 'up' | 'down'
+  change?: string
+  desc?: string
+}
+export interface LpwMetricsProps {
+  items: LpwMetricItem[]
+}
+
+export interface LpwStepItem {
+  title: string
+  desc?: string
+  status?: 'wait' | 'process' | 'finish' | 'error'
+}
+export interface LpwStepsProps {
+  current?: number
+  items: LpwStepItem[]
+}
+
+export interface LpwTimelineItem {
+  time: string
+  title: string
+  content?: string
+  tag?: string
+}
+export interface LpwTimelineProps {
+  items: LpwTimelineItem[]
+}
+
+export interface LpwDiffProps {
+  filename?: string
+  language?: string
+  oldCode: string
+  newCode: string
+  splitView?: boolean
+}
+
+export interface LpwTableColumn {
+  key: string
+  title: string
+  width?: string
+  align?: 'left' | 'center' | 'right'
+}
+export type LpwCellValue = string | number | boolean | null
+export interface LpwTableProps {
+  columns: LpwTableColumn[]
+  data: Array<Record<string, LpwCellValue>>
+  sortable?: boolean
+}
+
+// ── 容器块 props ──────────────────────────────────────────────
+export interface LpwSectionProps {
+  title: string
+  collapsible?: boolean
+  defaultOpen?: boolean
+}
+export interface LpwTabItem {
+  key: string
+  label: string
+}
+export interface LpwTabsProps {
+  items: LpwTabItem[]
+  defaultKey?: string
+}
+export interface LpwColumnsProps {
+  ratio?: '1:1' | '1:2' | '2:1' | '1:1:1'
+}
 ```
+
+### 字段约束总表
+
+| 路径 | 类型 | 必填 | 默认 | 约束 |
+| --- | --- | --- | --- | --- |
+| `meta.title` | string | ✓（meta 存在时） | — | 1–200 |
+| `meta.description` / `author` / `version` | string | — | — | ≤ 1000 / 100 / 32 |
+| `meta.tags` | string[] | — | `[]` | ≤ 10 项，每项 ≤ 32 |
+| `blocks[].id` | string | ✓ | — | `^[a-z0-9][a-z0-9-]{0,63}$`，全文档唯一 |
+| `markdown.content` | string | ✓ | — | 1–16384 |
+| `callout.level` | enum | — | `info` | info / success / warning / error |
+| `callout.title` | string | — | — | ≤ 200 |
+| `callout.content` | string | ✓ | — | 1–4096 |
+| `metrics.items` | array | ✓ | — | 1–12 项 |
+| `metrics.items[].label / unit / change / desc` | string | label ✓ | — | ≤ 64 / 16 / 32 / 128 |
+| `metrics.items[].value` | string \| number | ✓ | — | — |
+| `metrics.items[].trend` | enum | — | — | up / down |
+| `steps.items` | array | ✓ | — | 1–20 项；title ≤ 100，desc ≤ 512 |
+| `steps.current` | integer | — | 不高亮 | ≥ 0，且 < items.length（logic 校验） |
+| `timeline.items` | array | ✓ | — | 1–50 项；time ≤ 32，title ≤ 100，content ≤ 1024，tag ≤ 32 |
+| `diff.oldCode` / `newCode` | string | ✓ | — | 各 ≤ 32768 |
+| `diff.filename` / `language` | string | — | — | ≤ 255 / 32 |
+| `diff.splitView` | boolean | — | `true` | — |
+| `table.columns` | array | ✓ | — | 1–20 列；key `^[a-zA-Z0-9_]{1,64}$`，title ≤ 100 |
+| `table.columns[].width` | string | — | 自动 | ≤ 16，`^(auto\|[0-9]{1,4}(px\|%)?)$` |
+| `table.columns[].align` | enum | — | `left` | left / center / right |
+| `table.data` | array | ✓ | — | 0–500 行；单元格 string ≤ 1024 或 number / boolean / null |
+| `table.sortable` | boolean | — | `false` | — |
+| `section.title` | string | ✓ | — | 1–200 |
+| `section.collapsible` / `defaultOpen` | boolean | — | `false` / `true` | — |
+| `tabs.items` | array | ✓ | — | 1–10 项；key `^[a-z0-9][a-z0-9-]{0,31}$`，label ≤ 50 |
+| `tabs.defaultKey` | string | — | `items[0].key` | 必须命中某个 item.key |
+| `columns.ratio` | enum | — | `1:1` | 1:1 / 1:2 / 2:1 / 1:1:1 |
 
 ### 结构约束与规则
 
 1. **版本声明（`version`）**：根属性必须且仅支持 `"1.0"`。未知版本直接拒绝解析并呈现文档级错误；
-2. **全局唯一 ID（`id`）**：每个块必须携带非空字符串 `id`（建议形如 `block-1`、`metric-latency`），用于 React key 及目录定位；
+2. **全局唯一 ID（`id`）**：每个块必须携带合法 `id`（建议形如 `block-1`、`metric-latency`），用于 React key 及目录定位；
 3. **属性隔离（`props`）**：所有业务参数统一放在 `props` 对象内，不得在块顶层污染属性；
-4. **容器嵌套（`children`）**：仅容器类组件（`section`、`tabs`、`columns`）允许包含 `children` 数组，叶子组件忽略或拒绝 `children`；
-5. **递归深度（`depth`）**：渲染器强制限制递归深度 `depth <= 3`。超过上限直接截断并渲染深度超限错误。
+4. **容器嵌套（`children`）**：仅容器类组件（`section`、`tabs`、`columns`）允许包含 `children` 数组，叶子块出现 `children` 直接校验失败；
+5. **递归深度（`depth`）**：顶层块 depth = 1，容器每层 +1，最大 3；渲染器同样强制，超限截断并渲染深度超限错误卡片；
+6. **tabs 索引对齐**：`children` 数量必须等于 `items` 数量，按索引一一对应；`defaultKey` 必须命中某个 `items[].key`；
+7. **columns 数量对齐**：`children` 数量必须等于 ratio 的列数（`1:1:1` 为 3，其余为 2）；
+8. **资源上限**：全文档块数（含子孙）≤ 500；序列化字节 ≤ 256 KiB。
+
+规则 5–8 属跨字段/递归约束，JSON Schema 表达成本高且报错路径差，由后端 logic 走查强制（见 §PreviewLpwLogic）。
+
+### `resources/lpw/schema/v1.json`（唯一维护源，前后端同源消费）
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lumina.local/lpw/v1.json",
+  "title": "Lumina Preview Document v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "blocks"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "meta": { "$ref": "#/$defs/meta" },
+    "blocks": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/block" } }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object", "additionalProperties": false, "required": ["title"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "author": { "type": "string", "maxLength": 100 },
+        "version": { "type": "string", "maxLength": 32 },
+        "tags": { "type": "array", "maxItems": 10, "items": { "type": "string", "maxLength": 32 } }
+      }
+    },
+    "blockId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+    "block": {
+      "oneOf": [
+        { "$ref": "#/$defs/markdownBlock" },
+        { "$ref": "#/$defs/calloutBlock" },
+        { "$ref": "#/$defs/metricsBlock" },
+        { "$ref": "#/$defs/stepsBlock" },
+        { "$ref": "#/$defs/timelineBlock" },
+        { "$ref": "#/$defs/diffBlock" },
+        { "$ref": "#/$defs/tableBlock" },
+        { "$ref": "#/$defs/sectionBlock" },
+        { "$ref": "#/$defs/tabsBlock" },
+        { "$ref": "#/$defs/columnsBlock" }
+      ]
+    },
+    "markdownBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "markdown" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": { "content": { "type": "string", "minLength": 1, "maxLength": 16384 } }
+        }
+      }
+    },
+    "calloutBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "callout" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": {
+            "level": { "enum": ["info", "success", "warning", "error"], "default": "info" },
+            "title": { "type": "string", "maxLength": 200 },
+            "content": { "type": "string", "minLength": 1, "maxLength": 4096 }
+          }
+        }
+      }
+    },
+    "metricsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "metrics" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 12,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["label", "value"],
+                "properties": {
+                  "label": { "type": "string", "minLength": 1, "maxLength": 64 },
+                  "value": { "type": ["string", "number"] },
+                  "unit": { "type": "string", "maxLength": 16 },
+                  "trend": { "enum": ["up", "down"] },
+                  "change": { "type": "string", "maxLength": 32 },
+                  "desc": { "type": "string", "maxLength": 128 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "stepsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "steps" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "current": { "type": "integer", "minimum": 0 },
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 20,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "desc": { "type": "string", "maxLength": 512 },
+                  "status": { "enum": ["wait", "process", "finish", "error"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "timelineBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "timeline" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 50,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["time", "title"],
+                "properties": {
+                  "time": { "type": "string", "minLength": 1, "maxLength": 32 },
+                  "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "content": { "type": "string", "maxLength": 1024 },
+                  "tag": { "type": "string", "maxLength": 32 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "diffBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "diff" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["oldCode", "newCode"],
+          "properties": {
+            "filename": { "type": "string", "maxLength": 255 },
+            "language": { "type": "string", "maxLength": 32 },
+            "oldCode": { "type": "string", "maxLength": 32768 },
+            "newCode": { "type": "string", "maxLength": 32768 },
+            "splitView": { "type": "boolean", "default": true }
+          }
+        }
+      }
+    },
+    "tableBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "table" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["columns", "data"],
+          "properties": {
+            "columns": {
+              "type": "array", "minItems": 1, "maxItems": 20,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["key", "title"],
+                "properties": {
+                  "key": { "type": "string", "pattern": "^[a-zA-Z0-9_]{1,64}$" },
+                  "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "width": { "type": "string", "maxLength": 16, "pattern": "^(auto|[0-9]{1,4}(px|%)?)$" },
+                  "align": { "enum": ["left", "center", "right"], "default": "left" }
+                }
+              }
+            },
+            "data": {
+              "type": "array", "maxItems": 500,
+              "items": {
+                "type": "object",
+                "additionalProperties": { "type": ["string", "number", "boolean", "null"], "maxLength": 1024 }
+              }
+            },
+            "sortable": { "type": "boolean", "default": false }
+          }
+        }
+      }
+    },
+    "sectionBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "section" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["title"],
+          "properties": {
+            "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "collapsible": { "type": "boolean", "default": false },
+            "defaultOpen": { "type": "boolean", "default": true }
+          }
+        },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+      }
+    },
+    "tabsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "tabs" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 10,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["key", "label"],
+                "properties": {
+                  "key": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$" },
+                  "label": { "type": "string", "minLength": 1, "maxLength": 50 }
+                }
+              }
+            },
+            "defaultKey": { "type": "string", "maxLength": 32 }
+          }
+        },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+      }
+    },
+    "columnsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "columns" },
+        "props": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "ratio": { "enum": ["1:1", "1:2", "2:1", "1:1:1"], "default": "1:1" }
+          }
+        },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+      }
+    }
+  }
+}
+```
+
+Schema 说明：
+
+- `additionalProperties: false` 从文档根一路收紧到每个 props——落实 ADR-0008 第 4 条「无通用样式逃生口」；
+- 叶子块不声明 `children`，在收紧模式下出现即失败；容器块显式声明并递归引用 `block`；
+- `default` 仅为注解（2020-12 中不参与断言），组件实现负责应用默认值；
+- `block.oneOf` 以 `type.const` 为天然判别式，恰好命中一个分支。
 
 ## Backend & MCP Changes
 
@@ -241,6 +614,134 @@ func inferMimeType(filename string) string {
 ```
 
 配套调整：`previewWriteWorkflow` 的状态文案与指引需把「HTML 入口」泛化为「可评审入口」；Pages 侧 `pages_promote` 生成的 `PageVersion.EntryFilename` 同样允许 `.lpw`。`internal/mcp/preview_schemas.go` 中 `entry_file` 字段描述一并更新，禁止残留「仅 HTML」语义。
+
+### 4. LPW Schema 内嵌与加载服务
+
+```text
+resources/lpw/
+└── schema/
+    └── v1.json        # 上文完整 Schema，唯一维护源
+```
+
+```go
+// resources/embed.go 追加
+//go:embed lpw/schema/v1.json
+var lpwSchemaFS embed.FS
+
+// LpwSchemaFiles key 为格式版本号，供加载服务消费
+var LpwSchemaFiles = map[string][]byte{
+    "1.0": mustReadFile(lpwSchemaFS, "lpw/schema/v1.json"),
+}
+```
+
+`internal/service/lpw_schema.go`（加载器，模式对齐 `prompt_loader.go`）：
+
+```go
+type LpwSchemaLoader struct {
+    compiled map[string]*jsonschema.Schema // 版本号 → 编译产物，New 时编译一次
+}
+
+func NewLpwSchemaLoader() (*LpwSchemaLoader, error)
+
+// Validate 对整个文档字节串做断言；失败时返回首个失败位置的 JSON 路径与原因
+func (l *LpwSchemaLoader) Validate(doc []byte, version string) (failPath string, reason string, ok bool)
+
+func (l *LpwSchemaLoader) Supports(version string) bool
+```
+
+校验器复用仓库既有依赖 `github.com/google/jsonschema-go/jsonschema`（`internal/mcp/preview_tools_test.go` 已在用，支持 draft 2020-12 编译与断言），不新增校验库。
+
+### 5. `PreviewLpwLogic` 块操作引擎（`internal/logic/preview_lpw_logic.go`）
+
+```go
+type PreviewLpwLogic struct {
+    log          xLog.Logger
+    previewLogic *PreviewLogic
+    schema       *service.LpwSchemaLoader
+    locks        sync.Map // key: "<sessionID>:<filename>" → *sync.Mutex
+}
+
+// 内存模型；序列化固定 2 空格缩进，保证 AI 逐块 diff 可读
+type lpwDocument struct {
+    Version string     `json:"version"`
+    Meta    *lpwMeta   `json:"meta,omitempty"`
+    Blocks  []lpwBlock `json:"blocks"`
+}
+type lpwBlock struct {
+    ID       string         `json:"id"`
+    Type     string         `json:"type"`
+    Props    map[string]any `json:"props"`
+    Children []lpwBlock     `json:"children,omitempty"`
+}
+
+type LpwWriteResult struct {
+    BlockID     string
+    TotalBlocks int
+    FileSize    int
+    Revision    time.Time
+    File        *apiPreview.PreviewFileResponse
+}
+type LpwOutline struct {
+    Version    string
+    BlockCount int
+    TotalSize  int
+    Revision   string
+    Items      []LpwOutlineItem // { id, type, depth, children, props_bytes }
+}
+```
+
+七个公开方法（签名中 `revision` 为可选乐观锁，传上次响应的值）：
+
+```go
+func (l *PreviewLpwLogic) InitDocument(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string, meta map[string]any, blocks []lpwBlock, revision string) (*LpwWriteResult, *xError.Error)
+func (l *PreviewLpwLogic) AddBlock(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string, block lpwBlock, parentID string, position *int, revision string) (*LpwWriteResult, *xError.Error)
+func (l *PreviewLpwLogic) EditBlock(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename, blockID string, propsPatch map[string]any, replacement *lpwBlock, revision string) (*LpwWriteResult, *xError.Error)
+func (l *PreviewLpwLogic) RemoveBlocks(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string, blockIDs []string, revision string) (*LpwWriteResult, *xError.Error)
+func (l *PreviewLpwLogic) SortBlocks(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename, parentID string, order []string, revision string) (*LpwWriteResult, *xError.Error)
+func (l *PreviewLpwLogic) SetMeta(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string, metaPatch map[string]any, revision string) (*LpwWriteResult, *xError.Error)
+func (l *PreviewLpwLogic) Outline(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string) (*LpwOutline, *xError.Error)
+```
+
+统一写入流水线 `withDocument`（全部变更方法共用，缺一不可）：
+
+```text
+lock(sessionID:filename)                  // 进程内互斥，defer unlock
+  ↓ 读取文件内容 + updated_at              // 经 previewLogic 文件读取
+  ↓ revision 预检                          // 入参非空且 ≠ updated_at → 冲突错误（附当前值）
+  ↓ 扩展名检查 + JSON 解析 → lpwDocument    // 失败 → 指路 init / preview_file_upload
+  ↓ mutate(doc)                            // 树操作 + 结构规则（preview_lpw_tree.go）
+  ↓ serialize（2 空格缩进）
+  ↓ schema.Validate(serialized, "1.0")     // 整文档 Schema 断言
+  ↓ validateContainerRules(doc)            // tabs/columns 对齐、深度 ≤ 3、id 唯一、块数 ≤ 500
+  ↓ len(serialized) ≤ PreviewFileMaxSize
+  ↓ previewLogic.UploadFile(...)           // 单次落库，继承 OnPreviewChanged 广播
+  ↓ 回读 updated_at 作为新 revision，组装 LpwWriteResult
+```
+
+树操作为纯函数，集中在 `internal/logic/preview_lpw_tree.go`（无 IO，直接单测）：
+
+| 函数 | 职责 |
+| --- | --- |
+| `findBlockList(doc, id)` | DFS 定位块所在兄弟切片与下标，返回父链深度 |
+| `collectBlockIDs(doc)` | 全文档 id 集合与总块数（含子孙），查重 |
+| `subtreeDepth(block)` | 子树最大深度 |
+| `insertBlock(doc, parentID, position, block)` | parentID 为空挂顶层；校验 parent ∈ {section, tabs, columns} 且合并后深度 ≤ 3 |
+| `removeBlocks(doc, ids)` | 先整体定位全部 id（任一不存在即失败），再一次移除 |
+| `reorderSiblings(doc, parentID, order)` | 校验 order 为该父容器子块 id 的完整排列（集合相等且无重复）后重排 |
+| `patchProps / replaceBlock` | 浅合并 / 整节点替换（含子树） |
+
+### 6. 错误码映射（统一 `xError.ParameterError`，消息必须可行动）
+
+| 条件 | 消息要点 |
+| --- | --- |
+| revision 不匹配 | `revision 冲突：期望 <入参>，当前 <实际>；先 preview_lpw_outline 重读再重试` |
+| JSON 损坏 / 非 `.lpw` | `目标文件不是有效 LPW 文档；用 preview_lpw_init 重置或 preview_file_upload 整体修复` |
+| id 重复 / 不存在 | 附现有 id 列表（超过 50 个截断） |
+| Schema 断言失败 | `块 <id> props 校验失败：<JSON 路径>：<原因>` |
+| tabs / columns 对齐失败 | `tabs 需要 <n> 个 children（items 数），实际 <m>` |
+| 超上限 | 明示超限项（块数 / 字节 / 深度）与当前值 |
+
+REST 面：v1 不提供块级 REST 端点。块级写入只经 MCP（Agent 通道），控制台管理端沿用既有整文件编辑——避免两套写入语义分叉。
 
 ## Chunked Writing MCP Tool Family (`preview_lpw_*`)
 
@@ -363,103 +864,228 @@ sequenceDiagram
 | `order` 非当前子块完整排列 | 拒绝，附当前顺序 |
 | revision 冲突 | 返回冲突错误 + 当前 revision，指引重读 outline 后重试 |
 
-## Frontend Mapping Engine Design
+### 工具注册与 Input Schema
 
-前端所有引擎代码集中于 `web/src/components/preview/lpw/` 目录：
+文件落点：`internal/mcp/preview_lpw_tools.go`（定义与注册，模式对齐 `preview_tools.go`）+ `internal/mcp/preview_lpw_handlers.go`（handler 实现）。在 `internal/mcp/server.go` 的 `InitMCPServer` 中调用 `RegisterPreviewLpwTools(server)`；`PreviewLpwLogic` 实例经 `internal/app/startup/startup_mcp.go` 注入（对齐 Preview / Pages 工具做法）。
 
-### 1. `lpw-parser.ts`
+块内部结构由 v1 Schema 约束，工具 inputSchema 只收 `type: object` 外壳（`block` / `props` / `meta` 不在工具层重复定义字段）——避免两处 schema 重复漂移，深校验统一发生在 logic 层的整文档断言。
 
-职责：将原始字符串解析为强类型 `LpwDocument`，并提供精准到行号/路径的错误提示。
-
-```typescript
-export interface ParseResult {
-  success: boolean
-  document?: LpwDocument
-  error?: {
-    message: string
-    path?: string
-  }
-}
-
-export function parseLpwSource(source: string): ParseResult {
-  try {
-    const raw = JSON.parse(source)
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-      return { success: false, error: { message: '根节点必须是 JSON 对象' } }
+```json
+{
+  "preview_lpw_init": {
+    "type": "object", "required": ["session_id"], "additionalProperties": false,
+    "properties": {
+      "session_id": { "type": "string" },
+      "filename": { "type": "string", "default": "index.lpw" },
+      "meta": { "type": "object" },
+      "blocks": { "type": "array", "items": { "type": "object" } },
+      "revision": { "type": "string", "description": "可选乐观锁：上次响应返回的 revision" }
     }
-    if (raw.version !== '1.0') {
-      return { success: false, error: { message: `不支持的 LPW 版本: ${raw.version}，当前仅支持 1.0` } }
+  },
+  "preview_lpw_block_add": {
+    "type": "object", "required": ["session_id", "block"], "additionalProperties": false,
+    "properties": {
+      "session_id": { "type": "string" },
+      "filename": { "type": "string", "default": "index.lpw" },
+      "block": { "type": "object", "required": ["id", "type", "props"] },
+      "parent_id": { "type": "string", "description": "缺省挂顶层" },
+      "position": { "type": "integer", "minimum": 0, "description": "缺省追加到父容器末尾" },
+      "revision": { "type": "string" }
     }
-    if (!Array.isArray(raw.blocks)) {
-      return { success: false, error: { message: '缺少 blocks 块列表或格式不合法' } }
+  },
+  "preview_lpw_block_edit": {
+    "type": "object", "required": ["session_id", "block_id"], "additionalProperties": false,
+    "properties": {
+      "session_id": { "type": "string" },
+      "filename": { "type": "string", "default": "index.lpw" },
+      "block_id": { "type": "string" },
+      "props": { "type": "object", "description": "patch 模式：浅合并进现有 props" },
+      "block": { "type": "object", "description": "replace 模式：整节点替换（与 props 二选一）" },
+      "revision": { "type": "string" }
     }
-    return { success: true, document: raw as LpwDocument }
-  } catch (err) {
-    return { success: false, error: { message: `JSON 语法解析失败: ${(err as Error).message}` } }
+  },
+  "preview_lpw_block_remove": {
+    "type": "object", "required": ["session_id", "block_ids"], "additionalProperties": false,
+    "properties": {
+      "session_id": { "type": "string" },
+      "filename": { "type": "string", "default": "index.lpw" },
+      "block_ids": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+      "revision": { "type": "string" }
+    }
+  },
+  "preview_lpw_block_sort": {
+    "type": "object", "required": ["session_id", "order"], "additionalProperties": false,
+    "properties": {
+      "session_id": { "type": "string" },
+      "filename": { "type": "string", "default": "index.lpw" },
+      "parent_id": { "type": "string", "description": "缺省为顶层" },
+      "order": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+      "revision": { "type": "string" }
+    }
+  },
+  "preview_lpw_meta_set": {
+    "type": "object", "required": ["session_id", "meta"], "additionalProperties": false,
+    "properties": {
+      "session_id": { "type": "string" },
+      "filename": { "type": "string", "default": "index.lpw" },
+      "meta": { "type": "object" },
+      "revision": { "type": "string" }
+    }
+  },
+  "preview_lpw_outline": {
+    "type": "object", "required": ["session_id"], "additionalProperties": false,
+    "properties": {
+      "session_id": { "type": "string" },
+      "filename": { "type": "string", "default": "index.lpw" }
+    }
   }
 }
 ```
 
-### 2. `lpw-registry.ts`
+`preview_lpw_init` 的重置语义：目标已存在且 revision 匹配（或未传 revision）时整体覆盖；这是唯一允许清空 blocks 的块级工具。
 
-职责：维护组件类型字符串到 React 组件的映射，注册组件元数据。
+### 响应包络
+
+写操作（init / add / edit / remove / sort / meta_set）统一返回，复用 `previewSessionSnapshot`：
+
+| 字段 | 说明 |
+| --- | --- |
+| `status` / `message` | 结果与下一步指引 |
+| `session` / `file` / `entry_file` / `preview_url` / `qa_supplement` | 与 `preview_file_upload` 完全同构 |
+| `block_id` / `total_blocks` / `file_size` / `revision` | 块级结果与新修订号 |
+| `workflow` | 沿用 `previewWriteWorkflow` 状态机输出 |
+
+`preview_lpw_outline` 返回 `outline: { version, block_count, total_size, revision, items[] }`，`items[]` 即 `LpwOutlineItem`，按文档顺序深度优先排列。
+
+## Frontend Mapping Engine Design
+
+### 目录结构
+
+```text
+web/src/components/preview/lpw/
+├── types.ts                  # §Document Spec 的类型契约
+├── lpw-parser.ts             # 解析 + 结构自检（轻量；深校验在服务端）
+├── lpw-registry.ts           # 类型注册表（含容器元数据）
+├── lpw-block-renderer.tsx    # 块分发器（深度控制 + 错误边界）
+├── block-error-boundary.tsx  # 单块异常隔离
+├── fallback-block.tsx        # 未知类型 / 超深 / 异常占位卡片
+├── document-viewer.tsx       # 文档壳：meta 头 + blocks 列表 + 文档级错误 + 空态
+├── viewers.tsx               # PreviewLpwViewer（工作台/展示态）+ PreviewLpwInlineViewer（Q&A）
+├── blocks/                   # 7 种内容块
+│   ├── markdown-block.tsx
+│   ├── callout-block.tsx
+│   ├── metrics-block.tsx
+│   ├── steps-block.tsx
+│   ├── timeline-block.tsx
+│   ├── diff-block.tsx
+│   └── table-block.tsx
+├── containers/               # 3 种容器块
+│   ├── section-container.tsx
+│   ├── tabs-container.tsx
+│   └── columns-container.tsx
+└── index.ts                  # 统一导出 + registerAll()
+```
+
+### 组件统一契约
+
+所有注册组件收到同一组注入属性（各组件自定义 `P`，外壳一致）：
 
 ```typescript
-export type LpwComponent<P = any> = React.ComponentType<P>
+export interface LpwBlockSlotProps<P> {
+  blockId: string               // 块 id：锚点 / 错误定位
+  props: P                      // 该块 props（组件内应用默认值）
+  depth: number                 // 当前深度（顶层 = 1）
+  childrenBlocks?: LpwBlock[]   // 仅容器类型非空
+}
+
+// 容器统一通过该助手渲染子块，保证 depth + 1 与错误边界不遗漏
+export function renderChildren(blocks: LpwBlock[] | undefined, depth: number) {
+  return blocks?.map((child) => (
+    <LpwBlockRenderer key={child.id} block={child} depth={depth + 1} />
+  ))
+}
+```
+
+### `lpw-parser.ts`（终版契约）
+
+```typescript
+export interface LpwParseError { message: string; path?: string }
+export interface LpwParseResult {
+  document?: LpwDocument
+  error?: LpwParseError
+}
+
+// 解析 + 结构自检：
+// 1. JSON 语法 → 根对象
+// 2. version === '1.0'
+// 3. blocks 为数组，每项含 string id / string type / object props
+// 4. id 全文档唯一（重复 → 定位第二个出现处）
+// 字段上限与枚举由服务端 Schema 负责；未知 type 不是解析错误（渲染期走 Fallback）
+export function parseLpwSource(source: string): LpwParseResult
+```
+
+### `lpw-registry.ts`（含元数据）
+
+```typescript
+export interface LpwEntry {
+  Component: React.ComponentType<LpwBlockSlotProps<any>>
+  container: boolean // section / tabs / columns 为 true
+}
 
 class LpwRegistryStore {
-  private registry = new Map<string, LpwComponent>()
-
-  register<P>(type: string, component: LpwComponent<P>) {
-    this.registry.set(type, component)
-  }
-
-  get(type: string): LpwComponent | undefined {
-    return this.registry.get(type)
-  }
-
-  has(type: string): boolean {
-    return this.registry.has(type)
-  }
+  private registry = new Map<string, LpwEntry>()
+  register(type: string, container: boolean, Component: LpwEntry['Component']): void
+  get(type: string): LpwEntry | undefined
+  types(): string[]
 }
 
 export const lpwRegistry = new LpwRegistryStore()
 ```
 
-### 3. `lpw-block-renderer.tsx`
+`index.ts` 的 `registerAll()` 集中注册 10 个类型；注册表类型清单与 v1 Schema 的分支数由单测对齐（新增 Schema 分支而未注册组件时测试失败）。
 
-职责：执行查表分发，传递上下文，管理递归深度。
+### `lpw-block-renderer.tsx`（终版）
 
 ```typescript
 const MAX_CONTAINER_DEPTH = 3
 
 export function LpwBlockRenderer({
   block,
-  depth = 0,
+  depth = 1,
 }: {
   block: LpwBlock
   depth?: number
 }) {
   if (depth > MAX_CONTAINER_DEPTH) {
-    return <LpwFallbackBlock block={block} reason="容器嵌套深度超过最大限制 (3 层)" />
+    return (
+      <LpwFallbackBlock
+        block={block}
+        reason={`容器嵌套深度超过最大限制（${MAX_CONTAINER_DEPTH} 层）`}
+      />
+    )
   }
 
-  const Component = lpwRegistry.get(block.type)
-  if (!Component) {
+  const entry = lpwRegistry.get(block.type)
+  if (!entry) {
     return <LpwFallbackBlock block={block} reason={`未注册的组件类型: ${block.type}`} />
   }
 
   return (
     <BlockErrorBoundary block={block}>
-      <Component {...block.props} childrenBlocks={block.children} currentDepth={depth} />
+      <entry.Component
+        blockId={block.id}
+        props={block.props}
+        depth={depth}
+        childrenBlocks={block.children}
+      />
     </BlockErrorBoundary>
   )
 }
 ```
 
-### 4. `block-error-boundary.tsx`
+### `block-error-boundary.tsx` / `fallback-block.tsx`
 
-职责：拦截单个组件的渲染崩溃，输出可见诊断卡片。
+错误边界实现保持既定语义：崩溃块就地渲染诊断卡片（`[type#id] + error.message`），绝不让整篇白屏。
 
 ```typescript
 interface State {
@@ -480,12 +1106,14 @@ export class BlockErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="border border-red-500/30 bg-red-500/5 p-3 rounded-none my-2 text-xs">
-          <div className="font-semibold text-red-600 flex items-center gap-1.5">
+        <div className="my-2 border border-red-500/30 bg-red-500/5 p-3 text-xs">
+          <div className="flex items-center gap-1.5 font-semibold text-red-600">
             <span>块渲染失败</span>
-            <span className="text-sea-ink-soft/60">[{this.props.block.type}#{this.props.block.id}]</span>
+            <span className="text-sea-ink-soft/60">
+              [{this.props.block.type}#{this.props.block.id}]
+            </span>
           </div>
-          <p className="text-sea-ink-soft mt-1 font-mono">{this.state.error?.message}</p>
+          <p className="mt-1 font-mono text-sea-ink-soft">{this.state.error?.message}</p>
         </div>
       )
     }
@@ -494,22 +1122,91 @@ export class BlockErrorBoundary extends React.Component<
 }
 ```
 
+`LpwFallbackBlock` 渲染警示卡：块 id、类型、原因，附 `<details>` 折叠的 `props` JSON 预览——读者可以把卡片内容直接反馈给 Agent 修正。
+
+### `document-viewer.tsx` 与两个 Viewer
+
+```typescript
+export function LpwDocumentViewer({ source }: { source: string }) {
+  const { document, error } = useMemo(() => parseLpwSource(source), [source])
+  // error   → 文档级错误卡（含 path / message，不留白）
+  // 空 blocks → 「空文档：等待分块写入」占位（呼应渐进构建心智）
+  // 正常    → meta 头（title / description / tags Badge）+ blocks.map(LpwBlockRenderer, depth=1)
+}
+
+// viewers.tsx —— 两个外壳只差布局约束
+export function PreviewLpwViewer({ src, filename }: { src: string; filename: string })
+// fetch(src) 取原始文本（不做 formatPreviewSource 预处理）
+// loading / fetch 错误态 → 居中提示；成功 → LpwDocumentViewer
+// 用于工作台与 Pages 展示态：占满父容器，滚动交给父级
+
+export function PreviewLpwInlineViewer({ src, filename }: { src: string; filename: string })
+// Q&A 内嵌：同上，外层 min-h-80、宽度撑满补充面板
+```
+
 ## Dedicated Component Library (v1 Specs)
 
-首期交付的 10 种专用组件规范：
+props 契约见 §Document Specification；本节定义渲染实现。全局约束：只消费 `@lumina/components` 原语与 `theme.css` 语义 token，全平直角（无 rounded 类）、不新增自定义 CSS 文件；本地交互一律 `useState`，无网络副作用。
 
-| 组件类型 (`type`) | 块分类 | 核心属性 (`props`) | 视觉与交互行为 |
-| --- | --- | --- | --- |
-| `markdown` | 内容 | `content: string` | 富文本正文，支持 GFM、LaTeX 数学公式与 Mermaid，消费 `@lumina/components/markdown` |
-| `callout` | 内容 | `level: 'info' \| 'success' \| 'warning' \| 'error'`, `title?: string`, `content: string` | 强调提示卡片，边框与背景带对应语义色，支持内置图标 |
-| `metrics` | 内容 | `items: Array<{ label: string, value: string \| number, unit?: string, trend?: 'up' \| 'down', change?: string, desc?: string }>` | 核心指标网格，大号字体展示指标值，支持涨跌趋势颜色标注 |
-| `steps` | 内容 | `current?: number`, `items: Array<{ title: string, desc?: string, status?: 'wait' \| 'process' \| 'finish' \| 'error' }>` | 步骤条展示流程进展，支持节点状态指示 |
-| `timeline` | 内容 | `items: Array<{ time: string, title: string, content?: string, tag?: string }>` | 竖向时间线，展示事件与演化历史 |
-| `diff` | 内容 | `filename?: string`, `language?: string`, `oldCode: string`, `newCode: string`, `splitView?: boolean` | 代码差异对比视图，消费 `react-diff-viewer-continued`，支持并排/统一模式 |
-| `table` | 内容 | `columns: Array<{ key: string, title: string, width?: string }>`, `data: Array<Record<string, any>>`, `sortable?: boolean` | 结构化数据表，支持本地客户端列排序与筛选 |
-| `section` | 容器 | `title: string`, `collapsible?: boolean`, `defaultOpen?: boolean` | 章节外壳，带锚点与折叠开关，包裹 `children` 块 |
-| `tabs` | 容器 | `items: Array<{ key: string, label: string }>`, `defaultKey?: string` | 多标签页切换容器，本地状态管理激活 Tab，按需渲染对应 `children` |
-| `columns` | 容器 | `ratio?: '1:1' \| '1:2' \| '2:1' \| '1:1:1'` | 多列自适应网格，响应式排布不同列内的 `children` |
+### `markdown`（`blocks/markdown-block.tsx`）
+
+- 结构：`<div className={proseArticle}><Markdown>{content}</Markdown></div>`；
+- 消费：`@lumina/components/markdown` 完整链路（GFM + 数学 + 代码高亮 + Mermaid），与 Wiki 正文同源；
+- 边界：`content` 非空由 Schema 保证；超长内容的滚动由文档容器承担。
+
+### `callout`
+
+- 语义色映射：info→`lagoon`、success→`kicker`、warning→`palm`、error→`destructive`；
+- 结构：`div.my-4 border-l-4 p-4` + 语义边框/浅底 + 可选 `title`（semibold）+ `content`；
+- `content` 用 `markdown-lite` 渲染（行内加粗/代码可用，heading/mermaid 不放开，控制卡片内排版尺度）。
+
+### `metrics`
+
+- 结构：`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`，每项 `border border-line bg-surface p-4`；
+- 排版：label 小号弱化；value `text-2xl font-semibold text-sea-ink` + unit 小号后缀；`trend: up` → `text-kicker`、`down` → `text-palm` 的 change 徽标；desc 单行弱化；
+- 边界：value 为 number 原样展示，不做格式化猜测。
+
+### `steps`
+
+- 结构：横向 `<ol class="flex flex-wrap gap-4">`，节点 = 圆点 + 连接线 + title / desc；
+- 状态色：wait→`border-line`、process→`border-lagoon` 实心、finish→`border-kicker`、error→`border-destructive`；`current` 命中节点加描边；
+- 边界：`current` 缺省不高亮任何节点；越界值由服务端拦截，前端不防御性钳制。
+
+### `timeline`
+
+- 结构：竖向 `<ul>`，左轴 1px `border-line` + 节点圆点；`time` 等宽小号，title 常规，content 弱化，`tag` 渲染 `Badge`；
+- 边界：content / tag 缺省时省略槽位，不留空节点。
+
+### `diff`
+
+- 依赖：新增 `react-diff-viewer-continued`（仅 `web` 端，`components` 包不引入）；
+- 结构：顶栏 = filename + language `Badge` + 并排/统一切换按钮（本地 state，初值 `splitView ?? true`）；正文 ReactDiffViewer；
+- 主题：`styles` 覆写对齐直角与 `--sand` / `--sea-ink` 语义色，深浅两套 token 跟随根节点 `dark` 类；
+- 边界：oldCode 与 newCode 相同渲染「无差异」提示。
+
+### `table`
+
+- 结构：原生 `<table class="w-full text-sm">`，thead `border-b border-line`；列 `width` 透传 `style.width`、`align` 透传 `text-left/center/right`；
+- 排序：`sortable` 时表头为 `<button>` + `aria-sort`，本地三态（升 → 降 → 复原）；number 数值比较、其余按 `String()` 本地化比较、null 恒排末尾；
+- 单元格：boolean → `是 / —`，null → `—`，string 长度由 Schema 上限兜底不做截断；
+- 边界：`data` 为空渲染单行「暂无数据」，列头保留。
+
+### `section`（容器）
+
+- 结构：`<section id={blockId}>` + `h2` 标题 + 内容区；
+- 折叠：`collapsible` 时标题为 `<button aria-expanded>`，初值 `defaultOpen ?? true`；折叠只隐藏内容，标题常驻；
+- 子块：`renderChildren(childrenBlocks, depth)`。
+
+### `tabs`（容器）
+
+- 结构：`role=tablist` 按钮组 + 面板；激活 key 本地 state，初值 `defaultKey ?? items[0].key`；
+- 对齐：children 与 items 按索引一一对应（服务端已强制等长）；防御：缺失槽位渲染「该页签缺少内容块」占位而非空白；
+- 仅渲染激活面板（v1 用条件渲染，不做 keep-alive）。
+
+### `columns`（容器）
+
+- 结构：`grid gap-4 grid-cols-1 md:<ratio>`；ratio 映射：`1:1 → md:grid-cols-2`、`1:2 → md:grid-cols-[1fr_2fr]`、`2:1 → md:grid-cols-[2fr_1fr]`、`1:1:1 → md:grid-cols-3`；移动端单列；
+- 对齐：children 数 = ratio 列数（服务端强制），多余槽位不存在。
 
 ## Integration Points
 
@@ -589,12 +1286,13 @@ flowchart LR
 ```
 
 - **PR 1：映射引擎核心与路由分流**
-  - 新增 `web/src/components/preview/lpw/` 核心：`types.ts`, `lpw-parser.ts`, `lpw-registry.ts`, `block-error-boundary.tsx`, `lpw-block-renderer.tsx`, `document-viewer.tsx`；
+  - 新增 `web/src/components/preview/lpw/` 核心：`types.ts`, `lpw-parser.ts`, `lpw-registry.ts`, `lpw-block-renderer.tsx`, `block-error-boundary.tsx`, `fallback-block.tsx`, `document-viewer.tsx`, `viewers.tsx`, `index.ts`；
   - 调整 `web/src/lib/preview-file.ts` 与 `web/src/components/preview/file-viewer.tsx` 支持 `'lpw'`；
   - 交付基础空壳与 Fallback 占位。
 - **PR 2：7 种基础内容专用组件**
   - 实现 Markdown, Callout, Metrics, Steps, Timeline, Diff, Table 组件；
-  - 注册至 `lpwRegistry`，补齐单测与样例。
+  - 注册至 `lpwRegistry`，补齐单测与样例；
+  - 新增依赖 `react-diff-viewer-continued`（仅 `web` 端）。
 - **PR 3：3 种容器组件与本地交互**
   - 实现 Section, Tabs, Columns 容器块；
   - 支持 `depth` 递归限制与本地标签/折叠状态；
@@ -625,3 +1323,8 @@ flowchart LR
    - `preview_lpw_logic_test.go`：add / patch / replace / remove / sort 正常路径；id 冲突、未知 id、未知类型、深度/块数/字节超限的原子性（失败后文件字节不变）；互斥锁下的并发读改写不丢更新；
    - MCP 注册测试：7 个工具名称、inputSchema 与 outputSchema 字段齐全；
    - 场景回归：分块构建 ≥ 30 块长文，每步核对 `preview_sync` 上屏与 `preview_lpw_outline` 一致；中途执行 remove 与 sort 后终核渲染无丢块、无孤儿 id。
+4. **专用组件渲染测试**（Vitest + Testing Library，`web/` 端）：
+   - 每类型渲染用例：正常 props、可选字段缺省、默认值应用（callout level、table align、tabs defaultKey、diff splitView）；
+   - 容器契约：depth 传递、tabs 缺槽占位、columns 比例类名、renderChildren 递归；
+   - `registerAll()` 与 v1 Schema 分支数对齐测试：Schema 新增类型而未注册组件时失败；
+   - fallback / error-boundary：未注册类型、组件抛错 → 卡片可见且文档其余块正常渲染。
