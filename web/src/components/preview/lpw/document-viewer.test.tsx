@@ -79,7 +79,7 @@ describe('LpwDocumentViewer', () => {
     expect(screen.getByText('LPW 文档解析失败')).toBeTruthy()
   })
 
-  it('嵌套深度超过 MAX_CONTAINER_DEPTH 时应渲染超深占位卡', () => {
+  it('容器嵌套超过 3 层（块 depth 5）时应渲染超深占位卡', () => {
     render(
       <LpwBlockRenderer
         block={{
@@ -87,7 +87,7 @@ describe('LpwDocumentViewer', () => {
           type: 'markdown',
           props: {},
         }}
-        depth={4}
+        depth={5}
       />,
     )
     expect(screen.getByTestId('fallback-deep-b')).toBeTruthy()
@@ -437,6 +437,8 @@ describe('LpwDocumentViewer', () => {
   })
 
   it('验收测试：Plan 5 容器功能（折叠/页签切换/分栏/开合）正常工作且无占位卡', () => {
+    // 还原 plan-5 原始样例结构：section > tabs > columns > 叶子（块 depth 4 = 3 层容器 + 叶子）
+    // Q-01 回归：该结构后端校验放行，前端也必须无占位卡渲染
     const sample = JSON.stringify({
       version: '1.0',
       meta: { title: 'plan-5 容器验收' },
@@ -468,28 +470,23 @@ describe('LpwDocumentViewer', () => {
                   props: { items: [{ content: '页签A 内容' }] },
                 },
                 {
-                  id: 'tk-1',
-                  type: 'takeaway',
-                  props: { content: '页签B 结论。' },
+                  id: 'col-1',
+                  type: 'columns',
+                  props: { ratio: '1:2' },
+                  children: [
+                    {
+                      id: 'ca-1',
+                      type: 'cards',
+                      props: { items: [{ title: '左列' }] },
+                    },
+                    {
+                      id: 'tk-1',
+                      type: 'takeaway',
+                      props: { content: '右列结论。' },
+                    },
+                  ],
                 },
               ],
-            },
-          ],
-        },
-        {
-          id: 'col-1',
-          type: 'columns',
-          props: { ratio: '1:2' },
-          children: [
-            {
-              id: 'ca-1',
-              type: 'cards',
-              props: { items: [{ title: '左列' }] },
-            },
-            {
-              id: 'tk-2',
-              type: 'takeaway',
-              props: { content: '右列' },
             },
           ],
         },
@@ -513,20 +510,17 @@ describe('LpwDocumentViewer', () => {
     expect(screen.getByRole('button', { name: /章节一/ })).toBeTruthy()
     expect(screen.getByText('章节内正文。')).toBeTruthy()
 
-    // tabs 默认激活 B
-    expect(screen.getByText('页签B 结论。')).toBeTruthy()
-
-    // columns 渲染
+    // tabs 默认激活 B，其内 columns(1:2) 的两列叶子（depth 4）正常渲染
     expect(screen.getByText('左列')).toBeTruthy()
-    expect(screen.getByText('右列')).toBeTruthy()
+    expect(screen.getByText('右列结论。')).toBeTruthy()
 
     // details 附录存在
     expect(screen.getByText('附录')).toBeTruthy()
     expect(screen.getByText('SELECT 1;')).toBeTruthy()
   })
 
-  it('深度超限测试：4 层嵌套时第 4 层必须渲染超限占位卡，前 3 层正常', () => {
-    // 构造 4 层嵌套: section (depth 1) -> tabs (depth 2) -> columns (depth 3) -> cards (depth 4 超限!)
+  it('深度超限测试：4 层容器嵌套时第 5 层叶子渲染超限占位卡，前 3 层容器正常', () => {
+    // 构造 4 层容器: section(1) > tabs(2) > columns(3) > section(4) > leaf(5 超限!)
     const deepSample = JSON.stringify({
       version: '1.0',
       blocks: [
@@ -546,9 +540,16 @@ describe('LpwDocumentViewer', () => {
                   props: { ratio: '1:1' },
                   children: [
                     {
-                      id: 'ca-4',
-                      type: 'cards',
-                      props: { items: [{ title: '第 4 层超限 Cards' }] },
+                      id: 's-4',
+                      type: 'section',
+                      props: { title: '第 4 层 Section' },
+                      children: [
+                        {
+                          id: 'ca-5',
+                          type: 'cards',
+                          props: { items: [{ title: '第 5 层超限 Cards' }] },
+                        },
+                      ],
                     },
                   ],
                 },
@@ -561,12 +562,13 @@ describe('LpwDocumentViewer', () => {
 
     render(<LpwDocumentViewer source={deepSample} />)
 
-    // 第 1、2、3 层正常渲染
+    // 第 1、2、3 层容器正常渲染
     expect(screen.getByText('第 1 层 Section')).toBeTruthy()
     expect(screen.getByText('第 2 层')).toBeTruthy()
+    expect(screen.getByText('第 4 层 Section')).toBeTruthy()
 
-    // 第 4 层渲染超限占位卡
-    expect(screen.getByTestId('fallback-ca-4')).toBeTruthy()
+    // 第 5 层叶子渲染超限占位卡
+    expect(screen.getByTestId('fallback-ca-5')).toBeTruthy()
     expect(screen.getByText(/容器嵌套深度超过最大限制/)).toBeTruthy()
   })
 })

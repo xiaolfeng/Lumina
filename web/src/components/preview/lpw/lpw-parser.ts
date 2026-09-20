@@ -47,7 +47,22 @@ export function parseLpwSource(source: string): LpwParseResult {
 
   const seenIds = new Set<string>()
 
-  function validateBlock(block: unknown, path: string): LpwParseError | null {
+  // S-02：递归护栏。合法文档块深度 ≤ 4，此上限远高于合法值但远低于栈溢出阈值，
+  // 用于把恶意深嵌套输入转为可见的文档级错误卡，而不是让 RangeError 击穿组件树。
+  const MAX_PARSE_DEPTH = 64
+
+  function validateBlock(
+    block: unknown,
+    path: string,
+    depth: number,
+  ): LpwParseError | null {
+    if (depth > MAX_PARSE_DEPTH) {
+      return {
+        path,
+        message: `文档嵌套深度超过解析上限（${MAX_PARSE_DEPTH}），已终止解析`,
+      }
+    }
+
     if (typeof block !== 'object' || block === null || Array.isArray(block)) {
       return {
         path,
@@ -102,6 +117,7 @@ export function parseLpwSource(source: string): LpwParseResult {
         const childError = validateBlock(
           item.children[i],
           `${path}.children[${i}]`,
+          depth + 1,
         )
         if (childError) {
           return childError
@@ -113,7 +129,7 @@ export function parseLpwSource(source: string): LpwParseResult {
   }
 
   for (let i = 0; i < doc.blocks.length; i++) {
-    const error = validateBlock(doc.blocks[i], `blocks[${i}]`)
+    const error = validateBlock(doc.blocks[i], `blocks[${i}]`, 1)
     if (error) {
       return { error }
     }

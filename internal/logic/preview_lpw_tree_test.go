@@ -53,6 +53,16 @@ func TestPreviewLpwTreeOperations(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "不存在") {
 			t.Errorf("expected parent not found error, got: %v", err)
 		}
+
+		// Q-08：负数 position 显式报错，不静默降级
+		neg := -1
+		err = insertBlock(doc, "", &neg, lpwBlock{ID: "neg-1", Type: "divider", Props: map[string]any{}})
+		if err == nil || !strings.Contains(err.Error(), "不能为负数") {
+			t.Errorf("expected negative position error, got: %v", err)
+		}
+		if _, total := collectBlockIDs(doc); total != 3 {
+			t.Errorf("negative position insert must not mutate document, got %d blocks", total)
+		}
 	})
 
 	// 2. removeBlocks 正常与异常
@@ -355,8 +365,107 @@ func TestValidateContainerRules(t *testing.T) {
 			},
 		}
 		err := validateContainerRules(doc)
-		if err == nil || !strings.Contains(err.Error(), "危险协议链接") {
-			t.Errorf("expected dangerous protocol error, got: %v", err)
+		if err == nil || !strings.Contains(err.Error(), "不允许的协议") {
+			t.Errorf("expected disallowed protocol error, got: %v", err)
+		}
+	})
+
+	// 9. S-01 回归：scheme 内夹杂控制字符的伪协议串必须整体拒绝
+	t.Run("cards scheme with control chars", func(t *testing.T) {
+		doc := &lpwDocument{
+			Version: "1.0",
+			Blocks: []lpwBlock{
+				{
+					ID:   "card-ctrl",
+					Type: "cards",
+					Props: map[string]any{
+						"items": []any{
+							// "jav\tascript:notice"（惰性串，无攻击体）
+							map[string]any{"title": "夹 TAB", "href": "jav\tascript:notice"},
+							map[string]any{"title": "夹换行", "href": "jav\nascript:notice"},
+						},
+					},
+				},
+			},
+		}
+		err := validateContainerRules(doc)
+		if err == nil || !strings.Contains(err.Error(), "控制字符") {
+			t.Errorf("expected control character rejection, got: %v", err)
+		}
+	})
+
+	// 10. S-01 回归：白名单放行合法形态，拒绝白名单外 scheme
+	t.Run("cards url whitelist", func(t *testing.T) {
+		makeCards := func(href string) *lpwDocument {
+			return &lpwDocument{
+				Version: "1.0",
+				Blocks: []lpwBlock{
+					{
+						ID:   "card-wl",
+						Type: "cards",
+						Props: map[string]any{
+							"items": []any{
+								map[string]any{"title": "链接", "href": href},
+							},
+						},
+					},
+				},
+			}
+		}
+		for _, okHref := range []string{
+			"https://example.com/a",
+			"http://example.com/b",
+			"mailto:someone@example.com",
+			"/pages/demo/landing",
+			"./page.html",
+			"../page.html",
+			"#section",
+			"detail.html",
+		} {
+			if err := validateContainerRules(makeCards(okHref)); err != nil {
+				t.Errorf("whitelisted href %q should pass, got: %v", okHref, err)
+			}
+		}
+		for _, badHref := range []string{
+			"ftp://files.example.com/x",
+			"data:text/html,notice",
+			"vbscript:notice",
+			"javascript:void",
+		} {
+			if err := validateContainerRules(makeCards(badHref)); err == nil {
+				t.Errorf("non-whitelisted href %q should be rejected", badHref)
+			}
+		}
+	})
+
+	// 11. S-01 回归：image 与 gallery 的 src 同样走白名单
+	t.Run("image and gallery src whitelist", func(t *testing.T) {
+		badImage := &lpwDocument{
+			Version: "1.0",
+			Blocks: []lpwBlock{
+				{ID: "img1", Type: "image", Props: map[string]any{"src": "jav\tascript:notice", "alt": "x"}},
+			},
+		}
+		if err := validateContainerRules(badImage); err == nil || !strings.Contains(err.Error(), "控制字符") {
+			t.Errorf("expected image control-char rejection, got: %v", err)
+		}
+
+		badGallery := &lpwDocument{
+			Version: "1.0",
+			Blocks: []lpwBlock{
+				{
+					ID:   "gal1",
+					Type: "gallery",
+					Props: map[string]any{
+						"images": []any{
+							map[string]any{"src": "ftp://x/y.png", "alt": "x"},
+						},
+					},
+				},
+			},
+		}
+		if err := validateContainerRules(badGallery); err == nil {
+			t.Errorf("expected gallery non-whitelisted scheme rejection")
 		}
 	})
 }

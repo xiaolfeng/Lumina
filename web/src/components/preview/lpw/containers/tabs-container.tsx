@@ -17,7 +17,12 @@ export const TabsContainer: React.FC<LpwBlockSlotProps<LpwTabsProps>> = ({
 
   const [activeKey, setActiveKey] = useState<string>(initialKey)
 
-  const activeIndex = items.findIndex((it) => it.key === activeKey)
+  // Q-06：preview_sync 增量更新可能移除/改名当前激活 key（组件位置不变、state 保留），
+  // 此处按 items 实时归一：陈旧 key 自动回落到第一项，避免卡死在「缺槽」占位。
+  const resolvedKey = items.some((it) => it.key === activeKey)
+    ? activeKey
+    : (items[0]?.key ?? '')
+  const activeIndex = items.findIndex((it) => it.key === resolvedKey)
   const activeChild = activeIndex >= 0 ? childrenBlocks[activeIndex] : undefined
 
   return (
@@ -31,7 +36,7 @@ export const TabsContainer: React.FC<LpwBlockSlotProps<LpwTabsProps>> = ({
         className="flex overflow-x-auto border-b border-line bg-surface-muted/30"
       >
         {items.map((item) => {
-          const isSelected = item.key === activeKey
+          const isSelected = item.key === resolvedKey
           return (
             <button
               key={item.key}

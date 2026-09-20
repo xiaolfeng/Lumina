@@ -133,4 +133,50 @@ describe('parseLpwSource', () => {
     expect(res.document).toBeDefined()
     expect(res.document?.blocks[0].type).toBe('not-a-type')
   })
+
+  it('S-02 回归：恶意深嵌套文档应在解析上限处终止并返回文档级错误，而非递归溢出', () => {
+    // 构造 100 层嵌套（合法文档上限为 4 层块深度，解析护栏上限 64）
+    let deep: Record<string, unknown> = {
+      id: 'leaf',
+      type: 'markdown',
+      props: {},
+    }
+    for (let i = 0; i < 100; i++) {
+      deep = {
+        id: `node-${i}`,
+        type: 'section',
+        props: { title: `t${i}` },
+        children: [deep],
+      }
+    }
+    const source = JSON.stringify({
+      version: '1.0',
+      blocks: [deep],
+    })
+
+    const res = parseLpwSource(source)
+    expect(res.error).toBeDefined()
+    expect(res.error?.message).toContain('嵌套深度超过解析上限')
+  })
+
+  it('S-02 回归：64 层以内（含合法 4 层）文档不受护栏影响', () => {
+    let deep: Record<string, unknown> = {
+      id: 'leaf',
+      type: 'markdown',
+      props: {},
+    }
+    for (let i = 0; i < 60; i++) {
+      deep = {
+        id: `node-${i}`,
+        type: 'section',
+        props: { title: `t${i}` },
+        children: [deep],
+      }
+    }
+    const res = parseLpwSource(
+      JSON.stringify({ version: '1.0', blocks: [deep] }),
+    )
+    expect(res.error).toBeUndefined()
+    expect(res.document).toBeDefined()
+  })
 })

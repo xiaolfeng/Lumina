@@ -45,7 +45,6 @@ type PreviewLpwLogic struct {
 	previewLogic *PreviewLogic
 	schema       *service.LpwSchemaLoader
 	storage      lpwStorage
-	locks        sync.Map // key "<sessionID>:<filename>" -> *sync.Mutex
 }
 
 // LpwWriteResult 块级操作成功响应结构
@@ -85,6 +84,34 @@ func NewPreviewLpwLogic(previewLogic *PreviewLogic, schema *service.LpwSchemaLoa
 	}
 }
 
+// lpwLockCtxKey 用于在调用链上下文中标记「已持有某 LPW 文件锁」，实现同 key 可重入
+type lpwLockCtxKey struct{}
+
+// lpwFileLocks 跨写通道共享的 LPW 文件互斥锁（key: "<sessionID>:<filename>"）。
+// Q-04 修复：preview_lpw_* 的读改验写流水线与 preview_file_upload 整体覆写
+// 必须串行化，否则并发时后写者会覆盖前者的更新（丢写）。
+var lpwFileLocks sync.Map
+
+// withLpwFileLock 以跨通道共享的互斥锁执行 fn；若当前调用链已持有同 key 锁
+// （经 ctx 传递，如 withDocument → UploadFile），则直接执行避免自死锁。
+func withLpwFileLock(
+	ctx context.Context,
+	sessionID xSnowflake.SnowflakeID,
+	filename string,
+	fn func(ctx context.Context),
+) {
+	key := fmt.Sprintf("%d:%s", sessionID.Int64(), filename)
+	if held, _ := ctx.Value(lpwLockCtxKey{}).(string); held == key {
+		fn(ctx)
+		return
+	}
+	actual, _ := lpwFileLocks.LoadOrStore(key, &sync.Mutex{})
+	mtx := actual.(*sync.Mutex)
+	mtx.Lock()
+	defer mtx.Unlock()
+	fn(context.WithValue(ctx, lpwLockCtxKey{}, key))
+}
+
 // withDocument 原子读改验写流水线
 func (l *PreviewLpwLogic) withDocument(
 	ctx context.Context,
@@ -98,13 +125,24 @@ func (l *PreviewLpwLogic) withDocument(
 		return nil, xError.NewError(ctx, xError.ParameterError, "文件扩展名必须为 .lpw", false, nil)
 	}
 
-	// 1. 进程内互斥锁
-	lockKey := fmt.Sprintf("%d:%s", sessionID.Int64(), filename)
-	actualLock, _ := l.locks.LoadOrStore(lockKey, &sync.Mutex{})
-	mtx := actualLock.(*sync.Mutex)
-	mtx.Lock()
-	defer mtx.Unlock()
+	var result *LpwWriteResult
+	var xErr *xError.Error
 
+	withLpwFileLock(ctx, sessionID, filename, func(lockedCtx context.Context) {
+		result, xErr = l.withDocumentLocked(lockedCtx, sessionID, filename, revision, allowCreate, mutate)
+	})
+	return result, xErr
+}
+
+// withDocumentLocked 在已持有文件锁的前提下执行读改验写流水线
+func (l *PreviewLpwLogic) withDocumentLocked(
+	ctx context.Context,
+	sessionID xSnowflake.SnowflakeID,
+	filename string,
+	revision string,
+	allowCreate bool,
+	mutate func(doc *lpwDocument) (affectedBlockID string, err error),
+) (*LpwWriteResult, *xError.Error) {
 	// 2. 读当前文件
 	content, updatedAt, getErr := l.storage.GetFile(ctx, sessionID, filename)
 	if getErr != nil {
@@ -196,7 +234,7 @@ func (l *PreviewLpwLogic) withDocument(
 	}, nil
 }
 
-// InitDocument 初始化空白 LPW 文档并写入 Meta 元数据
+// InitDocument 初始化空白 LPW 文档并写入 Meta 元数据；initialBlocks 非空时作为初始块列表
 func (l *PreviewLpwLogic) InitDocument(
 	ctx context.Context,
 	sessionID xSnowflake.SnowflakeID,
@@ -205,9 +243,10 @@ func (l *PreviewLpwLogic) InitDocument(
 	desc string,
 	author string,
 	tags []string,
+	initialBlocks []lpwBlock,
 	revision string,
 ) (*LpwWriteResult, *xError.Error) {
-	l.log.Info(ctx, fmt.Sprintf("InitDocument - 初始化 LPW 文档 [session=%d, file=%s, title=%s]", sessionID.Int64(), filename, title))
+	l.log.Info(ctx, fmt.Sprintf("InitDocument - 初始化 LPW 文档 [session=%d, file=%s, title=%s, initialBlocks=%d]", sessionID.Int64(), filename, title, len(initialBlocks)))
 
 	return l.withDocument(ctx, sessionID, filename, revision, true, func(doc *lpwDocument) (string, error) {
 		doc.Version = "1.0"
@@ -217,7 +256,11 @@ func (l *PreviewLpwLogic) InitDocument(
 			Author:      author,
 			Tags:        tags,
 		}
-		doc.Blocks = []lpwBlock{} // 重置清空
+		if initialBlocks != nil {
+			doc.Blocks = initialBlocks // Q-05：支持携带初始块，仍走统一校验管线
+		} else {
+			doc.Blocks = []lpwBlock{} // 重置清空
+		}
 		return "", nil
 	})
 }

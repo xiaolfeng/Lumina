@@ -85,7 +85,7 @@ func TestPreviewLpwLogicFlow(t *testing.T) {
 	fn := "doc.lpw"
 
 	// 1. init
-	res, err := l.InitDocument(ctx, sid, fn, "测试文档", "描述", "作者", []string{"tag1"}, "")
+	res, err := l.InitDocument(ctx, sid, fn, "测试文档", "描述", "作者", []string{"tag1"}, nil, "")
 	if err != nil {
 		t.Fatalf("InitDocument error: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestPreviewLpwLogicAtomicity(t *testing.T) {
 	sid := xSnowflake.SnowflakeID(2)
 	fn := "atomic.lpw"
 
-	_, _ = l.InitDocument(ctx, sid, fn, "原子性测试", "", "", nil, "")
+	_, _ = l.InitDocument(ctx, sid, fn, "原子性测试", "", "", nil, nil, "")
 	initialContent, _, _ := mem.GetFile(ctx, sid, fn)
 
 	// 构造一个 Schema 校验失败的 Add（metrics items 为空）
@@ -196,7 +196,7 @@ func TestPreviewLpwLogicConcurrency(t *testing.T) {
 	sid := xSnowflake.SnowflakeID(3)
 	fn := "concurrent.lpw"
 
-	_, _ = l.InitDocument(ctx, sid, fn, "并发测试", "", "", nil, "")
+	_, _ = l.InitDocument(ctx, sid, fn, "并发测试", "", "", nil, nil, "")
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -230,14 +230,61 @@ func TestPreviewLpwLogicConcurrency(t *testing.T) {
 	}
 }
 
-func TestPreviewLpwLogicRevisionConflict(t *testing.T) {
+// TestPreviewLpwLogicInitWithBlocks Q-05 回归：init 携带初始块列表走统一校验管线
+func TestPreviewLpwLogicInitWithBlocks(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
+	l, _ := setupTestLpwLogic(t)
+	sid := xSnowflake.SnowflakeID(5)
+	fn := "init-blocks.lpw"
+
+	// 1. 合法初始块：成功写入并计入 total_blocks
+	blocks := []lpwBlock{
+		{ID: "h-1", Type: "heading", Props: map[string]any{"level": float64(2), "content": "标题"}},
+		{ID: "m-1", Type: "markdown", Props: map[string]any{"content": "正文"}},
+	}
+	res, err := l.InitDocument(ctx, sid, fn, "初始块文档", "", "", nil, blocks, "")
+	if err != nil {
+		t.Fatalf("InitDocument with blocks error: %v", err)
+	}
+	if res.TotalBlocks != 2 {
+		t.Errorf("expected 2 blocks after init-with-blocks, got %d", res.TotalBlocks)
+	}
+
+	outline, err := l.Outline(ctx, sid, fn)
+	if err != nil {
+		t.Fatalf("Outline error: %v", err)
+	}
+	if outline.BlockCount != 2 || outline.Items[0].ID != "h-1" || outline.Items[1].ID != "m-1" {
+		t.Errorf("unexpected outline after init-with-blocks: %+v", outline.Items)
+	}
+
+	// 2. 非法初始块（未注册类型）：init 必须整体失败且不落库
+	badBlocks := []lpwBlock{
+		{ID: "bad-1", Type: "not-a-type", Props: map[string]any{}},
+	}
+	_, err = l.InitDocument(ctx, sid, fn, "非法初始块", "", "", nil, badBlocks, "")
+	if err == nil {
+		t.Fatalf("expected init with invalid block to fail")
+	}
+
+	// 文件内容保持上一次合法版本
+	outlineAfter, err := l.Outline(ctx, sid, fn)
+	if err != nil {
+		t.Fatalf("Outline after failed init error: %v", err)
+	}
+	if outlineAfter.BlockCount != 2 {
+		t.Errorf("expected file untouched after failed init (2 blocks), got %d", outlineAfter.BlockCount)
+	}
+}
+
+func TestPreviewLpwLogicRevisionConflict(t *testing.T) {	t.Parallel()
 	ctx := context.Background()
 	l, _ := setupTestLpwLogic(t)
 	sid := xSnowflake.SnowflakeID(4)
 	fn := "conflict.lpw"
 
-	_, _ = l.InitDocument(ctx, sid, fn, "版本测试", "", "", nil, "")
+	_, _ = l.InitDocument(ctx, sid, fn, "版本测试", "", "", nil, nil, "")
 
 	// 传入过期的 revision
 	staleRevision := "2020-01-01T00:00:00Z"

@@ -118,7 +118,28 @@ func handlePreviewLpwInit(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 		title = "LPW 预览文档"
 	}
 
-	res, xErr := previewLpwLogic.InitDocument(ctx, sessionID, filename, title, desc, author, tags, revision)
+	// Q-05：解析可选初始块列表（design 0003 init 契约）
+	var initialBlocks []logic.LpwBlockExport
+	if rawBlocks, ok := args["blocks"].([]any); ok && len(rawBlocks) > 0 {
+		initialBlocks = make([]logic.LpwBlockExport, 0, len(rawBlocks))
+		for i, rb := range rawBlocks {
+			rbMap, isMap := rb.(map[string]any)
+			if !isMap || rbMap == nil {
+				return previewErrorResult(fmt.Sprintf("blocks[%d] 必须是对象", i)), nil
+			}
+			blockBytes, err := json.Marshal(rbMap)
+			if err != nil {
+				return previewErrorResult(fmt.Sprintf("序列化 blocks[%d] 失败: %s", i, err.Error())), nil
+			}
+			var b logic.LpwBlockRaw
+			if err := json.Unmarshal(blockBytes, &b); err != nil {
+				return previewErrorResult(fmt.Sprintf("解析 blocks[%d] 结构失败: %s", i, err.Error())), nil
+			}
+			initialBlocks = append(initialBlocks, b.ToInternal())
+		}
+	}
+
+	res, xErr := previewLpwLogic.InitDocument(ctx, sessionID, filename, title, desc, author, tags, initialBlocks, revision)
 	if xErr != nil {
 		return previewErrorResult(xErr.Error()), nil
 	}

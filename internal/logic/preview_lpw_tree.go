@@ -169,6 +169,11 @@ func collectSubtreeIDs(block lpwBlock) (ids []string, duplicateID string) {
 
 // insertBlock 插入单个块或子树
 func insertBlock(doc *lpwDocument, parentID string, position *int, block lpwBlock) error {
+	// 0. Q-08：负数插入位置显式报错（不再静默降级为末尾追加）
+	if position != nil && *position < 0 {
+		return fmt.Errorf("插入位置 position 不能为负数（当前 %d）", *position)
+	}
+
 	// 1. 检查待插入块内部是否有重复 ID
 	newIDs, dupID := collectSubtreeIDs(block)
 	if dupID != "" {
@@ -376,8 +381,38 @@ func replaceBlock(doc *lpwDocument, blockID string, block lpwBlock) error {
 	return nil
 }
 
-// validateContainerRules 走查 design 0003 规则 5-14（跨字段与递归语义）
+// validateContainerRules 走查 design 0003 规则 2、5-14（跨字段与递归语义）
 func validateContainerRules(doc *lpwDocument) error {
+	// 规则 2: id 全文档唯一（Q-07：Schema 不表达唯一性，统一由走查强制）
+	ids, totalBlocks := collectBlockIDs(doc)
+	if len(ids) != totalBlocks {
+		seen := make(map[string]bool, totalBlocks)
+		var duplicateID string
+		var walkDup func(blocks []lpwBlock)
+		walkDup = func(blocks []lpwBlock) {
+			for _, b := range blocks {
+				if seen[b.ID] {
+					duplicateID = b.ID
+					return
+				}
+				seen[b.ID] = true
+				if len(b.Children) > 0 {
+					walkDup(b.Children)
+					if duplicateID != "" {
+						return
+					}
+				}
+			}
+		}
+		walkDup(doc.Blocks)
+		return fmt.Errorf("块 id %q 重复，全文档必须唯一", duplicateID)
+	}
+
+	// 规则 8: 全文档块数（含子孙）≤ 500
+	if totalBlocks > 500 {
+		return fmt.Errorf("全文档总块数 %d 超过上限 500", totalBlocks)
+	}
+
 	var walk func(blocks []lpwBlock, curDepth int) error
 	walk = func(blocks []lpwBlock, curDepth int) error {
 		for _, b := range blocks {
@@ -566,19 +601,28 @@ func validateContainerRules(doc *lpwDocument) error {
 	return walk(doc.Blocks, 1)
 }
 
+// validateSafeURL 采用协议白名单（S-01）：仅放行 http(s)/mailto 绝对地址与纯相对引用
+// （/、./、../、# 开头或不含冒号的同会话文件名）。浏览器解析 URL 会剔除 scheme 内
+// TAB/LF/CR 等控制字符，黑名单前缀匹配可被穿透，因此含任何控制字符直接整体拒绝。
 func validateSafeURL(u, field, blockID string) error {
-	uLower := strings.ToLower(strings.TrimSpace(u))
-	if strings.HasPrefix(uLower, "javascript:") ||
-		strings.HasPrefix(uLower, "data:") ||
-		strings.HasPrefix(uLower, "vbscript:") {
-		return fmt.Errorf("块 %q 字段 %s 包含危险协议链接: %q", blockID, field, u)
+	v := strings.TrimSpace(u)
+	if v == "" {
+		return nil // 空值交由 Schema 必填/长度约束处理
 	}
-	if strings.Contains(u, "://") {
-		if !strings.HasPrefix(uLower, "https://") && !strings.HasPrefix(uLower, "http://") {
-			return fmt.Errorf("块 %q 字段 %s 外链协议必须为 http 或 https: %q", blockID, field, u)
-		}
+	if strings.ContainsFunc(v, func(r rune) bool { return r < 0x20 || r == 0x7f }) {
+		return fmt.Errorf("块 %q 字段 %s 含控制字符，已拒绝: %q", blockID, field, u)
 	}
-	return nil
+	vLower := strings.ToLower(v)
+	if strings.HasPrefix(vLower, "http://") || strings.HasPrefix(vLower, "https://") || strings.HasPrefix(vLower, "mailto:") {
+		return nil
+	}
+	if strings.HasPrefix(v, "/") || strings.HasPrefix(v, "#") || strings.HasPrefix(v, "./") || strings.HasPrefix(v, "../") {
+		return nil
+	}
+	if !strings.Contains(v, ":") {
+		return nil // 同会话相对文件名
+	}
+	return fmt.Errorf("块 %q 字段 %s 使用了不允许的协议或格式: %q（仅允许 http/https/mailto 与相对路径）", blockID, field, u)
 }
 
 func measureTree(nodes []any) (count int, depth int) {

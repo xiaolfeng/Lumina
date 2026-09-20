@@ -73,6 +73,14 @@ func TestPreviewLpwToolDefinitions(t *testing.T) {
 				t.Errorf("tool %s outputSchema 缺少必填字段 status 或 outline", def.name)
 			}
 		}
+
+		// Q-05 回归：init 的 inputSchema 必须包含 design 0003 契约声明的 blocks 属性
+		if def.name == "preview_lpw_init" {
+			props, _ := def.inputSchema["properties"].(map[string]any)
+			if props == nil || props["blocks"] == nil {
+				t.Errorf("preview_lpw_init inputSchema 缺少 design 0003 契约的 blocks 属性")
+			}
+		}
 	}
 
 	server := mcp.NewServer(&mcp.Implementation{Name: "preview-lpw-test", Version: "test"}, nil)

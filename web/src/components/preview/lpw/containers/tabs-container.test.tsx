@@ -107,4 +107,51 @@ describe('TabsContainer', () => {
     expect(screen.getByTestId('tabs-empty-slot')).toBeTruthy()
     expect(screen.getByText('该页签缺少内容块')).toBeTruthy()
   })
+
+  it('Q-06 回归：items 更新移除激活 key 后应回落第一项，而不是卡死在缺槽占位', () => {
+    lpwRegistry.register('q6-child-a', false, () => <div>新版第一页内容</div>)
+    lpwRegistry.register('q6-child-b', false, () => <div>新版第二页内容</div>)
+
+    const { rerender } = render(
+      <TabsContainer
+        blockId="tabs-q6"
+        props={{
+          items: [
+            { key: 'a', label: 'A' },
+            { key: 'b', label: 'B' },
+          ],
+          defaultKey: 'b',
+        }}
+        depth={1}
+        childrenBlocks={[
+          { id: 'ca', type: 'q6-child-a', props: {} },
+          { id: 'cb', type: 'q6-child-b', props: {} },
+        ]}
+      />,
+    )
+    // 初始激活 B
+    expect(screen.getByText('新版第二页内容')).toBeTruthy()
+
+    // 模拟 preview_sync 后的文档更新：key 'b' 被移除（组件同位置复用，state 保留）
+    rerender(
+      <TabsContainer
+        blockId="tabs-q6"
+        props={{
+          items: [
+            { key: 'a', label: 'A' },
+            { key: 'c', label: 'C' },
+          ],
+        }}
+        depth={1}
+        childrenBlocks={[
+          { id: 'ca', type: 'q6-child-a', props: {} },
+          { id: 'cc', type: 'q6-child-b', props: {} },
+        ]}
+      />,
+    )
+
+    // 陈旧 key 'b' 不再命中 → 应回落到第一项 'a'，渲染其内容而非缺槽占位
+    expect(screen.queryByText('该页签缺少内容块')).toBeNull()
+    expect(screen.getByText('新版第一页内容')).toBeTruthy()
+  })
 })

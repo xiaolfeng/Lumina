@@ -39,6 +39,11 @@ var previewLpwToolDefs = []previewLpwToolDef{
 					"type": "object",
 					"description": "文档元数据，如 title（必填）、description、author、tags 等。",
 				},
+				"blocks": map[string]any{
+					"type":        "array",
+					"items":       map[string]any{"type": "object"},
+					"description": "可选初始块列表；提供时将作为文档全部内容（仍逐块执行 Schema 与结构规则校验），缺省为空数组。",
+				},
 				"revision": map[string]any{"type": "string", "description": "可选乐观锁：上次响应返回的 revision。"},
 			},
 		},

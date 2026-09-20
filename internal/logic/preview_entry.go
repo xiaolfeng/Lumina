@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"path/filepath"
 	"strings"
 
 	apiPreview "github.com/xiaolfeng/Lumina/api/preview"
@@ -41,20 +42,21 @@ func FindPreviewEntry(files []apiPreview.PreviewFileResponse) *apiPreview.Previe
 	return firstHTML
 }
 
-// FindPreviewEntryFromPreviewFiles 从 []*entity.PreviewFile 中选择入口文件名（用于 Pages 晋升推导）
+// FindPreviewEntryFromPreviewFiles 从 []*entity.PreviewFile 中选择入口文件名（用于 Pages 晋升推导）。
+// Q-09 修复：保留扩展名回退兜底，防止历史行 MIME 漂移导致晋升失败。
 func FindPreviewEntryFromPreviewFiles(files []*entity.PreviewFile) string {
 	var firstLpw string
 	var firstHTML string
 
 	for _, f := range files {
-		if f.MimeType == bConst.PreviewMimeLPW {
+		if isLpwEntryFile(f.Filename, f.MimeType) {
 			if strings.EqualFold(f.Filename, "index.lpw") {
 				return f.Filename
 			}
 			if firstLpw == "" {
 				firstLpw = f.Filename
 			}
-		} else if f.MimeType == bConst.PreviewMimeHTML {
+		} else if isHTMLEntryFile(f.Filename, f.MimeType) {
 			if firstHTML == "" {
 				firstHTML = f.Filename
 			}
@@ -67,20 +69,21 @@ func FindPreviewEntryFromPreviewFiles(files []*entity.PreviewFile) string {
 	return firstHTML
 }
 
-// FindPreviewEntryFromPageFiles 从 []*entity.PageFile 中选择入口文件名
+// FindPreviewEntryFromPageFiles 从 []*entity.PageFile 中选择入口文件名。
+// Q-09 修复：同上，保留扩展名回退兜底。
 func FindPreviewEntryFromPageFiles(files []*entity.PageFile) string {
 	var firstLpw string
 	var firstHTML string
 
 	for _, f := range files {
-		if f.MimeType == bConst.PreviewMimeLPW {
+		if isLpwEntryFile(f.Filename, f.MimeType) {
 			if strings.EqualFold(f.Filename, "index.lpw") {
 				return f.Filename
 			}
 			if firstLpw == "" {
 				firstLpw = f.Filename
 			}
-		} else if f.MimeType == bConst.PreviewMimeHTML {
+		} else if isHTMLEntryFile(f.Filename, f.MimeType) {
 			if firstHTML == "" {
 				firstHTML = f.Filename
 			}
@@ -91,4 +94,21 @@ func FindPreviewEntryFromPageFiles(files []*entity.PageFile) string {
 		return firstLpw
 	}
 	return firstHTML
+}
+
+// isLpwEntryFile Pages 侧 LPW 入口判定：MIME 常量或 .lpw 扩展名（历史行兜底）
+func isLpwEntryFile(filename, mimeType string) bool {
+	if mimeType == bConst.PreviewMimeLPW {
+		return true
+	}
+	return strings.ToLower(filepath.Ext(filename)) == ".lpw"
+}
+
+// isHTMLEntryFile Pages 侧 HTML 入口判定：MIME 常量或 .html/.htm 扩展名（历史行兜底）
+func isHTMLEntryFile(filename, mimeType string) bool {
+	if mimeType == bConst.PreviewMimeHTML {
+		return true
+	}
+	ext := strings.ToLower(filepath.Ext(filename))
+	return ext == ".html" || ext == ".htm"
 }

@@ -112,3 +112,41 @@ func TestFindPreviewEntryFromPreviewFiles(t *testing.T) {
 		t.Errorf("FindPreviewEntryFromPreviewFiles(none) = %q, want empty", got)
 	}
 }
+
+// TestFindPreviewEntryExtensionFallback Q-09 回归：历史行 MIME 漂移时，
+// Pages 侧入口判定必须回退到扩展名匹配（MCP 侧 FindPreviewEntry 仍保持严格 MIME）。
+func TestFindPreviewEntryExtensionFallback(t *testing.T) {
+	t.Parallel()
+
+	// 1. PreviewFile：裸 "text/html"（无 charset）+ index.html 文件名 → 扩展名兜底命中
+	legacyHTML := []*entity.PreviewFile{
+		{Filename: "index.html", MimeType: "text/html"},
+	}
+	if got := FindPreviewEntryFromPreviewFiles(legacyHTML); got != "index.html" {
+		t.Errorf("legacy bare text/html + index.html should match by extension, got %q", got)
+	}
+
+	// 2. PreviewFile：MIME 漂移为 text/plain 的 .htm 文件 → 扩展名兜底命中
+	legacyHTM := []*entity.PreviewFile{
+		{Filename: "home.htm", MimeType: bConst.PreviewMimePlain},
+	}
+	if got := FindPreviewEntryFromPreviewFiles(legacyHTM); got != "home.htm" {
+		t.Errorf("plain-mime home.htm should match by extension, got %q", got)
+	}
+
+	// 3. PageFile：.lpw 扩展名但 MIME 漂移 → 扩展名兜底命中
+	legacyLpw := []*entity.PageFile{
+		{Filename: "doc.lpw", MimeType: bConst.PreviewMimeJSON},
+	}
+	if got := FindPreviewEntryFromPageFiles(legacyLpw); got != "doc.lpw" {
+		t.Errorf("json-mime doc.lpw should match by extension, got %q", got)
+	}
+
+	// 4. MCP 侧 FindPreviewEntry 保持严格：裸 "text/html" 不命中（既有契约由 preview_tools_test 钉死）
+	bare := []apiPreview.PreviewFileResponse{
+		{Filename: "index.html", MimeType: "text/html"},
+	}
+	if entry := FindPreviewEntry(bare); entry != nil {
+		t.Errorf("MCP FindPreviewEntry must stay strict on bare text/html, got %q", entry.Filename)
+	}
+}
