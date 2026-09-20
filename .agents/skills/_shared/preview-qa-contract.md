@@ -53,7 +53,7 @@ Lumina 支持将前端 Preview 原型无缝挂载到 Q&A 问题或特定选项�
 
 | 错误写法（反例） | 导致后果 | 正确做法 |
 |---|---|---|
-| ❌ 传递网页 URL：<br>`"content": "http://localhost:8080/preview?session=abc123"` | 前端无法解析会话/文件 ID，渲染白屏 | 使用 `{"session_id":"...","file_id":"..."}` |
+| ❌ 传递网页 URL：<br>`"content": "http://localhost:8080/preview/<hash>/index.html"` | 前端无法解析会话/文件 ID，渲染白屏 | 使用 `{"session_id":"...","file_id":"..."}` |
 | ❌ 传递 Hash：<br>`"content": "abc1234567890123"` | Hash 仅用于独立浏览器访问，非 API 引用 | 使用 `{"session_id":"...","file_id":"..."}` |
 | ❌ 添加 Markdown 围栏：<br>`"content": "```json\n{\"session_id\":\"...\"}\n```"` | JSON 解析崩溃 | 直接传递纯 JSON 字符串，不加任何 Markdown 围栏 |
 | ❌ 附加额外说明文字：<br>`"content": "这是预览原型：{\"session_id\":\"...\"}"` | 字符串无法反序列化 | 纯 JSON 文本，额外说明写在 Markdown supplement 中 |

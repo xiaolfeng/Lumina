@@ -71,18 +71,20 @@ func (r *route) previewRouter(route gin.IRouter) {
 		})
 	}
 
-	// 公开读取路由（hash 鉴权，无需登录）
-	publicGroup := route.Group("/preview")
-	publicGroup.GET("/sessions/:hash", previewHandler.GetSession)
-	publicGroup.GET("/sessions/:hash/files/:filename", previewHandler.GetFile)
-	publicGroup.GET("/ws", websocket.PreviewWSHandler(hub, previewSessionRepo))
+	// 读取与 WS 路由（登录态：Header 或 Cookie）
+	readGroup := route.Group("/preview")
+	readGroup.Use(middleware.Auth(r.context))
+	readGroup.GET("/sessions/:hash", previewHandler.GetSession)
+	readGroup.GET("/sessions/:hash/files/:filename", previewHandler.GetFile)
+	readGroup.GET("/ws", websocket.PreviewWSHandler(hub, previewSessionRepo))
 
-	// 管理路由（Bearer Token 认证）
+	// 管理路由（Bearer Token / Cookie 认证）
 	adminGroup := route.Group("/preview")
 	adminGroup.Use(middleware.Auth(r.context))
 	adminGroup.POST("/sessions", previewHandler.CreateSession)
 	adminGroup.GET("/sessions", previewHandler.ListSessions)
 	adminGroup.DELETE("/sessions/:id", previewHandler.DeleteSession)
+	adminGroup.POST("/sessions/:id/promote", previewHandler.PromoteSession)
 	adminGroup.GET("/files/:id", previewHandler.GetFileByID)
 	adminGroup.DELETE("/files/:id", previewHandler.DeleteFile)
 }

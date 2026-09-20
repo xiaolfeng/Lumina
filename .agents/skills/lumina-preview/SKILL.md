@@ -5,14 +5,14 @@ license: MIT
 compatibility: Requires Lumina MCP (Streamable HTTP) and network access to the Lumina instance.
 metadata:
   author: lumina
-  version: "0.1.0"
+  version: "0.1.1"
 argument-hint: [ session-id | filename ]
-allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__project_create, mcp__lumina__preview_session_create, mcp__lumina__preview_session_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_list, mcp__lumina__preview_file_get, mcp__lumina__qa_push_supplement, mcp__lumina__qa_get_answer
+allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__project_create, mcp__lumina__preview_session_create, mcp__lumina__preview_session_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_edit, mcp__lumina__preview_file_delete, mcp__lumina__preview_file_list, mcp__lumina__preview_file_get, mcp__lumina__qa_push_supplement, mcp__lumina__qa_get_answer, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__project_create, mcp__plugin_lumina_lumina__preview_session_create, mcp__plugin_lumina_lumina__preview_session_list, mcp__plugin_lumina_lumina__preview_file_upload, mcp__plugin_lumina_lumina__preview_file_edit, mcp__plugin_lumina_lumina__preview_file_delete, mcp__plugin_lumina_lumina__preview_file_list, mcp__plugin_lumina_lumina__preview_file_get, mcp__plugin_lumina_lumina__qa_push_supplement, mcp__plugin_lumina_lumina__qa_get_answer
 ---
 
 # Lumina 前端原型实时预览与可视化评审指南 (lumina-preview)
 
-用于指导 AI Agent 构建轻量级前端原型工作区，通过单层文件上传与沙盒隔离，向用户实时展示可视化的 HTML/CSS/JS 页面，并支持独立浏览器评审与 Q&A 题目挂载。
+用于指导 AI Agent 构建轻量级前端原型预览会话，通过单层文件上传与沙盒隔离，向用户实时展示可视化的 HTML/CSS/JS 页面，并支持独立浏览器评审与 Q&A 题目挂载。
 
 项目解析见 [`../_shared/project-resolver.md`](../_shared/project-resolver.md)。挂到 Q&A 时只读 [`../_shared/preview-qa-contract.md`](../_shared/preview-qa-contract.md)，不要另造字段。
 
@@ -81,7 +81,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 
 #### 分支 A：独立视觉评审
 若用户需要直接在浏览器中查看原型效果：
-1. 从 `preview_file_list` 返回中获取绝对 `preview_url`（形如 `http://<domain>/preview?session=<hash>&file=index.html`）。
+	1. 从 `preview_file_list` 返回中获取绝对 `preview_url`（形如 `http://<domain>/preview/<hash>/index.html`）。Preview 必须登录；打开后若跳到登录页属预期。需要对外持久分享时改走 `lumina-pages`。
 2. **[CRITICAL] 主动打开浏览器**：Agent **必须立即通过 Bash 执行系统打开命令为用户弹出预览页面**，严禁要求用户手动复制或输入链接：
    - **macOS**: `open "<preview_url>"`
    - **Linux**: `xdg-open "<preview_url>"`
@@ -105,11 +105,27 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 
 ---
 
-## 🛠️ 文件读取与覆写迭代
+## 🛠️ 文件读取、行级编辑与删除迭代
 
-- **读取源码**：调用 `preview_file_get(session_id, filename)` 读取现有预览文件的完整内容。
-- **覆写更新**：修改代码后，使用相同的 `session_id` 和 `filename` 再次调用 `preview_file_upload` 即可原位覆写。
-- **重新核对**：覆写完成后，重新调用 `preview_file_list` 确认最新状态。
+- **读取源码**：调用 `preview_file_get(session_id, filename)` 读取现有预览文件的完整内容；定位修改点或大文件时传 `start_line`/`end_line` 行区间（1 起始闭区间），返回内容按「行号| 文本」格式，行号可直接用于编辑定位。
+- **行级编辑（局部修改首选）**：调用 `preview_file_edit` 只传输变更片段，无需整文件重传：
+  ```json
+  {
+    "session_id": "<session_id>",
+    "filename": "app.js",
+    "operation": "replace",
+    "start_line": 12,
+    "end_line": 14,
+    "content": "function mount() {\n  render();\n}"
+  }
+  ```
+  - `insert`：把 content 各行插入到 `start_line` 之前（省略 `start_line` 时追加到文件末尾）；
+  - `replace`：替换 `[start_line, end_line]` 闭区间（空 content 等价删除该区间）；
+  - `delete`：删除该闭区间（不带 content）。
+  - 编辑后核对返回的 `edited_region`（变更主体 ±3 行、带行号），确认落点正确；不确定行号时先读取再编辑，禁止盲猜。
+- **整文件重写**：结构调整或大面积改写时，使用相同的 `session_id` 和 `filename` 调用 `preview_file_upload` 原位覆写。
+- **删除文件**：废弃文件调用 `preview_file_delete(session_id, filename)`；删除的是 HTML 入口时必须重新补齐入口再交付。
+- **重新核对**：变更完成后，重新调用 `preview_file_list` 确认最新状态。
 
 ---
 

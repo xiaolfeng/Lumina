@@ -278,16 +278,15 @@ function DashboardPage() {
                   <span className="inline-block size-1.5 rounded-full bg-green-600" />
                   活跃
                 </span>
-                <Link
-                  to="/preview"
-                  search={{ session: item.hash }}
+                <a
+                  href={`/preview/${item.hash}/`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="grid size-11 place-items-center text-sea-ink-soft transition-colors hover:text-sea-ink"
                   aria-label={`打开 ${item.title} 预览`}
                 >
                   <ExternalLink className="size-3.5" />
-                </Link>
+                </a>
               </div>
             ))
           ) : (

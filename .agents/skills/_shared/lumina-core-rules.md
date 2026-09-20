@@ -10,6 +10,7 @@
 |---|---|
 | 向用户提问并等待裁决 | `lumina-qa` |
 | 展示 HTML/CSS/JS 原型 | `lumina-preview` |
+| 把核对过的预览晋升为持久页面 | `lumina-pages` |
 | 跨项目约束推送 / 消费 | `lumina-pin` |
 | 读已生成的仓库 Wiki | `lumina-repowiki` |
 
@@ -44,3 +45,4 @@
 | **Preview 联动** | **NEVER** | 挂载 Preview 到 Q&A 时，严禁传递 URL 或 Hash；必须原样传递 `qa_supplement.content`（纯 JSON 字符串 `{"session_id":"...","file_id":"..."}`），严禁添加 Markdown 代码围栏（\`\`\`json）。 |
 | **Pin 消费** | **MUST** | 约束消费只能通过 `pin_consume` 单向流转（pending → consumed），`pin_update` 仅允许修改优先级与分类。 |
 | **RepoWiki 定位** | **MUST** | RepoWiki MCP 工具（`repoWiki_list` / `repoWiki_query`）为纯只读知识库，生成与更新由 Git Webhook 自动触发，MCP 端不提供写入接口。 |
+| **Pages 晋升** | **MUST** | 无 HTML 入口不得 `pages_promote`。密码与访问策略只在控制台 `/console/pages` 配置，MCP 禁止传密码。继续改已发布页面必须先 `pages_fork`。 |

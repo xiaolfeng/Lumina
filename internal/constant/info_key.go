@@ -22,6 +22,9 @@ const (
 	// ── Preview 配置（preview）──
 	InfoKeyPreviewSessionTTL = "preview.session.ttl" // Preview 会话默认 TTL（秒）
 
+	// ── Pages 配置（pages）──
+	InfoKeyPagesAuthCookieMaxAge = "pages.auth-cookie-max-age" // 页面授权 Cookie 最大有效期（秒）
+
 	// ── RepoWiki 配置（repowiki）──
 	InfoKeyRepoWikiDefaultLanguage = "repowiki.default-language"    // RepoWiki 默认 Wiki 语言
 	InfoKeyRepoWikiDefaultBranch   = "repowiki.default-branch"      // RepoWiki 默认 Git 分支

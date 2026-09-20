@@ -54,7 +54,7 @@ Input: 用户要看一个购物车数量加减的交互稿，不改仓库。
 ## 4. 打开
 
 ```bash
-open "http://127.0.0.1:8080/preview?session=<hash>&file=index.html"
+open "http://127.0.0.1:8080/preview/<hash>/index.html"
 ```
 
 无 GUI 时才在对话里给出可点击 URL。

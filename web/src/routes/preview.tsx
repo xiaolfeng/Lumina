@@ -1,10 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Toaster } from '@lumina/components/ui/sonner'
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+import Cookies from 'js-cookie'
 import { PreviewBrandHeader } from '#/components/preview/brand-header'
+import type { PreviewHeaderControls } from '#/hooks/usePreviewHeader'
 import { PreviewHeaderContext } from '#/hooks/usePreviewHeader'
+import { getSafeRedirect } from '#/lib/apis/client'
 
 export const Route = createFileRoute('/preview')({
+  beforeLoad: ({ location }) => {
+    const token = Cookies.get('access_token')
+    const refreshToken = Cookies.get('refresh_token')
+    if (!token && !refreshToken) {
+      throw redirect({
+        to: '/auth/login',
+        search: {
+          redirect: getSafeRedirect(location.href, '/console/dashboard'),
+        },
+      })
+    }
+  },
   component: PreviewLayout,
 })
 
@@ -12,6 +27,7 @@ export const Route = createFileRoute('/preview')({
 
 function PreviewLayout() {
   const [title, setTitle] = useState<string | null>(null)
+  const [controls, setControls] = useState<PreviewHeaderControls | null>(null)
 
   useEffect(() => {
     const previous = document.title
@@ -30,9 +46,11 @@ function PreviewLayout() {
   }, [title])
 
   return (
-    <PreviewHeaderContext.Provider value={{ title, setTitle }}>
+    <PreviewHeaderContext.Provider
+      value={{ title, setTitle, controls, setControls }}
+    >
       <div className="flex h-screen flex-col bg-bg-base">
-        <PreviewBrandHeader title={title} />
+        <PreviewBrandHeader title={title} controls={controls} />
 
         {/* 主体：文件列表 + 预览区 */}
         <Outlet />

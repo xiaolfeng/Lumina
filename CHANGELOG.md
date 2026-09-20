@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+### 新增
+
+- Pages 持久即时页面：Preview 一键晋升为项目级不可变快照，支持 Fork、版本指针切换与可选密码门
+- MCP 工具 `pages_list` / `pages_promote` / `pages_fork`；Preview `preview_url` 改为路径式 `/preview/<hash>/<file>`
+- Agent 技能 `lumina-pages`：晋升、Fork 再发版、OCC 冲突确认；密码仍只在控制台配置
+- 控制台 `/console/pages` 管理访问策略（密码只在管理员端口配置）
+
+### 变更
+
+- Preview 工作台改为路径式寻址 `/preview/:hash/:file`，强制登录（Cookie 回退）；旧 `?session=` 深链自动重定向
+- Preview 公开 hash 读取改为登录态（破坏性）
+
 ### 文档
 
 - 新增根位置 `ARCHITECTURE.md`（物理架构与边界）

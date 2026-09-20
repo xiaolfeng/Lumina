@@ -86,8 +86,12 @@ func NewRoute(frontendFS fs.FS, wikiFrontendFS fs.FS) xOption.RouteRegistrar {
 		// 使 Hub 单例优先以 Q&A 业务消息处理器创建，保证业务消息最终生效
 		r.wsRouter(apiRouter)
 		r.previewRouter(apiRouter)
+		r.pagesRouter(apiRouter)
 		r.dashboardRouter(apiRouter)
 		r.oauthRouter(apiRouter)
+
+		r.previewPathRouter()
+		r.pagesPathRouter()
 
 		if r.frontendFS != nil {
 			r.frontendRouter()

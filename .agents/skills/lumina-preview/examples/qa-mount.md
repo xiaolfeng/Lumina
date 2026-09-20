@@ -26,7 +26,7 @@ Input: `select` 题的「方案 A」需要给用户看布局稿。
 
 | content | 错在哪 |
 |---|---|
-| `http://127.0.0.1:8080/preview?session=abc` | URL 不是引用 |
+| `http://127.0.0.1:8080/preview/<hash>/index.html` | URL 不是引用 |
 | `abc1234567890123` | Hash 只给网页用 |
 | ` ```json\n{"session_id":"..."}\n``` ` | 多了围栏 |
 | `预览：{"session_id":"..."}` | 多了说明文字 |

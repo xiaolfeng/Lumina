@@ -12,11 +12,38 @@ import (
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
+func TestPreviewSessionSchemaDeclaresSourceFields(t *testing.T) {
+	schema := previewSessionSchema()
+	props, _ := schema["properties"].(map[string]any)
+	for _, key := range []string{"expires_at", "source_page_id", "source_page_slug", "source_version_id", "preview_url"} {
+		if _, ok := props[key]; !ok {
+			t.Fatalf("previewSessionSchema missing %s", key)
+		}
+	}
+}
+
+func TestPreviewSessionDataIncludesSourceSlug(t *testing.T) {
+	session := &apiPreview.PreviewSessionResponse{
+		Title:          "forked",
+		Hash:           "abc",
+		SourcePageSlug: "design-system",
+	}
+	data := previewSessionData(session, "https://example.com/preview/abc/index.html")
+	if data["source_page_slug"] != "design-system" {
+		t.Fatalf("source_page_slug = %v", data["source_page_slug"])
+	}
+	if data["source_page_id"] != nil || data["source_version_id"] != nil {
+		t.Fatalf("empty source ids should be null, got %v %v", data["source_page_id"], data["source_version_id"])
+	}
+}
+
 func TestPreviewToolDefinitions(t *testing.T) {
 	wantNames := []string{
 		"preview_session_create",
 		"preview_session_list",
 		"preview_file_upload",
+		"preview_file_edit",
+		"preview_file_delete",
 		"preview_file_list",
 		"preview_file_get",
 	}
@@ -132,5 +159,59 @@ func TestPreviewStructuredResult(t *testing.T) {
 	var decoded map[string]any
 	if err := json.Unmarshal([]byte(wire.Text), &decoded); err != nil {
 		t.Fatalf("compatibility text is not JSON: %v", err)
+	}
+}
+
+func TestParsePreviewLineArg(t *testing.T) {
+	// 未传入：present 为 false 且无错误
+	value, present, errMsg := parsePreviewLineArg(map[string]any{}, "start_line")
+	if value != 0 || present || errMsg != "" {
+		t.Fatalf("absent arg: value=%d present=%v err=%q", value, present, errMsg)
+	}
+	// 显式 null：与未传入等价
+	value, present, errMsg = parsePreviewLineArg(map[string]any{"start_line": nil}, "start_line")
+	if value != 0 || present || errMsg != "" {
+		t.Fatalf("null arg: value=%d present=%v err=%q", value, present, errMsg)
+	}
+	// 合法正整数
+	value, present, errMsg = parsePreviewLineArg(map[string]any{"start_line": 42.0}, "start_line")
+	if value != 42 || !present || errMsg != "" {
+		t.Fatalf("valid arg: value=%d present=%v err=%q", value, present, errMsg)
+	}
+	// 类型错误
+	if _, present, errMsg = parsePreviewLineArg(map[string]any{"start_line": "42"}, "start_line"); !present || errMsg == "" {
+		t.Fatalf("string arg should fail: present=%v err=%q", present, errMsg)
+	}
+	// 非正数与小数
+	if _, _, errMsg = parsePreviewLineArg(map[string]any{"start_line": 0.0}, "start_line"); errMsg == "" {
+		t.Fatal("zero start_line should fail")
+	}
+	if _, _, errMsg = parsePreviewLineArg(map[string]any{"start_line": 2.5}, "start_line"); errMsg == "" {
+		t.Fatal("fractional start_line should fail")
+	}
+}
+
+func TestPreviewFileDataWithLines(t *testing.T) {
+	file := &apiPreview.PreviewFileResponse{Filename: "app.js"}
+	data := previewFileDataWithLines(file, 128)
+	if data["total_lines"] != 128 || data["filename"] != "app.js" {
+		t.Fatalf("previewFileDataWithLines = %#v", data)
+	}
+}
+
+func TestPreviewFileEditOutputSchemaDeclaresRegion(t *testing.T) {
+	schema := previewFileEditOutputSchema()
+	props, _ := schema["properties"].(map[string]any)
+	fileSchema, _ := props["file"].(map[string]any)
+	fileProps, _ := fileSchema["properties"].(map[string]any)
+	if _, ok := fileProps["total_lines"]; !ok {
+		t.Fatal("edit 输出 Schema 的 file 应包含 total_lines")
+	}
+	regionSchema, _ := props["edited_region"].(map[string]any)
+	regionProps, _ := regionSchema["properties"].(map[string]any)
+	for _, key := range []string{"start_line", "end_line", "content"} {
+		if _, ok := regionProps[key]; !ok {
+			t.Fatalf("edited_region 缺少 %s", key)
+		}
 	}
 }

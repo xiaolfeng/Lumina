@@ -13,6 +13,7 @@ import {
   MessageCircle,
   MessageCircleQuestion,
   MonitorPlay,
+  Globe,
   Plus,
   Plug,
   Settings,
@@ -80,6 +81,7 @@ const navGroups: NavGroup[] = [
       { title: 'Pin 管理', to: '/console/pin', icon: Pin },
       { title: '问答管理', to: '/console/qa', icon: MessageCircleQuestion },
       { title: '预览管理', to: '/console/preview', icon: MonitorPlay },
+      { title: '页面管理', to: '/console/pages', icon: Globe },
     ],
   },
   {

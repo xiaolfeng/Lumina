@@ -6,6 +6,9 @@ export interface PreviewSessionItem {
   status: 'active' | 'deleted'
   file_count: number
   expires_at: string
+  source_page_id?: string
+  source_page_slug?: string
+  source_version_id?: string
   created_at: string
   updated_at: string
 }

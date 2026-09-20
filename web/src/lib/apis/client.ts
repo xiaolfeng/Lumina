@@ -250,3 +250,44 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   },
 )
+
+// ── 面向访客公开端点的独立客户端 ──
+//
+// 供 Pages 展示态、密码门等无需控制台登录的公开接口消费：
+// 1. withCredentials: true 发送/接收密码门 HttpOnly Cookie
+// 2. 无 Bearer Token 自动注入，无 Token 刷新状态机
+// 3. 401 错误仅作为普通业务错误上抛，绝不强制跳转 /auth/login
+export const publicApiClient = axios.create({
+  baseURL: '',
+  timeout: 10000,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  transformResponse: [bigintTransformResponse],
+  transformRequest: [bigintTransformRequest],
+})
+
+publicApiClient.interceptors.response.use(
+  (response) => {
+    const data = response.data
+    if (data && typeof data === 'object' && 'code' in data) {
+      const baseData = data as BaseResponse
+      if (baseData.code !== 200) {
+        return Promise.reject(
+          new Error(baseData.error_message ?? baseData.message ?? `Request failed with code ${baseData.code}`),
+        )
+      }
+    }
+    return response.data
+  },
+  (error) => {
+    const respData = error.response?.data
+    if (respData && typeof respData === 'object' && 'error_message' in respData) {
+      const msg = respData.error_message ?? respData.message
+      return Promise.reject(new Error(msg ?? `Request failed with status code ${error.response?.status}`))
+    }
+    return Promise.reject(error)
+  },
+)
+

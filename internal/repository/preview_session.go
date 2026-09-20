@@ -259,3 +259,23 @@ func (r *PreviewSessionRepo) TouchUpdatedAt(ctx context.Context, sessionID xSnow
 	}
 	return nil
 }
+
+// CreateWithFiles 事务创建预览会话并写入初始文件（Fork 用）
+func (r *PreviewSessionRepo) CreateWithFiles(ctx context.Context, session *entity.PreviewSession, files []*entity.PreviewFile) *xError.Error {
+	r.log.Info(ctx, fmt.Sprintf("CreateWithFiles - 创建带文件的预览会话 [%s, files=%d]", session.Title, len(files)))
+
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(session).Error; err != nil {
+			return err
+		}
+		if len(files) == 0 {
+			return nil
+		}
+		return tx.Create(&files).Error
+	})
+	if err != nil {
+		r.log.Warn(ctx, err.Error())
+		return xError.NewError(ctx, xError.DatabaseError, "创建预览会话失败", false, err)
+	}
+	return nil
+}

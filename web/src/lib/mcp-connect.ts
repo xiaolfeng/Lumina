@@ -1,6 +1,6 @@
 /**
  * MCP 接入配置的单一数据源。
- * 工具名必须与 internal/mcp/{qa,project,pin,repowiki,preview}_tools.go 保持一致。
+ * 工具名必须与 internal/mcp/{qa,project,pin,repowiki,preview,pages,workspace}_tools.go 保持一致。
  */
 
 export const MCP_PATH = '/api/v1/mcp'
@@ -355,6 +355,17 @@ export const MCP_TOOL_MODULES: McpToolModule[] = [
     ],
   },
   {
+    id: 'pages',
+    name: 'Pages',
+    summary:
+      '把核对完成的 Preview 晋升为项目级不可变快照，按路径对外访问；密码只在控制台设置。',
+    tools: [
+      { name: 'pages_list', summary: '列出项目已发布页面与生效版本' },
+      { name: 'pages_promote', summary: '将预览会话晋升为 Pages 快照' },
+      { name: 'pages_fork', summary: '从已发布页面派生可继续修改的 Preview 草稿' },
+    ],
+  },
+  {
     id: 'repowiki',
     name: 'RepoWiki',
     summary:
@@ -417,18 +428,24 @@ export const MCP_WORKFLOW_STEPS: McpWorkflowStep[] = [
   },
   {
     step: 4,
+    title: '草稿确认后晋升为 Pages',
+    body: '需要对外路径式访问时，先列出已发布页面确认 slug，再把当前 Preview 晋升为不可变快照。密码保护只在控制台配置。',
+    tools: ['pages_list', 'pages_promote', 'pages_fork'],
+  },
+  {
+    step: 5,
     title: '把预览带回同一次讨论',
     body: 'Agent 可以直接打开预览链接，也可以把预览作为问答补充发到交互页，让设计和反馈留在同一个会话里。',
     tools: ['qa_push_supplement', 'qa_get_answer'],
   },
   {
-    step: 5,
+    step: 6,
     title: '需要全局视野时翻阅 Wiki',
     body: '先找到已完成的 Wiki 版本，再读取相关页面。版本更新由仓库的 Git Webhook 自动触发。',
     tools: ['repoWiki_list', 'repoWiki_query'],
   },
   {
-    step: 6,
+    step: 7,
     title: '跨项目变化及时传递',
     body: '接口变化或依赖升级会影响其他代码库时，先查看目标项目的待处理约束，再推送或消费对应记录。',
     tools: ['pin_peek', 'pin_list', 'pin_push', 'pin_consume'],

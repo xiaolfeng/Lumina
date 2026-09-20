@@ -14,14 +14,14 @@ func TestBuildPreviewURL(t *testing.T) {
 			name:   "会话首页",
 			domain: "https://lumina.example.com/",
 			hash:   "abc123",
-			want:   "https://lumina.example.com/preview?session=abc123",
+			want:   "https://lumina.example.com/preview/abc123",
 		},
 		{
 			name:     "文件深链",
 			domain:   "https://lumina.example.com",
 			hash:     "abc123",
 			filename: "demo page.html",
-			want:     "https://lumina.example.com/preview?file=demo+page.html&session=abc123",
+			want:     "https://lumina.example.com/preview/abc123/demo%20page.html",
 		},
 	}
 
@@ -31,5 +31,13 @@ func TestBuildPreviewURL(t *testing.T) {
 				t.Fatalf("buildPreviewURL() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestBuildPagesURL(t *testing.T) {
+	got := buildPagesURL("https://lumina.example.com/", "lumina", "design-system", "index.html")
+	want := "https://lumina.example.com/pages/lumina/design-system/index.html"
+	if got != want {
+		t.Fatalf("buildPagesURL() = %q, want %q", got, want)
 	}
 }

@@ -14,6 +14,7 @@ import (
 )
 
 var expectedSkillNames = []string{
+	"lumina-pages",
 	"lumina-pin",
 	"lumina-preview",
 	"lumina-qa",
@@ -63,8 +64,9 @@ func TestPluginBundleContainsManifestAndSkills(t *testing.T) {
 		"skills/_shared/project-resolver.md",
 		"skills/_shared/preview-qa-contract.md",
 		"skills/lumina-qa/examples/select-with-supplement.md",
-		"skills/lumina-preview/assets/index.html",
-		"skills/lumina-pin/references/fields.md",
+			"skills/lumina-preview/assets/index.html",
+			"skills/lumina-pages/references/promote.md",
+			"skills/lumina-pin/references/fields.md",
 		"skills/lumina-repowiki/examples/list-and-query.md",
 	} {
 		if _, ok := names[extra]; !ok {
