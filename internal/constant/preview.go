@@ -15,6 +15,7 @@ const (
 	PreviewMimeMarkdown = "text/markdown; charset=utf-8"          // Markdown 文件
 	PreviewMimeSVG      = "image/svg+xml"                         // SVG 文件（SVG 自声明编码，不加 charset）
 	PreviewMimePlain    = "text/plain; charset=utf-8"             // 纯文本文件
+	PreviewMimeLPW      = "application/vnd.lumina.preview+json; charset=utf-8" // LPW 预览文档
 )
 
 // PreviewFileMaxSize 预览文件单文件大小上限（256KB），超出拒绝上传

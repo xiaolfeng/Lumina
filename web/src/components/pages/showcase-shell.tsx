@@ -12,8 +12,8 @@ import type {
   PageVersionItem,
 } from '#/lib/models/response/pages'
 
-function isRenderable(filename: string) {
-  return /\.(html|htm|md)$/i.test(filename)
+export function isRenderable(filename: string) {
+  return /\.(html|htm|md|lpw)$/i.test(filename)
 }
 
 /** 解析当前激活文件：URL 中的文件名必须存在于版本文件清单，否则回退版本入口，再回退首个文件 */

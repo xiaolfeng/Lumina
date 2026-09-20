@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
+import { PreviewLpwInlineViewer } from '#/components/preview/lpw'
 import { getPreviewFileByID } from '#/lib/apis/preview'
+import { previewKindFromFilename } from '#/lib/preview-file'
 
 /**
  * PreviewFrame — 跨文件引用预览 iframe（src 模式）
@@ -66,12 +68,14 @@ export function PreviewFrame({ src, className, title }: PreviewFrameProps) {
  */
 export function PreviewSupplement({ content }: { content: string }) {
   const [src, setSrc] = useState('')
+  const [filename, setFilename] = useState('')
   const [error, setError] = useState('')
   const cancelledRef = useRef(false)
 
   useEffect(() => {
     cancelledRef.current = false
     setSrc('')
+    setFilename('')
     setError('')
 
     void (async () => {
@@ -98,6 +102,7 @@ export function PreviewSupplement({ content }: { content: string }) {
         if (detail) {
           // filename 需编码（含 #/? 时原样拼接会 404）；lumina_frame=1 标记为
           // 非顶层文档，后端直出文件内容而不回落 SPA
+          setFilename(detail.filename)
           setSrc(
             `/preview/${detail.session_hash}/${encodeURIComponent(
               detail.filename,
@@ -129,6 +134,9 @@ export function PreviewSupplement({ content }: { content: string }) {
         <LoadingSlot />
       </div>
     )
+  }
+  if (previewKindFromFilename(filename) === 'lpw') {
+    return <PreviewLpwInlineViewer src={src} filename={filename} />
   }
   return <PreviewFrame src={src} className="min-h-80" />
 }

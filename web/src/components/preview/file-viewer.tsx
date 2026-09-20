@@ -4,6 +4,7 @@ import { PreviewFrame } from '#/components/interact/primitives/preview-frame'
 import { formatPreviewSource } from '#/lib/format-preview-source'
 import type { PreviewKind } from '#/lib/preview-file'
 import { PreviewCodeView } from './code-view'
+import { PreviewLpwViewer } from './lpw'
 import { PreviewMarkdownView } from './markdown-view'
 
 export function PreviewFileViewer({
@@ -15,6 +16,10 @@ export function PreviewFileViewer({
   src: string
   filename: string
 }) {
+  if (kind === 'lpw') {
+    return <PreviewLpwViewer src={src} filename={filename} />
+  }
+
   if (kind === 'html' || kind === 'svg') {
     return <PreviewFrame src={src} className="flex-1" title={filename} />
   }

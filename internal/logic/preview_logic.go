@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -162,6 +163,11 @@ func (l *PreviewLogic) UploadFile(ctx context.Context, sessionID xSnowflake.Snow
 	maxBytes := l.repo.file.MaxContentBytes()
 	if len(content) > maxBytes {
 		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(fmt.Sprintf("文件大小超出上限(%dKB)", maxBytes/1024)), false, nil)
+	}
+
+	// 校验 LPW 语法合规性（上传失败不得覆盖已有文件）
+	if err := validateLpwContent(filename, content); err != nil {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(err.Error()), false, nil)
 	}
 
 	session, xErr := l.repo.session.GetByID(ctx, sessionID)
@@ -629,6 +635,8 @@ func inferMimeType(filename string) string {
 		return bConst.PreviewMimeJS
 	case ".json":
 		return bConst.PreviewMimeJSON
+	case ".lpw":
+		return bConst.PreviewMimeLPW
 	case ".md", ".markdown":
 		return bConst.PreviewMimeMarkdown
 	case ".ts", ".tsx", ".mts", ".cts":
@@ -638,6 +646,21 @@ func inferMimeType(filename string) string {
 	default:
 		return bConst.PreviewMimePlain
 	}
+}
+
+// validateLpwContent 校验 .lpw 文件内容是否为合法 JSON
+func validateLpwContent(filename, content string) error {
+	if strings.ToLower(filepath.Ext(filename)) == ".lpw" {
+		if !json.Valid([]byte(content)) {
+			return errors.New("LPW 文件必须是合法 JSON")
+		}
+	}
+	return nil
+}
+
+// GetFileBySessionAndFilename 根据会话 ID 与文件名获取预览文件实体
+func (l *PreviewLogic) GetFileBySessionAndFilename(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string) (*entity.PreviewFile, *xError.Error) {
+	return l.repo.file.GetBySessionAndFilename(ctx, sessionID, filename)
 }
 
 func (l *PreviewLogic) toPreviewSessionResponse(ctx context.Context, session *entity.PreviewSession) *apiPreview.PreviewSessionResponse {

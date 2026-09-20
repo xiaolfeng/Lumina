@@ -1,5 +1,6 @@
-export type PreviewKind = 'html' | 'markdown' | 'code' | 'svg'
+export type PreviewKind = 'html' | 'markdown' | 'code' | 'svg' | 'lpw'
 
+const LPW_EXT = new Set(['lpw'])
 const HTML_EXT = new Set(['html', 'htm'])
 const MARKDOWN_EXT = new Set(['md', 'markdown'])
 const SVG_EXT = new Set(['svg'])
@@ -41,6 +42,7 @@ export function fileExtension(filename: string): string {
 
 export function previewKindFromFilename(filename: string): PreviewKind {
   const ext = fileExtension(filename)
+  if (LPW_EXT.has(ext)) return 'lpw'
   if (HTML_EXT.has(ext)) return 'html'
   if (MARKDOWN_EXT.has(ext)) return 'markdown'
   if (SVG_EXT.has(ext)) return 'svg'
@@ -72,6 +74,8 @@ export function previewLanguageFromFilename(filename: string): string {
       return 'markdown'
     case 'yml':
       return 'yaml'
+    case 'lpw':
+      return 'json'
     case 'txt':
       return 'text'
     default:
