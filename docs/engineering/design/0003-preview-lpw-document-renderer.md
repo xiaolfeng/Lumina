@@ -34,8 +34,8 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 - **文件与入口闭环**：后端识别 `.lpw` 扩展名与专用 MIME，MCP snapshot 入口判定（`preview_handlers.go`）将 `.lpw` 纳为合法首屏入口；
 - **版本化文档 Schema**：制定 LPW v1 规范，支持声明式元数据（`version`, `meta`）与顺序文档块（`blocks`）；
 - **自建映射分发引擎**：在 `web/src/components/preview/lpw/` 下实现解析器、注册表、块级分发器与错误边界；
-- **全量专用组件库（首期 20 种）**：交付 16 种内容块（Markdown、Callout、Heading、List、Quote、Code、Image、Divider、Cards、Metrics、Steps、Timeline、Diff、Table、Mermaid、Chart），以及 Section、Tabs、Columns、Details 4 种容器块；
-- **图表能力**：`mermaid` 块复用既有 Mermaid 渲染链路覆盖流程图/时序图等示意图；`chart` 块以纯数据驱动 7 种数据图（line / bar / area / pie / donut / scatter / radar），主题色固定走静烛 token 序列；
+- **全量专用组件库（首期 23 种）**：交付 19 种内容块（Markdown、Callout、Heading、List、Quote、Code、Image、Divider、Cards、Metrics、Steps、Timeline、Diff、Table、Mermaid、Chart、Comparison、Progress、Tree），以及 Section、Tabs、Columns、Details 4 种容器块；
+- **图表能力（ECharts）**：`mermaid` 块复用既有 Mermaid 渲染链路覆盖流程图/时序图等示意图；`chart` 块以纯数据驱动 7 种数据图（line / bar / area / pie / donut / scatter / radar），引擎为 ECharts 按需注册 + 懒加载，主题色固定走静烛 token 序列；
 - **严格错误可见性**：单个块渲染崩溃时，就地展示包含块 ID、类型与错误原因的内嵌诊断卡片，不阻断整篇文档；
 - **多端渲染一致性**：Preview 工作台（`/preview/:session_hash/:filename`，登录态）、Pages 展示态（`/pages/:project_name/:slug/:filename`，`.lpw` 随晋升进入不可变快照并纳入页面直切区）、Q&A 交互引用均经同一 React 直渲管线接入 LPW 渲染器；
 - **分块写入与渐进构建**：`preview_lpw_*` 工具族支持 add / edit / remove / sort 单块操作，模型可逐块构建长文档，每次写入即时校验并经 `preview_sync` 实时上屏，替代一次性全量生成大 JSON。
@@ -48,7 +48,7 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 - **不上调文件体积上限**：沿用单文件 `256 * 1024` 字节（256 KiB）限制；
 - **首版不引入 json-render**：按照调研 0003 结论保留为候选，v1 纯自建；
 - **非流式 token 级渲染协议**：渐进构建由「块级写入 + `preview_sync` 广播 + React 直渲」承担，不引入 A2UI / SpecStream 类增量流式消息协议；
-- **不做任意图表 option 透传**：chart 块只接受纯数据（number / 点对 / 类目），不开放 ECharts/Recharts 的 option 对象、格式化函数或脚本；图表外观由组件与主题 token 决定；
+- **不做任意图表 option 透传**：chart 块只接受纯数据（number / 点对 / 类目），不开放 ECharts 的 option 对象、格式化函数或脚本；图表外观由组件与主题 token 决定；
 - **不嵌外部 iframe / 视频 / 音频**：外部富媒体嵌入带来跨站与隐私面，v1 不提供；示意图与数据图分别由 mermaid / chart 承担；
 - **不做多 Agent 并发编辑协同**：单会话假定单一写入者，跨调用竞争用 revision 回显与重试兜底，不建协同锁协议。
 
@@ -65,7 +65,8 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 | 7 | **单文件大小维持 256 KiB**，块数量软上限 500。 | 契合既有 Preview 基础设施配额，单文档足够承载中长篇方案。 |
 | 8 | **React 直渲优先**：`.lpw` 与 Markdown 同级进入 `PreviewFileViewer` 的 React 直渲分支，禁止「转 HTML 进 iframe」作为主交付路径。 | 落实 ADR-0008 第 8 条；直渲管线已被 `.md` 验证，直接复用 `@lumina/components` 主题与排版，并保留组件级状态、错误边界与可测试性。 |
 | 9 | **MCP 写入以块为最小单位**：`preview_lpw_*` 工具族单调用操作单个块子树；文件级 `preview_file_upload` 保留为整体覆写与修复通道。 | 长文档一次性生成大 JSON 精度随长度劣化、单点错误需整篇重写；分块写入让校验错误局部化、重试成本降为单块，并借 `preview_sync` 实现文档渐进生长。 |
-| 10 | **图表双轨**：示意图走 `mermaid`（复用 `@lumina/components` 既有链路，零新依赖），数据图走 `chart`（新增 Recharts，仅 `web` 端）。 | mermaid 已在 Markdown 链路验证、覆盖流程/时序/甘特等非数据图；Recharts 声明式 props 与 JSON 纯数据映射贴合，按需引入控制包体。图表块不透传 option、不收脚本，颜色固定静烛 token 序列。 |
+| 10 | **图表双轨**：示意图走 `mermaid`（复用 `@lumina/components` 既有链路，零新依赖）；数据图走 `chart`，引擎为 **ECharts 按需注册 + 懒加载**——`echarts/core` 只注册所需图表/组件/渲染器，首个 chart 块挂载时动态 `import()`。 | ECharts 对雷达/散点/大规模数据与后续图型扩展（heatmap、箱线）能力更全；按需注册把包体压到所用图表集合，懒加载使其不进首屏 bundle。图表块仍只收纯数据，option 组装全部在组件内完成，文件永远接触不到引擎 option。 |
+| 11 | **专用组件样式强制 Tailwind CSS utility 类为默认实现**：React 宿主与未来可能的 Vue 宿主共用同一 token + utility 体系；禁止组件级 CSS 文件与 CSS-in-JS，动态值（列宽 / 图高 / 进度条）经 `style` 属性注入。 | LPW 组件的视觉契约必须可跨框架复制——utility 类 + `theme.css` CSS 变量在 React/Vue 下行为一致；样式实现绑定框架（CSS-in-JS）会封死 Vue 宿主路线。当前 `web` 已是 Tailwind 4 + 微明 token，零迁移成本。 |
 
 ## System Architecture & Data Flow
 
@@ -107,7 +108,7 @@ flowchart TB
   end
 
   subgraph S4 ["4. LPW 专用组件库"]
-    Content["16 种内容块<br>(Markdown / Callout / Heading / List / Quote / Code / Image / Divider / Cards / Metrics / Steps / Timeline / Diff / Table / Mermaid / Chart)"]
+    Content["19 种内容块<br>(Markdown / Callout / Heading / List / Quote / Code / Image / Divider / Cards / Metrics / Steps / Timeline / Diff / Table / Mermaid / Chart / Comparison / Progress / Tree)"]
     Container["4 种容器组织块<br>(Section / Tabs / Columns / Details)"]
   end
 
@@ -348,6 +349,37 @@ export interface LpwDetailsProps {
   summary: string
   defaultOpen?: boolean
 }
+
+// ── 第二批内容块 props ────────────────────────────────────────
+export interface LpwComparisonCell {
+  text: string
+  verdict?: 'good' | 'warn' | 'bad'
+}
+export interface LpwComparisonProps {
+  title?: string
+  plans: Array<{ name: string; recommended?: boolean }>
+  rows: Array<{ dimension: string; values: LpwComparisonCell[] }>
+}
+
+export interface LpwProgressItem {
+  label: string
+  value: number // 0–100
+  status?: 'wait' | 'process' | 'finish' | 'error'
+}
+export interface LpwProgressProps {
+  title?: string
+  items: LpwProgressItem[]
+}
+
+export interface LpwTreeNode {
+  label: string
+  note?: string
+  children?: LpwTreeNode[]
+}
+export interface LpwTreeProps {
+  title?: string
+  nodes: LpwTreeNode[]
+}
 ```
 
 ### 字段约束总表
@@ -405,6 +437,13 @@ export interface LpwDetailsProps {
 | `chart.height` | integer | — | `280` | 160–640 |
 | `details.summary` | string | ✓ | — | 1–200 |
 | `details.defaultOpen` | boolean | — | `false` | — |
+| `comparison.title` | string | — | — | ≤ 200 |
+| `comparison.plans` | array | ✓ | — | 1–4 项；name ≤ 100，recommended 默认 false |
+| `comparison.rows` | array | ✓ | — | 0–20 项；dimension ≤ 100；values 每项 text ≤ 256，verdict 枚举 |
+| `progress.title` | string | — | — | ≤ 200 |
+| `progress.items` | array | ✓ | — | 1–12 项；label ≤ 100，value 0–100，status 枚举同 steps |
+| `tree.title` | string | — | — | ≤ 200 |
+| `tree.nodes` | array | ✓ | — | 0–100 节点（含子孙，logic 校验）；label ≤ 100，note ≤ 100，深度 ≤ 4 |
 
 ### 结构约束与规则
 
@@ -418,9 +457,11 @@ export interface LpwDetailsProps {
 8. **资源上限**：全文档块数（含子孙）≤ 500；序列化字节 ≤ 256 KiB；
 9. **chart 数据对齐**：line / bar / area / radar 要求每个 `series.data` 长度等于 `categories` 长度且项为 number；pie / donut 要求 `series` 恰好 1 个且与 `categories` 对齐；scatter 要求 `series.data` 每项为二元点对且禁止出现 `categories`；`stacked` 仅在 bar / area 合法；
 10. **image / cards 链接安全**：`image.src` 与 `cards.items[].href` 含 `://` 时必须以 `https://` 或 `http://` 开头，否则按同会话文件名校验合法字符（禁止 `javascript:`、`data:` 等协议）；
-11. **容器类型集合**：允许携带 `children` 的类型固定为 `section`、`tabs`、`columns`、`details` 四种。
+11. **容器类型集合**：允许携带 `children` 的类型固定为 `section`、`tabs`、`columns`、`details` 四种；
+12. **comparison 对齐**：每行 `values` 长度必须等于 `plans` 数量；
+13. **tree 规模**：`tree.nodes` 节点总数（含子孙）≤ 100、深度 ≤ 4（节点层从 1 计）。
 
-规则 5–10 属跨字段/递归约束，JSON Schema 表达成本高且报错路径差，由后端 logic 走查强制（见 §PreviewLpwLogic）。
+规则 5–13 属跨字段/递归约束，JSON Schema 表达成本高且报错路径差，由后端 logic 走查强制（见 §PreviewLpwLogic）。
 
 ### `resources/lpw/schema/v1.json`（唯一维护源，前后端同源消费）
 
@@ -467,6 +508,9 @@ export interface LpwDetailsProps {
         { "$ref": "#/$defs/cardsBlock" },
         { "$ref": "#/$defs/mermaidBlock" },
         { "$ref": "#/$defs/chartBlock" },
+        { "$ref": "#/$defs/comparisonBlock" },
+        { "$ref": "#/$defs/progressBlock" },
+        { "$ref": "#/$defs/treeBlock" },
         { "$ref": "#/$defs/sectionBlock" },
         { "$ref": "#/$defs/tabsBlock" },
         { "$ref": "#/$defs/columnsBlock" },
@@ -845,6 +889,94 @@ export interface LpwDetailsProps {
             "height": { "type": "integer", "minimum": 160, "maximum": 640, "default": 280 }
           }
         }
+      }
+    },
+    "comparisonBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "comparison" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["plans", "rows"],
+          "properties": {
+            "title": { "type": "string", "maxLength": 200 },
+            "plans": {
+              "type": "array", "minItems": 1, "maxItems": 4,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "recommended": { "type": "boolean", "default": false }
+                }
+              }
+            },
+            "rows": {
+              "type": "array", "maxItems": 20,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["dimension", "values"],
+                "properties": {
+                  "dimension": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "values": {
+                    "type": "array", "minItems": 1, "maxItems": 4,
+                    "items": {
+                      "type": "object", "additionalProperties": false, "required": ["text"],
+                      "properties": {
+                        "text": { "type": "string", "minLength": 1, "maxLength": 256 },
+                        "verdict": { "enum": ["good", "warn", "bad"] }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "progressBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "progress" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "title": { "type": "string", "maxLength": 200 },
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 12,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["label", "value"],
+                "properties": {
+                  "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "value": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "status": { "enum": ["wait", "process", "finish", "error"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "treeBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "tree" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["nodes"],
+          "properties": {
+            "title": { "type": "string", "maxLength": 200 },
+            "nodes": { "type": "array", "items": { "$ref": "#/$defs/treeNode" } }
+          }
+        }
+      }
+    },
+    "treeNode": {
+      "type": "object", "additionalProperties": false, "required": ["label"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "note": { "type": "string", "maxLength": 100 },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/treeNode" } }
       }
     },
     "detailsBlock": {
@@ -1270,7 +1402,7 @@ web/src/components/preview/lpw/
 ├── fallback-block.tsx        # 未知类型 / 超深 / 异常占位卡片
 ├── document-viewer.tsx       # 文档壳：meta 头 + blocks 列表 + 文档级错误 + 空态
 ├── viewers.tsx               # PreviewLpwViewer（工作台/展示态）+ PreviewLpwInlineViewer（Q&A）
-├── blocks/                   # 16 种内容块
+├── blocks/                   # 19 种内容块
 │   ├── markdown-block.tsx
 │   ├── callout-block.tsx
 │   ├── heading-block.tsx
@@ -1286,7 +1418,12 @@ web/src/components/preview/lpw/
 │   ├── diff-block.tsx
 │   ├── table-block.tsx
 │   ├── mermaid-block.tsx
-│   └── chart-block.tsx
+│   ├── chart-block.tsx
+│   ├── comparison-block.tsx
+│   ├── progress-block.tsx
+│   └── tree-block.tsx
+├── echarts-lazy.ts           # loadEcharts()：动态 import + 按需注册，模块级缓存
+├── echarts-module.ts         # echarts/core 按需注册（图表/组件/渲染器集合）
 ├── containers/               # 4 种容器块
 │   ├── section-container.tsx
 │   ├── tabs-container.tsx
@@ -1455,7 +1592,7 @@ export function PreviewLpwInlineViewer({ src, filename }: { src: string; filenam
 
 ## Dedicated Component Library (v1 Specs)
 
-20 个类型（16 内容块 + 4 容器块）的 props 契约见 §Document Specification；本节定义渲染实现。全局约束：只消费 `@lumina/components` 原语与 `theme.css` 语义 token，全平直角（无 rounded 类）、不新增自定义 CSS 文件；本地交互一律 `useState`，无网络副作用。
+23 个类型（19 内容块 + 4 容器块）的 props 契约见 §Document Specification；本节定义渲染实现。全局约束（Key Decisions #11）：**样式强制 Tailwind CSS utility 类为默认实现**——只消费 `@lumina/components` 原语与 `theme.css` 语义 token 对应的 Tailwind 语义类（`text-sea-ink`、`border-line`、`bg-surface` 等），全平直角（无 rounded 类）；禁止组件级 CSS 文件与 CSS-in-JS；动态值（列宽 / 图高 / 进度条宽）经 `style` 属性注入；本地交互一律 `useState`，无网络副作用。React 宿主与未来 Vue 宿主共用同一套 utility 类与 token。
 
 ### `markdown`（`blocks/markdown-block.tsx`）
 
@@ -1545,13 +1682,40 @@ export function PreviewLpwInlineViewer({ src, filename }: { src: string; filenam
 - 结构：`content` 交给 `@lumina/components/markdown` 的 mermaid 渲染链路（与 Markdown 块内的 mermaid 代码围栏同一实现，securityLevel 沿用现有配置）；可选 caption 渲染为 figcaption；
 - 边界：语法错误时 mermaid 抛错 → 被 `BlockErrorBoundary` 捕获为可见错误卡（含解析失败信息），不影响其余块。
 
-### `chart`
+### `chart`（ECharts 引擎）
 
-- 依赖：新增 `recharts`（仅 `web` 端）；客户端渲染（图表块标记 client，避免 SSR 下 ResponsiveContainer 依赖 window）——高度用固定像素 `height ?? 280`，不用百分比容器；
-- 类型映射：line → `LineChart`、bar → `BarChart`、area → `AreaChart`、pie / donut → `PieChart`（donut 设 `innerRadius`）、scatter → `ScatterChart`、radar → `RadarChart`；
-- 数据绑定：类目图按 `categories` + `series[].data` 逐点对齐；scatter 各 series 独立 ` Scatter data={points}`；
-- 视觉：调色板固定为静烛语义色序列（`--lagoon` / `--kicker` / `--palm` / `--sea-ink` / `--sand-deep` 循环取色）；轴标签 `xLabel` / `yLabel`；`legend` 默认开；`stacked` 仅 bar / area（服务端已拦，前端直接透传）；
-- 边界：数据全为空点时渲染空态卡；不做缩放/刷选等高级交互（v1 明确不做）。
+- 依赖：新增 `echarts`（仅 `web` 端），**按需注册 + 懒加载**，导入策略对比如下：
+
+| 方案 | 做法 | 包体影响 | 结论 |
+| --- | --- | --- | --- |
+| A · 全量引入 | `import * as echarts from 'echarts'` | ~1 MB min / ~330 KB gzip，进主 bundle | 否决：控制台首屏不可接受 |
+| B · 按需注册 | `echarts/core` + 按图表/组件注册 | 只含所用图表集合（~300 KB min 级） | **采用**，封装单一注册入口 |
+| C · 懒加载 chunk | 首个 chart 块挂载时动态 `import()` | 0 初始成本，独立异步 chunk | **叠加采用**：B 的注册模块走动态 import |
+
+- 落地形态：`lpw/echarts-lazy.ts` 导出 `loadEcharts()`——动态 `import('./echarts-module')`，该模块内完成按需注册（Line/Bar/Pie/Scatter/Radar 图表 + Grid/Tooltip/Legend 组件 + CanvasRenderer）；返回的 Promise 模块级缓存，保证 echarts 只加载一次；加载期渲染骨架占位；
+- 生命周期：挂载后 `echarts.init(dom, null, { renderer: 'canvas' })`；`ResizeObserver` 跟随容器宽度 `resize()`；卸载时 `dispose()`，防止 SPA 路由切换泄漏；
+- 类型映射（纯数据 → ECharts option，组装全部在组件内）：line → `series.type: 'line'`、area → `'line' + areaStyle`、bar → `'bar'`（`stacked` → `stack`）、pie / donut → `'pie'`（donut 设 `radius: ['45%','70%']`）、scatter → `'scatter'`（点对数组直接作 data）、radar → `radar.indicator` 由 `categories` 生成；
+- 视觉：`color` 数组固定静烛语义色序列（`--lagoon` / `--kicker` / `--palm` / `--sea-ink` / `--sand-deep` 循环取色）；轴标签 `xLabel` / `yLabel`；`legend` 默认开；`height ?? 280` 固定像素——SSR 首帧渲染骨架，canvas 仅客户端；
+- 边界：数据为空渲染空态卡；文件永远接触不到 option 对象（安全边界不变）；不做缩放/刷选等高级交互（v1 明确不做）。
+
+### `comparison`（对比矩阵）
+
+- 结构：表格——首列为维度名（semibold），其余列头为 `plans[].name`；`recommended: true` 的列头追加「推荐」`Badge`，整列底色 `bg-surface` 区分；
+- 单元格 `verdict` 语义色：good → `text-kicker`、warn → `text-palm`、bad → `text-destructive`、缺省常规文本；`text` 纯文本；
+- 边界：每行 `values` 长度 = `plans` 数量（服务端强制）；`rows` 为空渲染空态行；
+- 定位：方案选型、技术对比、版本对照——AI 写评审文档的高频形态，替代手工拼 table。
+
+### `progress`
+
+- 结构：每项一行 = label（左侧）+ 轨道条 + 百分比数字；轨道 `bg-surface` 底、填充条按状态着色：wait → `bg-line`、process → `bg-lagoon`、finish → `bg-kicker`、error → `bg-destructive`；
+- `status` 缺省时的展示推断（不改数据）：`value = 100` 按 finish、`0 < value < 100` 按 process、`value = 0` 按 wait；
+- 边界：`value` 的 0–100 边界由 Schema 保证；条宽 = `style.width`（动态值不走 utility 类）。
+
+### `tree`
+
+- 结构：递归 `<ul>`；每节点行 = 角线（`border-l` / `border-b` 组合）+ `label`（等宽字体，契合路径心智）+ `note` 弱化后缀；v1 静态全展开，不做折叠交互；
+- 递归渲染子组件 `TreeNode`（自引用组件，深度受 Schema/服务端 ≤ 4 约束）；
+- 边界：节点总数 ≤ 100（服务端强制）；`children` 为空的节点即叶子。
 
 ### `section`（容器）
 
@@ -1647,7 +1811,7 @@ function isRenderable(filename: string) {
 
 ```mermaid
 flowchart LR
-  PR1["PR 1: 映射引擎核心与路由分流"] --> PR2["PR 2: 16 种内容专用组件"]
+  PR1["PR 1: 映射引擎核心与路由分流"] --> PR2["PR 2: 19 种内容专用组件"]
   PR2 --> PR3["PR 3: 4 种容器组件与本地交互"]
   PR3 --> PR4["PR 4: 后端校验、MCP 入口、Pages 直切与 Q&A 嵌入"]
   PR4 --> PR5["PR 5: preview_lpw_* 分块写入工具族"]
@@ -1657,10 +1821,10 @@ flowchart LR
   - 新增 `web/src/components/preview/lpw/` 核心：`types.ts`, `lpw-parser.ts`, `lpw-registry.ts`, `lpw-block-renderer.tsx`, `block-error-boundary.tsx`, `fallback-block.tsx`, `document-viewer.tsx`, `viewers.tsx`, `index.ts`；
   - 调整 `web/src/lib/preview-file.ts` 与 `web/src/components/preview/file-viewer.tsx` 支持 `'lpw'`；
   - 交付基础空壳与 Fallback 占位。
-- **PR 2：16 种内容专用组件**
-  - 实现 Markdown, Callout, Heading, List, Quote, Code, Image, Divider, Cards, Metrics, Steps, Timeline, Diff, Table, Mermaid, Chart 组件；
+- **PR 2：19 种内容专用组件**
+  - 实现 Markdown, Callout, Heading, List, Quote, Code, Image, Divider, Cards, Metrics, Steps, Timeline, Diff, Table, Mermaid, Chart, Comparison, Progress, Tree 组件；
   - 注册至 `lpwRegistry`，补齐单测与样例；
-  - 新增依赖 `react-diff-viewer-continued` 与 `recharts`（均仅 `web` 端）。
+  - 新增依赖 `react-diff-viewer-continued` 与 `echarts`（均仅 `web` 端；echarts 走 `echarts-lazy.ts` 按需注册 + 懒加载）。
 - **PR 3：4 种容器组件与本地交互**
   - 实现 Section, Tabs, Columns, Details 容器块；
   - 支持 `depth` 递归限制与本地标签/折叠状态；
@@ -1684,7 +1848,7 @@ flowchart LR
    - `lpw-registry.test.ts`：验证组件注册、重复注册覆盖、未注册类型查询；
    - `block-error-boundary.test.tsx`：模拟组件内部 `throw new Error()`，断言页面呈现错误卡片且文档其他块正常渲染。
 2. **场景用例回归**：
-   - 构造包含 20 种块的完整 `.lpw` 文档，在 Preview 工作台（`/preview/:session_hash/:filename`）与 Pages 展示态（晋升快照后的 `/pages/:project/:slug/:filename`）验证渲染一致性；
+   - 构造包含 23 种块的完整 `.lpw` 文档，在 Preview 工作台（`/preview/:session_hash/:filename`）与 Pages 展示态（晋升快照后的 `/pages/:project/:slug/:filename`）验证渲染一致性；
    - 在 Q&A 交互中推送包含 `.lpw` 引用的 supplement，验证原生内嵌展示正常；
    - 上传超限文档（>256KB 或深度 >3），验证错误提示明晰可见。
 3. **分块写入工具族**：
@@ -1694,7 +1858,8 @@ flowchart LR
 4. **专用组件渲染测试**（Vitest + Testing Library，`web/` 端）：
    - 每类型渲染用例：正常 props、可选字段缺省、默认值应用（callout level、table align、tabs defaultKey、diff splitView、heading level、list style、chart height/legend）；
    - 容器契约：depth 传递、tabs 缺槽占位、columns 比例类名、details 原生开合、renderChildren 递归；
-   - 图表专项：7 种 chartType 各一例；chart 数据对齐负例（长度不匹配、pie 多 series、scatter 带 categories）在 logic 层拒绝；mermaid 语法错误渲染为可见错误卡；
+   - 图表专项：7 种 chartType 各一例；chart 数据对齐负例（长度不匹配、pie 多 series、scatter 带 categories）在 logic 层拒绝；mermaid 语法错误渲染为可见错误卡；echarts 懒加载——无 chart 块的文档不请求 echarts chunk，含 chart 块的文档首个块挂载后只加载一次；
+   - 第二批块：comparison 推荐列高亮与 verdict 语义色、progress 状态缺省推断（100/中间/0）、tree 深度渲染与角线；comparison 行 values 与 plans 数量错配在 logic 层拒绝；
    - 链接与媒体：image 同会话相对解析与外链直用、cards href 协议过滤、image 加载失败占位；
    - `registerAll()` 与 v1 Schema 分支数对齐测试：Schema 新增类型而未注册组件时失败；
    - fallback / error-boundary：未注册类型、组件抛错 → 卡片可见且文档其余块正常渲染。
