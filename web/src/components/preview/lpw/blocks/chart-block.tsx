@@ -207,21 +207,22 @@ export const ChartBlock: React.FC<LpwBlockSlotProps<LpwChartProps>> = ({
       data-testid="chart-block"
       className="my-4 border border-line bg-surface p-4"
     >
-      <div
-        ref={ref}
-        data-testid="chart-canvas-container"
-        style={{ height }}
-        className="relative w-full"
-      >
+      <div style={{ height }} className="relative w-full">
         {!ready && (
           <div
             data-testid="chart-loading-skeleton"
             style={{ height }}
-            className="flex items-center justify-center text-xs text-sea-ink-soft/40"
+            className="absolute inset-0 flex items-center justify-center text-xs text-sea-ink-soft/40"
           >
             图表加载中…
           </div>
         )}
+        <div
+          ref={ref}
+          data-testid="chart-canvas-container"
+          style={{ height }}
+          className={`w-full ${!ready ? 'invisible' : ''}`}
+        />
       </div>
     </div>
   )

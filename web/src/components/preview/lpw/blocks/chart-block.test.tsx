@@ -10,6 +10,45 @@ afterEach(() => {
 })
 
 describe('ChartBlock & buildOption', () => {
+  it('当 ECharts 真实清空容器 innerHTML 时，setReady 不应触发 React removeChild 异常', async () => {
+    const initMock = vi.fn().mockImplementation((dom: HTMLElement) => {
+      // 严格复现 ZRender/ECharts 对 root.innerHTML = '' 的真实行为
+      dom.innerHTML = '<div><canvas></canvas></div>'
+      return {
+        setOption: vi.fn(),
+        resize: vi.fn(),
+        dispose: vi.fn(),
+      }
+    })
+
+    vi.spyOn(echartsLazy, 'loadEcharts').mockResolvedValue({
+      echarts: {
+        init: initMock,
+      } as unknown as Awaited<
+        ReturnType<typeof echartsLazy.loadEcharts>
+      >['echarts'],
+    })
+
+    expect(() => {
+      render(
+        <ChartBlock
+          blockId="ch-repro"
+          props={{
+            chartType: 'line',
+            categories: ['A', 'B'],
+            series: [{ name: 'S1', data: [1, 2] }],
+          }}
+          depth={1}
+        />
+      )
+    }).not.toThrow()
+
+    // 等待异步加载和 setReady 状态提交
+    await waitFor(() => {
+      expect(initMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
   it('buildOption 应正确构建 line、donut 与 radar 的基础结构与固定颜色序列', () => {
     const lineOpt = buildOption({
       chartType: 'line',
