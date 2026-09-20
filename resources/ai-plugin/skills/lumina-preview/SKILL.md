@@ -7,7 +7,7 @@ metadata:
   author: lumina
   version: "0.1.1"
 argument-hint: [ session-id | filename ]
-allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__project_create, mcp__lumina__preview_session_create, mcp__lumina__preview_session_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_edit, mcp__lumina__preview_file_delete, mcp__lumina__preview_file_list, mcp__lumina__preview_file_get, mcp__lumina__qa_push_supplement, mcp__lumina__qa_get_answer, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__project_create, mcp__plugin_lumina_lumina__preview_session_create, mcp__plugin_lumina_lumina__preview_session_list, mcp__plugin_lumina_lumina__preview_file_upload, mcp__plugin_lumina_lumina__preview_file_edit, mcp__plugin_lumina_lumina__preview_file_delete, mcp__plugin_lumina_lumina__preview_file_list, mcp__plugin_lumina_lumina__preview_file_get, mcp__plugin_lumina_lumina__qa_push_supplement, mcp__plugin_lumina_lumina__qa_get_answer
+allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__project_create, mcp__lumina__preview_session_create, mcp__lumina__preview_session_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_edit, mcp__lumina__preview_file_delete, mcp__lumina__preview_file_list, mcp__lumina__preview_file_get, mcp__lumina__preview_lpw_init, mcp__lumina__preview_lpw_block_add, mcp__lumina__preview_lpw_block_edit, mcp__lumina__preview_lpw_block_remove, mcp__lumina__preview_lpw_block_sort, mcp__lumina__preview_lpw_meta_set, mcp__lumina__preview_lpw_outline, mcp__lumina__qa_push_supplement, mcp__lumina__qa_get_answer, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__project_create, mcp__plugin_lumina_lumina__preview_session_create, mcp__plugin_lumina_lumina__preview_session_list, mcp__plugin_lumina_lumina__preview_file_upload, mcp__plugin_lumina_lumina__preview_file_edit, mcp__plugin_lumina_lumina__preview_file_delete, mcp__plugin_lumina_lumina__preview_file_list, mcp__plugin_lumina_lumina__preview_file_get, mcp__plugin_lumina_lumina__preview_lpw_init, mcp__plugin_lumina_lumina__preview_lpw_block_add, mcp__plugin_lumina_lumina__preview_lpw_block_edit, mcp__plugin_lumina_lumina__preview_lpw_block_remove, mcp__plugin_lumina_lumina__preview_lpw_block_sort, mcp__plugin_lumina_lumina__preview_lpw_meta_set, mcp__plugin_lumina_lumina__preview_lpw_outline, mcp__plugin_lumina_lumina__qa_push_supplement, mcp__plugin_lumina_lumina__qa_get_answer
 ---
 
 # Lumina 前端原型实时预览与可视化评审指南 (lumina-preview)
@@ -32,6 +32,24 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 - **媒介定位**：Preview 是快速对齐视觉和交互的**沟通与评审媒介**，不能替代对本地仓库真实源文件的实现、单元测试与交付。
 - **运行环境**：前端采用 `iframe sandbox="allow-scripts"` 隔离环境渲染，同层文件通过相对路径互相引用。
 - **文件支持**：HTML、CSS、JavaScript/MJS、JSON、SVG 与纯文本。
+- **LPW 文档支持**：结构化交互文档（`.lpw`）支持分块增量生成与渐进生长，直渲 30 种微明视觉组件与容器。
+
+---
+
+## 🧱 LPW 精度模式（推荐工作流）
+
+对于复杂的交互原型、技术方案或方案评审，推荐使用 `.lpw` 文件与 `preview_lpw_*` 工具族分块构建，杜绝单次输出大 JSON 导致格式损坏或超限：
+
+1. **第 1 步：初始化骨架 (`preview_lpw_init`)**：
+   创建空白 `index.lpw` 并设置 Meta 元数据（title、description、tags 等）。
+2. **第 2 步：逐块追加内容 (`preview_lpw_block_add`)**：
+   严格遵循**单次调用追加单个块**原则（叶子块或小容器），单块文字内容建议 ≤ 4 KiB；每次追加即时触发 `preview_sync` 广播，用户可在预览工作台看到文档实时渐进生长。
+3. **第 3 步：中途检查大纲 (`preview_lpw_outline`)**：
+   在编写多章节长文档时，定期读取轻量大纲，确认各章节与块 ID，并获取最新乐观锁 revision。
+4. **第 4 步：局部微调与排版 (`preview_lpw_block_edit` / `preview_lpw_block_sort`)**：
+   通过 `preview_lpw_block_edit`（支持 patch 浅合并或 replace 节点替换）修正内容，通过 `preview_lpw_block_sort` 调整章节顺序。
+5. **第 5 步：终核交付 (`preview_file_list`)**：
+   全部块构建完成后，调用 `preview_file_list` 进行最终状态确认与入口核验，然后交付用户或挂载到 Q&A。
 
 ---
 
@@ -136,3 +154,4 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 3. **MUST**: 必须上传至少一个 `.html` 文件作为渲染入口，且上传完必须用 `preview_file_list` 核对。
 4. **NEVER**: 严禁向用户交付空的 `preview_url`。
 5. **NEVER**: 挂载到 Q&A 时，严禁传递 URL 或 Hash，严禁给 JSON 添加 Markdown 代码围栏。
+6. **NEVER**: 禁止用 `preview_file_upload` 整体覆写已有的分块构建 LPW 文档（除非修复严重损坏的 JSON）。

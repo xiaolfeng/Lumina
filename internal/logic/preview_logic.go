@@ -2,11 +2,13 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
@@ -18,6 +20,7 @@ import (
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
 	"github.com/xiaolfeng/Lumina/internal/repository"
+	"github.com/xiaolfeng/Lumina/internal/service"
 )
 
 // previewRepo Preview 模块依赖的仓储集合
@@ -158,10 +161,31 @@ func (l *PreviewLogic) UploadFile(ctx context.Context, sessionID xSnowflake.Snow
 		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(err.Error()), false, nil)
 	}
 
+	// Q-04 修复：.lpw 文件与 preview_lpw_* 分块工具共享同一把进程内互斥锁，
+	// 串行化「读改验写」与「整体覆写」两条通道，杜绝并发丢写。
+	if strings.ToLower(filepath.Ext(filename)) == ".lpw" {
+		var resp *apiPreview.PreviewFileResponse
+		var xErr *xError.Error
+		withLpwFileLock(ctx, sessionID, filename, func(lockedCtx context.Context) {
+			resp, xErr = l.uploadFileLocked(lockedCtx, sessionID, filename, content)
+		})
+		return resp, xErr
+	}
+
+	return l.uploadFileLocked(ctx, sessionID, filename, content)
+}
+
+// uploadFileLocked 执行实际上传（调用方保证 .lpw 已按需持锁）
+func (l *PreviewLogic) uploadFileLocked(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename, content string) (*apiPreview.PreviewFileResponse, *xError.Error) {
 	// 校验文件大小（MySQL TEXT 列上限低于通用上限，按驱动收窄有效上限）
 	maxBytes := l.repo.file.MaxContentBytes()
 	if len(content) > maxBytes {
 		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(fmt.Sprintf("文件大小超出上限(%dKB)", maxBytes/1024)), false, nil)
+	}
+
+	// 校验 LPW 语法合规性（上传失败不得覆盖已有文件）
+	if err := validateLpwContent(filename, content); err != nil {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(err.Error()), false, nil)
 	}
 
 	session, xErr := l.repo.session.GetByID(ctx, sessionID)
@@ -629,6 +653,8 @@ func inferMimeType(filename string) string {
 		return bConst.PreviewMimeJS
 	case ".json":
 		return bConst.PreviewMimeJSON
+	case ".lpw":
+		return bConst.PreviewMimeLPW
 	case ".md", ".markdown":
 		return bConst.PreviewMimeMarkdown
 	case ".ts", ".tsx", ".mts", ".cts":
@@ -638,6 +664,54 @@ func inferMimeType(filename string) string {
 	default:
 		return bConst.PreviewMimePlain
 	}
+}
+
+// validateLpwContent 校验 .lpw 文件内容：JSON 语法 → v1 Schema → 结构规则走查。
+// Q-03 修复：所有写通道（含 preview_file_upload 整体覆写）执行与 preview_lpw_* 一致的结构校验。
+func validateLpwContent(filename, content string) error {
+	if strings.ToLower(filepath.Ext(filename)) == ".lpw" {
+		if !json.Valid([]byte(content)) {
+			return errors.New("LPW 文件必须是合法 JSON")
+		}
+
+		loader, err := getLpwSchemaLoader()
+		if err != nil {
+			return fmt.Errorf("LPW Schema 加载失败: %s", err.Error())
+		}
+
+		failPath, reason, ok := loader.Validate([]byte(content), "1.0")
+		if !ok {
+			return fmt.Errorf("LPW Schema 校验失败 [%s]: %s", failPath, reason)
+		}
+
+		var doc lpwDocument
+		if err := json.Unmarshal([]byte(content), &doc); err != nil {
+			return fmt.Errorf("LPW 文档解析失败: %s", err.Error())
+		}
+		if err := validateContainerRules(&doc); err != nil {
+			return fmt.Errorf("LPW 结构规则校验失败: %s", err.Error())
+		}
+	}
+	return nil
+}
+
+// lpwSchemaLoaderOnce 惰性编译内嵌 LPW Schema（编译一次，进程内复用）
+var (
+	lpwSchemaLoaderOnce sync.Once
+	lpwSchemaLoader     *service.LpwSchemaLoader
+	lpwSchemaLoaderErr  error
+)
+
+func getLpwSchemaLoader() (*service.LpwSchemaLoader, error) {
+	lpwSchemaLoaderOnce.Do(func() {
+		lpwSchemaLoader, lpwSchemaLoaderErr = service.NewLpwSchemaLoader()
+	})
+	return lpwSchemaLoader, lpwSchemaLoaderErr
+}
+
+// GetFileBySessionAndFilename 根据会话 ID 与文件名获取预览文件实体
+func (l *PreviewLogic) GetFileBySessionAndFilename(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string) (*entity.PreviewFile, *xError.Error) {
+	return l.repo.file.GetBySessionAndFilename(ctx, sessionID, filename)
 }
 
 func (l *PreviewLogic) toPreviewSessionResponse(ctx context.Context, session *entity.PreviewSession) *apiPreview.PreviewSessionResponse {

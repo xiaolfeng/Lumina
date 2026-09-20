@@ -119,7 +119,25 @@ func TestValidatePreviewSupplementContent(t *testing.T) {
 }
 
 func TestFindPreviewEntry(t *testing.T) {
-	// 与 logic 层 inferMimeType 存储的真实 MIME 一致（text/html; charset=utf-8）
+	// 1. 优先 index.lpw
+	lpwFiles := []apiPreview.PreviewFileResponse{
+		{ID: xSnowflake.SnowflakeID(1), Filename: "index.html", MimeType: bConst.PreviewMimeHTML},
+		{ID: xSnowflake.SnowflakeID(2), Filename: "index.lpw", MimeType: bConst.PreviewMimeLPW},
+	}
+	if entry := findPreviewEntry(lpwFiles); entry == nil || entry.Filename != "index.lpw" {
+		t.Fatalf("findPreviewEntry(lpwFiles) = %#v, want index.lpw", entry)
+	}
+
+	// 2. 首个 lpw 优先于 html
+	firstLpwFiles := []apiPreview.PreviewFileResponse{
+		{ID: xSnowflake.SnowflakeID(1), Filename: "index.html", MimeType: bConst.PreviewMimeHTML},
+		{ID: xSnowflake.SnowflakeID(2), Filename: "doc.lpw", MimeType: bConst.PreviewMimeLPW},
+	}
+	if entry := findPreviewEntry(firstLpwFiles); entry == nil || entry.Filename != "doc.lpw" {
+		t.Fatalf("findPreviewEntry(firstLpwFiles) = %#v, want doc.lpw", entry)
+	}
+
+	// 3. 仅 HTML：与 logic 层 inferMimeType 存储的真实 MIME 一致（text/html; charset=utf-8）
 	files := []apiPreview.PreviewFileResponse{
 		{ID: xSnowflake.SnowflakeID(1), Filename: "app.js", MimeType: "application/javascript; charset=utf-8"},
 		{ID: xSnowflake.SnowflakeID(2), Filename: "index.html", MimeType: bConst.PreviewMimeHTML},
@@ -129,7 +147,7 @@ func TestFindPreviewEntry(t *testing.T) {
 		t.Fatalf("findPreviewEntry() = %#v", entry)
 	}
 
-	// 负例：裸 "text/html"（不含 charset）不是生产代码产出的 MIME，不应命中
+	// 4. 负例：裸 "text/html"（不含 charset）不是生产代码产出的 MIME，不应命中
 	bare := []apiPreview.PreviewFileResponse{
 		{ID: xSnowflake.SnowflakeID(1), Filename: "index.html", MimeType: "text/html"},
 	}

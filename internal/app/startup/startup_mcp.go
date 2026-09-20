@@ -2,11 +2,13 @@ package startup
 
 import (
 	"context"
+	"fmt"
 
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xCtx "github.com/bamboo-services/bamboo-base-go/defined/context"
 	"github.com/xiaolfeng/Lumina/internal/logic"
 	"github.com/xiaolfeng/Lumina/internal/mcp"
+	"github.com/xiaolfeng/Lumina/internal/service"
 )
 
 // MCPHandlerKey MCP Server HTTP Handler 在 context 中的存储键。
@@ -27,10 +29,19 @@ func (r *reg) mcpInit(ctx context.Context) (any, error) {
 	if repoWikiLogic == nil {
 		log.Warn(ctx, "context 中未找到 RepoWikiLogic，MCP 的 RepoWiki 工具将不可用")
 	}
+
+	schemaLoader, err := service.NewLpwSchemaLoader()
+	if err != nil {
+		log.Error(ctx, fmt.Sprintf("初始化 LPW Schema Loader 失败: %s", err.Error()))
+		return nil, err
+	}
+	previewLpwLogic := logic.NewPreviewLpwLogic(previewLogic, schemaLoader)
+
 	mcp.SetQaLogic(qaLogic)
 	mcp.SetProjectLogic(projectLogic)
 	mcp.SetPinLogic(pinLogic)
 	mcp.SetPreviewLogic(previewLogic)
+	mcp.SetPreviewLpwLogic(previewLpwLogic)
 	mcp.SetPagesLogic(pagesLogic)
 	mcp.SetWorkspaceLogic(workspaceLogic)
 	mcp.SetRepoWikiLogic(repoWikiLogic)

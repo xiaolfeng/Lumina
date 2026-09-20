@@ -15,6 +15,8 @@
 | 编号 | 文档 |
 | --- | --- |
 | 0001 | [Workspace 租户层与首版内容](./engineering/research/0001-workspace-contents.md) |
+| 0002 | [LPW 文档格式与社区实现](./engineering/research/0002-preview-lpw-community.md) |
+| 0003 | [LPW 组件映射技术栈选型](./engineering/research/0003-preview-mapping-stack.md) |
 
 ### rfc/
 
@@ -30,6 +32,7 @@
 | --- | --- | --- |
 | 0001 | [Workspace 身份层设计](./engineering/design/0001-workspace-identity.md) | draft |
 | 0002 | [Preview 与 Pages 区分架构设计](./engineering/design/0002-preview-pages-architecture.md) | draft |
+| 0003 | [LPW 预览文档渲染架构与专用组件设计](./engineering/design/0003-preview-lpw-document-renderer.md) | draft |
 
 ### adr/
 
@@ -42,6 +45,7 @@
 | 0005 | [Workspace 身份层](./engineering/adr/0005-workspace-identity.md) | proposed |
 | 0006 | [Pin 同空间隔离](./engineering/adr/0006-pin-workspace-isolation.md) | proposed |
 | 0007 | [Preview 与 Pages 区分](./engineering/adr/0007-preview-pages-separation.md) | proposed |
+| 0008 | [LPW 文档文件与专用组件契约](./engineering/adr/0008-preview-lpw-document-contract.md) | proposed |
 
 ### draft/
 

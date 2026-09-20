@@ -284,9 +284,9 @@ func (l *PagesLogic) Promote(ctx context.Context, sessionID xSnowflake.Snowflake
 	if xErr != nil {
 		return nil, xErr
 	}
-	entry := findHTMLEntry(previewFiles)
+	entry := FindPreviewEntryFromPreviewFiles(previewFiles)
 	if entry == "" {
-		return nil, xError.NewError(ctx, xError.ParameterError, "会话内没有 HTML 入口，无法晋升", false, nil)
+		return nil, xError.NewError(ctx, xError.ParameterError, "会话内没有可评审入口（HTML 或 LPW），无法晋升", false, nil)
 	}
 
 	project, xErr := l.repo.project.GetByID(ctx, session.ProjectID)
@@ -484,7 +484,7 @@ func (l *PagesLogic) Fork(ctx context.Context, pageID xSnowflake.SnowflakeID, ve
 	resp.FileCount = int64(len(previewFiles))
 	entry := version.EntryFilename
 	if entry == "" {
-		entry = findHTMLEntryFromPageFiles(files)
+		entry = FindPreviewEntryFromPageFiles(files)
 	}
 	return &apiPages.ForkPageResponse{
 		Session:    *resp,
@@ -808,21 +808,11 @@ func toPageFileResponse(file *entity.PageFile) *apiPages.PageFileResponse {
 }
 
 func findHTMLEntry(files []*entity.PreviewFile) string {
-	for _, file := range files {
-		if file.MimeType == bConst.PreviewMimeHTML || isHTMLFilename(file.Filename) {
-			return file.Filename
-		}
-	}
-	return ""
+	return FindPreviewEntryFromPreviewFiles(files)
 }
 
 func findHTMLEntryFromPageFiles(files []*entity.PageFile) string {
-	for _, file := range files {
-		if file.MimeType == bConst.PreviewMimeHTML || isHTMLFilename(file.Filename) {
-			return file.Filename
-		}
-	}
-	return ""
+	return FindPreviewEntryFromPageFiles(files)
 }
 
 func isHTMLFilename(filename string) bool {

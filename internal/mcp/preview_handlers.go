@@ -527,7 +527,7 @@ func loadPreviewSessionSnapshot(ctx context.Context, sessionID xSnowflake.Snowfl
 	}
 
 	snapshot := &previewSessionSnapshot{session: session, files: files}
-	if entry := findPreviewEntry(files); entry != nil {
+	if entry := logic.FindPreviewEntry(files); entry != nil {
 		snapshot.entry = entry
 		snapshot.entryFilename = entry.Filename
 		snapshot.entryID = entry.ID.String()
@@ -538,20 +538,20 @@ func loadPreviewSessionSnapshot(ctx context.Context, sessionID xSnowflake.Snowfl
 	return snapshot, ""
 }
 
-// previewWriteWorkflow 写入/编辑后的工作流状态机（有入口 → 待最终核对；无入口 → 待补 HTML）
+// previewWriteWorkflow 写入/编辑后的工作流状态机（有入口 → 待最终核对；无入口 → 待补入口）
 func previewWriteWorkflow(snapshot *previewSessionSnapshot, writeNoun string) (state, nextTool, message string, instructions []string) {
 	if snapshot.entry == nil {
 		return "awaiting_html_entry", "preview_file_upload",
-			fmt.Sprintf("%s，但会话还没有 HTML 入口，暂不可作为前端页面交付评审。", writeNoun),
+			fmt.Sprintf("%s，但会话还没有可评审入口（HTML 或 LPW），暂不可作为前端页面交付评审。", writeNoun),
 			[]string{
-				"继续上传 HTML 入口文件，并用相对路径引用同会话中的 CSS/JavaScript。",
+				"继续上传可评审入口文件（HTML 或 LPW），并用相对路径引用同会话中的 CSS/JavaScript/静态资源。",
 				"文件齐全后调用 preview_file_list 做最终核对。",
 			}
 	}
 	return "reviewable_unverified", "preview_file_list",
-		fmt.Sprintf("%s，会话已有 HTML 入口；完成其余依赖上传后仍需最终核对。", writeNoun),
+		fmt.Sprintf("%s，会话已有可评审入口；完成其余依赖上传后仍需最终核对。", writeNoun),
 		[]string{
-			"若 HTML 仍引用未上传的依赖，继续调用 preview_file_upload。",
+			"若入口文件仍引用未上传的依赖，继续调用 preview_file_upload。",
 			"全部文件写入后调用 preview_file_list；不要跳过最终核对。",
 			"核对通过后再打开/分享 preview_url，或使用 qa_supplement 挂载到 Q&A。",
 		}
@@ -628,17 +628,9 @@ func previewFileDataWithLines(file *apiPreview.PreviewFileResponse, totalLines i
 	return data
 }
 
-// findPreviewEntry 从文件清单中选择 HTML 入口文件
-//
-// 判定依据是 MIME 类型等于 PreviewMimeHTML 常量（"text/html; charset=utf-8"），
-// 与 logic 层 inferMimeType 存储的值完全一致，避免裸字符串漂移导致入口永远检测不到。
+// findPreviewEntry 从文件清单中选择入口文件（优先 index.lpw -> 首个 lpw -> 现有 HTML）
 func findPreviewEntry(files []apiPreview.PreviewFileResponse) *apiPreview.PreviewFileResponse {
-	for i := range files {
-		if files[i].MimeType == bConst.PreviewMimeHTML {
-			return &files[i]
-		}
-	}
-	return nil
+	return logic.FindPreviewEntry(files)
 }
 
 func previewSupplementData(sessionID, fileID string) map[string]any {

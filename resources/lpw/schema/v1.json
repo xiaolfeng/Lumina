@@ -1,0 +1,713 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lumina.local/lpw/v1.json",
+  "title": "Lumina Preview Document v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "blocks"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "meta": { "$ref": "#/$defs/meta" },
+    "blocks": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/block" } }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object", "additionalProperties": false, "required": ["title"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "author": { "type": "string", "maxLength": 100 },
+        "version": { "type": "string", "maxLength": 32 },
+        "tags": { "type": "array", "maxItems": 10, "items": { "type": "string", "maxLength": 32 } }
+      }
+    },
+    "blockId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+    "block": {
+      "oneOf": [
+        { "$ref": "#/$defs/markdownBlock" },
+        { "$ref": "#/$defs/calloutBlock" },
+        { "$ref": "#/$defs/metricsBlock" },
+        { "$ref": "#/$defs/stepsBlock" },
+        { "$ref": "#/$defs/timelineBlock" },
+        { "$ref": "#/$defs/diffBlock" },
+        { "$ref": "#/$defs/tableBlock" },
+        { "$ref": "#/$defs/headingBlock" },
+        { "$ref": "#/$defs/listBlock" },
+        { "$ref": "#/$defs/quoteBlock" },
+        { "$ref": "#/$defs/codeBlock" },
+        { "$ref": "#/$defs/imageBlock" },
+        { "$ref": "#/$defs/dividerBlock" },
+        { "$ref": "#/$defs/cardsBlock" },
+        { "$ref": "#/$defs/mermaidBlock" },
+        { "$ref": "#/$defs/chartBlock" },
+        { "$ref": "#/$defs/comparisonBlock" },
+        { "$ref": "#/$defs/progressBlock" },
+        { "$ref": "#/$defs/treeBlock" },
+        { "$ref": "#/$defs/takeawayBlock" },
+        { "$ref": "#/$defs/glanceBlock" },
+        { "$ref": "#/$defs/openItemsBlock" },
+        { "$ref": "#/$defs/scorecardBlock" },
+        { "$ref": "#/$defs/quadrantBlock" },
+        { "$ref": "#/$defs/personnelBlock" },
+        { "$ref": "#/$defs/galleryBlock" },
+        { "$ref": "#/$defs/sectionBlock" },
+        { "$ref": "#/$defs/tabsBlock" },
+        { "$ref": "#/$defs/columnsBlock" },
+        { "$ref": "#/$defs/detailsBlock" }
+      ]
+    },
+    "markdownBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "markdown" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": { "content": { "type": "string", "minLength": 1, "maxLength": 16384 } }
+        }
+      }
+    },
+    "calloutBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "callout" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": {
+            "level": { "enum": ["info", "success", "warning", "error"], "default": "info" },
+            "title": { "type": "string", "maxLength": 200 },
+            "content": { "type": "string", "minLength": 1, "maxLength": 4096 }
+          }
+        }
+      }
+    },
+    "metricsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "metrics" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 12,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["label", "value"],
+                "properties": {
+                  "label": { "type": "string", "minLength": 1, "maxLength": 64 },
+                  "value": { "type": ["string", "number"] },
+                  "unit": { "type": "string", "maxLength": 16 },
+                  "trend": { "enum": ["up", "down"] },
+                  "change": { "type": "string", "maxLength": 32 },
+                  "desc": { "type": "string", "maxLength": 128 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "stepsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "steps" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "current": { "type": "integer", "minimum": 0 },
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 20,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "desc": { "type": "string", "maxLength": 512 },
+                  "status": { "enum": ["wait", "process", "finish", "error"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "timelineBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "timeline" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 50,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["time", "title"],
+                "properties": {
+                  "time": { "type": "string", "minLength": 1, "maxLength": 32 },
+                  "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "content": { "type": "string", "maxLength": 1024 },
+                  "tag": { "type": "string", "maxLength": 32 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "diffBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "diff" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["oldCode", "newCode"],
+          "properties": {
+            "filename": { "type": "string", "maxLength": 255 },
+            "language": { "type": "string", "maxLength": 32 },
+            "oldCode": { "type": "string", "maxLength": 32768 },
+            "newCode": { "type": "string", "maxLength": 32768 },
+            "splitView": { "type": "boolean", "default": true }
+          }
+        }
+      }
+    },
+    "tableBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "table" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["columns", "data"],
+          "properties": {
+            "columns": {
+              "type": "array", "minItems": 1, "maxItems": 20,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["key", "title"],
+                "properties": {
+                  "key": { "type": "string", "pattern": "^[a-zA-Z0-9_]{1,64}$" },
+                  "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "width": { "type": "string", "maxLength": 16, "pattern": "^(auto|[0-9]{1,4}(px|%)?)$" },
+                  "align": { "enum": ["left", "center", "right"], "default": "left" }
+                }
+              }
+            },
+            "data": {
+              "type": "array", "maxItems": 500,
+              "items": {
+                "type": "object",
+                "additionalProperties": { "type": ["string", "number", "boolean", "null"], "maxLength": 1024 }
+              }
+            },
+            "sortable": { "type": "boolean", "default": false }
+          }
+        }
+      }
+    },
+    "sectionBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "section" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["title"],
+          "properties": {
+            "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "collapsible": { "type": "boolean", "default": false },
+            "defaultOpen": { "type": "boolean", "default": true }
+          }
+        },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+      }
+    },
+    "tabsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "tabs" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 10,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["key", "label"],
+                "properties": {
+                  "key": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$" },
+                  "label": { "type": "string", "minLength": 1, "maxLength": 50 }
+                }
+              }
+            },
+            "defaultKey": { "type": "string", "maxLength": 32 }
+          }
+        },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+      }
+    },
+    "columnsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "columns" },
+        "props": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "ratio": { "enum": ["1:1", "1:2", "2:1", "1:1:1"], "default": "1:1" }
+          }
+        },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+      }
+    },
+    "headingBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "heading" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": {
+            "level": { "enum": [1, 2, 3], "default": 2 },
+            "content": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        }
+      }
+    },
+    "listBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "list" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "style": { "enum": ["ordered", "unordered", "check"], "default": "unordered" },
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 50,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["content"],
+                "properties": {
+                  "content": { "type": "string", "minLength": 1, "maxLength": 512 },
+                  "checked": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "quoteBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "quote" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": {
+            "content": { "type": "string", "minLength": 1, "maxLength": 2048 },
+            "author": { "type": "string", "maxLength": 100 },
+            "source": { "type": "string", "maxLength": 200 }
+          }
+        }
+      }
+    },
+    "codeBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "code" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": {
+            "language": { "type": "string", "maxLength": 32 },
+            "filename": { "type": "string", "maxLength": 255 },
+            "content": { "type": "string", "minLength": 1, "maxLength": 32768 },
+            "showLineNumbers": { "type": "boolean", "default": false },
+            "highlightLines": { "type": "array", "maxItems": 128, "items": { "type": "integer", "minimum": 1 } }
+          }
+        }
+      }
+    },
+    "imageBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "image" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["src", "alt"],
+          "properties": {
+            "src": { "type": "string", "minLength": 1, "maxLength": 512 },
+            "alt": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "caption": { "type": "string", "maxLength": 200 },
+            "width": { "type": "string", "maxLength": 16, "pattern": "^(auto|[0-9]{1,4}(px|%)?)$" }
+          }
+        }
+      }
+    },
+    "dividerBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "divider" },
+        "props": { "type": "object", "additionalProperties": false, "properties": {} }
+      }
+    },
+    "cardsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "cards" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 12,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "description": { "type": "string", "maxLength": 256 },
+                  "href": { "type": "string", "maxLength": 512 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "mermaidBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "mermaid" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": {
+            "content": { "type": "string", "minLength": 1, "maxLength": 8192 },
+            "caption": { "type": "string", "maxLength": 200 }
+          }
+        }
+      }
+    },
+    "chartBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "chart" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["chartType", "series"],
+          "properties": {
+            "chartType": { "enum": ["line", "bar", "area", "pie", "donut", "scatter", "radar"] },
+            "title": { "type": "string", "maxLength": 100 },
+            "xLabel": { "type": "string", "maxLength": 100 },
+            "yLabel": { "type": "string", "maxLength": 100 },
+            "categories": {
+              "type": "array", "maxItems": 100,
+              "items": { "type": "string", "minLength": 1, "maxLength": 32 }
+            },
+            "series": {
+              "type": "array", "minItems": 1, "maxItems": 6,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["name", "data"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+                  "data": {
+                    "type": "array", "minItems": 1, "maxItems": 500,
+                    "items": {
+                      "oneOf": [
+                        { "type": "number" },
+                        { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "stacked": { "type": "boolean", "default": false },
+            "legend": { "type": "boolean", "default": true },
+            "height": { "type": "integer", "minimum": 160, "maximum": 640, "default": 280 }
+          }
+        }
+      }
+    },
+    "comparisonBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "comparison" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["plans", "rows"],
+          "properties": {
+            "title": { "type": "string", "maxLength": 200 },
+            "plans": {
+              "type": "array", "minItems": 1, "maxItems": 4,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "recommended": { "type": "boolean", "default": false }
+                }
+              }
+            },
+            "rows": {
+              "type": "array", "maxItems": 20,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["dimension", "values"],
+                "properties": {
+                  "dimension": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "values": {
+                    "type": "array", "minItems": 1, "maxItems": 4,
+                    "items": {
+                      "type": "object", "additionalProperties": false, "required": ["text"],
+                      "properties": {
+                        "text": { "type": "string", "minLength": 1, "maxLength": 256 },
+                        "verdict": { "enum": ["good", "warn", "bad"] }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "progressBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "progress" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "title": { "type": "string", "maxLength": 200 },
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 12,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["label", "value"],
+                "properties": {
+                  "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "value": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "status": { "enum": ["wait", "process", "finish", "error"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "treeBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "tree" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["nodes"],
+          "properties": {
+            "title": { "type": "string", "maxLength": 200 },
+            "nodes": { "type": "array", "items": { "$ref": "#/$defs/treeNode" } }
+          }
+        }
+      }
+    },
+    "treeNode": {
+      "type": "object", "additionalProperties": false, "required": ["label"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "note": { "type": "string", "maxLength": 100 },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/treeNode" } }
+      }
+    },
+    "takeawayBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "takeaway" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": {
+            "title": { "type": "string", "minLength": 1, "maxLength": 100, "default": "核心判断" },
+            "content": { "type": "string", "minLength": 1, "maxLength": 500 }
+          }
+        }
+      }
+    },
+    "glanceBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "glance" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 4,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["label", "text"],
+                "properties": {
+                  "label": { "type": "string", "minLength": 1, "maxLength": 20 },
+                  "text": { "type": "string", "minLength": 1, "maxLength": 200 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "openItemsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "open-items" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "title": { "type": "string", "minLength": 1, "maxLength": 100, "default": "未决事项" },
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 12,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "detail": { "type": "string", "maxLength": 500 },
+                  "owner": { "type": "string", "maxLength": 50 },
+                  "due": { "type": "string", "maxLength": 32 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "scorecardBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "scorecard" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["criteria", "plans"],
+          "properties": {
+            "title": { "type": "string", "maxLength": 200 },
+            "criteria": {
+              "type": "array", "minItems": 1, "maxItems": 8,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["name", "weight"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "weight": { "type": "integer", "minimum": 1, "maximum": 100 }
+                }
+              }
+            },
+            "plans": {
+              "type": "array", "minItems": 2, "maxItems": 4,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["name", "scores"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "scores": {
+                    "type": "array", "minItems": 1, "maxItems": 8,
+                    "items": { "type": "number", "minimum": 1, "maximum": 5 }
+                  },
+                  "recommended": { "type": "boolean", "default": false }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "quadrantBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "quadrant" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "title": { "type": "string", "maxLength": 200 },
+            "xLabel": { "type": "string", "maxLength": 20 },
+            "yLabel": { "type": "string", "maxLength": 20 },
+            "xLow": { "type": "string", "maxLength": 16, "default": "低" },
+            "xHigh": { "type": "string", "maxLength": 16, "default": "高" },
+            "yLow": { "type": "string", "maxLength": 16, "default": "低" },
+            "yHigh": { "type": "string", "maxLength": 16, "default": "高" },
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 16,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["label", "x", "y"],
+                "properties": {
+                  "label": { "type": "string", "minLength": 1, "maxLength": 50 },
+                  "x": { "enum": ["low", "high"] },
+                  "y": { "enum": ["low", "high"] },
+                  "note": { "type": "string", "maxLength": 100 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "personnelBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "personnel" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "title": { "type": "string", "maxLength": 200 },
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 8,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["name", "role"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+                  "role": { "type": "string", "minLength": 1, "maxLength": 50 },
+                  "duties": { "type": "string", "maxLength": 200 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "galleryBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "gallery" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["images"],
+          "properties": {
+            "images": {
+              "type": "array", "minItems": 1, "maxItems": 6,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["src", "alt"],
+                "properties": {
+                  "src": { "type": "string", "minLength": 1, "maxLength": 512 },
+                  "alt": { "type": "string", "minLength": 1, "maxLength": 200 },
+                  "caption": { "type": "string", "maxLength": 200 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "detailsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "details" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["summary"],
+          "properties": {
+            "summary": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "defaultOpen": { "type": "boolean", "default": false }
+          }
+        },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+      }
+    }
+  }
+}

@@ -1,6 +1,10 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from 'vitest'
-import { buildShowcaseSrc, resolveActiveFile } from './showcase-shell'
+import {
+  buildShowcaseSrc,
+  isRenderable,
+  resolveActiveFile,
+} from './showcase-shell'
 
 describe('resolveActiveFile', () => {
   const files = [{ filename: 'home.html' }, { filename: 'style.css' }]
@@ -10,7 +14,9 @@ describe('resolveActiveFile', () => {
   })
 
   it('URL 指向不存在的 index.html 时回退版本入口', () => {
-    expect(resolveActiveFile('index.html', 'home.html', files)).toBe('home.html')
+    expect(resolveActiveFile('index.html', 'home.html', files)).toBe(
+      'home.html',
+    )
   })
 
   it('无文件路径时使用版本入口', () => {
@@ -18,7 +24,9 @@ describe('resolveActiveFile', () => {
   })
 
   it('入口不在清单内时回退首个文件', () => {
-    expect(resolveActiveFile('index.html', 'main.html', files)).toBe('home.html')
+    expect(resolveActiveFile('index.html', 'main.html', files)).toBe(
+      'home.html',
+    )
   })
 
   it('文件清单为空时返回空串', () => {
@@ -44,9 +52,9 @@ describe('buildShowcaseSrc', () => {
   })
 
   it('保留 lumina_frame=1 标记后端直出', () => {
-    expect(buildShowcaseSrc('demo', 'landing', 'home.html', createdAt)).toContain(
-      '&lumina_frame=1',
-    )
+    expect(
+      buildShowcaseSrc('demo', 'landing', 'home.html', createdAt),
+    ).toContain('&lumina_frame=1')
   })
 
   it('文件名特殊字符被编码', () => {
@@ -56,5 +64,16 @@ describe('buildShowcaseSrc', () => {
 
   it('无文件时返回空串', () => {
     expect(buildShowcaseSrc('demo', 'landing', '', createdAt)).toBe('')
+  })
+})
+
+describe('isRenderable', () => {
+  it('识别 html, htm, md, lpw 扩展名为可渲染文件', () => {
+    expect(isRenderable('index.html')).toBe(true)
+    expect(isRenderable('page.htm')).toBe(true)
+    expect(isRenderable('README.md')).toBe(true)
+    expect(isRenderable('a.lpw')).toBe(true)
+    expect(isRenderable('style.css')).toBe(false)
+    expect(isRenderable('main.go')).toBe(false)
   })
 })

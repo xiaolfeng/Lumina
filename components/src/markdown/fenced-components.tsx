@@ -40,13 +40,18 @@ interface CardProps {
   children?: ReactNode
 }
 
-// sanitizeHref 过滤危险协议（javascript:/data:/vbscript:），防止 Markdown 卡片 XSS
+// sanitizeHref 采用协议白名单（S-01 同源修复）：仅放行 http(s)/mailto 与纯相对引用
+// （/、./、../、# 开头或不含冒号的相对文件名）。浏览器解析 URL 会剔除 scheme 内的
+// TAB/LF/CR 等控制字符，黑名单前缀匹配可被穿透，因此含控制字符整体拒绝。
 function sanitizeHref(href?: string): string | undefined {
   if (!href) return undefined
-  if (/^(javascript|data|vbscript):/i.test(href.trim())) {
-    return undefined
-  }
-  return href
+  const value = href.trim()
+  if (/[\u0000-\u001f\u007f]/.test(value)) return undefined
+  if (/^(https?:|mailto:)/i.test(value)) return value
+  if (/^[/?#]/.test(value)) return value
+  if (/^\.\.?\//.test(value)) return value
+  if (!value.includes(':')) return value
+  return undefined
 }
 
 export function Card({ title, href, children }: CardProps) {
