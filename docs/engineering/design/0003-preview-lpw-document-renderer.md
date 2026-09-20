@@ -34,7 +34,8 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 - **文件与入口闭环**：后端识别 `.lpw` 扩展名与专用 MIME，MCP snapshot 入口判定（`preview_handlers.go`）将 `.lpw` 纳为合法首屏入口；
 - **版本化文档 Schema**：制定 LPW v1 规范，支持声明式元数据（`version`, `meta`）与顺序文档块（`blocks`）；
 - **自建映射分发引擎**：在 `web/src/components/preview/lpw/` 下实现解析器、注册表、块级分发器与错误边界；
-- **全量专用组件库（首期 10 种）**：交付 Markdown、Callout、Metrics、Steps、Timeline、Diff、Table 7 种内容块，以及 Section、Tabs、Columns 3 种容器块；
+- **全量专用组件库（首期 20 种）**：交付 16 种内容块（Markdown、Callout、Heading、List、Quote、Code、Image、Divider、Cards、Metrics、Steps、Timeline、Diff、Table、Mermaid、Chart），以及 Section、Tabs、Columns、Details 4 种容器块；
+- **图表能力**：`mermaid` 块复用既有 Mermaid 渲染链路覆盖流程图/时序图等示意图；`chart` 块以纯数据驱动 7 种数据图（line / bar / area / pie / donut / scatter / radar），主题色固定走静烛 token 序列；
 - **严格错误可见性**：单个块渲染崩溃时，就地展示包含块 ID、类型与错误原因的内嵌诊断卡片，不阻断整篇文档；
 - **多端渲染一致性**：Preview 工作台（`/preview/:session_hash/:filename`，登录态）、Pages 展示态（`/pages/:project_name/:slug/:filename`，`.lpw` 随晋升进入不可变快照并纳入页面直切区）、Q&A 交互引用均经同一 React 直渲管线接入 LPW 渲染器；
 - **分块写入与渐进构建**：`preview_lpw_*` 工具族支持 add / edit / remove / sort 单块操作，模型可逐块构建长文档，每次写入即时校验并经 `preview_sync` 实时上屏，替代一次性全量生成大 JSON。
@@ -47,6 +48,8 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 - **不上调文件体积上限**：沿用单文件 `256 * 1024` 字节（256 KiB）限制；
 - **首版不引入 json-render**：按照调研 0003 结论保留为候选，v1 纯自建；
 - **非流式 token 级渲染协议**：渐进构建由「块级写入 + `preview_sync` 广播 + React 直渲」承担，不引入 A2UI / SpecStream 类增量流式消息协议；
+- **不做任意图表 option 透传**：chart 块只接受纯数据（number / 点对 / 类目），不开放 ECharts/Recharts 的 option 对象、格式化函数或脚本；图表外观由组件与主题 token 决定；
+- **不嵌外部 iframe / 视频 / 音频**：外部富媒体嵌入带来跨站与隐私面，v1 不提供；示意图与数据图分别由 mermaid / chart 承担；
 - **不做多 Agent 并发编辑协同**：单会话假定单一写入者，跨调用竞争用 revision 回显与重试兜底，不建协同锁协议。
 
 ## Key Decisions
@@ -62,6 +65,7 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 | 7 | **单文件大小维持 256 KiB**，块数量软上限 500。 | 契合既有 Preview 基础设施配额，单文档足够承载中长篇方案。 |
 | 8 | **React 直渲优先**：`.lpw` 与 Markdown 同级进入 `PreviewFileViewer` 的 React 直渲分支，禁止「转 HTML 进 iframe」作为主交付路径。 | 落实 ADR-0008 第 8 条；直渲管线已被 `.md` 验证，直接复用 `@lumina/components` 主题与排版，并保留组件级状态、错误边界与可测试性。 |
 | 9 | **MCP 写入以块为最小单位**：`preview_lpw_*` 工具族单调用操作单个块子树；文件级 `preview_file_upload` 保留为整体覆写与修复通道。 | 长文档一次性生成大 JSON 精度随长度劣化、单点错误需整篇重写；分块写入让校验错误局部化、重试成本降为单块，并借 `preview_sync` 实现文档渐进生长。 |
+| 10 | **图表双轨**：示意图走 `mermaid`（复用 `@lumina/components` 既有链路，零新依赖），数据图走 `chart`（新增 Recharts，仅 `web` 端）。 | mermaid 已在 Markdown 链路验证、覆盖流程/时序/甘特等非数据图；Recharts 声明式 props 与 JSON 纯数据映射贴合，按需引入控制包体。图表块不透传 option、不收脚本，颜色固定静烛 token 序列。 |
 
 ## System Architecture & Data Flow
 
@@ -103,8 +107,8 @@ flowchart TB
   end
 
   subgraph S4 ["4. LPW 专用组件库"]
-    Content["7 种基础内容块<br>(Markdown / Callout / Metrics / Steps / Timeline / Diff / Table)"]
-    Container["3 种容器组织块<br>(Section / Tabs / Columns)"]
+    Content["16 种内容块<br>(Markdown / Callout / Heading / List / Quote / Code / Image / Divider / Cards / Metrics / Steps / Timeline / Diff / Table / Mermaid / Chart)"]
+    Container["4 种容器组织块<br>(Section / Tabs / Columns / Details)"]
   end
 
   subgraph S5 ["5. 共享基础设施 (@lumina/components)"]
@@ -271,6 +275,79 @@ export interface LpwTabsProps {
 export interface LpwColumnsProps {
   ratio?: '1:1' | '1:2' | '2:1' | '1:1:1'
 }
+
+// ── 扩充内容块 props ──────────────────────────────────────────
+export interface LpwHeadingProps {
+  level?: 1 | 2 | 3
+  content: string
+}
+
+export interface LpwListItem {
+  content: string
+  checked?: boolean // 仅 style='check' 生效
+}
+export interface LpwListProps {
+  style?: 'ordered' | 'unordered' | 'check'
+  items: LpwListItem[]
+}
+
+export interface LpwQuoteProps {
+  content: string
+  author?: string
+  source?: string
+}
+
+export interface LpwCodeProps {
+  language?: string
+  filename?: string
+  content: string
+  showLineNumbers?: boolean
+  highlightLines?: number[] // 1 起始行号
+}
+
+export interface LpwImageProps {
+  src: string // 同会话文件名（相对解析）或 https?:// 外链
+  alt: string
+  caption?: string
+  width?: string
+}
+
+export interface LpwCardItem {
+  title: string
+  description?: string
+  href?: string
+}
+export interface LpwCardsProps {
+  items: LpwCardItem[]
+}
+
+export interface LpwMermaidProps {
+  content: string
+  caption?: string
+}
+
+export type LpwChartType = 'line' | 'bar' | 'area' | 'pie' | 'donut' | 'scatter' | 'radar'
+export interface LpwChartSeries {
+  name: string
+  data: Array<number | [number, number]> // scatter 用点对，其余用 number
+}
+export interface LpwChartProps {
+  chartType: LpwChartType
+  title?: string
+  categories?: string[] // scatter 不允许出现
+  series: LpwChartSeries[]
+  xLabel?: string
+  yLabel?: string
+  stacked?: boolean // 仅 bar / area
+  legend?: boolean
+  height?: number // 160–640，默认 280
+}
+
+// ── 扩充容器块 props ──────────────────────────────────────────
+export interface LpwDetailsProps {
+  summary: string
+  defaultOpen?: boolean
+}
 ```
 
 ### 字段约束总表
@@ -305,6 +382,29 @@ export interface LpwColumnsProps {
 | `tabs.items` | array | ✓ | — | 1–10 项；key `^[a-z0-9][a-z0-9-]{0,31}$`，label ≤ 50 |
 | `tabs.defaultKey` | string | — | `items[0].key` | 必须命中某个 item.key |
 | `columns.ratio` | enum | — | `1:1` | 1:1 / 1:2 / 2:1 / 1:1:1 |
+| `heading.level` | integer | — | `2` | 1 / 2 / 3 |
+| `heading.content` | string | ✓ | — | 1–200，纯文本 |
+| `list.style` | enum | — | `unordered` | ordered / unordered / check |
+| `list.items` | array | ✓ | — | 1–50 项；content ≤ 512（行内 markdown-lite），checked 仅 check 样式 |
+| `quote.content` / `author` / `source` | string | content ✓ | — | 1–2048 / 100 / 200 |
+| `code.language` / `filename` | string | — | 自动推断 | ≤ 32 / 255 |
+| `code.content` | string | ✓ | — | 1–32768 |
+| `code.showLineNumbers` | boolean | — | `false` | — |
+| `code.highlightLines` | number[] | — | `[]` | ≤ 128 项，值 ≥ 1 |
+| `image.src` | string | ✓ | — | ≤ 512；外链须 `https?://`，否则按同会话文件名（logic 校验） |
+| `image.alt` / `caption` / `width` | string | alt ✓ | — | alt 1–200；caption ≤ 200；width ≤ 16 同 table 列宽 |
+| `cards.items` | array | ✓ | — | 1–12 项；title ≤ 100，description ≤ 256，href ≤ 512（logic 校验协议） |
+| `mermaid.content` | string | ✓ | — | 1–8192 |
+| `mermaid.caption` | string | — | — | ≤ 200 |
+| `chart.chartType` | enum | ✓ | — | line / bar / area / pie / donut / scatter / radar |
+| `chart.title` / `xLabel` / `yLabel` | string | — | — | 各 ≤ 100 |
+| `chart.categories` | string[] | — | — | ≤ 100 项，每项 ≤ 32；scatter 禁止出现 |
+| `chart.series` | array | ✓ | — | 1–6 项；name ≤ 64；data ≤ 500 项 |
+| `chart.stacked` | boolean | — | `false` | 仅 bar / area（logic 校验） |
+| `chart.legend` | boolean | — | `true` | — |
+| `chart.height` | integer | — | `280` | 160–640 |
+| `details.summary` | string | ✓ | — | 1–200 |
+| `details.defaultOpen` | boolean | — | `false` | — |
 
 ### 结构约束与规则
 
@@ -315,9 +415,12 @@ export interface LpwColumnsProps {
 5. **递归深度（`depth`）**：顶层块 depth = 1，容器每层 +1，最大 3；渲染器同样强制，超限截断并渲染深度超限错误卡片；
 6. **tabs 索引对齐**：`children` 数量必须等于 `items` 数量，按索引一一对应；`defaultKey` 必须命中某个 `items[].key`；
 7. **columns 数量对齐**：`children` 数量必须等于 ratio 的列数（`1:1:1` 为 3，其余为 2）；
-8. **资源上限**：全文档块数（含子孙）≤ 500；序列化字节 ≤ 256 KiB。
+8. **资源上限**：全文档块数（含子孙）≤ 500；序列化字节 ≤ 256 KiB；
+9. **chart 数据对齐**：line / bar / area / radar 要求每个 `series.data` 长度等于 `categories` 长度且项为 number；pie / donut 要求 `series` 恰好 1 个且与 `categories` 对齐；scatter 要求 `series.data` 每项为二元点对且禁止出现 `categories`；`stacked` 仅在 bar / area 合法；
+10. **image / cards 链接安全**：`image.src` 与 `cards.items[].href` 含 `://` 时必须以 `https://` 或 `http://` 开头，否则按同会话文件名校验合法字符（禁止 `javascript:`、`data:` 等协议）；
+11. **容器类型集合**：允许携带 `children` 的类型固定为 `section`、`tabs`、`columns`、`details` 四种。
 
-规则 5–8 属跨字段/递归约束，JSON Schema 表达成本高且报错路径差，由后端 logic 走查强制（见 §PreviewLpwLogic）。
+规则 5–10 属跨字段/递归约束，JSON Schema 表达成本高且报错路径差，由后端 logic 走查强制（见 §PreviewLpwLogic）。
 
 ### `resources/lpw/schema/v1.json`（唯一维护源，前后端同源消费）
 
@@ -355,9 +458,19 @@ export interface LpwColumnsProps {
         { "$ref": "#/$defs/timelineBlock" },
         { "$ref": "#/$defs/diffBlock" },
         { "$ref": "#/$defs/tableBlock" },
+        { "$ref": "#/$defs/headingBlock" },
+        { "$ref": "#/$defs/listBlock" },
+        { "$ref": "#/$defs/quoteBlock" },
+        { "$ref": "#/$defs/codeBlock" },
+        { "$ref": "#/$defs/imageBlock" },
+        { "$ref": "#/$defs/dividerBlock" },
+        { "$ref": "#/$defs/cardsBlock" },
+        { "$ref": "#/$defs/mermaidBlock" },
+        { "$ref": "#/$defs/chartBlock" },
         { "$ref": "#/$defs/sectionBlock" },
         { "$ref": "#/$defs/tabsBlock" },
-        { "$ref": "#/$defs/columnsBlock" }
+        { "$ref": "#/$defs/columnsBlock" },
+        { "$ref": "#/$defs/detailsBlock" }
       ]
     },
     "markdownBlock": {
@@ -562,6 +675,192 @@ export interface LpwColumnsProps {
         },
         "children": { "type": "array", "items": { "$ref": "#/$defs/block" } }
       }
+    },
+    "headingBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "heading" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": {
+            "level": { "enum": [1, 2, 3], "default": 2 },
+            "content": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        }
+      }
+    },
+    "listBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "list" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "style": { "enum": ["ordered", "unordered", "check"], "default": "unordered" },
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 50,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["content"],
+                "properties": {
+                  "content": { "type": "string", "minLength": 1, "maxLength": 512 },
+                  "checked": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "quoteBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "quote" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": {
+            "content": { "type": "string", "minLength": 1, "maxLength": 2048 },
+            "author": { "type": "string", "maxLength": 100 },
+            "source": { "type": "string", "maxLength": 200 }
+          }
+        }
+      }
+    },
+    "codeBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "code" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": {
+            "language": { "type": "string", "maxLength": 32 },
+            "filename": { "type": "string", "maxLength": 255 },
+            "content": { "type": "string", "minLength": 1, "maxLength": 32768 },
+            "showLineNumbers": { "type": "boolean", "default": false },
+            "highlightLines": { "type": "array", "maxItems": 128, "items": { "type": "integer", "minimum": 1 } }
+          }
+        }
+      }
+    },
+    "imageBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "image" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["src", "alt"],
+          "properties": {
+            "src": { "type": "string", "minLength": 1, "maxLength": 512 },
+            "alt": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "caption": { "type": "string", "maxLength": 200 },
+            "width": { "type": "string", "maxLength": 16, "pattern": "^(auto|[0-9]{1,4}(px|%)?)$" }
+          }
+        }
+      }
+    },
+    "dividerBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "divider" },
+        "props": { "type": "object", "additionalProperties": false, "properties": {} }
+      }
+    },
+    "cardsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "cards" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array", "minItems": 1, "maxItems": 12,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "description": { "type": "string", "maxLength": 256 },
+                  "href": { "type": "string", "maxLength": 512 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "mermaidBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "mermaid" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["content"],
+          "properties": {
+            "content": { "type": "string", "minLength": 1, "maxLength": 8192 },
+            "caption": { "type": "string", "maxLength": 200 }
+          }
+        }
+      }
+    },
+    "chartBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "chart" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["chartType", "series"],
+          "properties": {
+            "chartType": { "enum": ["line", "bar", "area", "pie", "donut", "scatter", "radar"] },
+            "title": { "type": "string", "maxLength": 100 },
+            "xLabel": { "type": "string", "maxLength": 100 },
+            "yLabel": { "type": "string", "maxLength": 100 },
+            "categories": {
+              "type": "array", "maxItems": 100,
+              "items": { "type": "string", "minLength": 1, "maxLength": 32 }
+            },
+            "series": {
+              "type": "array", "minItems": 1, "maxItems": 6,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["name", "data"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+                  "data": {
+                    "type": "array", "minItems": 1, "maxItems": 500,
+                    "items": {
+                      "oneOf": [
+                        { "type": "number" },
+                        { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "stacked": { "type": "boolean", "default": false },
+            "legend": { "type": "boolean", "default": true },
+            "height": { "type": "integer", "minimum": 160, "maximum": 640, "default": 280 }
+          }
+        }
+      }
+    },
+    "detailsBlock": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": { "const": "details" },
+        "props": {
+          "type": "object", "additionalProperties": false, "required": ["summary"],
+          "properties": {
+            "summary": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "defaultOpen": { "type": "boolean", "default": false }
+          }
+        },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+      }
     }
   }
 }
@@ -725,7 +1024,7 @@ lock(sessionID:filename)                  // 进程内互斥，defer unlock
 | `findBlockList(doc, id)` | DFS 定位块所在兄弟切片与下标，返回父链深度 |
 | `collectBlockIDs(doc)` | 全文档 id 集合与总块数（含子孙），查重 |
 | `subtreeDepth(block)` | 子树最大深度 |
-| `insertBlock(doc, parentID, position, block)` | parentID 为空挂顶层；校验 parent ∈ {section, tabs, columns} 且合并后深度 ≤ 3 |
+| `insertBlock(doc, parentID, position, block)` | parentID 为空挂顶层；校验 parent ∈ {section, tabs, columns, details} 且合并后深度 ≤ 3 |
 | `removeBlocks(doc, ids)` | 先整体定位全部 id（任一不存在即失败），再一次移除 |
 | `reorderSiblings(doc, parentID, order)` | 校验 order 为该父容器子块 id 的完整排列（集合相等且无重复）后重排 |
 | `patchProps / replaceBlock` | 浅合并 / 整节点替换（含子树） |
@@ -971,18 +1270,28 @@ web/src/components/preview/lpw/
 ├── fallback-block.tsx        # 未知类型 / 超深 / 异常占位卡片
 ├── document-viewer.tsx       # 文档壳：meta 头 + blocks 列表 + 文档级错误 + 空态
 ├── viewers.tsx               # PreviewLpwViewer（工作台/展示态）+ PreviewLpwInlineViewer（Q&A）
-├── blocks/                   # 7 种内容块
+├── blocks/                   # 16 种内容块
 │   ├── markdown-block.tsx
 │   ├── callout-block.tsx
+│   ├── heading-block.tsx
+│   ├── list-block.tsx
+│   ├── quote-block.tsx
+│   ├── code-block.tsx
+│   ├── image-block.tsx
+│   ├── divider-block.tsx
+│   ├── cards-block.tsx
 │   ├── metrics-block.tsx
 │   ├── steps-block.tsx
 │   ├── timeline-block.tsx
 │   ├── diff-block.tsx
-│   └── table-block.tsx
-├── containers/               # 3 种容器块
+│   ├── table-block.tsx
+│   ├── mermaid-block.tsx
+│   └── chart-block.tsx
+├── containers/               # 4 种容器块
 │   ├── section-container.tsx
 │   ├── tabs-container.tsx
-│   └── columns-container.tsx
+│   ├── columns-container.tsx
+│   └── details-container.tsx
 └── index.ts                  # 统一导出 + registerAll()
 ```
 
@@ -1146,7 +1455,7 @@ export function PreviewLpwInlineViewer({ src, filename }: { src: string; filenam
 
 ## Dedicated Component Library (v1 Specs)
 
-props 契约见 §Document Specification；本节定义渲染实现。全局约束：只消费 `@lumina/components` 原语与 `theme.css` 语义 token，全平直角（无 rounded 类）、不新增自定义 CSS 文件；本地交互一律 `useState`，无网络副作用。
+20 个类型（16 内容块 + 4 容器块）的 props 契约见 §Document Specification；本节定义渲染实现。全局约束：只消费 `@lumina/components` 原语与 `theme.css` 语义 token，全平直角（无 rounded 类）、不新增自定义 CSS 文件；本地交互一律 `useState`，无网络副作用。
 
 ### `markdown`（`blocks/markdown-block.tsx`）
 
@@ -1191,6 +1500,59 @@ props 契约见 §Document Specification；本节定义渲染实现。全局约�
 - 单元格：boolean → `是 / —`，null → `—`，string 长度由 Schema 上限兜底不做截断；
 - 边界：`data` 为空渲染单行「暂无数据」，列头保留。
 
+### `heading`
+
+- 结构：按 `level`（默认 2）渲染 `h1/h2/h3`，`id={blockId}` 锚点；正文 `text-sea-ink`，层级字号对齐 `proseArticle` 的标题尺度；
+- 用途：无需 section 包裹的轻量结构；文档壳的 TOC（如后续引入）同时收集 `heading` 与 `section.title`；
+- 边界：`content` 为纯文本，不渲染 markdown（需要富文本时用 markdown 块的 `#` 语法）。
+
+### `list`
+
+- 结构：`ordered` → `<ol>` 数字序；`unordered` → `<ul>` 圆点；`check` → `<ul>` + 只读勾选框（`aria-checked`，不提供交互——状态属于文件不属于读者）；
+- item `content` 用 `markdown-lite` 行内渲染（加粗/行内代码可用）；
+- 边界：`checked` 在非 check 样式下由 Schema 允许但渲染忽略。
+
+### `quote`
+
+- 结构：`blockquote` 左侧 2px `border-lagoon` + 浅底；`content` 用 `markdown-lite` 渲染；`author` / `source` 存在时渲染 footer（`— author · source`）；
+- 边界：无署名时省略 footer。
+
+### `code`
+
+- 结构：顶栏 = filename（等宽小字）+ language `Badge`；正文复用 web 端 CodeMirror 只读视图（与源码检查态同视觉、同依赖）；
+- `showLineNumbers` 开行号槽；`highlightLines` 用 CodeMirror 行装饰渲染 `bg-sand` 行高亮；
+- 边界：language 未知时按纯文本高亮；`highlightLines` 越界行号忽略（不报错，渲染期防御）。
+
+### `image`
+
+- 结构：`<figure>` + `<img>` + 可选 `<figcaption>`；`width` 透传 `style.width`；
+- `src` 解析：同会话文件名（如 `logo.svg`）交给浏览器相对解析——`.lpw` 的 URL 基准即 `/preview/:hash/` 或 `/pages/:project/:slug/`，天然命中同会话文件；`https?://` 外链直接使用；其余协议在 logic 层已拒绝；
+- 边界：加载失败渲染占位卡（alt + 文件名），不留破图。
+
+### `divider`
+
+- 结构：`<hr class="my-6 border-line">`；无 props；
+- 用途：章节之间的呼吸分隔，与 section 标题不叠加使用。
+
+### `cards`
+
+- 结构：`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`；每项 `border border-line bg-surface p-4`，title semibold + description 弱化；
+- `href` 存在时整卡包 `<a>`，复用 fenced `Card` 的 `sanitizeHref` 模式（拒绝 `javascript:` / `data:` / `vbscript:`，双保险：logic 已校验协议）；
+- 边界：description 缺省时单行卡片。
+
+### `mermaid`
+
+- 结构：`content` 交给 `@lumina/components/markdown` 的 mermaid 渲染链路（与 Markdown 块内的 mermaid 代码围栏同一实现，securityLevel 沿用现有配置）；可选 caption 渲染为 figcaption；
+- 边界：语法错误时 mermaid 抛错 → 被 `BlockErrorBoundary` 捕获为可见错误卡（含解析失败信息），不影响其余块。
+
+### `chart`
+
+- 依赖：新增 `recharts`（仅 `web` 端）；客户端渲染（图表块标记 client，避免 SSR 下 ResponsiveContainer 依赖 window）——高度用固定像素 `height ?? 280`，不用百分比容器；
+- 类型映射：line → `LineChart`、bar → `BarChart`、area → `AreaChart`、pie / donut → `PieChart`（donut 设 `innerRadius`）、scatter → `ScatterChart`、radar → `RadarChart`；
+- 数据绑定：类目图按 `categories` + `series[].data` 逐点对齐；scatter 各 series 独立 ` Scatter data={points}`；
+- 视觉：调色板固定为静烛语义色序列（`--lagoon` / `--kicker` / `--palm` / `--sea-ink` / `--sand-deep` 循环取色）；轴标签 `xLabel` / `yLabel`；`legend` 默认开；`stacked` 仅 bar / area（服务端已拦，前端直接透传）；
+- 边界：数据全为空点时渲染空态卡；不做缩放/刷选等高级交互（v1 明确不做）。
+
 ### `section`（容器）
 
 - 结构：`<section id={blockId}>` + `h2` 标题 + 内容区；
@@ -1207,6 +1569,12 @@ props 契约见 §Document Specification；本节定义渲染实现。全局约�
 
 - 结构：`grid gap-4 grid-cols-1 md:<ratio>`；ratio 映射：`1:1 → md:grid-cols-2`、`1:2 → md:grid-cols-[1fr_2fr]`、`2:1 → md:grid-cols-[2fr_1fr]`、`1:1:1 → md:grid-cols-3`；移动端单列；
 - 对齐：children 数 = ratio 列数（服务端强制），多余槽位不存在。
+
+### `details`（容器）
+
+- 结构：原生 `<details open={defaultOpen ?? false}><summary>{summary}</summary>` + 内容区，零 JS 免状态管理；
+- 语义：与 section 的区别——section 是章节（常驻、可锚点），details 是「默认收起的补充材料」（附录、长表格、原始数据）；
+- 子块：`renderChildren(childrenBlocks, depth)`，深度计入容器层级。
 
 ## Integration Points
 
@@ -1275,12 +1643,12 @@ function isRenderable(filename: string) {
 
 ## Implementation Roadmap & PR Plan
 
-项目落地划分为 4 个连续 PR：
+项目落地划分为 5 个连续 PR：
 
 ```mermaid
 flowchart LR
-  PR1["PR 1: 映射引擎核心与路由分流"] --> PR2["PR 2: 7 种基础内容专用组件"]
-  PR2 --> PR3["PR 3: 3 种容器组件与本地交互"]
+  PR1["PR 1: 映射引擎核心与路由分流"] --> PR2["PR 2: 16 种内容专用组件"]
+  PR2 --> PR3["PR 3: 4 种容器组件与本地交互"]
   PR3 --> PR4["PR 4: 后端校验、MCP 入口、Pages 直切与 Q&A 嵌入"]
   PR4 --> PR5["PR 5: preview_lpw_* 分块写入工具族"]
 ```
@@ -1289,12 +1657,12 @@ flowchart LR
   - 新增 `web/src/components/preview/lpw/` 核心：`types.ts`, `lpw-parser.ts`, `lpw-registry.ts`, `lpw-block-renderer.tsx`, `block-error-boundary.tsx`, `fallback-block.tsx`, `document-viewer.tsx`, `viewers.tsx`, `index.ts`；
   - 调整 `web/src/lib/preview-file.ts` 与 `web/src/components/preview/file-viewer.tsx` 支持 `'lpw'`；
   - 交付基础空壳与 Fallback 占位。
-- **PR 2：7 种基础内容专用组件**
-  - 实现 Markdown, Callout, Metrics, Steps, Timeline, Diff, Table 组件；
+- **PR 2：16 种内容专用组件**
+  - 实现 Markdown, Callout, Heading, List, Quote, Code, Image, Divider, Cards, Metrics, Steps, Timeline, Diff, Table, Mermaid, Chart 组件；
   - 注册至 `lpwRegistry`，补齐单测与样例；
-  - 新增依赖 `react-diff-viewer-continued`（仅 `web` 端）。
-- **PR 3：3 种容器组件与本地交互**
-  - 实现 Section, Tabs, Columns 容器块；
+  - 新增依赖 `react-diff-viewer-continued` 与 `recharts`（均仅 `web` 端）。
+- **PR 3：4 种容器组件与本地交互**
+  - 实现 Section, Tabs, Columns, Details 容器块；
   - 支持 `depth` 递归限制与本地标签/折叠状态；
   - 交付典型 LPW 长文样例。
 - **PR 4：后端校验、MCP 入口、Pages 直切与 Q&A 嵌入**
@@ -1316,7 +1684,7 @@ flowchart LR
    - `lpw-registry.test.ts`：验证组件注册、重复注册覆盖、未注册类型查询；
    - `block-error-boundary.test.tsx`：模拟组件内部 `throw new Error()`，断言页面呈现错误卡片且文档其他块正常渲染。
 2. **场景用例回归**：
-   - 构造包含 10 种块的完整 `.lpw` 文档，在 Preview 工作台（`/preview/:session_hash/:filename`）与 Pages 展示态（晋升快照后的 `/pages/:project/:slug/:filename`）验证渲染一致性；
+   - 构造包含 20 种块的完整 `.lpw` 文档，在 Preview 工作台（`/preview/:session_hash/:filename`）与 Pages 展示态（晋升快照后的 `/pages/:project/:slug/:filename`）验证渲染一致性；
    - 在 Q&A 交互中推送包含 `.lpw` 引用的 supplement，验证原生内嵌展示正常；
    - 上传超限文档（>256KB 或深度 >3），验证错误提示明晰可见。
 3. **分块写入工具族**：
@@ -1324,7 +1692,9 @@ flowchart LR
    - MCP 注册测试：7 个工具名称、inputSchema 与 outputSchema 字段齐全；
    - 场景回归：分块构建 ≥ 30 块长文，每步核对 `preview_sync` 上屏与 `preview_lpw_outline` 一致；中途执行 remove 与 sort 后终核渲染无丢块、无孤儿 id。
 4. **专用组件渲染测试**（Vitest + Testing Library，`web/` 端）：
-   - 每类型渲染用例：正常 props、可选字段缺省、默认值应用（callout level、table align、tabs defaultKey、diff splitView）；
-   - 容器契约：depth 传递、tabs 缺槽占位、columns 比例类名、renderChildren 递归；
+   - 每类型渲染用例：正常 props、可选字段缺省、默认值应用（callout level、table align、tabs defaultKey、diff splitView、heading level、list style、chart height/legend）；
+   - 容器契约：depth 传递、tabs 缺槽占位、columns 比例类名、details 原生开合、renderChildren 递归；
+   - 图表专项：7 种 chartType 各一例；chart 数据对齐负例（长度不匹配、pie 多 series、scatter 带 categories）在 logic 层拒绝；mermaid 语法错误渲染为可见错误卡；
+   - 链接与媒体：image 同会话相对解析与外链直用、cards href 协议过滤、image 加载失败占位；
    - `registerAll()` 与 v1 Schema 分支数对齐测试：Schema 新增类型而未注册组件时失败；
    - fallback / error-boundary：未注册类型、组件抛错 → 卡片可见且文档其余块正常渲染。
