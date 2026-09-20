@@ -36,7 +36,8 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 - **自建映射分发引擎**：在 `web/src/components/preview/lpw/` 下实现解析器、注册表、块级分发器与错误边界；
 - **全量专用组件库（首期 10 种）**：交付 Markdown、Callout、Metrics、Steps、Timeline、Diff、Table 7 种内容块，以及 Section、Tabs、Columns 3 种容器块；
 - **严格错误可见性**：单个块渲染崩溃时，就地展示包含块 ID、类型与错误原因的内嵌诊断卡片，不阻断整篇文档；
-- **多端渲染一致性**：Preview 工作台（`/preview/:session_hash/:filename`，登录态）、Pages 展示态（`/pages/:project_name/:slug/:filename`，`.lpw` 随晋升进入不可变快照并纳入页面直切区）、Q&A 交互引用均经同一 React 直渲管线接入 LPW 渲染器。
+- **多端渲染一致性**：Preview 工作台（`/preview/:session_hash/:filename`，登录态）、Pages 展示态（`/pages/:project_name/:slug/:filename`，`.lpw` 随晋升进入不可变快照并纳入页面直切区）、Q&A 交互引用均经同一 React 直渲管线接入 LPW 渲染器；
+- **分块写入与渐进构建**：`preview_lpw_*` 工具族支持 add / edit / remove / sort 单块操作，模型可逐块构建长文档，每次写入即时校验并经 `preview_sync` 实时上屏，替代一次性全量生成大 JSON。
 
 ### Non-Goals
 
@@ -44,7 +45,9 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 - **无动态绑定与远程数据源**：禁止引入 `$state` 表达式计算、双向数据绑定或动态拉取外部 API；
 - **无业务提交与表单回传**：交互严格限于本地（标签切换、表格排序、折叠展开、代码复制），不产生业务回调；
 - **不上调文件体积上限**：沿用单文件 `256 * 1024` 字节（256 KiB）限制；
-- **首版不引入 json-render**：按照调研 0003 结论保留为候选，v1 纯自建。
+- **首版不引入 json-render**：按照调研 0003 结论保留为候选，v1 纯自建；
+- **非流式 token 级渲染协议**：渐进构建由「块级写入 + `preview_sync` 广播 + React 直渲」承担，不引入 A2UI / SpecStream 类增量流式消息协议；
+- **不做多 Agent 并发编辑协同**：单会话假定单一写入者，跨调用竞争用 revision 回显与重试兜底，不建协同锁协议。
 
 ## Key Decisions
 
@@ -58,6 +61,7 @@ Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对
 | 6 | **Q&A 预览引用根据文件类型动态分流**：HTML/SVG 走 iframe，LPW 走 React 原生渲染。 | 解决 Q&A 内嵌展示 LPW 时的格式错位问题。 |
 | 7 | **单文件大小维持 256 KiB**，块数量软上限 500。 | 契合既有 Preview 基础设施配额，单文档足够承载中长篇方案。 |
 | 8 | **React 直渲优先**：`.lpw` 与 Markdown 同级进入 `PreviewFileViewer` 的 React 直渲分支，禁止「转 HTML 进 iframe」作为主交付路径。 | 落实 ADR-0008 第 8 条；直渲管线已被 `.md` 验证，直接复用 `@lumina/components` 主题与排版，并保留组件级状态、错误边界与可测试性。 |
+| 9 | **MCP 写入以块为最小单位**：`preview_lpw_*` 工具族单调用操作单个块子树；文件级 `preview_file_upload` 保留为整体覆写与修复通道。 | 长文档一次性生成大 JSON 精度随长度劣化、单点错误需整篇重写；分块写入让校验错误局部化、重试成本降为单块，并借 `preview_sync` 实现文档渐进生长。 |
 
 ## System Architecture & Data Flow
 
@@ -237,6 +241,127 @@ func inferMimeType(filename string) string {
 ```
 
 配套调整：`previewWriteWorkflow` 的状态文案与指引需把「HTML 入口」泛化为「可评审入口」；Pages 侧 `pages_promote` 生成的 `PageVersion.EntryFilename` 同样允许 `.lpw`。`internal/mcp/preview_schemas.go` 中 `entry_file` 字段描述一并更新，禁止残留「仅 HTML」语义。
+
+## Chunked Writing MCP Tool Family (`preview_lpw_*`)
+
+### 动机：放弃一次性全量写入
+
+长文档要求模型在单次工具调用里输出整份 JSON：输出 token 越长结构错误率越高、一处参数错误需要整篇重写、接近 256 KiB 上限的大 JSON 模型也难以自查。分块写入把单次调用负载限制在一个块子树——错误局部化到块、单块重试成本极低、每次写入即时返回该块的校验结果。
+
+### 工具清单
+
+| 工具 | 输入（关键字段） | 语义 |
+| --- | --- | --- |
+| `preview_lpw_init` | `session_id`, `filename`（默认 `index.lpw`）, `meta`, `blocks?` | 创建文档骨架（`version` + `meta`，空或初始 blocks）；同名 `.lpw` 已存在时整体重置 |
+| `preview_lpw_block_add` | `session_id`, `filename`, `block`（含 `id`/`type`/`props`/`children?`）, `parent_id?`, `position?` | 插入单个块子树；`parent_id` 缺省为顶层，`position` 缺省为父容器末尾 |
+| `preview_lpw_block_edit` | `session_id`, `filename`, `block_id`, 二选一：`props`（patch）/ `block`（replace） | patch 对现有块浅合并 props、不触碰 children；replace 整节点替换（含子树） |
+| `preview_lpw_block_remove` | `session_id`, `filename`, `block_ids: string[]` | 删除一个或多个块及其子树；任一 id 不存在则整体拒绝 |
+| `preview_lpw_block_sort` | `session_id`, `filename`, `parent_id?`, `order: string[]` | 重排同一父容器下的兄弟块；`order` 必须是该父容器当前子块 id 的完整排列 |
+| `preview_lpw_meta_set` | `session_id`, `filename`, `meta`（patch） | 浅合并更新文档 meta（title / description / tags 等） |
+| `preview_lpw_outline` | `session_id`, `filename` | 返回紧凑块索引（id / type / 深度 / 子块数 / props 体积），不含 props 全文 |
+
+设计取舍：`block_add` 刻意只接受**单个块**。批量接口会诱使模型重新拼大 JSON，与精度目标相悖；需要连续多块时由调用方多次调用，每次独立校验与广播。跨容器移动显式拆为 `remove` + `add`（同 id 复用），不提供隐式 move 语义。
+
+### 块定位与子树语义
+
+- 块 `id` 全局唯一（文档规范第 2 条），工具按 id 寻址任意深度的块，不限于顶层；
+- `add` 的挂载目标 `parent_id` 必须是已注册容器类型，且合并后深度 ≤ 3，否则拒绝；
+- `remove` / `replace` 连同子树一起生效；`props` patch 不触碰 children；
+- `sort` 只在同一父容器内重排；`order` 缺一个、多一个或含外来 id 都拒绝。
+
+### 原子性、并发与校验分层
+
+- 每次工具调用在内存中完成「读取当前文档 → 应用操作 → 校验合并结果 → 单次落库」，任一步失败不写库。天然满足 ADR-0008 第 6 条「上传失败不得覆盖已有有效文件」；块工具落库复用 `UploadFile` 路径，`preview_sync` 广播、大小上限、MIME 语义全部继承；
+- logic 层按 `(session_id, filename)` 加进程内互斥锁串行化读改写；响应回显 `revision`（取文件 `updated_at`）。检测到并发交错（revision 不匹配）时返回冲突错误，指引先 `preview_lpw_outline` 重读再重试。多实例部署的分布式锁不在 v1 范围；
+- 校验分层：`init` 校验文档骨架（version / meta / blocks 形状）；块操作先按该块 `type` 的参数 Schema 校验**整个块子树**（错误定位到块内 JSON 路径），再检查合并后资源上限（块数 ≤ 500、总字节 ≤ 256 KiB、深度 ≤ 3）；
+- LPW Schema 唯一维护源为版本化 JSON Schema 文件（v1 落在 `resources/lpw/`，`go:embed` 内嵌），后端校验与前端渲染消费同一份，保证两端判断一致（对齐 ADR-0008 后果条款）；
+- Pages 快照不可变：块工具只作用于 Preview 会话文件；已晋升内容需修改时先 Fork 回会话。
+
+### 渐进构建：块级写入 × preview_sync × React 直渲
+
+```mermaid
+sequenceDiagram
+  participant Agent as MCP Agent
+  participant Tool as preview_lpw_block_add
+  participant Logic as PreviewLpwLogic
+  participant Store as PreviewFile
+  participant WS as preview_sync
+  participant UI as 工作台 / Pages 直渲
+
+  loop 每个块一次调用
+    Agent->>Tool: block(id, type, props)
+    Tool->>Logic: 应用 + 校验（互斥）
+    Logic->>Store: 合并后整文档单次覆写
+    Store-->>WS: OnPreviewChanged(upload)
+    WS-->>UI: 文档实时生长一块
+    Tool-->>Agent: ok(block_id, total_blocks, size, revision)
+  end
+```
+
+### 推荐工作流（精度模式指引）
+
+1. `preview_lpw_init` 建骨架：meta 先行，`blocks` 留空；
+2. 按阅读顺序逐块 `preview_lpw_block_add`，单块建议 `content` ≤ 4 KiB、children 深度 ≤ 2；
+3. 长文写作中途用 `preview_lpw_outline` 重新定向（只看索引，节省上下文）；
+4. 修正用 `block_edit`（patch 优先），删除用 `block_remove`，重排用 `block_sort`；
+5. 收尾照旧 `preview_file_list` 终核，再交付 `preview_url` 或挂 Q&A。
+
+`.agents/skills/lumina-preview` 技能文档随本工具族的 PR 更新该指引。
+
+### 示例：逐块追加与重排
+
+`preview_lpw_block_add` 请求（顶层追加一个 metrics 块）：
+
+```json
+{
+  "session_id": "123",
+  "filename": "index.lpw",
+  "block": {
+    "id": "metric-latency",
+    "type": "metrics",
+    "props": {
+      "items": [
+        { "label": "P99 延迟", "value": "42ms", "trend": "down" },
+        { "label": "吞吐", "value": "12k QPS", "trend": "up" }
+      ]
+    }
+  }
+}
+```
+
+响应（节选，复用 `previewSessionSnapshot` 结构）：
+
+```json
+{
+  "status": "success",
+  "block_id": "metric-latency",
+  "total_blocks": 7,
+  "file_size": 9216,
+  "revision": "2026-09-20T10:00:00Z",
+  "workflow": { "state": "reviewable_unverified", "next_tool": "preview_lpw_block_add" }
+}
+```
+
+`preview_lpw_block_sort` 请求（顶层把结论段提到指标段之前）：
+
+```json
+{
+  "session_id": "123",
+  "filename": "index.lpw",
+  "order": ["intro", "conclusion", "metric-latency", "risks"]
+}
+```
+
+### 错误语义（对齐 ADR-0008 第 6 条）
+
+| 场景 | 行为 |
+| --- | --- |
+| 目标文件不是 `.lpw` / JSON 损坏 | 拒绝并指路：`preview_lpw_init` 重置，或 `preview_file_upload` 整体修复 |
+| `block_id` / `parent_id` 不存在、新增 id 与现有重复 | 拒绝，附现有 id 摘要 |
+| 类型未注册 / props 违反该类型 Schema | 拒绝，错误定位到块内 JSON 路径 |
+| 合并后超块数 / 字节 / 深度上限 | 整体拒绝，不部分应用 |
+| `order` 非当前子块完整排列 | 拒绝，附当前顺序 |
+| revision 冲突 | 返回冲突错误 + 当前 revision，指引重读 outline 后重试 |
 
 ## Frontend Mapping Engine Design
 
@@ -459,7 +584,8 @@ function isRenderable(filename: string) {
 flowchart LR
   PR1["PR 1: 映射引擎核心与路由分流"] --> PR2["PR 2: 7 种基础内容专用组件"]
   PR2 --> PR3["PR 3: 3 种容器组件与本地交互"]
-  PR3 --> PR4["PR 4: 后端校验、MCP 入口与 Q&A 嵌入"]
+  PR3 --> PR4["PR 4: 后端校验、MCP 入口、Pages 直切与 Q&A 嵌入"]
+  PR4 --> PR5["PR 5: preview_lpw_* 分块写入工具族"]
 ```
 
 - **PR 1：映射引擎核心与路由分流**
@@ -478,6 +604,12 @@ flowchart LR
   - 扩展 `internal/mcp/preview_handlers.go` 的 snapshot 入口判定与 `previewWriteWorkflow` 文案，同步 `preview_schemas.go` 描述与 Pages `EntryFilename` 语义；
   - 调整 `web/src/components/pages/showcase-shell.tsx` 的 `isRenderable` 纳入 `.lpw`；
   - 调整 `web/src/components/interact/primitives/preview-frame.tsx` 支持 Q&A 内嵌。
+- **PR 5：`preview_lpw_*` 分块写入工具族**
+  - 新增 `internal/mcp/preview_lpw_tools.go`（7 个工具定义与注册）与 `internal/logic/preview_lpw_logic.go`（块操作引擎：互斥、Schema 校验、合并、单次落库）；
+  - `resources/lpw/` 内嵌 v1 Schema，后端校验与前端渲染同源消费；
+  - MCP 响应复用 `previewSessionSnapshot`，附加块级结果（`block_id`、`total_blocks`、`file_size`、`revision`）；
+  - `preview_schemas.go` 登记新工具 input/outputSchema；
+  - 更新 `.agents/skills/lumina-preview` 技能：LPW 精度模式工作流指引。
 
 ## Verification & Testing Strategy
 
@@ -489,3 +621,7 @@ flowchart LR
    - 构造包含 10 种块的完整 `.lpw` 文档，在 Preview 工作台（`/preview/:session_hash/:filename`）与 Pages 展示态（晋升快照后的 `/pages/:project/:slug/:filename`）验证渲染一致性；
    - 在 Q&A 交互中推送包含 `.lpw` 引用的 supplement，验证原生内嵌展示正常；
    - 上传超限文档（>256KB 或深度 >3），验证错误提示明晰可见。
+3. **分块写入工具族**：
+   - `preview_lpw_logic_test.go`：add / patch / replace / remove / sort 正常路径；id 冲突、未知 id、未知类型、深度/块数/字节超限的原子性（失败后文件字节不变）；互斥锁下的并发读改写不丢更新；
+   - MCP 注册测试：7 个工具名称、inputSchema 与 outputSchema 字段齐全；
+   - 场景回归：分块构建 ≥ 30 块长文，每步核对 `preview_sync` 上屏与 `preview_lpw_outline` 一致；中途执行 remove 与 sort 后终核渲染无丢块、无孤儿 id。
