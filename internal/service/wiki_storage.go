@@ -220,8 +220,8 @@ func (s *WikiStorageService) ReadMarkdown(path string) (string, *xError.Error) {
 // 当文件不含 frontmatter 时，Frontmatter 为 nil，Body 为文件全文。
 type PageContent struct {
 	Frontmatter map[string]interface{} // YAML frontmatter 解析结果（无 frontmatter 时为 nil）
-	Body        string                  // 正文内容（已剥离 frontmatter 块）
-	ModTime     time.Time               // 文件修改时间（来自 os.Stat）
+	Body        string                 // 正文内容（已剥离 frontmatter 块）
+	ModTime     time.Time              // 文件修改时间（来自 os.Stat）
 }
 
 // frontmatterDelimiter 是 YAML frontmatter 块的分隔符

@@ -10,7 +10,7 @@ import (
 )
 
 func TestPagesToolDefinitions(t *testing.T) {
-		wantNames := []string{"pages_list", "pages_promote", "pages_fork"}
+	wantNames := []string{"pages_list", "pages_promote", "pages_fork"}
 	if len(pagesToolDefs) != len(wantNames) {
 		t.Fatalf("pagesToolDefs count = %d, want %d", len(pagesToolDefs), len(wantNames))
 	}

@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/redis/go-redis/v9"
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	xLog "github.com/bamboo-services/bamboo-base-go/common/log"
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	xModels "github.com/bamboo-services/bamboo-base-go/major/models"
+	"github.com/redis/go-redis/v9"
 	apiPreview "github.com/xiaolfeng/Lumina/api/preview"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 	"github.com/xiaolfeng/Lumina/internal/entity"
@@ -453,7 +453,7 @@ func TestNormalizeVersionLabel(t *testing.T) {
 		"latest",
 		"main",
 		"2026-09-16T12:00:00Z", // RFC3339 缓存戳：必须拒绝而非拼成 v2026-...
-		"1757980800000",         // 毫秒时间戳
+		"1757980800000",        // 毫秒时间戳
 		"v1.0",
 		"1",
 		"1.0.0.0",
