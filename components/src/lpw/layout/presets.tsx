@@ -17,6 +17,60 @@ const GAP_MAP = {
   lg: "gap-8",
 };
 
+const COL_SPAN_CLASS: Record<number, string> = {
+  1: "",
+  2: "md:col-span-2",
+  3: "md:col-span-3",
+  4: "md:col-span-4",
+};
+
+const ROW_SPAN_CLASS: Record<number, string> = {
+  1: "",
+  2: "md:row-span-2",
+  3: "md:row-span-3",
+};
+
+const BENTO_COLS_CLASS: Record<number, string> = {
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-3",
+  4: "md:grid-cols-4",
+};
+
+function mobileOrderProps(
+  rawNode: LpwLayoutChild | undefined,
+  placements: LpwLayoutPlacement[],
+  fallback: number,
+): { className: string; style: React.CSSProperties } {
+  const placed = rawNode
+    ? placements.find((p) => p.nodeId === rawNode.id)
+    : undefined;
+  const order = placed?.orderOnMobile ?? fallback;
+  return {
+    className: "max-md:[order:var(--m-order)]",
+    style: { ["--m-order" as string]: String(order) },
+  };
+}
+
+function splitTemplate(
+  strategy: LpwLayoutProps["strategy"],
+): string {
+  if (strategy?.type === "ratio" && strategy.tracks.length > 0) {
+    return strategy.tracks.map((t) => `minmax(0, ${t}fr)`).join(" ");
+  }
+  if (strategy?.type === "fixed-fluid") {
+    const sizeMap: Record<string, string> = {
+      sm: "240px",
+      md: "360px",
+      lg: "480px",
+    };
+    const fixedSize = sizeMap[strategy.size] || strategy.size;
+    return strategy.fixed === "start"
+      ? `${fixedSize} minmax(0, 1fr)`
+      : `minmax(0, 1fr) ${fixedSize}`;
+  }
+  return "minmax(0, 1fr) minmax(0, 1fr)";
+}
+
 export function renderLayoutPreset({
   props,
   rawChildren,
@@ -34,45 +88,24 @@ export function renderLayoutPreset({
 
   switch (pattern) {
     case "split": {
-      let gridColsStyle: React.CSSProperties | undefined;
-      const colsClass = "grid-cols-1 md:grid";
-
-      if (strategy?.type === "ratio" && strategy.tracks.length > 0) {
-        gridColsStyle = {
-          gridTemplateColumns: strategy.tracks
-            .map((t) => `minmax(0, ${t}fr)`)
-            .join(" "),
-        };
-      } else if (strategy?.type === "fixed-fluid") {
-        const sizeMap: Record<string, string> = {
-          sm: "240px",
-          md: "360px",
-          lg: "480px",
-        };
-        const fixedSize = sizeMap[strategy.size] || strategy.size;
-        gridColsStyle = {
-          gridTemplateColumns:
-            strategy.fixed === "start"
-              ? `${fixedSize} minmax(0, 1fr)`
-              : `minmax(0, 1fr) ${fixedSize}`,
-        };
-      } else {
-        gridColsStyle = {
-          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-        };
-      }
-
       if (direction === "vertical") {
         return (
           <div
             data-testid="layout-split"
             className={`grid grid-cols-1 ${gapClass} w-full min-w-0`}
           >
-            {renderedChildren.map((child, idx) => (
-              <div key={idx} className="min-w-0 w-full">
-                {child}
-              </div>
-            ))}
+            {renderedChildren.map((child, idx) => {
+              const order = mobileOrderProps(rawChildren[idx], placements, idx + 1);
+              return (
+                <div
+                  key={idx}
+                  className={`min-w-0 w-full ${order.className}`}
+                  style={order.style}
+                >
+                  {child}
+                </div>
+              );
+            })}
           </div>
         );
       }
@@ -80,14 +113,21 @@ export function renderLayoutPreset({
       return (
         <div
           data-testid="layout-split"
-          className={`grid ${colsClass} ${gapClass} w-full min-w-0`}
-          style={gridColsStyle}
+          className={`grid grid-cols-1 md:[grid-template-columns:var(--layout-cols)] ${gapClass} w-full min-w-0`}
+          style={{ ["--layout-cols" as string]: splitTemplate(strategy) }}
         >
-          {renderedChildren.map((child, idx) => (
-            <div key={idx} className="min-w-0 w-full">
-              {child}
-            </div>
-          ))}
+          {renderedChildren.map((child, idx) => {
+            const order = mobileOrderProps(rawChildren[idx], placements, idx + 1);
+            return (
+              <div
+                key={idx}
+                className={`min-w-0 w-full ${order.className}`}
+                style={order.style}
+              >
+                {child}
+              </div>
+            );
+          })}
         </div>
       );
     }
@@ -102,17 +142,35 @@ export function renderLayoutPreset({
         <div data-testid="layout-alternating" className={`space-y-8`}>
           {pairs.map((pair, pIdx) => {
             const isOddGroup = pIdx % 2 === 1;
-            const items =
-              isOddGroup && alternateFrom === "media"
-                ? [pair[1], pair[0]]
-                : pair;
+            const shouldMirror = isOddGroup && alternateFrom === "media";
 
             return (
               <div
                 key={pIdx}
                 className={`grid grid-cols-1 md:grid-cols-2 ${gapClass} items-center`}
               >
-                {items}
+                {pair.map((child, i) => {
+                  const rawIdx = pIdx * 2 + i;
+                  const order = mobileOrderProps(
+                    rawChildren[rawIdx],
+                    placements,
+                    rawIdx + 1,
+                  );
+                  const mirrorClass = shouldMirror
+                    ? i === 0
+                      ? "md:order-2"
+                      : "md:order-1"
+                    : "";
+                  return (
+                    <div
+                      key={i}
+                      className={`min-w-0 w-full ${mirrorClass} ${order.className}`}
+                      style={order.style}
+                    >
+                      {child}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -132,11 +190,18 @@ export function renderLayoutPreset({
           data-testid="layout-grid"
           className={`grid ${colClass} ${gapClass} w-full min-w-0`}
         >
-          {renderedChildren.map((child, idx) => (
-            <div key={idx} className="min-w-0 w-full">
-              {child}
-            </div>
-          ))}
+          {renderedChildren.map((child, idx) => {
+            const order = mobileOrderProps(rawChildren[idx], placements, idx + 1);
+            return (
+              <div
+                key={idx}
+                className={`min-w-0 w-full ${order.className}`}
+                style={order.style}
+              >
+                {child}
+              </div>
+            );
+          })}
         </div>
       );
     }
@@ -148,14 +213,12 @@ export function renderLayoutPreset({
       }
 
       const totalCols = strategy?.type === "spans" ? strategy.columns : 3;
+      const colsClass = BENTO_COLS_CLASS[totalCols] || "md:grid-cols-3";
 
       return (
         <div
           data-testid="layout-bento"
-          className={`grid grid-cols-1 md:grid ${gapClass} w-full min-w-0`}
-          style={{
-            gridTemplateColumns: `repeat(${totalCols}, minmax(0, 1fr))`,
-          }}
+          className={`grid grid-cols-1 ${colsClass} ${gapClass} w-full min-w-0`}
         >
           {renderedChildren.map((child, idx) => {
             const rawNode = rawChildren[idx];
@@ -163,16 +226,14 @@ export function renderLayoutPreset({
             const p = rawNode ? placementMap.get(rawNode.id) : undefined;
             const colSpan = p?.colSpan ?? 1;
             const rowSpan = p?.rowSpan ?? 1;
+            const order = mobileOrderProps(rawNode, placements, idx + 1);
 
             return (
               <div
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 key={rawNode ? rawNode.id : idx}
-                className="min-w-0 w-full"
-                style={{
-                  gridColumn: `span ${colSpan}`,
-                  gridRow: `span ${rowSpan}`,
-                }}
+                className={`min-w-0 w-full ${COL_SPAN_CLASS[colSpan]} ${ROW_SPAN_CLASS[rowSpan]} ${order.className}`}
+                style={order.style}
               >
                 {child}
               </div>
@@ -210,15 +271,32 @@ export function renderLayoutPreset({
         }
       });
 
+      const colCount = strategy?.type === "columns" ? strategy.count : 3;
+      const colClass =
+        colCount === 2
+          ? "columns-1 md:columns-2"
+          : "columns-1 md:columns-2 lg:columns-3";
+
       return (
         <div data-testid="layout-newspaper" className="space-y-8 font-sans">
           {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
           {leadNode ? (
             <div className="border-b border-line pb-6">{leadNode}</div>
           ) : null}
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-8 [&>*]:break-inside-avoid space-y-6">
-            {bodyNode}
-            {asideNodes}
+          <div
+            data-testid="layout-newspaper-flow"
+            className={`${colClass} gap-8 space-y-6`}
+          >
+            <div data-testid="layout-newspaper-body">{bodyNode}</div>
+            {asideNodes.map((fn, idx) => (
+              <div
+                key={idx}
+                data-testid="layout-newspaper-aside"
+                className="break-inside-avoid"
+              >
+                {fn}
+              </div>
+            ))}
           </div>
           {fullNodes.map((fn, idx) => (
             <div key={idx} className="w-full">
@@ -269,7 +347,6 @@ export function renderLayoutPreset({
       const width = widthMap[wrapStrategy.mediaWidth] || "33.333%";
       const isRight = wrapStrategy.mediaPosition === "top-end";
 
-      // placement 移动端排序
       const imgPlacement = placements.find((p) => p.nodeId === imgId);
       const mdPlacement = placements.find((p) => p.nodeId === mdId);
       const imgOrder = imgPlacement?.orderOnMobile ?? 1;
@@ -280,7 +357,6 @@ export function renderLayoutPreset({
           data-testid="layout-editorial-wrap"
           className="relative my-6 font-sans"
         >
-          {/* 桌面端浮动模式 */}
           <div className="hidden md:block">
             <div
               style={{
@@ -298,7 +374,6 @@ export function renderLayoutPreset({
             <div style={{ clear: "both" }} />
           </div>
 
-          {/* 移动端流式上下堆叠 */}
           <div className="flex flex-col gap-4 md:hidden">
             {imgOrder <= mdOrder ? (
               <>
@@ -324,13 +399,27 @@ export function renderLayoutPreset({
             data-testid="layout-flow"
             className={`flex flex-wrap items-center ${gapClass}`}
           >
-            {renderedChildren}
+            {renderedChildren.map((child, idx) => {
+              const order = mobileOrderProps(rawChildren[idx], placements, idx + 1);
+              return (
+                <div key={idx} className={order.className} style={order.style}>
+                  {child}
+                </div>
+              );
+            })}
           </div>
         );
       }
       return (
         <div data-testid="layout-flow" className="space-y-6">
-          {renderedChildren}
+          {renderedChildren.map((child, idx) => {
+            const order = mobileOrderProps(rawChildren[idx], placements, idx + 1);
+            return (
+              <div key={idx} className={order.className} style={order.style}>
+                {child}
+              </div>
+            );
+          })}
         </div>
       );
     }

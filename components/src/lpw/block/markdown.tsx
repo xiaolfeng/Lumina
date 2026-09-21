@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { Markdown, proseArticle } from "../../markdown";
+import { InvalidPatternNotice } from "../annotation";
 import { useAnnotationContext } from "../annotation-context";
 import { isSafeAnnotationPattern } from "../safe-pattern";
 import type { LpwBlockSlotProps, LpwMarkdownProps } from "../types";
@@ -59,6 +60,8 @@ function highlightText(
   return parts.length > 0 ? parts : text;
 }
 
+const SKIP_HIGHLIGHT_TAGS = new Set(["code", "pre", "a"]);
+
 function recursivelyHighlightNode(
   node: React.ReactNode,
   regex: RegExp,
@@ -73,6 +76,10 @@ function recursivelyHighlightNode(
     );
   }
   if (React.isValidElement(node)) {
+    const tag = typeof node.type === "string" ? node.type : undefined;
+    if (tag && SKIP_HIGHLIGHT_TAGS.has(tag)) {
+      return node;
+    }
     const element = node as React.ReactElement<{ children?: React.ReactNode }>;
     if (element.props.children) {
       return React.cloneElement(element, {
@@ -165,11 +172,16 @@ export const MarkdownBlock: React.FC<LpwBlockSlotProps<LpwMarkdownProps>> = ({
     highlightBgClass,
   ]);
 
+  const patternInvalid = Boolean(
+    target?.pattern && !isSafeAnnotationPattern(target.pattern),
+  );
+
   return (
     <div
       className={`${proseArticle} my-5 font-sans leading-relaxed text-sea-ink min-w-0 max-w-full`}
     >
       <Markdown components={customComponents}>{props.content}</Markdown>
+      {patternInvalid ? <InvalidPatternNotice /> : null}
     </div>
   );
 };

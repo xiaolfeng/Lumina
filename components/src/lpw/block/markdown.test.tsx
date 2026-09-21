@@ -22,4 +22,29 @@ describe('MarkdownBlock', () => {
     const outer = container.firstElementChild
     expect(outer?.className).toContain('max-w-none')
   })
+
+  it('Q-06 划线不进入行内 code 与链接', () => {
+    const { container } = render(
+      <MarkdownBlock
+        nodeId="md-ann"
+        props={{
+          content: '请使用 `Redis` 与 [Redis](https://redis.io) ，以及 Redis 集群。',
+        }}
+        annotation={{
+          kind: 'suggestion',
+          message: '核对缓存方案',
+          targets: [{ field: 'content', pattern: 'Redis' }],
+        }}
+      />,
+    )
+
+    const marks = Array.from(container.querySelectorAll('mark')).map(
+      (el) => el.textContent,
+    )
+    expect(marks).toEqual(['Redis'])
+    const code = container.querySelector('code')
+    expect(code?.querySelector('mark')).toBeNull()
+    const link = container.querySelector('a')
+    expect(link?.querySelector('mark')).toBeNull()
+  })
 })

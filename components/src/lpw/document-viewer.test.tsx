@@ -139,6 +139,54 @@ describe('LpwDocumentViewer', () => {
     expect(seaInkBorders.length).toBe(0)
   })
 
+  it('Q-07 文档壳不叠刊头与页脚装饰文案', () => {
+    const source = JSON.stringify({
+      version: '1.1',
+      meta: { title: '测试文档', author: '筱锋' },
+      content: [],
+    })
+    render(<LpwDocumentViewer source={source} />)
+    expect(screen.getByText('测试文档')).toBeTruthy()
+    expect(screen.getByText('筱锋')).toBeTruthy()
+    expect(screen.queryByText(/LUMINA MONOGRAPH/)).toBeNull()
+    expect(screen.queryByText(/KNOWLEDGE BLUEPRINT/)).toBeNull()
+    expect(screen.queryByText(/ARCHITECTURE PRESS/)).toBeNull()
+    expect(screen.queryByText(/IMPRIMATUR/)).toBeNull()
+  })
+
+  it('Q-04 批注栏在纸张内部，没有视口 fixed FAB 和右上角 label', async () => {
+    const source = JSON.stringify({
+      version: '1.1',
+      meta: { title: '批注纸内' },
+      content: [
+        {
+          id: 'md-1',
+          kind: 'block',
+          type: 'markdown',
+          props: { content: '第一段 Redis 说明。' },
+          annotation: {
+            kind: 'issue',
+            message: '复核缓存',
+            targets: [{ field: 'content', pattern: 'Redis' }],
+          },
+        },
+        {
+          id: 'md-2',
+          kind: 'block',
+          type: 'markdown',
+          props: { content: '第二段补充。' },
+          annotation: { kind: 'note', message: '可再展开' },
+        },
+      ],
+    })
+    const { container } = render(<LpwDocumentViewer source={source} />)
+    const paper = await screen.findByTestId('lpw-paper')
+    expect(paper.querySelector('[data-testid="annotation-gutter"]')).toBeTruthy()
+    expect(container.querySelector('.fixed')).toBeNull()
+    expect(screen.queryByRole('button', { name: /批注：/ })).toBeNull()
+    expect(document.getElementById('frame-md-1')).toBeTruthy()
+  })
+
   it('验收测试：Plan 2 文本块样例全部真实渲染且不再是占位卡', () => {
     const sample = JSON.stringify({
       version: '1.1',
