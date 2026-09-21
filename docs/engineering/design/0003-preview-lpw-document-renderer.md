@@ -5,7 +5,7 @@
 | 项 | 值 |
 | --- | --- |
 | 作者 | Lumina |
-| 日期 | 2026-09-14（2026-09-20 修订：同步 master 后确立 React 直渲优先） |
+| 日期 | 2026-09-14（2026-09-21 修订：基于现有 v1.0 实现补充共享包下沉、文档布局、批注、诊断与 Mermaid 自适应） |
 | 状态 | Draft |
 | 范围词 | 预览 / 文件预览 / `preview`（已登记于 `docs/scope-manage.md`） |
 
@@ -13,60 +13,72 @@
 
 Lumina Preview 当前支持 HTML、Markdown、SVG 与纯文本代码预览。对于复杂技术方案、排版文档与多维指标评审，纯 Markdown 表现力不足（缺乏分栏、指标卡片、Diff 对比与步骤条），而自由 HTML 存在 AI 生成成本高、排版难以统一、脚本安全风险大的问题。
 
-本设计基于 [ADR-0008](../adr/0008-preview-lpw-document-contract.md) 与 [调研 0003](../research/0003-preview-mapping-stack.md) 的结论，定义 `.lpw`（Lumina Preview 文档）文件的端到端渲染架构。核心方案为：**自建极简类型映射分发引擎（`LpwRegistry` + `LpwBlockRenderer` + `BlockErrorBoundary`）**，结合版本化 JSON Schema 约束，驱动专用 React 组件库进行长文排版与本地安全交互。方案具备零外部框架依赖、天然对齐 React 19、块级错误严格可见（绝不静默吞块）的特征，并将 `json-render` 保留为未来跨端/流式场景的演进候选。
+本设计基于 [ADR-0008](../adr/0008-preview-lpw-document-contract.md) 与 [调研 0003](../research/0003-preview-mapping-stack.md) 的结论，定义 `.lpw`（Lumina Preview 文档）文件的端到端渲染架构。现有 v1.0 已实现自建类型映射分发引擎、30 种专用组件、版本化 JSON Schema、分块写入工具族以及 Preview / Pages / Q&A 的 React 直渲接入。本次修订继续演进这条管线：核心实现下沉为 `@lumina/components/lpw`，下一格式版本引入同级的 Layout / Container / Block 三类节点、受控 Container 变体、Block 批注装饰层、结构化诊断与 Mermaid 可读视口，并修正现有排版中过量横线和标题/折叠组件视觉混淆。
 
-**运行环境首选 React 直渲管线（ADR-0008 第 8 条）**：LPW 与 Markdown 同级，经前端统一文件分发在 React 组件树内渲染，不转 HTML、不进沙盒 iframe；Preview 工作台与 Pages 展示态复用同一实现。master 合入的 Pages 架构（[ADR-0007](../adr/0007-preview-pages-separation.md)）已把 `.md` 直渲验证为可行路径，LPW 沿用该管线接入。
+**兼容基线**：`resources/lpw/schema/v1.json` 与 `version: "1.0"` 已是可写入、可快照和可发布的格式。三类节点、Container variant、Layout、Block annotation 和标题 icon 进入新的格式版本，v1.0 继续兼容读取；实现不得在同一个版本号下放宽 `additionalProperties: false` 或改变既有块语义。
 
 ## Background & Motivation
 
-在合并后实现（基线 `789812a`，2026-09-20 同步 master `ec7f904`，合并提交 `7ce1551`）中，Preview/Pages 存在以下既有约束与痛点：
-1. **类型分流缺失**：`web/src/lib/preview-file.ts` 将 `.lpw` 误判为普通 `code` 文件，回退至 CodeMirror 代码高亮，无法渲染结构化文档；
-2. **Q&A iframe 单通道**：`web/src/components/interact/primitives/preview-frame.tsx` 的 `PreviewSupplement` 解析文件详情后统一构造 `/preview/:session_hash/:filename?lumina_frame=1` 交给 iframe，若直接传入 `.lpw` 将导致浏览器下载或展示裸 JSON；
-3. **MCP 入口感知盲区**：入口判定现位于 `internal/mcp/preview_handlers.go` 的 snapshot 构建与 `previewWriteWorkflow`，仅以 HTML 入口（`PreviewMimeHTML`）为可评审语义（`awaiting_html_entry` / `reviewable_unverified`），`.lpw` 无法独立作为会话的主展示入口；Pages 版本的 `EntryFilename` 同样默认 HTML；
-4. **错误边界缺失**：调研 0003 证实社区库 `json-render` 内置的 `ElementErrorBoundary` 在捕获异常后直接返回 `null`，不满足 ADR-0008 要求的「渲染失败必须可见、可定位、绝不丢块」原则。
+现有实现已经完成 v1.0 文件识别、后端 Schema 校验、30 种块、分块写入和三处 React 直渲入口。本轮演进处理以下已验证问题：
+1. **共享边界错误**：LPW 核心位于 `web/src/components/preview/lpw/`，`web-wiki` 与其他宿主无法复用；组件内还直接依赖 ECharts 与 Diff 运行时，需要随核心一起迁入共享包并继续按需加载；
+2. **结构排版能力不足**：`columns` 只能表达四种固定比例，无法声明报纸多栏、图片与正文环绕、图文交错、Bento 焦点拼版、上下分层和受控阅读顺序；
+3. **视觉语义混淆**：`heading`、`section`、`details` 与文档壳重复使用横向边线，折叠入口接近章节标题，长文出现多重黑线并削弱层级；
+4. **错误定位不足**：现有 `BlockErrorBoundary` 只显示 `[type#id] + error.message`，缺少父链、数组索引、组件说明、错误类别、修复提示和安全属性摘要；
+5. **Mermaid 可读性不足**：当前块仅把 Markdown Mermaid 居中包裹，复杂 SVG 没有独立的适应宽度、原始比例、横向导航和全屏查看能力；
+6. **评审批注缺失**：Block 契约无法记录枚举批注，也无法对指定文本字段执行受限正则匹配并显示波浪标识。
 
-本设计旨在补齐上述技术缺口，给出可直接编码落地的完整工程实现方案。
+本设计在既有 v1.0 基线上补齐上述能力，实施前仍以本文和 ADR-0008 的修订内容接受为门槛。
 
 ## Goals & Non-Goals
 
 ### Goals
 
-- **文件与入口闭环**：后端识别 `.lpw` 扩展名与专用 MIME，MCP snapshot 入口判定（`preview_handlers.go`）将 `.lpw` 纳为合法首屏入口；
-- **版本化文档 Schema**：制定 LPW v1 规范，支持声明式元数据（`version`, `meta`）与顺序文档块（`blocks`）；
-- **自建映射分发引擎**：在 `web/src/components/preview/lpw/` 下实现解析器、注册表、块级分发器与错误边界；
-- **全量专用组件库（首期 30 种）**：交付 26 种内容块（Markdown、Callout、Heading、List、Quote、Code、Image、Divider、Cards、Metrics、Steps、Timeline、Diff、Table、Mermaid、Chart、Comparison、Progress、Tree、Takeaway、Glance、Open-Items、Scorecard、Quadrant、Personnel、Gallery），以及 Section、Tabs、Columns、Details 4 种容器块；
-- **图表能力（ECharts）**：`mermaid` 块复用既有 Mermaid 渲染链路覆盖流程图/时序图等示意图；`chart` 块以纯数据驱动 7 种数据图（line / bar / area / pie / donut / scatter / radar），引擎为 ECharts 按需注册 + 懒加载，主题色固定走静烛 token 序列；
-- **严格错误可见性**：单个块渲染崩溃时，就地展示包含块 ID、类型与错误原因的内嵌诊断卡片，不阻断整篇文档；
-- **多端渲染一致性**：Preview 工作台（`/preview/:session_hash/:filename`，登录态）、Pages 展示态（`/pages/:project_name/:slug/:filename`，`.lpw` 随晋升进入不可变快照并纳入页面直切区）、Q&A 交互引用均经同一 React 直渲管线接入 LPW 渲染器；
-- **分块写入与渐进构建**：`preview_lpw_*` 工具族支持 add / edit / remove / sort 单块操作，模型可逐块构建长文档，每次写入即时校验并经 `preview_sync` 实时上屏，替代一次性全量生成大 JSON。
+- **核心能力下沉**：将解析器、注册表、块渲染器、组件、布局、批注、诊断和文档壳迁入 `components/src/lpw/`，通过 `@lumina/components/lpw` 子路径导出；`web/` 仅保留文件获取与宿主接入；
+- **版本化演进**：保持 v1.0 文件读取稳定，以新版本承载三类节点、Container variant、Layout、Block 批注和标题图标；后端 Schema、类型定义、MCP 节点工具与前端注册表同步升级；
+- **严格三层节点模型**：根内容可放 Layout、Container、Block；Layout 只能包含 Container/Block，Container 只能包含受 variant 约束的 Block，Block 永远原子化；
+- **文档布局语言**：提供左右、上下、交错、网格、Bento、报纸多栏和图文环绕等高层构图，同时定义每种模式的槽位数量、直接子节点类型、阅读顺序与移动端退化；
+- **受控 Container**：Section、Panel、Details、Tabs 的每个视觉变体声明可填入的 Block 策略组、数量、顺序和重复规则；
+- **受控异形排版**：支持 image Block 与 markdown Block 组成的方形媒体 + 异形正文环绕，支持多个完整矩形 Container/Block 组成的 Bento 外轮廓；
+- **Block 批注**：每个 Block 可声明枚举批注与受限文本匹配器，由统一装饰层提供 Block 标识、波浪下划线、键盘可达详情与错误降级；
+- **可行动诊断**：错误卡片显示稳定节点路径、错误类别、组件详情、原因、修复提示和遮盖后的属性摘要；
+- **视觉语义重构**：清理无语义粗横线，用标题层级、受控 Lucide 图标、左侧强调边、留白和容器背景区分 `heading`、`section` 与 `details`；
+- **Mermaid 可读视口**：复杂图保持比例并支持适应宽度、原始比例、横向滚动和全屏查看；
+- **多端一致性**：Preview 工作台、Pages 展示态和 Q&A 内嵌继续通过同一 React 直渲核心展示。
 
 ### Non-Goals
 
-- **非任意 React/JSX 序列化**：禁止文件传递自定义 React 组件源码或执行动态脚本；
-- **无动态绑定与远程数据源**：禁止引入 `$state` 表达式计算、双向数据绑定或动态拉取外部 API；
-- **无业务提交与表单回传**：交互严格限于本地（标签切换、表格排序、折叠展开、代码复制），不产生业务回调；
-- **不上调文件体积上限**：沿用单文件 `256 * 1024` 字节（256 KiB）限制；
-- **首版不引入 json-render**：按照调研 0003 结论保留为候选，v1 纯自建；
-- **非流式 token 级渲染协议**：渐进构建由「块级写入 + `preview_sync` 广播 + React 直渲」承担，不引入 A2UI / SpecStream 类增量流式消息协议；
-- **不做任意图表 option 透传**：chart 块只接受纯数据（number / 点对 / 类目），不开放 ECharts 的 option 对象、格式化函数或脚本；图表外观由组件与主题 token 决定；
-- **不嵌外部 iframe / 视频 / 音频**：外部富媒体嵌入带来跨站与隐私面，v1 不提供；示意图与数据图分别由 mermaid / chart 承担；
-- **不做多 Agent 并发编辑协同**：单会话假定单一写入者，跨调用竞争用 revision 回显与重试兜底，不建协同锁协议。
+- **不允许三类节点任意递归**：Layout 不含 Layout，Container 不含 Layout/Container，Block 不含任何 child；
+- **不把 Container 做成万能包装器**：每个 variant 只接受登记的 Block 策略组；
+- **不开放任意布局 CSS**：文件不能传 `className`、自由 `style`、CSS 选择器、绝对坐标、模板列字符串或任意 `grid-area`；
+- **不把任意组件塑造成非矩形**：代码、表格、图表、交互容器等保持矩形盒；真正的正文环绕仅适用于媒体块和可流式正文块；
+- **不让 `layout` 生产内容**：标题、正文、图片、图表和说明继续由子块提供；
+- **不实现桌面出版系统**：不做跨页排版、孤行寡行控制、脚注自动分页、印刷出血和 CMYK；
+- **不支持任意正则执行**：批注匹配器有长度、标志、字段白名单和运行预算；
+- **不更改 v1.0 语义**：新增契约使用新格式版本，旧文档按原规则继续渲染；
+- **不引入业务提交和远程数据源**：LPW 交互仍限于本地阅读行为。
 
 ## Key Decisions
 
 | # | 决定 | 理由 |
 | --- | --- | --- |
-| 1 | **文档数据模型采用顺序块数组 `blocks: LpwBlock[]`**，禁止使用平铺 ID 字典。 | 文档本质上是从上到下的阅读流，数组模型天然契约匹配，无额外转换开销。 |
-| 2 | **映射分发层自建（`LpwRegistry` + `LpwBlockRenderer`）**，不引入外部框架。 | 核心逻辑仅约百行原生 TypeScript，零外部 npm 依赖，完全受控且适配 React 19.2。 |
-| 3 | **块级错误边界独立包裹每个 Block**，遇到 Throw 必须就地渲染可见错误卡片。 | 严格落实 ADR-0008 第 6 条，避免整页白屏，杜绝 `json-render` 返回 `null` 的丢块漏洞。 |
-| 4 | **容器块（Section/Tabs/Columns）递归深度硬上限设为 3**。 | 防范恶意或异常构造的深层递归导致浏览器调用栈溢出（Stack Overflow）。 |
+| 1 | **顺序文档流保持不变**：v1.0 使用 `blocks[]`；next 使用 `content: (Layout | Container | Block)[]`。 | 文档天然从上到下阅读；next 通过 kind 明确职责，同时保留顺序模型。 |
+| 2 | **映射分发层自建（`LpwRegistry` + `LpwNodeRenderer`）**，不引入通用 UI 树框架。 | 三类节点、Container 变体和 Layout 规则需要精确可控的校验与错误语义。 |
+| 3 | **节点级错误边界独立包裹 Layout、Container 与 Block**，遇到 Throw 必须就地显示结构化诊断。 | 避免整页白屏或失败节点静默消失。 |
+| 4 | **next 固定单向层级**：Layout → Container/Block、Container → Block、Block → ∅。 | 让结构、美化整体和原子内容各守职责，消除任意递归组合。 |
 | 5 | **专用组件样式与底层原语 100% 消费 `@lumina/components`**。 | 保证全站视觉语言严格符合「静烛 v1」（全平直角、`--sea-ink`、`--lagoon` 色盘）。 |
 | 6 | **Q&A 预览引用根据文件类型动态分流**：HTML/SVG 走 iframe，LPW 走 React 原生渲染。 | 解决 Q&A 内嵌展示 LPW 时的格式错位问题。 |
-| 7 | **单文件大小维持 256 KiB**，块数量软上限 500。 | 契合既有 Preview 基础设施配额，单文档足够承载中长篇方案。 |
+| 7 | **单文件大小维持 256 KiB，节点总数上限 500**。 | 契合既有 Preview 配额；节点统计包含 Layout、Container 与 Block。 |
 | 8 | **React 直渲优先**：`.lpw` 与 Markdown 同级进入 `PreviewFileViewer` 的 React 直渲分支，禁止「转 HTML 进 iframe」作为主交付路径。 | 落实 ADR-0008 第 8 条；直渲管线已被 `.md` 验证，直接复用 `@lumina/components` 主题与排版，并保留组件级状态、错误边界与可测试性。 |
-| 9 | **MCP 写入以块为最小单位**：`preview_lpw_*` 工具族单调用操作单个块子树；文件级 `preview_file_upload` 保留为整体覆写与修复通道。 | 长文档一次性生成大 JSON 精度随长度劣化、单点错误需整篇重写；分块写入让校验错误局部化、重试成本降为单块，并借 `preview_sync` 实现文档渐进生长。 |
+| 9 | **v1.0 工具继续以 Block 为最小单位；next 写入以 Node 为最小单位**。 | 新格式必须创建 Layout 与 Container；Node 工具按 parent kind 限制 child kind，仍保持局部校验与原子写入。 |
 | 10 | **图表双轨**：示意图走 `mermaid`（复用 `@lumina/components` 既有链路，零新依赖）；数据图走 `chart`，引擎为 **ECharts 按需注册 + 懒加载**——`echarts/core` 只注册所需图表/组件/渲染器，首个 chart 块挂载时动态 `import()`。 | ECharts 对雷达/散点/大规模数据与后续图型扩展（heatmap、箱线）能力更全；按需注册把包体压到所用图表集合，懒加载使其不进首屏 bundle。图表块仍只收纯数据，option 组装全部在组件内完成，文件永远接触不到引擎 option。 |
-| 11 | **专用组件样式强制 Tailwind CSS utility 类为默认实现**：React 宿主与未来可能的 Vue 宿主共用同一 token + utility 体系；禁止组件级 CSS 文件与 CSS-in-JS，动态值（列宽 / 图高 / 进度条）经 `style` 属性注入。 | LPW 组件的视觉契约必须可跨框架复制——utility 类 + `theme.css` CSS 变量在 React/Vue 下行为一致；样式实现绑定框架（CSS-in-JS）会封死 Vue 宿主路线。当前 `web` 已是 Tailwind 4 + 微明 token，零迁移成本。 |
+| 11 | **专用组件样式强制 Tailwind CSS utility 类为默认实现**：共享包统一消费主题 token；动态值仅由受控参数映射到内联 CSS 变量或计算结果。 | 共享实现必须在 Preview、Pages 与 Q&A 中一致；自由 CSS 会破坏版本契约与安全边界。 |
+| 12 | **核心物理归属为 `components/src/lpw/`，导出路径为 `@lumina/components/lpw`**；宿主只保留数据获取与路由接线。 | 避免 `web`、`web-wiki` 和后续宿主复制 LPW 能力；共享包统一承载 ECharts、Diff 与 Markdown 依赖。 |
+| 13 | **v1.0 保持兼容；next 引入三类节点、Container variant、Layout、annotation 与标题图标**。 | 现有 Schema 使用 `additionalProperties: false` 且已经落库/快照；同版本放宽会违反 ADR-0008 的版本承诺。 |
+| 14 | **Layout 采用“模式 + 策略 + 槽位角色”模型；Container 采用“type + variant + Block group”模型**。 | 文档作者声明结构或美化语义，渲染器统一掌握合法组合、阅读顺序和响应式降级。 |
+| 15 | **异形能力拆成两类**：Bento 由多个完整矩形 Container/Block 拼合；Editorial Wrap 只接受 image + markdown 两个直接 Block。 | 任意组件无法稳定成为 L 形；严格组合可保持外壳完整、可访问性和跨端一致性。 |
+| 16 | **批注只属于 Block，文本匹配器只面向 Block 注册项显式暴露的字段**。 | Layout/Container 不生产正文；统一装饰层避免 26 个 Block 重复实现批注。 |
+| 17 | **错误诊断携带索引路径与 ID 父链，生产态仅显示遮盖后的摘要**。 | 同时满足可定位性与输入数据最小暴露原则。 |
+| 18 | **Mermaid 使用等比 SVG 视口**，提供适应宽度、原始比例、滚动和全屏，不做非等比拉伸。 | 复杂图需要可读性，同时必须保持图形几何关系。 |
 
 ## System Architecture & Data Flow
 
@@ -92,13 +104,13 @@ flowchart TB
     Kind --> QAPrev
   end
 
-  subgraph S3 ["3. LPW 映射分发引擎 (自建核心)"]
+  subgraph S3 ["3. @lumina/components/lpw 共享渲染核心"]
     DocShell["LpwDocumentViewer (外层排版与元数据)"]
     Parser["LpwParser (JSON 解析与 Schema 校验)"]
-    Dispatcher["LpwBlockRenderer (递归分发控制)"]
-    Boundary["BlockErrorBoundary (单块异常隔离)"]
-    Registry["LpwRegistry (组件注册表)"]
-    Fallback["LpwFallbackBlock (未知类型/错误卡片)"]
+    Dispatcher["LpwNodeRenderer (kind-aware 分发控制)"]
+    Boundary["NodeErrorBoundary (节点异常隔离)"]
+    Registry["LpwRegistry (Layout / Container / Block 注册表)"]
+    Fallback["LpwDiagnosticCard (层级、组合与运行错误)"]
 
     DocShell --> Parser
     Parser --> Dispatcher
@@ -107,12 +119,13 @@ flowchart TB
     Registry -->|未命中或异常| Fallback
   end
 
-  subgraph S4 ["4. LPW 专用组件库"]
-    Content["26 种内容块<br>(Markdown / Callout / Heading / List / Quote / Code / Image / Divider / Cards / Metrics / Steps / Timeline / Diff / Table / Mermaid / Chart / Comparison / Progress / Tree / Takeaway / Glance / Open-Items / Scorecard / Quadrant / Personnel / Gallery)"]
-    Container["4 种容器组织块<br>(Section / Tabs / Columns / Details)"]
+  subgraph S4 ["4. LPW 三类同级组件"]
+    Layout["Layout<br>(Split / Alternating / Grid / Bento / Newspaper / Editorial Wrap / Flow)"]
+    Container["Container<br>(Section / Tabs / Details / Panel；Columns 仅 v1.0 兼容)"]
+    Content["26 种 Block<br>(Markdown / Callout / Heading / List / Quote / Code / Image / Divider / Cards / Metrics / Steps / Timeline / Diff / Table / Mermaid / Chart / Comparison / Progress / Tree / Takeaway / Glance / Open-Items / Scorecard / Quadrant / Personnel / Gallery)"]
   end
 
-  subgraph S5 ["5. 共享基础设施 (@lumina/components)"]
+  subgraph S5 ["5. @lumina/components 共享原语"]
     UI["Radix UI 原语"]
     MDEngine["react-markdown + remark-gfm"]
     ThemeTokens["theme.css (静烛 v1 设计语言)"]
@@ -121,8 +134,10 @@ flowchart TB
   Logic --> Kind
   Viewer --> DocShell
   QAPrev --> DocShell
-  Registry -->|命中分发| Content
-  Registry -->|命中分发| Container
+  Registry -->|kind=layout| Layout
+  Registry -->|kind=container| Container
+  Registry -->|kind=block| Content
+  Layout --> ThemeTokens
   Content --> MDEngine
   Content --> ThemeTokens
   Container --> UI
@@ -136,42 +151,660 @@ sequenceDiagram
   participant Reader as 浏览器页面
   participant Shell as LpwDocumentViewer
   participant Parser as LpwParser
-  participant Dispatcher as LpwBlockRenderer
-  participant Boundary as BlockErrorBoundary
+  participant Renderer as LpwNodeRenderer
   participant Registry as LpwRegistry
-  participant Comp as DedicatedComponent
+  participant Validator as Hierarchy / Variant Validator
+  participant Boundary as NodeErrorBoundary
+  participant Comp as Layout / Container / Block
 
   Reader->>Shell: 传入文件文本 source
   Shell->>Parser: parse(source)
-  alt JSON 语法错误或非对象
-    Parser-->>Shell: 返回 DocumentLevelError
-    Shell-->>Reader: 呈现文档级解析失败卡片
-  else 成功解析 AST
-    Parser-->>Shell: 返回 LpwDocument (meta, blocks)
-    loop 遍历 blocks
-      Shell->>Dispatcher: renderBlock(block, depth=0)
-      Dispatcher->>Boundary: 包装局部 BlockErrorBoundary
-      Boundary->>Registry: get(block.type)
-      alt 类型未注册
-        Registry-->>Boundary: 返回 undefined
-        Boundary-->>Reader: 渲染 LpwFallbackBlock (未知类型警告)
-      else 类型存在
-        Registry-->>Boundary: 返回 ComponentType
-        Boundary->>Comp: 实例化并注入 props
-        alt 组件内部抛出运行时异常
+  alt JSON 或版本错误
+    Parser-->>Shell: DocumentDiagnostic
+    Shell-->>Reader: 文档级错误卡
+  else 成功解析
+    Parser-->>Shell: v1.0 兼容 AST 或 next kind-aware AST
+    loop 按根 content 顺序遍历
+      Shell->>Renderer: renderNode(node, location)
+      Renderer->>Registry: get(node.kind, node.type)
+      Renderer->>Validator: 校验 Layout 层级 / Container variant / Block 原子性
+      alt 类型、层级或组合非法
+        Validator-->>Reader: 原位置 LpwDiagnosticCard
+      else 合法
+        Renderer->>Boundary: 包装节点错误边界
+        Boundary->>Comp: 注入对应 kind 的专用 props
+        alt 组件抛出异常
           Comp-->>Boundary: Throw Error
-          Boundary-->>Reader: 捕获并就地渲染 LpwErrorBlock (错误堆栈与块详情)
-        else 正常渲染
-          Comp-->>Reader: 输出 DOM 节点
+          Boundary-->>Reader: 结构化节点诊断卡
+        else 正常
+          Comp-->>Reader: 输出节点；仅 Block 可挂批注层
         end
       end
     end
   end
 ```
 
-## Document Specification & JSON Schema (v1)
+## 演进设计：共享核心、三类节点、批注与诊断
 
-### TypeScript 类型契约（`web/src/components/preview/lpw/types.ts`）
+### 1. 共享包边界
+
+LPW 的物理实现迁入 `components/src/lpw/`，并通过 `@lumina/components/lpw` 导出。共享包包含格式类型、解析器、注册表、块渲染器、文档壳、全部块、容器、批注层、错误卡片、Mermaid 视口和 ECharts 懒加载入口。
+
+```text
+components/src/lpw/
+├── index.ts                    # @lumina/components/lpw 公开入口
+├── types.ts                    # Layout / Container / Block 三类节点契约
+├── parser.ts                   # 版本解析与 v1.0 兼容读取
+├── registry.ts                 # type → category / component / capability
+├── renderer.tsx                # 三类节点分发、路径与错误隔离
+├── render-location.ts          # JSON Path 与 ID 父链
+├── runtime-provider.tsx        # 资源基址与宿主配置
+├── annotation.tsx              # Block 批注装饰与文本匹配
+├── diagnostics.tsx             # 统一诊断卡片与安全属性摘要
+├── document-viewer.tsx         # 文档壳
+├── source-viewer.tsx           # Fetch / Abort / Retry 外壳
+├── layout/                     # 纯结构层：只接 Container 或 Block
+│   ├── index.ts
+│   ├── layout.tsx
+│   ├── contract.ts
+│   ├── validation.ts
+│   └── presets.ts
+├── container/                  # 美化整体：按 variant 接受受控 Block 集合
+│   ├── index.ts
+│   ├── section.tsx
+│   ├── panel.tsx
+│   ├── tabs.tsx
+│   └── details.tsx
+└── block/                      # 完整原子内容：永远没有 children
+    ├── index.ts
+    ├── markdown.tsx
+    ├── heading.tsx
+    ├── image.tsx
+    ├── mermaid.tsx
+    ├── chart.tsx
+    ├── diff.tsx
+    └── ...
+```
+
+`layout`、`container`、`block` 在目录、类型和运行时注册表中保持同级分类。诊断、批注和 Viewer 是三类节点共用的引擎文件，不再拆成会掩盖核心层级的多组目录。
+
+`web/` 保留 Preview / Pages / Q&A 的路由、鉴权和文件选择逻辑，通过共享入口组合：
+
+```typescript
+import {
+  LpwDocumentViewer,
+  LpwSourceViewer,
+  type LpwRuntimeConfig,
+} from '@lumina/components/lpw'
+```
+
+共享包不能导入 `web/src`。宿主差异经 `LpwRuntimeConfig` 注入：
+
+```typescript
+export interface LpwRuntimeConfig {
+  assetBaseUrl?: string
+  resolveAsset?: (src: string, context: { documentUrl?: string }) => string
+  debug?: boolean
+}
+```
+
+`assetBaseUrl` 修复 Q&A 内嵌场景的相对资源基址：图片相对 `.lpw` 文件 URL 解析，而不是相对当前 Q&A 页面路由解析。ECharts 与 `react-diff-viewer-continued` 移入共享包依赖，并继续按块动态加载；`web` 移除仅由 LPW 使用的直接依赖。
+
+### 2. 严格三类节点模型
+
+下一格式版本不再把所有节点都称为 Block，而是显式区分三类同级节点：
+
+- **Layout**：纯结构编排；直接 children 只能是 Container 或 Block；禁止嵌套 Layout；
+- **Container**：带完整视觉外壳与语义变体的美化整体；children 只能是该变体允许的 Block；禁止嵌套 Layout 或 Container；
+- **Block**：完整原子内容；永远没有 children。
+
+根内容流可以依次放置 Layout、Container 或 Block：
+
+```typescript
+export interface LpwDocumentNext {
+  version: string
+  meta?: LpwMeta
+  content: LpwContentNode[]
+}
+
+export type LpwContentNode = LpwLayout | LpwContainer | LpwBlock
+export type LpwLayoutChild = LpwContainer | LpwBlock
+
+interface LpwNodeBase {
+  id: string
+  type: string
+}
+
+export interface LpwLayout extends LpwNodeBase {
+  kind: 'layout'
+  props: LpwLayoutProps
+  children: LpwLayoutChild[]
+}
+
+export interface LpwContainer extends LpwNodeBase {
+  kind: 'container'
+  props: LpwContainerProps
+  children: LpwBlock[]
+}
+
+export interface LpwBlock<TProps = Record<string, unknown>>
+  extends LpwNodeBase {
+  kind: 'block'
+  props: TProps
+  annotation?: LpwAnnotation
+  // Schema 中不声明 children；出现 children 直接校验失败
+}
+```
+
+这套结构消除任意递归：最大结构链固定为 `document → layout → container → block`。Layout 与 Container 的职责不会互相吞并，Block 也不会为了组合排版而获得子树能力。
+
+v1.0 继续按旧 `blocks[]` 与递归容器契约读取。新版本使用 `content[] + kind`。v1.0 的 `section → tabs → columns → block` 等旧递归结构不自动写回新版本；需要升级时由显式迁移器展开或要求人工选择 Layout / Container 语义，避免静默改变视觉层级。
+
+### 3. Layout 模式与子节点策略
+
+Layout 只整理空间，不提供标题、边框、背景、折叠状态或正文。它通过 `pattern` 决定构图，通过 `strategy` 分配空间，通过 `placements` 给直接 child 指定角色。
+
+```typescript
+export type LpwLayoutPattern =
+  | 'split'
+  | 'alternating'
+  | 'grid'
+  | 'bento'
+  | 'newspaper'
+  | 'editorial-wrap'
+  | 'flow'
+
+export type LpwLayoutStrategy =
+  | { type: 'equal' }
+  | { type: 'ratio'; tracks: number[] }
+  | {
+      type: 'fixed-fluid'
+      fixed: 'start' | 'end'
+      size: 'sm' | 'md' | 'lg' | `${number}%`
+    }
+  | { type: 'spans'; columns: 2 | 3 | 4 }
+  | { type: 'columns'; count: 2 | 3 }
+  | {
+      type: 'media-wrap'
+      mediaPosition: 'top-start' | 'top-end'
+      mediaWidth: 'quarter' | 'third' | 'two-fifths' | 'half'
+      mediaShape: 'square' | 'portrait' | 'landscape'
+    }
+
+export type LpwLayoutRole =
+  | 'primary'
+  | 'secondary'
+  | 'media'
+  | 'body'
+  | 'lead'
+  | 'aside'
+  | 'full'
+
+export interface LpwLayoutPlacement {
+  nodeId: string
+  role?: LpwLayoutRole
+  colSpan?: 1 | 2 | 3 | 4
+  rowSpan?: 1 | 2 | 3
+  orderOnMobile?: number
+}
+
+export interface LpwLayoutProps {
+  pattern: LpwLayoutPattern
+  direction?: 'horizontal' | 'vertical'
+  strategy?: LpwLayoutStrategy
+  gap?: 'sm' | 'md' | 'lg'
+  align?: 'start' | 'center' | 'stretch'
+  placements?: LpwLayoutPlacement[]
+  alternateFrom?: 'media' | 'body'
+}
+```
+
+共同约束：
+
+- `children` 只能出现 `kind: container | block`；任何 layout child 直接拒绝；
+- `placements[].nodeId` 必须命中当前 children，不能重复或指向外部节点；
+- Layout 可以编排一个美化 Container，也可以直接编排原子 Block；
+- `orderOnMobile` 通过真实 DOM 顺序实现，屏幕阅读器、键盘与视觉顺序一致；
+- 不接受任意模板列、CSS class、style、grid-area 或绝对坐标。
+
+#### Layout 模式表
+
+| Pattern | 直接 children | 合法组合 | 响应式行为 |
+| --- | ---: | --- | --- |
+| `split` | 恰好 2 | Container / Block 均可；两个独立矩形区 | 水平左右或垂直上下；窄屏按语义顺序单列 |
+| `alternating` | 2–12，偶数 | 每两个 Container / Block 成组；推荐 media + content | 桌面逐组镜像；窄屏统一语义顺序 |
+| `grid` | 1–12 | Container / Block 均可 | 规则矩阵；窄屏降列 |
+| `bento` | 2–12 | Container / Block 均可，仍各自为矩形 | 跨行跨列拼成异形外轮廓；窄屏单列 |
+| `newspaper` | 2–4 | 受控 lead/body/media/aside；见下文 | 宽屏 2–3 栏，中屏 2 栏，窄屏单栏 |
+| `editorial-wrap` | 恰好 2 | 直接 Block：一个 image + 一个 markdown | 桌面方形媒体 + L 型正文；窄屏顺序堆叠 |
+| `flow` | 1–20 | Container / Block 均可 | 普通纵向流；紧凑模式可横向换行 |
+
+#### Split：左右、上下与固定/流动双区
+
+- `direction: horizontal` 表达左右分开；`vertical` 表达上下分开；
+- `fixed-fluid` 让一侧按受控尺寸显示，另一侧用 `minmax(0, 1fr)` 占满剩余空间；
+- 适用于“右侧图片或 Container 自适应，左侧文本、表格或其他组件填满余宽”；
+- 两个 child 始终是独立矩形，不发生正文环绕。
+
+#### Alternating：图文或组件交错
+
+children 每两个组成一组。第一组依据 `alternateFrom` 排列，后续组左右镜像。每一侧可以是 Block，也可以是已经完成美化的 Container。移动端按每组定义的语义顺序输出。
+
+#### Grid 与 Bento：方块与拼版异形
+
+- Grid 是规则等分矩阵；
+- Bento 允许每个直接 child 通过 placement 声明 `colSpan` / `rowSpan`；
+- “异形”来自多个完整矩形 Container / Block 的拼接轮廓，一个子组件本身不会被裁成不规则形；
+- 自动放置不能改变 DOM 阅读顺序；移动端忽略跨度并单列。
+
+#### Newspaper：受控报纸排版
+
+Newspaper Layout 本身无视觉边框，children 通过角色进入版面：
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ lead：Block 或 Container，通栏头条/导语                      │
+├───────────────────────┬──────────────────────────────────────┤
+│ body：markdown Block   │ body 连续流入第 2 栏                 │
+│                       │                                      │
+│                       │ media Block / aside Container        │
+└───────────────────────┴──────────────────────────────────────┘
+```
+
+- `body` 必须是直接 markdown Block，只有它可以形成连续多栏正文；
+- `lead` 可以是 heading/takeaway/markdown Block，也可以是符合 Newspaper lead 槽位约束的 Section/Panel Container；
+- `media` 首版是 image Block；
+- `aside` 可以是受控 Container，例如 `panel variant="aside"`，或 quote/callout/takeaway Block；
+- Table、Code、Mermaid、Chart、Tabs 和 Details 不能进入连续栏流；可作为 `full` 直接 child 占据通栏；
+- 原子插块使用 `break-inside: avoid`，不会被拆到两栏。
+
+Newspaper 的 body 只能有一个连续 Markdown Block；通栏图表等内容作为 `role: full` 的独立 child，不伪装成正文栏内容：
+
+```json
+{
+  "kind": "layout",
+  "id": "release-newspaper",
+  "type": "layout",
+  "props": {
+    "pattern": "newspaper",
+    "strategy": { "type": "columns", "count": 2 },
+    "placements": [
+      { "nodeId": "release-title", "role": "lead" },
+      { "nodeId": "release-body", "role": "body" },
+      { "nodeId": "release-aside", "role": "aside" },
+      { "nodeId": "release-chart", "role": "full" }
+    ]
+  },
+  "children": [
+    { "kind": "block", "id": "release-title", "type": "heading", "props": { "level": 1, "content": "版本特刊" } },
+    { "kind": "block", "id": "release-body", "type": "markdown", "props": { "content": "..." } },
+    {
+      "kind": "container",
+      "id": "release-aside",
+      "type": "panel",
+      "props": { "variant": "aside", "title": "编辑提示" },
+      "children": [
+        { "kind": "block", "id": "aside-note", "type": "callout", "props": { "content": "..." } }
+      ]
+    },
+    { "kind": "block", "id": "release-chart", "type": "chart", "props": { "chartType": "bar", "categories": ["已完成"], "series": [{ "name": "数量", "data": [1] }] } }
+  ]
+}
+```
+
+#### Editorial Wrap：方形 Block + 异形 Block
+
+这是严格的双 Block 策略：
+
+```text
+┌──────────────────────────────┬──────────────────┐
+│ markdown 正文沿媒体侧边流动 │ image 方形图片   │
+│                              │                  │
+├──────────────────────────────┴──────────────────┤
+│ 同一个 markdown 正文回到通栏，占满图片下方空间 │
+└─────────────────────────────────────────────────┘
+```
+
+- children 恰好两个且都必须 `kind: block`；
+- 一个是 image Block，一个是 markdown Block；
+- image 使用受控画幅和宽度，markdown 使用无独立外框的嵌入式正文变体；
+- Container 不参与该策略，因为 Container 自带完整视觉盒，环绕会破坏整体边界；
+- Chart、Mermaid、Table、Code 和交互组件不参与环绕；
+- 窄屏清除 float，按明确的媒体/正文顺序堆叠。
+
+```json
+{
+  "kind": "layout",
+  "id": "editorial-hero",
+  "type": "layout",
+  "props": {
+    "pattern": "editorial-wrap",
+    "strategy": {
+      "type": "media-wrap",
+      "mediaPosition": "top-end",
+      "mediaWidth": "third",
+      "mediaShape": "square"
+    },
+    "placements": [
+      { "nodeId": "hero-image", "role": "media", "orderOnMobile": 1 },
+      { "nodeId": "hero-copy", "role": "body", "orderOnMobile": 2 }
+    ]
+  },
+  "children": [
+    {
+      "kind": "block",
+      "id": "hero-image",
+      "type": "image",
+      "props": { "src": "cover.png", "alt": "LPW 排版示意" }
+    },
+    {
+      "kind": "block",
+      "id": "hero-copy",
+      "type": "markdown",
+      "props": { "content": "正文先沿图片左侧排布，并在图片下方回到通栏。" }
+    }
+  ]
+}
+```
+
+### 4. Container 变体与 Block 策略组
+
+Container 是一个完整、美化、带语义的整体。它可以提供标题、图标、边框、背景、折叠、页签或状态区域。Container 不能接受任意 Block 组合；每个 `type + variant` 在注册表中声明允许的 Block 能力组、数量与顺序。
+
+```typescript
+export type LpwBlockGroup =
+  | 'text'          // markdown, heading, list, quote
+  | 'media'         // image, gallery, mermaid
+  | 'data'          // table, metrics, progress, chart
+  | 'decision'      // comparison, scorecard, quadrant, takeaway
+  | 'process'       // steps, timeline, tree, open-items
+  | 'technical'     // code, diff, table, tree
+  | 'notice'        // callout, takeaway, quote
+
+export interface LpwContainerVariantContract {
+  allowedGroups: LpwBlockGroup[]
+  allowedTypes?: string[]
+  deniedTypes?: string[]
+  minItems: number
+  maxItems: number
+  ordering?: LpwBlockGroup[]
+  repeat?: 'none' | 'same-group' | 'any-allowed'
+}
+
+export interface LpwContainerEntry {
+  kind: 'container'
+  displayName: string
+  variants: Record<string, LpwContainerVariantContract>
+}
+```
+
+首版 Container 方案：
+
+| Container | Variant | 允许的 Block 组 / 类型 | 数量与顺序 |
+| --- | --- | --- | --- |
+| `section` | `article` | text + media + notice | 1–12；heading 可在前，正文/媒体随后 |
+| `section` | `feature` | media + text + notice | 2–6；第一项必须 media 或 heading |
+| `section` | `evidence` | technical + media + notice | 1–8；适合证据、代码、Diff、表格和截图 |
+| `panel` | `summary` | takeaway + glance + metrics + progress | 1–4；不允许重复 takeaway |
+| `panel` | `dashboard` | data + decision | 1–8；图表、指标、评分和表格 |
+| `panel` | `aside` | notice + text | 1–4；用于报纸侧栏与提示摘要 |
+| `details` | `supplement` | text + technical + media | 1–10；默认收起 |
+| `details` | `raw-data` | code + diff + table + tree | 1–6；不允许 heading/image/gallery |
+| `tabs` | `comparison` | comparison + table + scorecard + markdown | 每个 tab 对应一个 Block |
+| `tabs` | `reference` | markdown + code + table + mermaid + chart + image | 每个 tab 对应一个 Block |
+| `tabs` | `gallery` | image + gallery | 每个 tab 对应一个媒体 Block |
+
+Container 校验规则：
+
+- children 全部必须 `kind: block`；发现 layout/container 子节点直接失败；
+- variant 必填，决定可接受的 block 类型；未知 variant 不回退成任意容器；
+- 注册表先把 Block 映射到 group，再检查 allow/deny、数量、顺序和重复策略；
+- 不合法组合显示 Container 诊断，指出 `container type + variant`、具体 child、允许组与推荐替代；
+- Container 的视觉由自身 variant 决定，Block 不通过 className 反向改变外壳；
+- Tabs 每个标签对应一个完整 Block；需要多个 Block 组成一个页签时，先选择能表达该整体的原子 Block，不能再塞入 Container 绕过层级。
+
+Container 只开放受控变量，并按 Container type 使用不同 props；不存在所有 Container 都能使用的万能外壳属性：
+
+```typescript
+interface LpwContainerBaseProps {
+  variant: string
+  title?: string
+  icon?: LpwIconName
+  tone?: 'neutral' | 'info' | 'success' | 'warning' | 'danger'
+}
+
+export interface LpwSectionContainerProps extends LpwContainerBaseProps {
+  variant: 'article' | 'feature' | 'evidence'
+  collapsible?: boolean
+  defaultOpen?: boolean
+}
+
+export interface LpwPanelContainerProps extends LpwContainerBaseProps {
+  variant: 'summary' | 'dashboard' | 'aside'
+}
+
+export interface LpwDetailsContainerProps extends LpwContainerBaseProps {
+  variant: 'supplement' | 'raw-data'
+  summary: string
+  defaultOpen?: boolean
+}
+
+export interface LpwTabsContainerProps extends LpwContainerBaseProps {
+  variant: 'comparison' | 'reference' | 'gallery'
+  items: Array<{ key: string; label: string }>
+  defaultKey?: string
+}
+
+export type LpwContainerProps =
+  | LpwSectionContainerProps
+  | LpwPanelContainerProps
+  | LpwDetailsContainerProps
+  | LpwTabsContainerProps
+```
+
+`variant` 决定可填入内容，`tone` 只改变语义色，标题、图标和开合参数只改变对应外壳的合法呈现。任何视觉变量都不能扩大允许的 Block 集合。
+
+合法示例：Layout 直接组合 Container 与 Block，Container 内只放受控 Block：
+
+```json
+{
+  "kind": "layout",
+  "id": "overview-layout",
+  "type": "layout",
+  "props": {
+    "pattern": "split",
+    "direction": "horizontal",
+    "strategy": { "type": "ratio", "tracks": [2, 1] }
+  },
+  "children": [
+    {
+      "kind": "container",
+      "id": "evidence-panel",
+      "type": "section",
+      "props": {
+        "variant": "evidence",
+        "title": "实现证据",
+        "icon": "shield-check"
+      },
+      "children": [
+        {
+          "kind": "block",
+          "id": "main-diff",
+          "type": "diff",
+          "props": { "oldCode": "...", "newCode": "..." }
+        },
+        {
+          "kind": "block",
+          "id": "evidence-note",
+          "type": "callout",
+          "props": { "level": "info", "content": "..." }
+        }
+      ]
+    },
+    {
+      "kind": "block",
+      "id": "architecture-image",
+      "type": "image",
+      "props": { "src": "architecture.png", "alt": "系统架构图" }
+    }
+  ]
+}
+```
+
+非法示例及原因：
+
+```text
+Container(section) → Container(details)  // Container 不能嵌套 Container
+Container(panel:summary) → code Block     // summary variant 不接受 technical group
+Layout(split) → Layout(grid)              // Layout 不能嵌套 Layout
+Block(markdown) → children                // Block 永远原子化
+```
+
+### 4.1 注册表分类
+
+```typescript
+export type LpwNodeKind = 'layout' | 'container' | 'block'
+
+export interface LpwRegistryEntry {
+  kind: LpwNodeKind
+  Component: React.ComponentType<unknown>
+  displayName: string
+  blockGroups?: LpwBlockGroup[]              // 仅 Block
+  annotatableFields?: string[]               // 仅 Block
+  containerVariants?: Record<string, LpwContainerVariantContract> // 仅 Container
+}
+```
+
+注册表的 kind 是结构校验的单一事实源。Schema 先检查 kind 和基本形状，logic 再依据 registry mirror 检查 Container 变体与 Layout 角色。前端重复相同规则用于防御显示。
+
+### 5. Block 批注
+
+每个新版本块支持一个可选 `annotation` 对象。一个块只承载一个批注意图，批注内部可以有多个文本目标：
+
+```typescript
+export type LpwAnnotationKind =
+  | 'note'
+  | 'suggestion'
+  | 'todo'
+  | 'issue'
+  | 'approved'
+  | 'question'
+
+export interface LpwAnnotationTarget {
+  field: string
+  pattern: string
+  flags?: 'i' | 'u' | 'iu'
+}
+
+export interface LpwAnnotation {
+  kind: LpwAnnotationKind
+  label?: string
+  message: string
+  author?: string
+  targets?: LpwAnnotationTarget[]
+}
+
+export interface LpwBlock<TProps = Record<string, unknown>> {
+  id: string
+  kind: 'block'
+  type: string
+  props: TProps
+  annotation?: LpwAnnotation
+}
+```
+
+呈现分两层：
+
+1. `AnnotationFrame` 包裹全部块，显示类型图标、标签和详情按钮；批注信息可通过鼠标悬停、键盘聚焦和触摸点击打开；
+2. 组件通过 `AnnotatedText(field, value)` 或 `AnnotatedMarkdown(field, source)` 暴露可标记字段，匹配文本使用 `text-decoration-style: wavy` 和对应语义色。
+
+注册表的 `annotatableFields` 决定可匹配字段。例如 markdown 暴露 `props.content`，heading 暴露 `props.content`，callout 暴露 `props.title` / `props.content`；image 只有块级批注，不对 `src` 做正文划线。目标字段未注册时显示批注错误，原块照常渲染。
+
+正则约束：
+
+- 后端使用 Go RE2 语义编译，禁止反向引用与环视；`pattern` 最长 128 字符，每块最多 8 个 target；
+- flags 只开放 `i` / `u`；不开放调用方控制 `g`，渲染器自行处理全部命中；
+- 单字段最多扫描 16 KiB，最多渲染 200 个命中，超过后截断批注标记并显示说明；
+- Markdown 匹配在 AST 文本节点阶段执行，不跨代码节点、链接 URL、HTML 属性或段落边界；原始文本与复制结果保持不变；
+- 直接加载到前端的非法 pattern 不执行，显示“批注匹配器无效”，正文仍可阅读。
+
+### 6. 视觉层级
+
+#### Heading
+
+`heading` 新版本增加受控 `icon`，使用 Lucide 图标枚举。文件显式选择图标；缺省值按 level 固定，不根据标题关键词或语言猜测。
+
+| Level | 尺寸与色阶 | 左侧结构 | 缺省图标 |
+| --- | --- | --- | --- |
+| H1 | 最大、`text-sea-ink` | 4px `lagoon` 强调边 | `bookmark` |
+| H2 | 中等、`text-sea-ink/90` | 3px `palm` 强调边 | `panel-left` |
+| H3 | 较小、`text-sea-ink-soft` | 2px 弱强调边 | `circle-dot` |
+
+图标允许值首版收敛为 `bookmark`、`file-text`、`layers`、`network`、`route`、`chart`、`shield-check`、`lightbulb`、`circle-dot`。层级变化通过静态字号、色阶和图标尺寸表达；不使用持续动画制造“慢慢变小/变色”。
+
+#### Section and Details
+
+- `section` 是文章章节：标题常驻、可锚定，用留白和左侧细边建立层级，不使用粗黑底线；
+- `details` 是补充材料：整个 summary 是可操作面，包含 `ChevronRight` 旋转指示、`EXPANDABLE` 状态文案、明确边框和浅背景；展开内容置于容器内部；
+- `details` 不能复用 heading 的视觉结构，避免把交互入口误读成正文标题。
+
+#### Divider and document shell
+
+- `divider` 是唯一面向作者的显式章节分隔线，使用低对比渐隐线；
+- 文档壳只保留一个必要的顶部识别元素，不叠加双规线、刊头虚线、header 底线、正文边框和 footer 顶线；
+- 表格、Diff 与代码内部边界属于数据结构，可以保留；卡片和章节不得用重复横线装饰。
+
+### 7. 结构化诊断
+
+渲染路径同时维护数组路径和 ID 父链：
+
+```typescript
+export interface LpwRenderLocation {
+  jsonPath: string       // /content/2/children/1/children/0
+  idPath: string[]       // ['layout:overview', 'section:intro', 'chart:latency']
+}
+```
+
+`renderLayoutChildren` / `renderContainerBlocks` 接收父位置并生成子位置；`NodeErrorBoundary`、Fallback 与组合校验错误统一输出 `LpwDiagnostic`：
+
+```typescript
+export type LpwDiagnosticCode =
+  | 'UNKNOWN_BLOCK'
+  | 'INVALID_LAYOUT_SLOT'
+  | 'DEPTH_LIMIT'
+  | 'RENDER_EXCEPTION'
+  | 'ANNOTATION_PATTERN'
+  | 'RESOURCE_LIMIT'
+
+export interface LpwDiagnostic {
+  code: LpwDiagnosticCode
+  location: LpwRenderLocation
+  blockId: string
+  blockType: string
+  componentName?: string
+  reason: string
+  suggestion?: string
+  propsSummary?: unknown
+}
+```
+
+错误卡片按顺序显示：错误名称、位置、块身份、组件说明、原因、修复提示、折叠属性摘要。属性摘要序列化上限 2 KiB；键名匹配 `token|secret|password|authorization|cookie|key` 时遮盖；字符串字段最多显示 240 字符；生产环境隐藏 stack 和 React component stack。复制按钮复制同一份安全诊断 JSON。
+
+### 8. Mermaid 响应式视口
+
+`MermaidBlock` 继续复用共享 Markdown Mermaid 渲染，但外层由 `MermaidViewport` 管理：
+
+- 捕获输出 SVG，要求存在 `viewBox`；缺失时根据 SVG 固有宽高补出等比 `viewBox`；
+- `fit` 模式：`width: 100%`、`height: auto`、`max-width: none`，保持 viewBox 比例；
+- `actual` 模式：按 SVG 固有尺寸展示，外层 `overflow: auto`；
+- 提供“适应宽度”“原始比例”“全屏查看”三个操作，具备 `aria-label`、键盘焦点和状态反馈；
+- 全屏使用共享 Dialog，关闭后焦点回到触发按钮；
+- 图过宽时出现横向滚动，不通过 `scaleX/scaleY` 非等比拉伸；
+- `ResizeObserver` 只更新视口，不重新解析 Mermaid source；`prefers-reduced-motion` 下关闭缩放过渡。
+
+## Document Specification & JSON Schema (v1 baseline and next version)
+
+### TypeScript 类型契约（v1.0 基线；迁移后位于 `components/src/lpw/types.ts`）
 
 ```typescript
 export interface LpwMeta {
@@ -528,21 +1161,26 @@ export interface LpwGalleryProps {
 1. **版本声明（`version`）**：根属性必须且仅支持 `"1.0"`。未知版本直接拒绝解析并呈现文档级错误；
 2. **全局唯一 ID（`id`）**：每个块必须携带合法 `id`（建议形如 `block-1`、`metric-latency`），用于 React key 及目录定位；
 3. **属性隔离（`props`）**：所有业务参数统一放在 `props` 对象内，不得在块顶层污染属性；
-4. **容器嵌套（`children`）**：仅容器类组件（`section`、`tabs`、`columns`）允许包含 `children` 数组，叶子块出现 `children` 直接校验失败；
+4. **v1.0 容器嵌套（`children`）**：仅 `section`、`tabs`、`columns`、`details` 允许包含 `children` 数组，叶子块出现 `children` 直接校验失败；
 5. **递归深度（`depth`）**：顶层块 depth = 1，容器每层 +1，最大 3；渲染器同样强制，超限截断并渲染深度超限错误卡片；
 6. **tabs 索引对齐**：`children` 数量必须等于 `items` 数量，按索引一一对应；`defaultKey` 必须命中某个 `items[].key`；
 7. **columns 数量对齐**：`children` 数量必须等于 ratio 的列数（`1:1:1` 为 3，其余为 2）；
 8. **资源上限**：全文档块数（含子孙）≤ 500；序列化字节 ≤ 256 KiB；
 9. **chart 数据对齐**：line / bar / area / radar 要求每个 `series.data` 长度等于 `categories` 长度且项为 number；pie / donut 要求 `series` 恰好 1 个且与 `categories` 对齐；scatter 要求 `series.data` 每项为二元点对且禁止出现 `categories`；`stacked` 仅在 bar / area 合法；
 10. **image / cards / gallery 链接安全**：`image.src`、`cards.items[].href` 与 `gallery.images[].src` 含 `://` 时必须以 `https://` 或 `http://` 开头，否则按同会话文件名校验合法字符（禁止 `javascript:`、`data:` 等协议）；
-11. **容器类型集合**：允许携带 `children` 的类型固定为 `section`、`tabs`、`columns`、`details` 四种；
+11. **v1.0 容器兼容**：`section`、`tabs`、`columns`、`details` 继续按旧 Schema 读取；next 使用独立 kind 与严格层级，不沿用 v1.0 `containerTypes` 递归集合；
 12. **comparison 对齐**：每行 `values` 长度必须等于 `plans` 数量；
 13. **tree 规模**：`tree.nodes` 节点总数（含子孙）≤ 100、深度 ≤ 4（节点层从 1 计）；
-14. **scorecard 对齐**：每个 `plans[].scores` 长度必须等于 `criteria` 数量；全部 `criteria[].weight` 之和必须等于 100。
+14. **scorecard 对齐**：每个 `plans[].scores` 长度必须等于 `criteria` 数量；全部 `criteria[].weight` 之和必须等于 100；
+15. **节点层级（next）**：根 `content` 可含 Layout / Container / Block；Layout children 仅 Container / Block；Container children 仅 Block；Block 不含 children；
+16. **Layout 放置对齐（next）**：`placements[].nodeId` 必须是直接 children ID 的无重复子集；模式要求的角色数量、kind、Block 能力和 child 数量必须匹配；跨度不能超过声明列数；
+17. **Container 变体（next）**：每个 `type + variant` 按注册契约检查 Block group、白名单/黑名单、数量、顺序和重复策略；未知 variant 或任意组合直接拒绝；
+18. **Editorial Wrap（next）**：恰好两个直接 Block，一个 image，一个 markdown；Container 与其他 Block 类型均不合法；
+19. **Annotation（next）**：只允许出现在 Block；field 必须在该 Block 的 `annotatableFields` 白名单，pattern 必须符合 RE2、长度和 target 数量上限；不支持文本匹配的 Block 仍允许块级 annotation，但 targets 必须为空。
 
-规则 5–13 属跨字段/递归约束，JSON Schema 表达成本高且报错路径差，由后端 logic 走查强制（见 §PreviewLpwLogic）。
+规则 5–19 属跨字段或版本化结构约束，由后端 logic 强制；前端重复执行防御校验并渲染结构化诊断。
 
-### `resources/lpw/schema/v1.json`（唯一维护源，前后端同源消费）
+### `resources/lpw/schema/v1.json`（v1.0 已实现的唯一维护源）
 
 ```json
 {
@@ -1262,10 +1900,30 @@ export interface LpwGalleryProps {
 
 Schema 说明：
 
+- 上述完整 Schema 是当前 v1.0 基线，修订设计不直接修改它；
 - `additionalProperties: false` 从文档根一路收紧到每个 props——落实 ADR-0008 第 4 条「无通用样式逃生口」；
 - 叶子块不声明 `children`，在收紧模式下出现即失败；容器块显式声明并递归引用 `block`；
 - `default` 仅为注解（2020-12 中不参与断言），组件实现负责应用默认值；
 - `block.oneOf` 以 `type.const` 为天然判别式，恰好命中一个分支。
+
+### 下一格式版本的 Schema 增量
+
+新增能力通过新的版本化 Schema 文件发布，并在 `resources.LpwSchemaFiles` 与前端版本解析器中同时登记。版本号在实施阶段按仓库既有发布规则确定；本文用 `next` 指代，避免在设计评审前冻结具体号码。
+
+增量内容：
+
+1. 文档根由 v1.0 `blocks` 演进为 `content`，元素是 `$defs/layoutNode | $defs/containerNode | $defs/blockNode`；每种节点必须声明 `kind`；
+2. `layoutNode.children` 只引用 `containerNode | blockNode`，Schema 不提供 layout 递归入口；
+3. `containerNode.children` 只引用 `blockNode`，Schema 不提供 layout/container 递归入口；
+4. `blockNode` 不声明 `children` 且 `additionalProperties: false`，任何原子 Block 子树直接失败；
+5. 只有 `blockNode` 允许可选顶层 `annotation`；Layout 与 Container 不允许 annotation；
+6. `heading` Block props 增加受控 `icon` 枚举；
+7. Layout props 按 pattern 使用 `oneOf`；Container props 按 `type + variant` 使用判别分支；
+8. `placements[].nodeId` 与 Layout children 的对应关系、Container variant 与 Block 能力组关系由 logic 层做跨字段校验；
+9. `annotation.targets` 最多 8 项，pattern ≤ 128 字符，field ≤ 64 字符，flags 为受控枚举；
+10. v1.0 Schema 原样保留读取；新版本不继续暴露递归 `section/tabs/columns/details` 结构。
+
+后端版本加载器、节点类型映射、Container 变体表、Block 能力组镜像、前端注册表与 MCP input/output 说明必须同次交付，并由集合对齐测试防止漂移。
 
 ## Backend & MCP Changes
 
@@ -1354,7 +2012,8 @@ type PreviewLpwLogic struct {
     locks        sync.Map // key: "<sessionID>:<filename>" → *sync.Mutex
 }
 
-// 内存模型；序列化固定 2 空格缩进，保证 AI 逐块 diff 可读
+// v1.0 兼容模型；保持现有递归块语义
+// 序列化固定 2 空格缩进，保证 AI 逐块 diff 可读
 type lpwDocument struct {
     Version string     `json:"version"`
     Meta    *lpwMeta   `json:"meta,omitempty"`
@@ -1365,6 +2024,22 @@ type lpwBlock struct {
     Type     string         `json:"type"`
     Props    map[string]any `json:"props"`
     Children []lpwBlock     `json:"children,omitempty"`
+}
+
+// next 内部模型；Kind 决定 children 的合法类型
+// Schema + validateNextHierarchy 强制：Layout → Container/Block，Container → Block，Block → ∅
+type lpwNextDocument struct {
+    Version string        `json:"version"`
+    Meta    *lpwMeta      `json:"meta,omitempty"`
+    Content []lpwNextNode `json:"content"`
+}
+type lpwNextNode struct {
+    ID         string          `json:"id"`
+    Kind       string          `json:"kind"` // layout | container | block
+    Type       string          `json:"type"`
+    Props      map[string]any  `json:"props"`
+    Annotation *lpwAnnotation  `json:"annotation,omitempty"` // 仅 kind=block 合法
+    Children   []lpwNextNode   `json:"children,omitempty"`
 }
 
 type LpwWriteResult struct {
@@ -1383,7 +2058,7 @@ type LpwOutline struct {
 }
 ```
 
-七个公开方法（签名中 `revision` 为可选乐观锁，传上次响应的值）：
+以下七个公开方法是 v1.0 兼容路径（签名中 `revision` 为可选乐观锁，传上次响应的值）；next 节点工具调用独立的 Node 方法，禁止复用 `lpwBlock` 类型绕过 kind 校验：
 
 ```go
 func (l *PreviewLpwLogic) InitDocument(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename string, meta map[string]any, blocks []lpwBlock, revision string) (*LpwWriteResult, *xError.Error)
@@ -1404,14 +2079,14 @@ lock(sessionID:filename)                  // 进程内互斥，defer unlock
   ↓ 扩展名检查 + JSON 解析 → lpwDocument    // 失败 → 指路 init / preview_file_upload
   ↓ mutate(doc)                            // 树操作 + 结构规则（preview_lpw_tree.go）
   ↓ serialize（2 空格缩进）
-  ↓ schema.Validate(serialized, "1.0")     // 整文档 Schema 断言
-  ↓ validateContainerRules(doc)            // tabs/columns 对齐、深度 ≤ 3、id 唯一、块数 ≤ 500
+  ↓ schema.Validate(serialized, doc.Version)  // 按文档版本选择 v1.0 / next Schema
+  ↓ validateVersionRules(doc)              // v1.0 递归规则；next 三类层级、Layout、Container variant、Annotation
   ↓ len(serialized) ≤ PreviewFileMaxSize
   ↓ previewLogic.UploadFile(...)           // 单次落库，继承 OnPreviewChanged 广播
   ↓ 回读 updated_at 作为新 revision，组装 LpwWriteResult
 ```
 
-树操作为纯函数，集中在 `internal/logic/preview_lpw_tree.go`（无 IO，直接单测）：
+v1.0 树操作为纯函数，集中在 `internal/logic/preview_lpw_tree.go`（无 IO，直接单测）；next 使用独立节点操作器，避免用旧 Block 递归模型绕过三类层级：
 
 | 函数 | 职责 |
 | --- | --- |
@@ -1423,6 +2098,17 @@ lock(sessionID:filename)                  // 进程内互斥，defer unlock
 | `reorderSiblings(doc, parentID, order)` | 校验 order 为该父容器子块 id 的完整排列（集合相等且无重复）后重排 |
 | `patchProps / replaceBlock` | 浅合并 / 整节点替换（含子树） |
 
+next 节点操作器使用同样的查找、删除和排序原子性，但插入/替换必须检查父子 kind：
+
+| 目标位置 | 允许插入 |
+| --- | --- |
+| 根 `content` | Layout / Container / Block |
+| Layout children | Container / Block |
+| Container children | Block，且通过 variant 契约 |
+| Block | 不允许作为 parent |
+
+替换节点时，新节点必须在原父位置仍合法；例如不能用 Layout 替换 Container 下的 Block。
+
 ### 6. 错误码映射（统一 `xError.ParameterError`，消息必须可行动）
 
 | 条件 | 消息要点 |
@@ -1431,437 +2117,212 @@ lock(sessionID:filename)                  // 进程内互斥，defer unlock
 | JSON 损坏 / 非 `.lpw` | `目标文件不是有效 LPW 文档；用 preview_lpw_init 重置或 preview_file_upload 整体修复` |
 | id 重复 / 不存在 | 附现有 id 列表（超过 50 个截断） |
 | Schema 断言失败 | `块 <id> props 校验失败：<JSON 路径>：<原因>` |
-| tabs / columns 对齐失败 | `tabs 需要 <n> 个 children（items 数），实际 <m>` |
-| 超上限 | 明示超限项（块数 / 字节 / 深度）与当前值 |
+| tabs / columns 对齐失败（v1.0） | `tabs 需要 <n> 个 children（items 数），实际 <m>` |
+| next 层级非法 | `Container <id> 只能包含 Block，收到 kind=<kind> type=<type>` |
+| Container variant 不接受 Block | 指出 container type/variant、child ID/type、允许 group 与推荐替代 |
+| Layout 组合非法 | 指出 pattern、role、实际 child kind/type 与合法组合 |
+| Annotation 非法 | 指出 Block ID、field、pattern 原因；不覆盖原文件 |
+| 超上限 | 明示超限项（节点数 / 字节 / v1.0 深度）与当前值 |
 
 REST 面：v1 不提供块级 REST 端点。块级写入只经 MCP（Agent 通道），控制台管理端沿用既有整文件编辑——避免两套写入语义分叉。
 
 ## Chunked Writing MCP Tool Family (`preview_lpw_*`)
 
-### 动机：放弃一次性全量写入
+详细工具切换、删除旧语义和测试步骤以 [.plan/lpw-core-evolution](../../../.plan/lpw-core-evolution/README.md) STEP-4 / STEP-8 为准。本节只保留 1.1 节点契约。
 
-长文档要求模型在单次工具调用里输出整份 JSON：输出 token 越长结构错误率越高、一处参数错误需要整篇重写、接近 256 KiB 上限的大 JSON 模型也难以自查。分块写入把单次调用负载限制在一个块子树——错误局部化到块、单块重试成本极低、每次写入即时返回该块的校验结果。
+### 动机
 
-### 工具清单
+长文档不能一次生成整份 JSON。Agent 每次只提交一个节点，服务端合并、校验、单次落库，并通过 `preview_sync` 让文档生长。
 
-| 工具 | 输入（关键字段） | 语义 |
+### 唯一工具清单
+
+| 工具 | 输入 | 语义 |
 | --- | --- | --- |
-| `preview_lpw_init` | `session_id`, `filename`（默认 `index.lpw`）, `meta`, `blocks?` | 创建文档骨架（`version` + `meta`，空或初始 blocks）；同名 `.lpw` 已存在时整体重置 |
-| `preview_lpw_block_add` | `session_id`, `filename`, `block`（含 `id`/`type`/`props`/`children?`）, `parent_id?`, `position?` | 插入单个块子树；`parent_id` 缺省为顶层，`position` 缺省为父容器末尾 |
-| `preview_lpw_block_edit` | `session_id`, `filename`, `block_id`, 二选一：`props`（patch）/ `block`（replace） | patch 对现有块浅合并 props、不触碰 children；replace 整节点替换（含子树） |
-| `preview_lpw_block_remove` | `session_id`, `filename`, `block_ids: string[]` | 删除一个或多个块及其子树；任一 id 不存在则整体拒绝 |
-| `preview_lpw_block_sort` | `session_id`, `filename`, `parent_id?`, `order: string[]` | 重排同一父容器下的兄弟块；`order` 必须是该父容器当前子块 id 的完整排列 |
-| `preview_lpw_meta_set` | `session_id`, `filename`, `meta`（patch） | 浅合并更新文档 meta（title / description / tags 等） |
-| `preview_lpw_outline` | `session_id`, `filename` | 返回紧凑块索引（id / type / 深度 / 子块数 / props 体积），不含 props 全文 |
+| `preview_lpw_init` | `session_id`, `filename?`, `meta`, `content?`, `revision?` | 创建或重置 `version=1.1` 文档，根字段是 `content` |
+| `preview_lpw_node_add` | `node`, `parent_id?`, `position?` | 插入一个 Layout / Container / Block |
+| `preview_lpw_node_edit` | `node_id`, `props?` / `annotation?` / `node?` | patch 或整节点替换；annotation 仅 Block 合法 |
+| `preview_lpw_node_remove` | `node_ids` | 删除节点及其合法 children |
+| `preview_lpw_node_sort` | `parent_id?`, `order` | 重排同一父节点下的 children |
+| `preview_lpw_meta_set` | `meta` | 浅合并文档 meta |
+| `preview_lpw_outline` | `filename?` | 返回 kind / type / variant-or-pattern / json_path 摘要 |
 
-设计取舍：`block_add` 刻意只接受**单个块**。批量接口会诱使模型重新拼大 JSON，与精度目标相悖；需要连续多块时由调用方多次调用，每次独立校验与广播。跨容器移动显式拆为 `remove` + `add`（同 id 复用），不提供隐式 move 语义。
+禁止注册或兼容 `preview_lpw_block_*`。禁止 `blocks` 根字段。服务端写死 `version: "1.1"`，调用方不能选择版本。
 
-### 块定位与子树语义
+### 节点挂载规则
 
-- 块 `id` 全局唯一（文档规范第 2 条），工具按 id 寻址任意深度的块，不限于顶层；
-- `add` 的挂载目标 `parent_id` 必须是已注册容器类型，且合并后深度 ≤ 3，否则拒绝；
-- `remove` / `replace` 连同子树一起生效；`props` patch 不触碰 children；
-- `sort` 只在同一父容器内重排；`order` 缺一个、多一个或含外来 id 都拒绝。
-
-### 原子性、并发与校验分层
-
-- 每次工具调用在内存中完成「读取当前文档 → 应用操作 → 校验合并结果 → 单次落库」，任一步失败不写库。天然满足 ADR-0008 第 6 条「上传失败不得覆盖已有有效文件」；块工具落库复用 `UploadFile` 路径，`preview_sync` 广播、大小上限、MIME 语义全部继承；
-- logic 层按 `(session_id, filename)` 加进程内互斥锁串行化读改写；响应回显 `revision`（取文件 `updated_at`）。检测到并发交错（revision 不匹配）时返回冲突错误，指引先 `preview_lpw_outline` 重读再重试。多实例部署的分布式锁不在 v1 范围；
-- 校验分层：`init` 校验文档骨架（version / meta / blocks 形状）；块操作先按该块 `type` 的参数 Schema 校验**整个块子树**（错误定位到块内 JSON 路径），再检查合并后资源上限（块数 ≤ 500、总字节 ≤ 256 KiB、深度 ≤ 3）；
-- LPW Schema 唯一维护源为版本化 JSON Schema 文件（v1 落在 `resources/lpw/`，`go:embed` 内嵌），后端校验与前端渲染消费同一份，保证两端判断一致（对齐 ADR-0008 后果条款）；
-- Pages 快照不可变：块工具只作用于 Preview 会话文件；已晋升内容需修改时先 Fork 回会话。
-
-### 渐进构建：块级写入 × preview_sync × React 直渲
-
-```mermaid
-sequenceDiagram
-  participant Agent as MCP Agent
-  participant Tool as preview_lpw_block_add
-  participant Logic as PreviewLpwLogic
-  participant Store as PreviewFile
-  participant WS as preview_sync
-  participant UI as 工作台 / Pages 直渲
-
-  loop 每个块一次调用
-    Agent->>Tool: block(id, type, props)
-    Tool->>Logic: 应用 + 校验（互斥）
-    Logic->>Store: 合并后整文档单次覆写
-    Store-->>WS: OnPreviewChanged(upload)
-    WS-->>UI: 文档实时生长一块
-    Tool-->>Agent: ok(block_id, total_blocks, size, revision)
-  end
-```
-
-### 推荐工作流（精度模式指引）
-
-1. `preview_lpw_init` 建骨架：meta 先行，`blocks` 留空；
-2. 按阅读顺序逐块 `preview_lpw_block_add`，单块建议 `content` ≤ 4 KiB、children 深度 ≤ 2；
-3. 长文写作中途用 `preview_lpw_outline` 重新定向（只看索引，节省上下文）；
-4. 修正用 `block_edit`（patch 优先），删除用 `block_remove`，重排用 `block_sort`；
-5. 收尾照旧 `preview_file_list` 终核，再交付 `preview_url` 或挂 Q&A。
-
-`.agents/skills/lumina-preview` 技能文档随本工具族的 PR 更新该指引。
-
-### 示例：逐块追加与重排
-
-`preview_lpw_block_add` 请求（顶层追加一个 metrics 块）：
-
-```json
-{
-  "session_id": "123",
-  "filename": "index.lpw",
-  "block": {
-    "id": "metric-latency",
-    "type": "metrics",
-    "props": {
-      "items": [
-        { "label": "P99 延迟", "value": "42ms", "trend": "down" },
-        { "label": "吞吐", "value": "12k QPS", "trend": "up" }
-      ]
-    }
-  }
-}
-```
-
-响应（节选，复用 `previewSessionSnapshot` 结构）：
-
-```json
-{
-  "status": "success",
-  "block_id": "metric-latency",
-  "total_blocks": 7,
-  "file_size": 9216,
-  "revision": "2026-09-20T10:00:00Z",
-  "workflow": { "state": "reviewable_unverified", "next_tool": "preview_lpw_block_add" }
-}
-```
-
-`preview_lpw_block_sort` 请求（顶层把结论段提到指标段之前）：
-
-```json
-{
-  "session_id": "123",
-  "filename": "index.lpw",
-  "order": ["intro", "conclusion", "metric-latency", "risks"]
-}
-```
-
-### 错误语义（对齐 ADR-0008 第 6 条）
-
-| 场景 | 行为 |
+| parent | 允许插入 |
 | --- | --- |
-| 目标文件不是 `.lpw` / JSON 损坏 | 拒绝并指路：`preview_lpw_init` 重置，或 `preview_file_upload` 整体修复 |
-| `block_id` / `parent_id` 不存在、新增 id 与现有重复 | 拒绝，附现有 id 摘要 |
-| 类型未注册 / props 违反该类型 Schema | 拒绝，错误定位到块内 JSON 路径 |
-| 合并后超块数 / 字节 / 深度上限 | 整体拒绝，不部分应用 |
-| `order` 非当前子块完整排列 | 拒绝，附当前顺序 |
-| revision 冲突 | 返回冲突错误 + 当前 revision，指引重读 outline 后重试 |
+| 根 `content`（`parent_id` 为空） | Layout / Container / Block |
+| Layout | Container / Block |
+| Container | 通过该 `type + variant` 契约的 Block |
+| Block | 拒绝 |
 
-### 工具注册与 Input Schema
+单次调用只提交一个节点。需要 children 时先 add 父节点，再 add 子节点。跨父移动显式拆成 remove + add。
 
-文件落点：`internal/mcp/preview_lpw_tools.go`（定义与注册，模式对齐 `preview_tools.go`）+ `internal/mcp/preview_lpw_handlers.go`（handler 实现）。在 `internal/mcp/server.go` 的 `InitMCPServer` 中调用 `RegisterPreviewLpwTools(server)`；`PreviewLpwLogic` 实例经 `internal/app/startup/startup_mcp.go` 注入（对齐 Preview / Pages 工具做法）。
+### 原子性与校验
 
-块内部结构由 v1 Schema 约束，工具 inputSchema 只收 `type: object` 外壳（`block` / `props` / `meta` 不在工具层重复定义字段）——避免两处 schema 重复漂移，深校验统一发生在 logic 层的整文档断言。
+- 读改写加 `(session_id, filename)` 进程内锁；失败不写库；
+- Schema 校验 1.1 文档形状；logic 校验 kind 层级、Layout pattern、Container variant、annotation 和 500 节点 / 256 KiB 上限；
+- 写操作返回 `node_id`、`node_kind`、`total_nodes`、`file_size`、`revision`；
+- outline 按文档顺序深度优先，条目包含 `kind` 与 `json_path`。
 
-```json
-{
-  "preview_lpw_init": {
-    "type": "object", "required": ["session_id"], "additionalProperties": false,
-    "properties": {
-      "session_id": { "type": "string" },
-      "filename": { "type": "string", "default": "index.lpw" },
-      "meta": { "type": "object" },
-      "blocks": { "type": "array", "items": { "type": "object" } },
-      "revision": { "type": "string", "description": "可选乐观锁：上次响应返回的 revision" }
-    }
-  },
-  "preview_lpw_block_add": {
-    "type": "object", "required": ["session_id", "block"], "additionalProperties": false,
-    "properties": {
-      "session_id": { "type": "string" },
-      "filename": { "type": "string", "default": "index.lpw" },
-      "block": { "type": "object", "required": ["id", "type", "props"] },
-      "parent_id": { "type": "string", "description": "缺省挂顶层" },
-      "position": { "type": "integer", "minimum": 0, "description": "缺省追加到父容器末尾" },
-      "revision": { "type": "string" }
-    }
-  },
-  "preview_lpw_block_edit": {
-    "type": "object", "required": ["session_id", "block_id"], "additionalProperties": false,
-    "properties": {
-      "session_id": { "type": "string" },
-      "filename": { "type": "string", "default": "index.lpw" },
-      "block_id": { "type": "string" },
-      "props": { "type": "object", "description": "patch 模式：浅合并进现有 props" },
-      "block": { "type": "object", "description": "replace 模式：整节点替换（与 props 二选一）" },
-      "revision": { "type": "string" }
-    }
-  },
-  "preview_lpw_block_remove": {
-    "type": "object", "required": ["session_id", "block_ids"], "additionalProperties": false,
-    "properties": {
-      "session_id": { "type": "string" },
-      "filename": { "type": "string", "default": "index.lpw" },
-      "block_ids": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-      "revision": { "type": "string" }
-    }
-  },
-  "preview_lpw_block_sort": {
-    "type": "object", "required": ["session_id", "order"], "additionalProperties": false,
-    "properties": {
-      "session_id": { "type": "string" },
-      "filename": { "type": "string", "default": "index.lpw" },
-      "parent_id": { "type": "string", "description": "缺省为顶层" },
-      "order": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-      "revision": { "type": "string" }
-    }
-  },
-  "preview_lpw_meta_set": {
-    "type": "object", "required": ["session_id", "meta"], "additionalProperties": false,
-    "properties": {
-      "session_id": { "type": "string" },
-      "filename": { "type": "string", "default": "index.lpw" },
-      "meta": { "type": "object" },
-      "revision": { "type": "string" }
-    }
-  },
-  "preview_lpw_outline": {
-    "type": "object", "required": ["session_id"], "additionalProperties": false,
-    "properties": {
-      "session_id": { "type": "string" },
-      "filename": { "type": "string", "default": "index.lpw" }
-    }
-  }
-}
-```
+### 推荐工作流
 
-`preview_lpw_init` 的重置语义：目标已存在且 revision 匹配（或未传 revision）时整体覆盖；这是唯一允许清空 blocks 的块级工具。
+1. `preview_lpw_init` 写 meta，`content` 留空；
+2. `preview_lpw_node_add` 先加 Layout / Container，再加 Block；
+3. 中途 `preview_lpw_outline` 核对路径和 revision；
+4. 用 `node_edit` / `node_sort` / `node_remove` 局部修正；
+5. `preview_file_list` 终核后交付 Preview URL 或挂 Q&A。
 
-### 响应包络
-
-写操作（init / add / edit / remove / sort / meta_set）统一返回，复用 `previewSessionSnapshot`：
-
-| 字段 | 说明 |
-| --- | --- |
-| `status` / `message` | 结果与下一步指引 |
-| `session` / `file` / `entry_file` / `preview_url` / `qa_supplement` | 与 `preview_file_upload` 完全同构 |
-| `block_id` / `total_blocks` / `file_size` / `revision` | 块级结果与新修订号 |
-| `workflow` | 沿用 `previewWriteWorkflow` 状态机输出 |
-
-`preview_lpw_outline` 返回 `outline: { version, block_count, total_size, revision, items[] }`，`items[]` 即 `LpwOutlineItem`，按文档顺序深度优先排列。
+仓库 skill 与 `resources/ai-plugin/skills/lumina-preview` 必须同步教这一套工具，不能再出现 `preview_lpw_block_add`。
 
 ## Frontend Mapping Engine Design
 
-### 目录结构
+### Shared core and host shell
 
-```text
-web/src/components/preview/lpw/
-├── types.ts                  # §Document Spec 的类型契约
-├── lpw-parser.ts             # 解析 + 结构自检（轻量；深校验在服务端）
-├── lpw-registry.ts           # 类型注册表（含容器元数据）
-├── lpw-block-renderer.tsx    # 块分发器（深度控制 + 错误边界）
-├── block-error-boundary.tsx  # 单块异常隔离
-├── fallback-block.tsx        # 未知类型 / 超深 / 异常占位卡片
-├── document-viewer.tsx       # 文档壳：meta 头 + blocks 列表 + 文档级错误 + 空态
-├── viewers.tsx               # PreviewLpwViewer（工作台/展示态）+ PreviewLpwInlineViewer（Q&A）
-├── blocks/                   # 26 种内容块
-│   ├── markdown-block.tsx
-│   ├── callout-block.tsx
-│   ├── heading-block.tsx
-│   ├── list-block.tsx
-│   ├── quote-block.tsx
-│   ├── code-block.tsx
-│   ├── image-block.tsx
-│   ├── divider-block.tsx
-│   ├── cards-block.tsx
-│   ├── metrics-block.tsx
-│   ├── steps-block.tsx
-│   ├── timeline-block.tsx
-│   ├── diff-block.tsx
-│   ├── table-block.tsx
-│   ├── mermaid-block.tsx
-│   ├── chart-block.tsx
-│   ├── comparison-block.tsx
-│   ├── progress-block.tsx
-│   ├── tree-block.tsx
-│   ├── takeaway-block.tsx
-│   ├── glance-block.tsx
-│   ├── open-items-block.tsx
-│   ├── scorecard-block.tsx
-│   ├── quadrant-block.tsx
-│   ├── personnel-block.tsx
-│   └── gallery-block.tsx
-├── echarts-lazy.ts           # loadEcharts()：动态 import + 按需注册，模块级缓存
-├── echarts-module.ts         # echarts/core 按需注册（图表/组件/渲染器集合）
-├── containers/               # 4 种容器块
-│   ├── section-container.tsx
-│   ├── tabs-container.tsx
-│   ├── columns-container.tsx
-│   └── details-container.tsx
-└── index.ts                  # 统一导出 + registerAll()
-```
+共享核心目录以 §演进设计为准，物理路径为 `components/src/lpw/`。`components/package.json` 增加 `"./lpw": "./src/lpw/index.ts"` 导出，并承接 `echarts` 与 `react-diff-viewer-continued` 依赖。`web/src/components/preview/lpw/` 在迁移完成后删除；业务侧统一改从 `@lumina/components/lpw` 导入，不保留代理副本。
 
-### 组件统一契约
+宿主分成两个级别：
 
-所有注册组件收到同一组注入属性（各组件自定义 `P`，外壳一致）：
+- `LpwDocumentViewer`：接收已经读取的 `source` 与可选 `runtimeConfig`，只负责解析与渲染；
+- `LpwSourceViewer`：接收 `src`，处理 Fetch、Abort、重试与资源基址，再调用 `LpwDocumentViewer`。
+
+Preview 工作台、Pages 展示态与 Q&A 内嵌可以用不同外壳尺寸，但不能拥有不同的解析、组件注册或错误行为。
+
+### Component contracts
+
+三类节点使用不同的组件契约，避免一个通用 `children` 属性重新打开任意嵌套：
 
 ```typescript
-export interface LpwBlockSlotProps<P> {
-  blockId: string               // 块 id：锚点 / 错误定位
-  props: P                      // 该块 props（组件内应用默认值）
-  depth: number                 // 当前深度（顶层 = 1）
-  childrenBlocks?: LpwBlock[]   // 仅容器类型非空
+interface LpwNodeSlotBase<P> {
+  nodeId: string
+  props: P
+  location: LpwRenderLocation
 }
 
-// 容器统一通过该助手渲染子块，保证 depth + 1 与错误边界不遗漏
-export function renderChildren(blocks: LpwBlock[] | undefined, depth: number) {
-  return blocks?.map((child) => (
-    <LpwBlockRenderer key={child.id} block={child} depth={depth + 1} />
-  ))
+export interface LpwLayoutSlotProps<P> extends LpwNodeSlotBase<P> {
+  children: LpwLayoutChild[] // Container | Block
 }
+
+export interface LpwContainerSlotProps<P> extends LpwNodeSlotBase<P> {
+  children: LpwBlock[]       // Block only
+}
+
+export interface LpwBlockSlotProps<P> extends LpwNodeSlotBase<P> {
+  annotation?: LpwAnnotation
+  // no children
+}
+
+export function renderLayoutChildren(
+  children: LpwLayoutChild[],
+  parent: LpwRenderLocation,
+): React.ReactNode
+
+export function renderContainerBlocks(
+  blocks: LpwBlock[],
+  parent: LpwRenderLocation,
+): React.ReactNode
 ```
 
-### `lpw-parser.ts`（终版契约）
+`renderLayoutChildren` 拒绝 Layout；`renderContainerBlocks` 拒绝 Layout 和 Container。两个助手都负责路径、错误边界与稳定 key；只有 Block 路径挂载批注装饰层。
+
+### Parser and format versions
 
 ```typescript
-export interface LpwParseError { message: string; path?: string }
-export interface LpwParseResult {
-  document?: LpwDocument
-  error?: LpwParseError
+export interface LpwParseError {
+  message: string
+  path?: string
+  code?: 'JSON_SYNTAX' | 'UNSUPPORTED_VERSION' | 'INVALID_STRUCTURE'
 }
 
-// 解析 + 结构自检：
-// 1. JSON 语法 → 根对象
-// 2. version === '1.0'
-// 3. blocks 为数组，每项含 string id / string type / object props
-// 4. id 全文档唯一（重复 → 定位第二个出现处）
-// 字段上限与枚举由服务端 Schema 负责；未知 type 不是解析错误（渲染期走 Fallback）
+export type LpwParseResult =
+  | { document: LpwDocument; error?: never }
+  | { document?: never; error: LpwParseError }
+
 export function parseLpwSource(source: string): LpwParseResult
 ```
 
-### `lpw-registry.ts`（含元数据）
+解析器按 `version` 选择格式适配器：v1.0 读取原结构；新版本读取 `layout`、批注和 heading icon。旧文档不做内存回写；渲染器把两个版本规范化为内部只读 AST。未知组件仍在块级进入 Fallback，未知版本属于文档级错误。
+
+### Registry metadata
 
 ```typescript
-export interface LpwEntry {
-  Component: React.ComponentType<LpwBlockSlotProps<any>>
-  container: boolean // section / tabs / columns 为 true
+export interface LpwLayoutEntry<P = Record<string, unknown>> {
+  kind: 'layout'
+  Component: React.ComponentType<LpwLayoutSlotProps<P>>
+  displayName: string
+  patterns: LpwLayoutPattern[]
 }
+
+export interface LpwContainerEntry<P = Record<string, unknown>> {
+  kind: 'container'
+  Component: React.ComponentType<LpwContainerSlotProps<P>>
+  displayName: string
+  variants: Record<string, LpwContainerVariantContract>
+}
+
+export interface LpwBlockEntry<P = Record<string, unknown>> {
+  kind: 'block'
+  Component: React.ComponentType<LpwBlockSlotProps<P>>
+  displayName: string
+  groups: LpwBlockGroup[]
+  annotatableFields: string[]
+}
+
+export type LpwRegistryEntry =
+  | LpwLayoutEntry
+  | LpwContainerEntry
+  | LpwBlockEntry
 
 class LpwRegistryStore {
-  private registry = new Map<string, LpwEntry>()
-  register(type: string, container: boolean, Component: LpwEntry['Component']): void
-  get(type: string): LpwEntry | undefined
-  types(): string[]
+  register(type: string, entry: LpwRegistryEntry): void
+  get(kind: LpwNodeKind, type: string): LpwRegistryEntry | undefined
+  entries(kind?: LpwNodeKind): LpwRegistryEntry[]
+  clear(): void
 }
-
-export const lpwRegistry = new LpwRegistryStore()
 ```
 
-`index.ts` 的 `registerAll()` 集中注册 10 个类型；注册表类型清单与 v1 Schema 的分支数由单测对齐（新增 Schema 分支而未注册组件时测试失败）。
+注册键使用 `kind:type`，同名类型不能跨类别误命中。注册表元数据同时服务 Layout 合法性、Container 变体校验、Block 批注字段与诊断显示。新格式 Schema 的三类集合、后端契约镜像和前端注册表由自动化测试对齐。
 
-### `lpw-block-renderer.tsx`（终版）
+### Node renderer order
+
+渲染顺序固定为：
+
+```text
+读取 kind + type
+  → 按 kind 查注册表
+  → 计算 location
+  → 检查层级（Layout / Container / Block）
+  → Layout pattern 或 Container variant 前置校验
+  → NodeErrorBoundary
+  → 仅 Block 挂 AnnotationFrame
+  → 对应 Component
+```
+
+层级非法、Layout 槽位不兼容、Container 不接受某 Block、未知节点和运行时异常全部转换为统一 `LpwDiagnostic`。错误卡片替换当前失败节点，兄弟节点继续渲染。
+
+### Document and source viewers
 
 ```typescript
-const MAX_CONTAINER_DEPTH = 3
+export interface LpwDocumentViewerProps {
+  source: string
+  runtimeConfig?: LpwRuntimeConfig
+  className?: string
+}
 
-export function LpwBlockRenderer({
-  block,
-  depth = 1,
-}: {
-  block: LpwBlock
-  depth?: number
-}) {
-  if (depth > MAX_CONTAINER_DEPTH) {
-    return (
-      <LpwFallbackBlock
-        block={block}
-        reason={`容器嵌套深度超过最大限制（${MAX_CONTAINER_DEPTH} 层）`}
-      />
-    )
-  }
-
-  const entry = lpwRegistry.get(block.type)
-  if (!entry) {
-    return <LpwFallbackBlock block={block} reason={`未注册的组件类型: ${block.type}`} />
-  }
-
-  return (
-    <BlockErrorBoundary block={block}>
-      <entry.Component
-        blockId={block.id}
-        props={block.props}
-        depth={depth}
-        childrenBlocks={block.children}
-      />
-    </BlockErrorBoundary>
-  )
+export interface LpwSourceViewerProps {
+  src: string
+  filename: string
+  runtimeConfig?: Omit<LpwRuntimeConfig, 'assetBaseUrl'>
+  variant?: 'page' | 'inline'
 }
 ```
 
-### `block-error-boundary.tsx` / `fallback-block.tsx`
+`LpwSourceViewer` 默认从 `src` 计算 `assetBaseUrl`，保证同会话图片在 Preview、Pages 与 Q&A 中采用相同相对路径。加载、错误与重试状态属于共享外壳；路由鉴权和文件选择仍属于宿主。
 
-错误边界实现保持既定语义：崩溃块就地渲染诊断卡片（`[type#id] + error.message`），绝不让整篇白屏。
+## Dedicated Component Library (v1 baseline + next version)
 
-```typescript
-interface State {
-  hasError: boolean
-  error: Error | null
-}
-
-export class BlockErrorBoundary extends React.Component<
-  { block: LpwBlock; children: React.ReactNode },
-  State
-> {
-  state: State = { hasError: false, error: null }
-
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="my-2 border border-red-500/30 bg-red-500/5 p-3 text-xs">
-          <div className="flex items-center gap-1.5 font-semibold text-red-600">
-            <span>块渲染失败</span>
-            <span className="text-sea-ink-soft/60">
-              [{this.props.block.type}#{this.props.block.id}]
-            </span>
-          </div>
-          <p className="mt-1 font-mono text-sea-ink-soft">{this.state.error?.message}</p>
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
-```
-
-`LpwFallbackBlock` 渲染警示卡：块 id、类型、原因，附 `<details>` 折叠的 `props` JSON 预览——读者可以把卡片内容直接反馈给 Agent 修正。
-
-### `document-viewer.tsx` 与两个 Viewer
-
-```typescript
-export function LpwDocumentViewer({ source }: { source: string }) {
-  const { document, error } = useMemo(() => parseLpwSource(source), [source])
-  // error   → 文档级错误卡（含 path / message，不留白）
-  // 空 blocks → 「空文档：等待分块写入」占位（呼应渐进构建心智）
-  // 正常    → meta 头（title / description / tags Badge）+ blocks.map(LpwBlockRenderer, depth=1)
-}
-
-// viewers.tsx —— 两个外壳只差布局约束
-export function PreviewLpwViewer({ src, filename }: { src: string; filename: string })
-// fetch(src) 取原始文本（不做 formatPreviewSource 预处理）
-// loading / fetch 错误态 → 居中提示；成功 → LpwDocumentViewer
-// 用于工作台与 Pages 展示态：占满父容器，滚动交给父级
-
-export function PreviewLpwInlineViewer({ src, filename }: { src: string; filename: string })
-// Q&A 内嵌：同上，外层 min-h-80、宽度撑满补充面板
-```
-
-## Dedicated Component Library (v1 Specs)
-
-26 个内容块 + 4 个容器块共 30 个类型的 props 契约见 §Document Specification；本节定义渲染实现。全局约束（Key Decisions #11）：**样式强制 Tailwind CSS utility 类为默认实现**——只消费 `@lumina/components` 原语与 `theme.css` 语义 token 对应的 Tailwind 语义类（`text-sea-ink`、`border-line`、`bg-surface` 等），全平直角（无 rounded 类）；禁止组件级 CSS 文件与 CSS-in-JS；动态值（列宽 / 图高 / 进度条宽）经 `style` 属性注入；本地交互一律 `useState`，无网络副作用。React 宿主与未来 Vue 宿主共用同一套 utility 类与 token。
+现有 26 个 Block 与 4 个 v1.0 递归容器作为兼容基线；下一格式版本按 Layout / Container / Block 重分类：增加 Layout 节点与 Panel Container，Section / Tabs / Details 改为严格 Container，Columns 仅保留 v1.0 兼容注册。组件实现迁入 `@lumina/components/lpw`，只消费同包 UI / Markdown / Theme 原语。
 
 ### 与 `/report` 模块系统的映射（第三批复刻来源）
 
@@ -1918,7 +2379,7 @@ ms-html 插件报表壳（`_shared/html-design.md`，32+ 类模块）已逐类�
 
 ### `diff`
 
-- 依赖：新增 `react-diff-viewer-continued`（仅 `web` 端，`components` 包不引入）；
+- 依赖：`react-diff-viewer-continued` 随 LPW 迁入 `@lumina/components`，由 Diff 块按需加载，避免无 Diff 文档承担运行时成本；
 - 结构：顶栏 = filename + language `Badge` + 并排/统一切换按钮（本地 state，初值 `splitView ?? true`）；正文 ReactDiffViewer；
 - 主题：`styles` 覆写对齐直角与 `--sand` / `--sea-ink` 语义色，深浅两套 token 跟随根节点 `dark` 类；
 - 边界：oldCode 与 newCode 相同渲染「无差异」提示。
@@ -1932,9 +2393,11 @@ ms-html 插件报表壳（`_shared/html-design.md`，32+ 类模块）已逐类�
 
 ### `heading`
 
-- 结构：按 `level`（默认 2）渲染 `h1/h2/h3`，`id={blockId}` 锚点；正文 `text-sea-ink`，层级字号对齐 `proseArticle` 的标题尺度；
-- 用途：无需 section 包裹的轻量结构；文档壳的 TOC（如后续引入）同时收集 `heading` 与 `section.title`；
-- 边界：`content` 为纯文本，不渲染 markdown（需要富文本时用 markdown 块的 `#` 语法）。
+- 结构：按 `level` 渲染 `h1/h2/h3`，`id={blockId}`；使用左侧强调边、层级字号、色阶和受控 Lucide 图标表达层次；
+- 图标：新版本 `icon` 为枚举，缺省按 level 固定；不按标题文本关键词猜测；
+- H1/H2 不再使用底部粗横线，H3 维持轻量文字层；
+- 用途：无需 section 包裹的轻量结构；后续 TOC 同时收集 `heading` 与 `section.title`；
+- 边界：`content` 为纯文本，批注可匹配 `props.content`。
 
 ### `list`
 
@@ -1961,8 +2424,9 @@ ms-html 插件报表壳（`_shared/html-design.md`，32+ 类模块）已逐类�
 
 ### `divider`
 
-- 结构：`<hr class="my-6 border-line">`；无 props；
-- 用途：章节之间的呼吸分隔，与 section 标题不叠加使用。
+- 结构：低对比渐隐线或短标记，保留充分垂直留白；无 props；
+- 用途：作者明确要求章节停顿时使用；heading 与 section 自身不再附带横向分隔线；
+- 边界：连续 divider、紧邻 heading 的 divider 在写作指南中视为冗余，渲染器不擅自删除内容。
 
 ### `cards`
 
@@ -1972,12 +2436,13 @@ ms-html 插件报表壳（`_shared/html-design.md`，32+ 类模块）已逐类�
 
 ### `mermaid`
 
-- 结构：`content` 交给 `@lumina/components/markdown` 的 mermaid 渲染链路（与 Markdown 块内的 mermaid 代码围栏同一实现，securityLevel 沿用现有配置）；可选 caption 渲染为 figcaption；
-- 边界：语法错误时 mermaid 抛错 → 被 `BlockErrorBoundary` 捕获为可见错误卡（含解析失败信息），不影响其余块。
+- 结构：`content` 交给 `@lumina/components/markdown` 的 Mermaid 渲染链路，输出放入 `MermaidViewport`；caption 位于视口外，缩放/滚动时保持可见；
+- 视口：适应宽度、原始比例、横向滚动与全屏；SVG 只做等比缩放；
+- 边界：语法错误转为结构化块诊断；缺少 `viewBox` 时根据固有宽高补齐，无法推导时回退原始比例滚动模式。
 
 ### `chart`（ECharts 引擎）
 
-- 依赖：新增 `echarts`（仅 `web` 端），**按需注册 + 懒加载**，导入策略对比如下：
+- 依赖：`echarts` 随 LPW 核心迁入 `@lumina/components`，继续采用**按需注册 + 懒加载**，导入策略对比如下：
 
 | 方案 | 做法 | 包体影响 | 结论 |
 | --- | --- | --- | --- |
@@ -2052,28 +2517,38 @@ ms-html 插件报表壳（`_shared/html-design.md`，32+ 类模块）已逐类�
 - `src` 安全规则与 `image` 块完全一致（同会话相对解析 / `https?://` 外链，logic 统一校验）；
 - 边界：单图加载失败渲染占位卡，不影响其余图。
 
-### `section`（容器）
+### `section`（Container）
 
-- 结构：`<section id={blockId}>` + `h2` 标题 + 内容区；
-- 折叠：`collapsible` 时标题为 `<button aria-expanded>`，初值 `defaultOpen ?? true`；折叠只隐藏内容，标题常驻；
-- 子块：`renderChildren(childrenBlocks, depth)`。
+- 结构：章节标题 + 内容区；标题使用左侧细强调边、图标与留白，移除粗黑底线；
+- variant：`article`、`feature`、`evidence` 分别绑定不同 Block 能力组；
+- 折叠：`collapsible` 时标题区增加明确按钮语义与展开状态，但视觉仍保留章节身份；复杂补充材料优先使用 details；
+- children 只能是通过 variant 校验的 Block，通过 `renderContainerBlocks` 渲染。
 
-### `tabs`（容器）
+### `tabs`（Container）
 
-- 结构：`role=tablist` 按钮组 + 面板；激活 key 本地 state，初值 `defaultKey ?? items[0].key`；
-- 对齐：children 与 items 按索引一一对应（服务端已强制等长）；防御：缺失槽位渲染「该页签缺少内容块」占位而非空白；
-- 仅渲染激活面板（v1 用条件渲染，不做 keep-alive）。
+- 结构：`role=tablist` 按钮组 + 面板；激活 key 本地 state；
+- variant：`comparison`、`reference`、`gallery` 分别限制可选 Block 类型；
+- 每个 tab 对应一个完整 Block；items 与 children 按索引等长；缺失槽位显示诊断；
+- 仅渲染激活面板，首版不做 keep-alive。
 
-### `columns`（容器）
+### `columns`（v1.0 兼容 Container）
 
-- 结构：`grid gap-4 grid-cols-1 md:<ratio>`；ratio 映射：`1:1 → md:grid-cols-2`、`1:2 → md:grid-cols-[1fr_2fr]`、`2:1 → md:grid-cols-[2fr_1fr]`、`1:1:1 → md:grid-cols-3`；移动端单列；
-- 对齐：children 数 = ratio 列数（服务端强制），多余槽位不存在。
+- 保持现有 ratio 与递归读取行为，只用于 v1.0 文档；
+- next 不注册为可写 Container，左右/上下分区由 Layout `split` 承担。
 
-### `details`（容器）
+### `details`（Container）
 
-- 结构：原生 `<details open={defaultOpen ?? false}><summary>{summary}</summary>` + 内容区，零 JS 免状态管理；
-- 语义：与 section 的区别——section 是章节（常驻、可锚点），details 是「默认收起的补充材料」（附录、长表格、原始数据）；
-- 子块：`renderChildren(childrenBlocks, depth)`，深度计入容器层级。
+- 结构：整块为有边界的补充材料舱体；summary 是完整可点击区域，包含 Lucide `ChevronRight`、`EXPANDABLE` 状态文案与摘要；
+- variant：`supplement` 接受 text/technical/media Block，`raw-data` 仅接受 code/diff/table/tree Block；
+- 动效：只在用户触发开合时旋转箭头，遵循 `prefers-reduced-motion`；
+- children 只能是通过 variant 校验的 Block，通过 `renderContainerBlocks` 渲染。
+
+### `layout`（下一版本同级节点）
+
+- Layout 与 Container / Block 同属根内容节点类别，不归入 Container；
+- children 只能是 Container 或 Block；禁止 Layout 嵌套；
+- pattern / strategy / placement 规则见 §严格三类节点模型；
+- 校验失败时整个 Layout 就地显示 `INVALID_LAYOUT_SLOT`，并指出具体 child、kind、type 和允许策略。
 
 ## Integration Points
 
@@ -2142,60 +2617,78 @@ function isRenderable(filename: string) {
 
 ## Implementation Roadmap & PR Plan
 
-项目落地划分为 5 个连续 PR：
+详细开发、测试、调优、MCP 切换、插件/Skill 同步和最终验收步骤以 [.plan/lpw-core-evolution](../../../.plan/lpw-core-evolution/README.md) 为准。执行时直接按 STEP-1 到 STEP-10 推进。
 
-```mermaid
-flowchart LR
-  PR1["PR 1: 映射引擎核心与路由分流"] --> PR2["PR 2: 26 种内容专用组件"]
-  PR2 --> PR3["PR 3: 4 种容器组件与本地交互"]
-  PR3 --> PR4["PR 4: 后端校验、MCP 入口、Pages 直切与 Q&A 嵌入"]
-  PR4 --> PR5["PR 5: preview_lpw_* 分块写入工具族"]
-```
+硬约束：
 
-- **PR 1：映射引擎核心与路由分流**
-  - 新增 `web/src/components/preview/lpw/` 核心：`types.ts`, `lpw-parser.ts`, `lpw-registry.ts`, `lpw-block-renderer.tsx`, `block-error-boundary.tsx`, `fallback-block.tsx`, `document-viewer.tsx`, `viewers.tsx`, `index.ts`；
-  - 调整 `web/src/lib/preview-file.ts` 与 `web/src/components/preview/file-viewer.tsx` 支持 `'lpw'`；
-  - 交付基础空壳与 Fallback 占位。
-- **PR 2：26 种内容专用组件**
-  - 实现 Markdown, Callout, Heading, List, Quote, Code, Image, Divider, Cards, Metrics, Steps, Timeline, Diff, Table, Mermaid, Chart, Comparison, Progress, Tree, Takeaway, Glance, Open-Items, Scorecard, Quadrant, Personnel, Gallery 组件；
-  - 注册至 `lpwRegistry`，补齐单测与样例；
-  - 新增依赖 `react-diff-viewer-continued` 与 `echarts`（均仅 `web` 端；echarts 走 `echarts-lazy.ts` 按需注册 + 懒加载）。
-- **PR 3：4 种容器组件与本地交互**
-  - 实现 Section, Tabs, Columns, Details 容器块；
-  - 支持 `depth` 递归限制与本地标签/折叠状态；
-  - 交付典型 LPW 长文样例。
-- **PR 4：后端校验、MCP 入口、Pages 直切与 Q&A 嵌入**
-  - 修改 `internal/constant/preview.go` 与 `internal/logic/preview_logic.go`；
-  - 扩展 `internal/mcp/preview_handlers.go` 的 snapshot 入口判定与 `previewWriteWorkflow` 文案，同步 `preview_schemas.go` 描述与 Pages `EntryFilename` 语义；
-  - 调整 `web/src/components/pages/showcase-shell.tsx` 的 `isRenderable` 纳入 `.lpw`；
-  - 调整 `web/src/components/interact/primitives/preview-frame.tsx` 支持 Q&A 内嵌。
-- **PR 5：`preview_lpw_*` 分块写入工具族**
-  - 新增 `internal/mcp/preview_lpw_tools.go`（7 个工具定义与注册）与 `internal/logic/preview_lpw_logic.go`（块操作引擎：互斥、Schema 校验、合并、单次落库）；
-  - `resources/lpw/` 内嵌 v1 Schema，后端校验与前端渲染同源消费；
-  - MCP 响应复用 `previewSessionSnapshot`，附加块级结果（`block_id`、`total_blocks`、`file_size`、`revision`）；
-  - `preview_schemas.go` 登记新工具 input/outputSchema；
-  - 更新 `.agents/skills/lumina-preview` 技能：LPW 精度模式工作流指引。
+- 新格式版本号固定 `"1.1"`，根字段是 `content`，每个节点必须有 `kind`；
+- 抛弃 `preview_lpw_block_*` 与 `blocks[]`，MCP 只保留节点语义工具；
+- 不要实现 1.0 → 1.1 的自动迁移；
+- 仓库 skill 与 `resources/ai-plugin/skills` 必须同步更新。
 
 ## Verification & Testing Strategy
 
-1. **单元测试**：
-   - `lpw-parser.test.ts`：验证合法 JSON、畸形 JSON、不支持的版本（如 `2.0`）、缺少 `blocks` 等异常路径；
-   - `lpw-registry.test.ts`：验证组件注册、重复注册覆盖、未注册类型查询；
-   - `block-error-boundary.test.tsx`：模拟组件内部 `throw new Error()`，断言页面呈现错误卡片且文档其他块正常渲染。
-2. **场景用例回归**：
-   - 构造包含 30 种块的完整 `.lpw` 文档，在 Preview 工作台（`/preview/:session_hash/:filename`）与 Pages 展示态（晋升快照后的 `/pages/:project/:slug/:filename`）验证渲染一致性；
-   - 在 Q&A 交互中推送包含 `.lpw` 引用的 supplement，验证原生内嵌展示正常；
-   - 上传超限文档（>256KB 或深度 >3），验证错误提示明晰可见。
-3. **分块写入工具族**：
-   - `preview_lpw_logic_test.go`：add / patch / replace / remove / sort 正常路径；id 冲突、未知 id、未知类型、深度/块数/字节超限的原子性（失败后文件字节不变）；互斥锁下的并发读改写不丢更新；
-   - MCP 注册测试：7 个工具名称、inputSchema 与 outputSchema 字段齐全；
-   - 场景回归：分块构建 ≥ 30 块长文，每步核对 `preview_sync` 上屏与 `preview_lpw_outline` 一致；中途执行 remove 与 sort 后终核渲染无丢块、无孤儿 id。
-4. **专用组件渲染测试**（Vitest + Testing Library，`web/` 端）：
-   - 每类型渲染用例：正常 props、可选字段缺省、默认值应用（callout level、table align、tabs defaultKey、diff splitView、heading level、list style、chart height/legend）；
-   - 容器契约：depth 传递、tabs 缺槽占位、columns 比例类名、details 原生开合、renderChildren 递归；
-   - 图表专项：7 种 chartType 各一例；chart 数据对齐负例（长度不匹配、pie 多 series、scatter 带 categories）在 logic 层拒绝；mermaid 语法错误渲染为可见错误卡；echarts 懒加载——无 chart 块的文档不请求 echarts chunk，含 chart 块的文档首个块挂载后只加载一次；
-   - 第二批块：comparison 推荐列高亮与 verdict 语义色、progress 状态缺省推断（100/中间/0）、tree 深度渲染与角线；comparison 行 values 与 plans 数量错配在 logic 层拒绝；
-   - 第三批块（复刻 `/report`）：takeaway 墨底方匣、glance 编号格、open-items 虚线框、scorecard 加权总分计算（渲染期 Σ score×weight/100）与推荐列高亮、quadrant 四格落位与空象限占位、personnel 卡片、gallery 多图与单图失败占位；scorecard 的 scores 长度与 Σweight=100 错配在 logic 层拒绝；
-   - 链接与媒体：image 同会话相对解析与外链直用、cards href 协议过滤、image 加载失败占位；
-   - `registerAll()` 与 v1 Schema 分支数对齐测试：Schema 新增类型而未注册组件时失败；
-   - fallback / error-boundary：未注册类型、组件抛错 → 卡片可见且文档其余块正常渲染。
+### 1. 格式与层级
+
+- v1.0 文档继续按原契约解析和渲染；
+- next 根内容允许 Layout / Container / Block；
+- 合法层级覆盖：`document → layout → container → block`、`document → layout → block`、`document → container → block`、`document → block`；
+- 非法层级覆盖：Layout → Layout、Container → Container、Container → Layout、Block → 任意 child，均返回精确 JSON 路径；
+- 只有 Block 可以携带 annotation；Layout / Container 出现 annotation 直接拒绝；
+- Schema 类型集合、后端契约镜像与前端注册表保持集合一致。
+
+### 2. Container 变体
+
+每个 variant 至少具备一个合法组合和一个非法组合 fixture：
+
+- Section：article / feature / evidence；
+- Panel：summary / dashboard / aside；
+- Details：supplement / raw-data；
+- Tabs：comparison / reference / gallery。
+
+断言覆盖允许组、显式类型白名单/黑名单、最少/最多数量、顺序与重复策略。非法 child 必须指出 Container type、variant、child ID/type、期望 group 与替代建议。
+
+### 3. Layout 行为
+
+- Split：左右、上下、均分、比例、fixed-fluid；固定侧保持尺寸，流动侧占满余量；
+- Alternating：桌面逐组镜像，移动端恢复语义顺序；
+- Grid：列数和断点降级；
+- Bento：跨格、无重叠、DOM 顺序不变、移动端取消跨度；
+- Newspaper：lead/body/media/aside/full 角色、正文多栏流、原子插块 `break-inside: avoid`、禁止交互/数据块进入 body 流；
+- Editorial Wrap：严格 image + markdown、方形媒体定位、正文回到媒体下方通栏、移动端清除浮动；Container 或其他 Block 组合必须失败；
+- Flow：默认纵向流与紧凑横向换行。
+
+### 4. 批注
+
+- 六种 annotation kind 具有不同图标/文字语义和无障碍标签；
+- 字段白名单：heading/markdown/callout 的合法目标通过，image src 与 code body 的正则划线被拒绝；
+- RE2 非法表达式、超长 pattern、不支持 flags、target 超限和命中超限产生批注诊断，同时保留 Block 正文；
+- Markdown 只标记可见文本节点，跳过代码、URL 与属性；
+- 鼠标、键盘和触摸均可打开批注详情，并尊重 reduced motion。
+
+### 5. 诊断
+
+- 未知 kind/type、非法层级、Container 不接受 child、Layout 角色非法、资源超限和运行时 throw 映射到稳定诊断码；
+- JSON 路径与 ID 父链指向同一节点；
+- props 摘要上限 2 KiB，长文本截断，敏感键遮盖；
+- 生产态隐藏 stack，debug 模式在折叠区提供；
+- 复制诊断只复制遮盖后的 payload。
+
+### 6. 视觉与浏览器验证
+
+在 Preview 工作台、Pages 展示态和 Q&A 内嵌中分别检查桌面和移动端：
+
+- Heading 使用 Lucide 图标与左侧强调边，页面没有重复黑色底线；
+- Section 保持章节形态，Details 明确可交互且不与 Heading 混淆；
+- 文档头尾、Divider 与块外框不会叠成多重横线；
+- Mermaid 支持适应宽度、原始比例、横向滚动和全屏，且保持纵横比；
+- 所有 Layout pattern 保持正确阅读顺序，相对资源 URL 以 LPW 文件为基准解析；
+- 空态、加载、Fetch 失败、解析失败和节点渲染失败均给出可行动提示。
+
+### 7. 构建与回归门禁
+
+- `components`：TypeScript build、lint、Vitest；
+- `web`：TypeScript/Vite build、lint 与 LPW 集成测试；
+- 后端：Schema loader、next 层级、Container 契约、Layout placement、annotation 正则与 MCP 原子性测试；
+- 完整 fixture 覆盖 26 种 Block、全部 Container variant 和全部 Layout pattern；
+- ECharts 与 Diff 保持懒加载，不含对应 Block 的文档不能加载相关运行时 chunk。
