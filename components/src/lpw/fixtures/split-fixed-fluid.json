@@ -1,0 +1,42 @@
+{
+  "version": "1.1",
+  "meta": {
+    "title": "Split Fixed-Fluid 验收样例",
+    "description": "左侧弹性文章，右侧固定侧栏图表"
+  },
+  "content": [
+    {
+      "id": "lay-split-ff",
+      "kind": "layout",
+      "type": "layout",
+      "props": {
+        "pattern": "split",
+        "strategy": {
+          "type": "fixed-fluid",
+          "fixed": "end",
+          "size": "md"
+        }
+      },
+      "children": [
+        {
+          "id": "md-main",
+          "kind": "block",
+          "type": "markdown",
+          "props": {
+            "content": "## 核心架构演进说明\n\n微明 (Lumina) 引入了全新的 LPW 1.1 节点语义系统。从自底向上的数据流向来看，三类节点的严格分工消除了传统文档在排版自由度和语义确定性之间的张力。Layout 作为顶层骨架，只负责空间的几何分割；Container 承载带有出版级美学外壳的章节与面板；Block 则是真正的内容承载原子。\n\n在传统 Markdown 中，分栏与异形图文环绕往往依赖非标准的扩展或直接书写 HTML，这严重破坏了文档的可索引性与安全隔离边界。LPW 通过在 AST 层面固定 Layout -> Container -> Block 的单向层级，不仅保证了移动端降级顺序的可预测性，还彻底消除了任意 DOM 注入的风险。\n\n此外，共享组件包下沉使得控制台前端与独立的 Wiki 前端能够同源消费同一套渲染器与主题规范，实现单二进制交付下的完全视觉一致性。"
+          }
+        },
+        {
+          "id": "img-side",
+          "kind": "block",
+          "type": "image",
+          "props": {
+            "src": "arch-overview.png",
+            "alt": "系统架构示意图",
+            "caption": "微明知识中枢核心拓扑图"
+          }
+        }
+      ]
+    }
+  ]
+}

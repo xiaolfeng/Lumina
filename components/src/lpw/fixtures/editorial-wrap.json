@@ -1,0 +1,47 @@
+{
+  "version": "1.1",
+  "meta": {
+    "title": "Editorial Wrap 图文环绕排版样例",
+    "description": "方形媒体与异形正文自然环绕流动"
+  },
+  "content": [
+    {
+      "id": "lay-wrap",
+      "kind": "layout",
+      "type": "layout",
+      "props": {
+        "pattern": "editorial-wrap",
+        "strategy": {
+          "type": "media-wrap",
+          "mediaPosition": "top-end",
+          "mediaWidth": "third",
+          "mediaShape": "square"
+        },
+        "placements": [
+          { "nodeId": "img-author", "orderOnMobile": 1 },
+          { "nodeId": "md-essay", "orderOnMobile": 2 }
+        ]
+      },
+      "children": [
+        {
+          "id": "img-author",
+          "kind": "block",
+          "type": "image",
+          "props": {
+            "src": "author.png",
+            "alt": "作者肖像",
+            "caption": "首席架构师近照"
+          }
+        },
+        {
+          "id": "md-essay",
+          "kind": "block",
+          "type": "markdown",
+          "props": {
+            "content": "### 探索工程美学的本质\n\n美学并不仅是界面的粉饰，更是工程逻辑与认知效率的外化呈现。在长文技术白皮书的排版实践中，单纯的堆砌代码和死板的上下分层容易引发阅读疲劳。真正的版式美学应当像经典印刷物一样，让重要的视觉焦点与流动的正文形成有机的呼应。\n\n当图片位于右上角时，文字自然从左侧流经，并在绕过图片边界后重新恢复通栏展示。这种排版语言能够有效收紧空间，增强图文之间的叙事关联。\n\n而在移动端视口下，浮动流被自动取消并按指定顺序自适应纵向堆叠，保证了极小屏幕下的无障碍焦点与阅读流畅度。"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "version": "1.1",
+  "meta": {
+    "title": "Alternating 交错图文样例",
+    "description": "媒体与说明文本在偶数组自动镜像对调"
+  },
+  "content": [
+    {
+      "id": "lay-alt",
+      "kind": "layout",
+      "type": "layout",
+      "props": {
+        "pattern": "alternating",
+        "alternateFrom": "media"
+      },
+      "children": [
+        {
+          "id": "img-step-1",
+          "kind": "block",
+          "type": "image",
+          "props": {
+            "src": "step1.png",
+            "alt": "第一步：发现与梳理"
+          }
+        },
+        {
+          "id": "md-step-1",
+          "kind": "block",
+          "type": "markdown",
+          "props": {
+            "content": "### 01 / 认知与初始化\n\n通过静态扫描与语义索引解析现有工程边界，完成 AST 树与依赖关系的全局建模。"
+          }
+        },
+        {
+          "id": "img-step-2",
+          "kind": "block",
+          "type": "image",
+          "props": {
+            "src": "step2.png",
+            "alt": "第二步：编排与生成"
+          }
+        },
+        {
+          "id": "md-step-2",
+          "kind": "block",
+          "type": "markdown",
+          "props": {
+            "content": "### 02 / 增量与演进\n\n自底向上分块推进，确保每个步骤都经过契约检验并生成明确的结构化诊断证据。"
+          }
+        }
+      ]
+    }
+  ]
+}

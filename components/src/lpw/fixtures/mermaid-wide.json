@@ -1,0 +1,18 @@
+{
+  "version": "1.1",
+  "meta": {
+    "title": "超宽 Mermaid 视口自适应样例",
+    "description": "展示超长时序/流程图自适应缩放、原始比例滚动与全屏视口"
+  },
+  "content": [
+    {
+      "id": "mm-wide",
+      "kind": "block",
+      "type": "mermaid",
+      "props": {
+        "content": "flowchart LR\n  A[需求确立] --> B[方案设计]\n  B --> C[Schema定义]\n  C --> D[节点建模]\n  D --> E[增量写入]\n  E --> F[直渲管线]\n  F --> G[全端走查]\n  G --> H[正式发布]",
+        "caption": "微明 LPW 1.1 全链路流转全景架构图"
+      }
+    }
+  ]
+}

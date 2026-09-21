@@ -2,6 +2,7 @@ package logic
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -14,213 +15,232 @@ type lpwMeta struct {
 }
 
 type lpwDocument struct {
-	Version string     `json:"version"`
-	Meta    *lpwMeta   `json:"meta,omitempty"`
-	Blocks  []lpwBlock `json:"blocks"`
+	Version string    `json:"version"`
+	Meta    *lpwMeta  `json:"meta,omitempty"`
+	Content []lpwNode `json:"content"`
 }
 
-type lpwBlock struct {
-	ID       string         `json:"id"`
-	Type     string         `json:"type"`
-	Props    map[string]any `json:"props"`
-	Children []lpwBlock     `json:"children,omitempty"`
+type lpwNode struct {
+	ID         string         `json:"id"`
+	Kind       string         `json:"kind"` // layout | container | block
+	Type       string         `json:"type"`
+	Props      map[string]any `json:"props"`
+	Annotation *lpwAnnotation `json:"annotation,omitempty"` // 仅 block 合法
+	Children   []lpwNode      `json:"children,omitempty"`
+}
+
+type lpwAnnotation struct {
+	Kind    string                `json:"kind"`
+	Label   string                `json:"label,omitempty"`
+	Message string                `json:"message"`
+	Author  string                `json:"author,omitempty"`
+	Targets []lpwAnnotationTarget `json:"targets,omitempty"`
+}
+
+type lpwAnnotationTarget struct {
+	Field   string `json:"field"`
+	Pattern string `json:"pattern"`
+	Flags   string `json:"flags,omitempty"`
 }
 
 // LpwMetaExport 供外部包（如 MCP）传入 Meta
 type LpwMetaExport = lpwMeta
 
-// LpwBlockExport 供外部包传入块结构
-type LpwBlockExport = lpwBlock
+// LpwNodeExport 供外部包传入节点结构
+type LpwNodeExport = lpwNode
 
-// LpwBlockRaw 用于接收反序列化传入的原始块并转换为内部树节点
-type LpwBlockRaw struct {
-	ID       string         `json:"id"`
-	Type     string         `json:"type"`
-	Props    map[string]any `json:"props"`
-	Children []LpwBlockRaw  `json:"children,omitempty"`
+// LpwAnnotationExport 供外部包传入批注结构
+type LpwAnnotationExport = lpwAnnotation
+
+// LpwNodeRaw 用于接收反序列化传入的原始节点并转换为内部树节点
+type LpwNodeRaw struct {
+	ID         string         `json:"id"`
+	Kind       string         `json:"kind"`
+	Type       string         `json:"type"`
+	Props      map[string]any `json:"props"`
+	Annotation *lpwAnnotation `json:"annotation,omitempty"`
+	Children   []LpwNodeRaw   `json:"children,omitempty"`
 }
 
-// ToInternal 转换为内部 lpwBlock 结构
-func (r LpwBlockRaw) ToInternal() lpwBlock {
-	var children []lpwBlock
+// ToInternal 转换为内部 lpwNode 结构
+func (r LpwNodeRaw) ToInternal() lpwNode {
+	var children []lpwNode
 	if len(r.Children) > 0 {
-		children = make([]lpwBlock, len(r.Children))
+		children = make([]lpwNode, len(r.Children))
 		for i, c := range r.Children {
 			children[i] = c.ToInternal()
 		}
 	}
-	return lpwBlock{
-		ID:       r.ID,
-		Type:     r.Type,
-		Props:    r.Props,
-		Children: children,
+	return lpwNode{
+		ID:         r.ID,
+		Kind:       r.Kind,
+		Type:       r.Type,
+		Props:      r.Props,
+		Annotation: r.Annotation,
+		Children:   children,
 	}
 }
 
-var lpwContainerTypes = map[string]bool{
-	"section": true,
-	"tabs":    true,
-	"columns": true,
-	"details": true,
+// LpwNodeAnnotationPatch 供修改批注使用
+type LpwNodeAnnotationPatch struct {
+	Clear bool
+	Value *lpwAnnotation
 }
 
-// collectBlockIDs 递归收集文档内所有块 ID 并统计总数
-func collectBlockIDs(doc *lpwDocument) (ids map[string]struct{}, total int) {
+var kindAllowedChildren = map[string]map[string]bool{
+	"":          {"layout": true, "container": true, "block": true}, // 根 content
+	"layout":    {"container": true, "block": true},
+	"container": {"block": true},
+	"block":     {}, // 不允许任何 child
+}
+
+// collectNodeIDs 递归收集文档内所有节点 ID 并统计总数
+func collectNodeIDs(doc *lpwDocument) (ids map[string]struct{}, total int) {
 	ids = make(map[string]struct{})
-	var walk func(blocks []lpwBlock)
-	walk = func(blocks []lpwBlock) {
-		for _, b := range blocks {
-			ids[b.ID] = struct{}{}
+	var walk func(nodes []lpwNode)
+	walk = func(nodes []lpwNode) {
+		for _, n := range nodes {
+			ids[n.ID] = struct{}{}
 			total++
-			if len(b.Children) > 0 {
-				walk(b.Children)
+			if len(n.Children) > 0 {
+				walk(n.Children)
 			}
 		}
 	}
-	walk(doc.Blocks)
+	walk(doc.Content)
 	return ids, total
 }
 
-// findBlockList 查找指定 blockID 在其父切片中的指针、索引、当前深度与是否找到
-func findBlockList(doc *lpwDocument, id string) (siblings *[]lpwBlock, index int, depth int, found bool) {
-	var walk func(list *[]lpwBlock, curDepth int) bool
-	walk = func(list *[]lpwBlock, curDepth int) bool {
-		for i := range *list {
-			if (*list)[i].ID == id {
-				siblings = list
-				index = i
-				depth = curDepth
-				found = true
-				return true
-			}
-			if len((*list)[i].Children) > 0 {
-				if walk(&((*list)[i].Children), curDepth+1) {
-					return true
-				}
-			}
-		}
-		return false
-	}
-
-	walk(&(doc.Blocks), 1)
-	return
-}
-
-// findBlockDirect 递归查找特定 block 及其所在父容器 ID 与深度
-func findBlockDirect(doc *lpwDocument, id string) (block *lpwBlock, parentID string, depth int, found bool) {
-	var walk func(blocks []lpwBlock, curParent string, curDepth int) bool
-	walk = func(blocks []lpwBlock, curParent string, curDepth int) bool {
-		for i := range blocks {
-			if blocks[i].ID == id {
-				block = &blocks[i]
-				parentID = curParent
-				depth = curDepth
-				found = true
-				return true
-			}
-			if len(blocks[i].Children) > 0 {
-				if walk(blocks[i].Children, blocks[i].ID, curDepth+1) {
-					return true
-				}
-			}
-		}
-		return false
-	}
-	walk(doc.Blocks, "", 1)
-	return
-}
-
-// subtreeDepth 计算块子树的最大深度（叶子为 1，容器为其自身 1 + max(children)）
-func subtreeDepth(block lpwBlock) int {
-	if len(block.Children) == 0 {
-		return 1
-	}
-	maxChildDepth := 0
-	for _, child := range block.Children {
-		cd := subtreeDepth(child)
-		if cd > maxChildDepth {
-			maxChildDepth = cd
-		}
-	}
-	return 1 + maxChildDepth
-}
-
-// collectSubtreeIDs 收集单个 block 及其子孙的所有 ID
-func collectSubtreeIDs(block lpwBlock) (ids []string, duplicateID string) {
+// collectSubtreeNodeIDs 收集单个节点及其子孙的所有 ID，并检查是否有内部重复
+func collectSubtreeNodeIDs(node lpwNode) (ids []string, duplicateID string) {
 	seen := make(map[string]bool)
-	var walk func(b lpwBlock) bool
-	walk = func(b lpwBlock) bool {
-		if seen[b.ID] {
-			duplicateID = b.ID
+	var walk func(n lpwNode) bool
+	walk = func(n lpwNode) bool {
+		if seen[n.ID] {
+			duplicateID = n.ID
 			return false
 		}
-		seen[b.ID] = true
-		ids = append(ids, b.ID)
-		for _, child := range b.Children {
+		seen[n.ID] = true
+		ids = append(ids, n.ID)
+		for _, child := range n.Children {
 			if !walk(child) {
 				return false
 			}
 		}
 		return true
 	}
-	walk(block)
+	walk(node)
 	return ids, duplicateID
 }
 
-// insertBlock 插入单个块或子树
-func insertBlock(doc *lpwDocument, parentID string, position *int, block lpwBlock) error {
-	// 0. Q-08：负数插入位置显式报错（不再静默降级为末尾追加）
+// findNodeList 查找指定 nodeID 所在的切片指针、索引、父链路径与是否找到
+func findNodeList(doc *lpwDocument, id string) (siblings *[]lpwNode, index int, parentChain []*lpwNode, found bool) {
+	var walk func(list *[]lpwNode, chain []*lpwNode) bool
+	walk = func(list *[]lpwNode, chain []*lpwNode) bool {
+		for i := range *list {
+			if (*list)[i].ID == id {
+				siblings = list
+				index = i
+				parentChain = chain
+				found = true
+				return true
+			}
+			if len((*list)[i].Children) > 0 {
+				nextChain := append(append([]*lpwNode{}, chain...), &((*list)[i]))
+				if walk(&((*list)[i].Children), nextChain) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	walk(&(doc.Content), []*lpwNode{})
+	return
+}
+
+// findNodeDirect 查找特定 node 及其 parent node 指针
+func findNodeDirect(doc *lpwDocument, id string) (node *lpwNode, parent *lpwNode, found bool) {
+	var walk func(nodes []lpwNode, p *lpwNode) bool
+	walk = func(nodes []lpwNode, p *lpwNode) bool {
+		for i := range nodes {
+			if nodes[i].ID == id {
+				node = &nodes[i]
+				parent = p
+				found = true
+				return true
+			}
+			if len(nodes[i].Children) > 0 {
+				if walk(nodes[i].Children, &nodes[i]) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	walk(doc.Content, nil)
+	return
+}
+
+// insertNode 插入单个节点或子树
+func insertNode(doc *lpwDocument, parentID string, position *int, node lpwNode) error {
 	if position != nil && *position < 0 {
 		return fmt.Errorf("插入位置 position 不能为负数（当前 %d）", *position)
 	}
 
-	// 1. 检查待插入块内部是否有重复 ID
-	newIDs, dupID := collectSubtreeIDs(block)
+	// 1. 检查待插入节点子树内部是否有重复 ID
+	newIDs, dupID := collectSubtreeNodeIDs(node)
 	if dupID != "" {
-		return fmt.Errorf("插入的块子树内存在重复 id %q", dupID)
+		return fmt.Errorf("插入的节点子树内存在重复 id %q", dupID)
 	}
 
-	// 2. 检查待插入块 ID 是否与现有文档冲突
-	existingIDs, totalBlocks := collectBlockIDs(doc)
+	// 2. 检查待插入节点 ID 是否与现有文档冲突
+	existingIDs, totalNodes := collectNodeIDs(doc)
 	for _, id := range newIDs {
 		if _, exists := existingIDs[id]; exists {
-			return fmt.Errorf("块 id %q 已存在，全文档必须唯一", id)
+			return fmt.Errorf("节点 id %q 已存在，全文档必须唯一", id)
 		}
 	}
 
-	// 3. 块数量上限检查（最多 500 块）
-	if totalBlocks+len(newIDs) > 500 {
-		return fmt.Errorf("插入后总块数（%d）超过上限 500", totalBlocks+len(newIDs))
+	// 3. 节点数量上限检查（最多 500 个）
+	if totalNodes+len(newIDs) > 500 {
+		return fmt.Errorf("插入后总节点数（%d）超过上限 500", totalNodes+len(newIDs))
 	}
 
-	// 4. 定位目标插入切片与深度
-	var targetList *[]lpwBlock
-	parentDepth := 0
+	// 4. 定位目标插入切片与 parent
+	var targetList *[]lpwNode
+	parentKind := ""
 
 	if parentID == "" {
-		targetList = &doc.Blocks
-		parentDepth = 0
+		targetList = &doc.Content
+		parentKind = ""
 	} else {
-		parentBlock, _, pDepth, found := findBlockDirect(doc, parentID)
+		parentNode, _, found := findNodeDirect(doc, parentID)
 		if !found {
-			return fmt.Errorf("指定的父容器 id %q 不存在", parentID)
+			return fmt.Errorf("指定的父节点 id %q 不存在", parentID)
 		}
-		if !lpwContainerTypes[parentBlock.Type] {
-			return fmt.Errorf("目标块 %q（类型 %s）不是容器组件，不允许添加子块", parentID, parentBlock.Type)
+		if parentNode.Kind == "block" {
+			return fmt.Errorf("block(%s) 不能作为 parent", parentNode.Type)
 		}
-		targetList = &parentBlock.Children
-		parentDepth = pDepth
+		parentKind = parentNode.Kind
+		targetList = &parentNode.Children
 	}
 
-	// 5. 深度超限校验：顶层为 1，容器每层 +1，最深节点深度不得超过 4（即 3 层容器嵌套 + 叶子）
-	blockTreeDepth := subtreeDepth(block)
-	if parentDepth+blockTreeDepth > 4 {
-		return fmt.Errorf("插入后嵌套深度超过最大限制 3 层容器嵌套（当前总深度 %d，最大允许 4）", parentDepth+blockTreeDepth)
+	// 5. 层级允许性检查
+	allowed := kindAllowedChildren[parentKind]
+	if !allowed[node.Kind] {
+		if parentKind == "container" {
+			return fmt.Errorf("container 不允许包含 kind=%s 的子节点；container 只能包含 block", node.Kind)
+		}
+		if parentKind == "layout" {
+			return fmt.Errorf("layout 不允许包含 kind=%s 的子节点；layout 只能包含 container 或 block", node.Kind)
+		}
+		return fmt.Errorf("%s 不允许包含 kind=%s 的子节点", parentKind, node.Kind)
 	}
 
 	// 6. 执行插入
 	listLen := len(*targetList)
-	insertPos := listLen // 默认末尾追加
+	insertPos := listLen
 	if position != nil && *position >= 0 {
 		if *position < listLen {
 			insertPos = *position
@@ -228,21 +248,21 @@ func insertBlock(doc *lpwDocument, parentID string, position *int, block lpwBloc
 	}
 
 	if insertPos >= listLen {
-		*targetList = append(*targetList, block)
+		*targetList = append(*targetList, node)
 	} else {
-		*targetList = append((*targetList)[:insertPos], append([]lpwBlock{block}, (*targetList)[insertPos:]...)...)
+		*targetList = append((*targetList)[:insertPos], append([]lpwNode{node}, (*targetList)[insertPos:]...)...)
 	}
 
 	return nil
 }
 
-// removeBlocks 批量删除指定块（原子性：先核验全部 id 均存在再删除）
-func removeBlocks(doc *lpwDocument, ids []string) error {
+// removeNodes 批量删除指定节点（原子性：核验全部 id 均存在再删除）
+func removeNodes(doc *lpwDocument, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
 
-	existingIDs, _ := collectBlockIDs(doc)
+	existingIDs, _ := collectNodeIDs(doc)
 	var missing []string
 	for _, id := range ids {
 		if _, exists := existingIDs[id]; !exists {
@@ -254,7 +274,7 @@ func removeBlocks(doc *lpwDocument, ids []string) error {
 		for k := range existingIDs {
 			allList = append(allList, k)
 		}
-		return fmt.Errorf("待删除的块 id 不存在: %v（当前文档已有 id: %v）", missing, allList)
+		return fmt.Errorf("待删除的节点 id 不存在: %v（当前文档已有 id: %v）", missing, allList)
 	}
 
 	toDelete := make(map[string]bool)
@@ -262,73 +282,73 @@ func removeBlocks(doc *lpwDocument, ids []string) error {
 		toDelete[id] = true
 	}
 
-	var prune func(blocks []lpwBlock) []lpwBlock
-	prune = func(blocks []lpwBlock) []lpwBlock {
-		res := make([]lpwBlock, 0, len(blocks))
-		for _, b := range blocks {
-			if toDelete[b.ID] {
+	var prune func(nodes []lpwNode) []lpwNode
+	prune = func(nodes []lpwNode) []lpwNode {
+		res := make([]lpwNode, 0, len(nodes))
+		for _, n := range nodes {
+			if toDelete[n.ID] {
 				continue
 			}
-			if len(b.Children) > 0 {
-				b.Children = prune(b.Children)
+			if len(n.Children) > 0 {
+				n.Children = prune(n.Children)
 			}
-			res = append(res, b)
+			res = append(res, n)
 		}
 		return res
 	}
 
-	doc.Blocks = prune(doc.Blocks)
+	doc.Content = prune(doc.Content)
 	return nil
 }
 
-// reorderSiblings 对同一容器内的子块进行顺序重排（order 必须是完整排列）
+// reorderSiblings 对同一父节点下的子节点进行顺序重排（order 必须是完整排列）
 func reorderSiblings(doc *lpwDocument, parentID string, order []string) error {
-	var siblings *[]lpwBlock
+	var siblings *[]lpwNode
 	if parentID == "" {
-		siblings = &doc.Blocks
+		siblings = &doc.Content
 	} else {
-		parentBlock, _, _, found := findBlockDirect(doc, parentID)
+		parentNode, _, found := findNodeDirect(doc, parentID)
 		if !found {
-			return fmt.Errorf("父容器 id %q 不存在", parentID)
+			return fmt.Errorf("父节点 id %q 不存在", parentID)
 		}
-		if !lpwContainerTypes[parentBlock.Type] {
-			return fmt.Errorf("目标块 %q（类型 %s）不是容器组件", parentID, parentBlock.Type)
+		if parentNode.Kind == "block" {
+			return fmt.Errorf("目标节点 %q 是 block，没有子节点", parentID)
 		}
-		siblings = &parentBlock.Children
+		siblings = &parentNode.Children
 	}
 
-	origMap := make(map[string]lpwBlock)
-	for _, b := range *siblings {
-		origMap[b.ID] = b
+	origMap := make(map[string]lpwNode)
+	for _, n := range *siblings {
+		origMap[n.ID] = n
 	}
 
 	if len(order) != len(*siblings) {
-		return fmt.Errorf("排序列表长度（%d）与容器现有子块数量（%d）不匹配，必须提供完整子块排列", len(order), len(*siblings))
+		return fmt.Errorf("排序列表长度（%d）与父节点现有子节点数量（%d）不匹配，必须提供完整子节点排列", len(order), len(*siblings))
 	}
 
 	seen := make(map[string]bool)
-	newSiblings := make([]lpwBlock, 0, len(order))
+	newSiblings := make([]lpwNode, 0, len(order))
 	for _, id := range order {
 		if seen[id] {
 			return fmt.Errorf("排序列表中存在重复 id %q", id)
 		}
 		seen[id] = true
-		b, exists := origMap[id]
+		n, exists := origMap[id]
 		if !exists {
-			return fmt.Errorf("排序列表中的 id %q 不是该容器下的直接子块", id)
+			return fmt.Errorf("排序列表中的 id %q 不是该父节点下的直接子节点", id)
 		}
-		newSiblings = append(newSiblings, b)
+		newSiblings = append(newSiblings, n)
 	}
 
 	*siblings = newSiblings
 	return nil
 }
 
-// patchProps 局部合并更新特定块的 props
-func patchProps(doc *lpwDocument, blockID string, patch map[string]any) error {
-	siblings, idx, _, found := findBlockList(doc, blockID)
+// patchNodeProps 局部更新节点的 props
+func patchNodeProps(doc *lpwDocument, nodeID string, patch map[string]any) error {
+	siblings, idx, _, found := findNodeList(doc, nodeID)
 	if !found {
-		return fmt.Errorf("目标块 id %q 不存在", blockID)
+		return fmt.Errorf("目标节点 id %q 不存在", nodeID)
 	}
 
 	target := &(*siblings)[idx]
@@ -345,94 +365,313 @@ func patchProps(doc *lpwDocument, blockID string, patch map[string]any) error {
 	return nil
 }
 
-// replaceBlock 完整替换特定块
-func replaceBlock(doc *lpwDocument, blockID string, block lpwBlock) error {
-	siblings, idx, depth, found := findBlockList(doc, blockID)
+// patchNodeAnnotation 更新或清除节点的 annotation
+func patchNodeAnnotation(doc *lpwDocument, nodeID string, patch *LpwNodeAnnotationPatch) error {
+	if patch == nil {
+		return nil
+	}
+	siblings, idx, _, found := findNodeList(doc, nodeID)
 	if !found {
-		return fmt.Errorf("待替换的目标块 id %q 不存在", blockID)
+		return fmt.Errorf("目标节点 id %q 不存在", nodeID)
+	}
+	target := &(*siblings)[idx]
+	if target.Kind != "block" {
+		return fmt.Errorf("annotation 只能设置在 block 节点，当前节点 kind 为 %s", target.Kind)
+	}
+	if patch.Clear {
+		target.Annotation = nil
+	} else if patch.Value != nil {
+		target.Annotation = patch.Value
+	}
+	return nil
+}
+
+// replaceNode 完整替换特定节点
+func replaceNode(doc *lpwDocument, nodeID string, node lpwNode) error {
+	siblings, idx, chain, found := findNodeList(doc, nodeID)
+	if !found {
+		return fmt.Errorf("待替换的目标节点 id %q 不存在", nodeID)
 	}
 
-	// 校验新子树内部 ID 唯一性与外部 ID 冲突
-	newIDs, dupID := collectSubtreeIDs(block)
+	parentKind := ""
+	if len(chain) > 0 {
+		parentKind = chain[len(chain)-1].Kind
+	}
+
+	// 检查层级合法性
+	if !kindAllowedChildren[parentKind][node.Kind] {
+		return fmt.Errorf("替换后的节点 kind=%s 不被父节点 kind=%s 允许", node.Kind, parentKind)
+	}
+
+	// 校验新子树内部 ID 唯一性与外部冲突
+	newIDs, dupID := collectSubtreeNodeIDs(node)
 	if dupID != "" {
-		return fmt.Errorf("替换块子树内部存在重复 id %q", dupID)
+		return fmt.Errorf("替换节点子树内部存在重复 id %q", dupID)
 	}
 
-	existingIDs, _ := collectBlockIDs(doc)
-	// 剔除旧子树占用的 ID
-	oldIDs, _ := collectSubtreeIDs((*siblings)[idx])
+	existingIDs, _ := collectNodeIDs(doc)
+	oldIDs, _ := collectSubtreeNodeIDs((*siblings)[idx])
 	for _, oid := range oldIDs {
 		delete(existingIDs, oid)
 	}
 
 	for _, nid := range newIDs {
 		if _, exists := existingIDs[nid]; exists {
-			return fmt.Errorf("替换块 id %q 与现有其它块冲突", nid)
+			return fmt.Errorf("替换节点 id %q 与现有其它节点冲突", nid)
 		}
 	}
 
-	// 深度检查
-	bDepth := subtreeDepth(block)
-	if (depth-1)+bDepth > 4 {
-		return fmt.Errorf("替换后嵌套深度超过最大限制 3 层容器嵌套（当前总深度 %d，最大允许 4）", (depth-1)+bDepth)
+	// Q-12 修复：与 insertNode 对齐，替换后全文档节点总数上限 500 检查
+	if len(existingIDs)+len(newIDs) > 500 {
+		return fmt.Errorf("替换后总节点数（%d）超过上限 500", len(existingIDs)+len(newIDs))
 	}
 
-	(*siblings)[idx] = block
+	(*siblings)[idx] = node
 	return nil
 }
 
-// validateContainerRules 走查 design 0003 规则 2、5-14（跨字段与递归语义）
-func validateContainerRules(doc *lpwDocument) error {
-	// 规则 2: id 全文档唯一（Q-07：Schema 不表达唯一性，统一由走查强制）
-	ids, totalBlocks := collectBlockIDs(doc)
-	if len(ids) != totalBlocks {
-		seen := make(map[string]bool, totalBlocks)
+// 批注字段白名单
+var annotatableFields = map[string][]string{
+	"markdown": {"content"},
+	"heading":  {"content"},
+	"callout":  {"title", "content"},
+	"quote":    {"content"},
+	"list":     {}, // 块级批注可用，无文本划线
+}
+
+// validAnnotationKinds 合法批注类型
+var validAnnotationKinds = map[string]bool{
+	"note":       true,
+	"suggestion": true,
+	"todo":       true,
+	"issue":      true,
+	"approved":   true,
+	"question":   true,
+}
+
+// validateDocument11 对 *lpwDocument 执行 1.1 语义全树走查，返回首个错误
+func validateDocument11(doc *lpwDocument) error {
+	return validateDocument11WithOptions(doc, false)
+}
+
+// validateDocument11Progressive 对 *lpwDocument 执行 1.1 渐进式编辑走查（放宽 MinChildren/MinItems 等完成态下限）
+func validateDocument11Progressive(doc *lpwDocument) error {
+	return validateDocument11WithOptions(doc, true)
+}
+
+func validateDocument11WithOptions(doc *lpwDocument, progressive bool) error {
+	if doc.Version != "1.1" {
+		return fmt.Errorf("不支持的 LPW 版本 %q：仅支持 1.1", doc.Version)
+	}
+
+	// 查重与总数
+	ids, total := collectNodeIDs(doc)
+	if len(ids) != total {
+		seen := make(map[string]bool, total)
 		var duplicateID string
-		var walkDup func(blocks []lpwBlock)
-		walkDup = func(blocks []lpwBlock) {
-			for _, b := range blocks {
-				if seen[b.ID] {
-					duplicateID = b.ID
+		var walkDup func(nodes []lpwNode)
+		walkDup = func(nodes []lpwNode) {
+			for _, n := range nodes {
+				if seen[n.ID] {
+					duplicateID = n.ID
 					return
 				}
-				seen[b.ID] = true
-				if len(b.Children) > 0 {
-					walkDup(b.Children)
+				seen[n.ID] = true
+				if len(n.Children) > 0 {
+					walkDup(n.Children)
 					if duplicateID != "" {
 						return
 					}
 				}
 			}
 		}
-		walkDup(doc.Blocks)
-		return fmt.Errorf("块 id %q 重复，全文档必须唯一", duplicateID)
+		walkDup(doc.Content)
+		return fmt.Errorf("节点 id %q 重复，全文档必须唯一", duplicateID)
 	}
 
-	// 规则 8: 全文档块数（含子孙）≤ 500
-	if totalBlocks > 500 {
-		return fmt.Errorf("全文档总块数 %d 超过上限 500", totalBlocks)
+	if total > 500 {
+		return fmt.Errorf("全文档总节点数 %d 超过上限 500", total)
 	}
 
-	var walk func(blocks []lpwBlock, curDepth int) error
-	walk = func(blocks []lpwBlock, curDepth int) error {
-		for _, b := range blocks {
-			// 规则 5: 深度
-			if curDepth > 4 {
-				return fmt.Errorf("块 %q 深度超限（当前深度 %d，最大深度 4）", b.ID, curDepth)
+	var walkNode func(n lpwNode, jsonPath string, parent *lpwNode) error
+	walkNode = func(n lpwNode, jsonPath string, parent *lpwNode) error {
+		// kind 校验
+		if n.Kind != "layout" && n.Kind != "container" && n.Kind != "block" {
+			return fmt.Errorf("%s: 节点 kind %q 不合法，必须为 layout、container 或 block", jsonPath, n.Kind)
+		}
+
+		parentKind := ""
+		if parent != nil {
+			parentKind = parent.Kind
+		}
+		if !kindAllowedChildren[parentKind][n.Kind] {
+			if parentKind == "container" {
+				return fmt.Errorf("%s：container(%s) 不允许包含 kind=%s 的子节点；container 只能包含 block", jsonPath, parent.Type, n.Kind)
+			}
+			if parentKind == "layout" {
+				return fmt.Errorf("%s：layout 不允许包含 kind=%s 的子节点", jsonPath, n.Kind)
+			}
+			if parentKind == "block" {
+				return fmt.Errorf("%s：block(%s) 不能作为 parent", jsonPath, parent.Type)
+			}
+			return fmt.Errorf("%s：父节点 %s 不允许包含 kind=%s 的子节点", jsonPath, parentKind, n.Kind)
+		}
+
+		// 非 block 节点不允许 annotation
+		if n.Kind != "block" && n.Annotation != nil {
+			return fmt.Errorf("%s: %s 节点不允许设置 annotation，批注只能出现在 block", jsonPath, n.Kind)
+		}
+
+		// 1. Block 校验
+		if n.Kind == "block" {
+			if len(n.Children) > 0 {
+				return fmt.Errorf("%s: block 不允许 children", jsonPath)
+			}
+			if _, isKnown := blockTypeGroups[n.Type]; !isKnown {
+				return fmt.Errorf("%s: 未知的 block 类型 %s", jsonPath, n.Type)
 			}
 
-			// 规则 11: 容器集合校验
-			if len(b.Children) > 0 && !lpwContainerTypes[b.Type] {
-				return fmt.Errorf("非容器类型 %s（块 id: %q）不允许包含 children 数组", b.Type, b.ID)
-			}
-
-			// 规则 6: tabs 对齐
-			if b.Type == "tabs" {
-				rawItems, _ := b.Props["items"].([]any)
-				if len(b.Children) != len(rawItems) {
-					return fmt.Errorf("tabs 块 %q: children 数量（%d）必须等于 items 数量（%d）", b.ID, len(b.Children), len(rawItems))
+			// 批注校验
+			if n.Annotation != nil {
+				if !validAnnotationKinds[n.Annotation.Kind] {
+					return fmt.Errorf("%s: 批注类型 %q 不合法", jsonPath, n.Annotation.Kind)
 				}
-				if defKey, ok := b.Props["defaultKey"].(string); ok && defKey != "" {
+				if strings.TrimSpace(n.Annotation.Message) == "" {
+					return fmt.Errorf("%s: 批注 message 不能为空", jsonPath)
+				}
+				allowedFields, hasWhitelist := annotatableFields[n.Type]
+				if len(n.Annotation.Targets) > 0 {
+					if !hasWhitelist || len(allowedFields) == 0 {
+						return fmt.Errorf("%s: block(%s) 不支持文本划线批注（targets 必须为空）", jsonPath, n.Type)
+					}
+					for _, target := range n.Annotation.Targets {
+						fieldAllowed := false
+						for _, af := range allowedFields {
+							if af == target.Field {
+								fieldAllowed = true
+								break
+							}
+						}
+						if !fieldAllowed {
+							return fmt.Errorf("%s: 字段 %s 不在 %s 的可批注字段", jsonPath, target.Field, n.Type)
+						}
+						if _, err := regexp.Compile(target.Pattern); err != nil {
+							return fmt.Errorf("%s: 批注正则无效: %v", jsonPath, err)
+						}
+					}
+				}
+			}
+			return nil
+		}
+
+		// 2. Container 校验
+		if n.Kind == "container" {
+			variantMap, hasType := containerVariants[n.Type]
+			if !hasType {
+				return fmt.Errorf("%s: 未知的 container 类型 %s", jsonPath, n.Type)
+			}
+
+			rawVariant, hasVariant := n.Props["variant"]
+			variant, isStr := rawVariant.(string)
+			if !hasVariant || !isStr || variant == "" {
+				return fmt.Errorf("%s: container(%s) 缺少必填属性 variant", jsonPath, n.Type)
+			}
+
+			vContract, hasContract := variantMap[variant]
+			if !hasContract {
+				return fmt.Errorf("%s: container(%s) 不支持变体 %q", jsonPath, n.Type, variant)
+			}
+
+			// children 数量
+			cCount := len(n.Children)
+			if !progressive {
+				if cCount < vContract.MinItems || cCount > vContract.MaxItems {
+					return fmt.Errorf("%s: container(%s/%s) 子节点数量（%d）超出变体限制 [%d, %d]", jsonPath, n.Type, variant, cCount, vContract.MinItems, vContract.MaxItems)
+				}
+			} else {
+				if cCount > vContract.MaxItems {
+					return fmt.Errorf("%s: container(%s/%s) 子节点数量（%d）超出变体上限 %d", jsonPath, n.Type, variant, cCount, vContract.MaxItems)
+				}
+			}
+
+			// FirstOf
+			if len(vContract.FirstOf) > 0 && cCount > 0 {
+				firstType := n.Children[0].Type
+				matched := false
+				for _, ft := range vContract.FirstOf {
+					if ft == firstType {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					return fmt.Errorf("%s: container(%s/%s) 第一个子块类型必须在 %v 之中，当前为 %s", jsonPath, n.Type, variant, vContract.FirstOf, firstType)
+				}
+			}
+
+			// 检查每个 child 的类型
+			seenNoRepeat := make(map[string]bool)
+			for idx, child := range n.Children {
+				childPath := fmt.Sprintf("%s/children[%d]", jsonPath, idx)
+				if child.Kind != "block" {
+					return fmt.Errorf("%s：container(%s/%s) 不允许包含 kind=%s 的子节点；container 只能包含 block", childPath, n.Type, variant, child.Kind)
+				}
+
+				// NoRepeat 检查
+				for _, nrt := range vContract.NoRepeatTypes {
+					if nrt == child.Type {
+						if seenNoRepeat[nrt] {
+							return fmt.Errorf("%s: container(%s/%s) 类型 %s 不允许重复出现", childPath, n.Type, variant, nrt)
+						}
+						seenNoRepeat[nrt] = true
+					}
+				}
+
+				// DeniedTypes
+				for _, dt := range vContract.DeniedTypes {
+					if dt == child.Type {
+						return fmt.Errorf("%s: container(%s/%s) 显式禁止子块类型 %s；该变体接受 %v；可考虑 section/evidence 或 details/raw-data", childPath, n.Type, variant, child.Type, vContract.AllowedGroups)
+					}
+				}
+
+				// 白名单 / 策略组
+				allowed := false
+				for _, at := range vContract.AllowedTypes {
+					if at == child.Type {
+						allowed = true
+						break
+					}
+				}
+				if !allowed {
+					for _, ag := range vContract.AllowedGroups {
+						if hasGroup(child.Type, ag) {
+							allowed = true
+							break
+						}
+					}
+				}
+				if !allowed {
+					return fmt.Errorf("%s: container(%s/%s) 不允许子块类型 %s；该变体接受 %v；可考虑 section/evidence 或 details/raw-data", childPath, n.Type, variant, child.Type, vContract.AllowedGroups)
+				}
+
+				if err := walkNode(child, childPath, &n); err != nil {
+					return err
+				}
+			}
+
+			// tabs 对齐
+			if n.Type == "tabs" {
+				rawItems, _ := n.Props["items"].([]any)
+				if !progressive {
+					if len(n.Children) != len(rawItems) {
+						return fmt.Errorf("%s: tabs 容器 children 数量（%d）必须等于 items 数量（%d）", jsonPath, len(n.Children), len(rawItems))
+					}
+				} else {
+					if len(n.Children) > len(rawItems) {
+						return fmt.Errorf("%s: tabs 容器 children 数量（%d）超出 items 数量（%d）", jsonPath, len(n.Children), len(rawItems))
+					}
+				}
+				if defKey, ok := n.Props["defaultKey"].(string); ok && defKey != "" {
 					matched := false
 					for _, it := range rawItems {
 						if itm, isMap := it.(map[string]any); isMap {
@@ -443,205 +682,147 @@ func validateContainerRules(doc *lpwDocument) error {
 						}
 					}
 					if !matched {
-						return fmt.Errorf("tabs 块 %q: defaultKey %q 未命中任何 items.key", b.ID, defKey)
+						return fmt.Errorf("%s: tabs 容器 defaultKey %q 未命中任何 items.key", jsonPath, defKey)
 					}
 				}
 			}
 
-			// 规则 7: columns 数量对齐
-			if b.Type == "columns" {
-				ratio, _ := b.Props["ratio"].(string)
-				expectedCols := 2
-				if ratio == "1:1:1" {
-					expectedCols = 3
+			return nil
+		}
+
+		// 3. Layout 校验
+		if n.Kind == "layout" {
+			if n.Type != "layout" {
+				return fmt.Errorf("%s: layout 节点 type 必须为 layout，当前为 %s", jsonPath, n.Type)
+			}
+			rawPat, hasPat := n.Props["pattern"]
+			pattern, isPatStr := rawPat.(string)
+			if !hasPat || !isPatStr || pattern == "" {
+				return fmt.Errorf("%s: layout 缺少必填属性 pattern", jsonPath)
+			}
+
+			pSpec, hasSpec := layoutPatterns[pattern]
+			if !hasSpec {
+				return fmt.Errorf("%s: 未知的 layout pattern %q", jsonPath, pattern)
+			}
+
+			cCount := len(n.Children)
+			if !progressive {
+				if cCount < pSpec.MinChildren || cCount > pSpec.MaxChildren {
+					return fmt.Errorf("%s: layout(pattern=%s) 子节点数量（%d）超出限制 [%d, %d]", jsonPath, pattern, cCount, pSpec.MinChildren, pSpec.MaxChildren)
 				}
-				if len(b.Children) != expectedCols {
-					return fmt.Errorf("columns 块 %q: ratio 为 %q 时期望 %d 列子块，实际提供 %d 个", b.ID, ratio, expectedCols, len(b.Children))
+				if pSpec.EvenOnly && cCount%2 != 0 {
+					return fmt.Errorf("%s: layout(pattern=%s) 子节点数量（%d）必须为偶数", jsonPath, pattern, cCount)
+				}
+			} else {
+				if cCount > pSpec.MaxChildren {
+					return fmt.Errorf("%s: layout(pattern=%s) 子节点数量（%d）超出上限 %d", jsonPath, pattern, cCount, pSpec.MaxChildren)
 				}
 			}
 
-			// 规则 8: chart 数据对齐
-			if b.Type == "chart" {
-				cType, _ := b.Props["chartType"].(string)
-				cats, hasCats := b.Props["categories"].([]any)
-				seriesList, _ := b.Props["series"].([]any)
-
-				if cType == "scatter" {
-					if hasCats && len(cats) > 0 {
-						return fmt.Errorf("chart 块 %q: scatter 图表禁止指定 categories", b.ID)
+			// editorial-wrap 约束：恰好 1 个 image Block 和 1 个 markdown Block
+			if pattern == "editorial-wrap" {
+				hasImg := false
+				hasMd := false
+				for _, child := range n.Children {
+					if child.Kind != "block" {
+						return fmt.Errorf("%s: layout(editorial-wrap) 子节点必须为 block，不能为 %s", jsonPath, child.Kind)
 					}
-					for _, s := range seriesList {
-						sMap, _ := s.(map[string]any)
-						dataArr, _ := sMap["data"].([]any)
-						for _, pt := range dataArr {
-							ptArr, isPt := pt.([]any)
-							if !isPt || len(ptArr) != 2 {
-								return fmt.Errorf("chart 块 %q: scatter 系列 %v 数据点必须为二元 [x, y] 点对", b.ID, sMap["name"])
+					if child.Type == "image" && !hasImg {
+						hasImg = true
+					} else if child.Type == "markdown" && !hasMd {
+						hasMd = true
+					} else {
+						return fmt.Errorf("%s: layout(editorial-wrap) 必须恰好由一个 image 块和一个 markdown 块组成", jsonPath)
+					}
+				}
+				if !progressive && (!hasImg || !hasMd) {
+					return fmt.Errorf("%s: layout(editorial-wrap) 必须包含一个 image 块和一个 markdown 块", jsonPath)
+				}
+			}
+
+			// placements 校验
+			childrenIDSet := make(map[string]bool, len(n.Children))
+			for _, c := range n.Children {
+				childrenIDSet[c.ID] = true
+			}
+
+			hasBodyMarkdown := false
+			if rawPlacements, ok := n.Props["placements"].([]any); ok && len(rawPlacements) > 0 {
+				seenPlacements := make(map[string]bool)
+				seenOrders := make(map[int]bool)
+
+				for pIdx, pVal := range rawPlacements {
+					pMap, ok := pVal.(map[string]any)
+					if !ok {
+						continue
+					}
+					pNodeID, _ := pMap["nodeId"].(string)
+					if !childrenIDSet[pNodeID] {
+						return fmt.Errorf("%s/props/placements[%d]: nodeId %q 不是该 layout 的直接子节点", jsonPath, pIdx, pNodeID)
+					}
+					if seenPlacements[pNodeID] {
+						return fmt.Errorf("%s/props/placements[%d]: nodeId %q 在 placements 中重复出现", jsonPath, pIdx, pNodeID)
+					}
+					seenPlacements[pNodeID] = true
+
+					if order, ok := pMap["orderOnMobile"].(float64); ok {
+						oInt := int(order)
+						if seenOrders[oInt] {
+							return fmt.Errorf("%s/props/placements[%d]: orderOnMobile %d 重复", jsonPath, pIdx, oInt)
+						}
+						seenOrders[oInt] = true
+					}
+
+					role, _ := pMap["role"].(string)
+					if pattern == "newspaper" {
+						var targetChild *lpwNode
+						for i := range n.Children {
+							if n.Children[i].ID == pNodeID {
+								targetChild = &n.Children[i]
+								break
+							}
+						}
+						if role == "body" {
+							if targetChild == nil || targetChild.Kind != "block" || targetChild.Type != "markdown" {
+								return fmt.Errorf("%s: layout(newspaper) 中 role=body 的节点必须是 markdown 块", jsonPath)
+							}
+							if hasBodyMarkdown {
+								return fmt.Errorf("%s: layout(newspaper) 只能有一个 role=body 节点", jsonPath)
+							}
+							hasBodyMarkdown = true
+						} else if role != "full" {
+							if targetChild != nil && (targetChild.Type == "chart" || targetChild.Type == "table" || targetChild.Type == "code" || targetChild.Type == "mermaid") {
+								return fmt.Errorf("%s: layout(newspaper) 中 %s 类型只能放在 role=full 位置", jsonPath, targetChild.Type)
 							}
 						}
 					}
-				} else if cType == "pie" || cType == "donut" {
-					if len(seriesList) != 1 {
-						return fmt.Errorf("chart 块 %q: %s 图表必须恰好包含 1 个 series（当前 %d）", b.ID, cType, len(seriesList))
-					}
-					sMap, _ := seriesList[0].(map[string]any)
-					dataArr, _ := sMap["data"].([]any)
-					if len(dataArr) != len(cats) {
-						return fmt.Errorf("chart 块 %q: series 数据点数量（%d）必须与 categories（%d）对齐", b.ID, len(dataArr), len(cats))
-					}
-				} else if cType == "line" || cType == "bar" || cType == "area" || cType == "radar" {
-					for _, s := range seriesList {
-						sMap, _ := s.(map[string]any)
-						dataArr, _ := sMap["data"].([]any)
-						if len(dataArr) != len(cats) {
-							return fmt.Errorf("chart 块 %q: 系列 %v 的数据长度（%d）必须等于 categories 长度（%d）", b.ID, sMap["name"], len(dataArr), len(cats))
-						}
-					}
-				}
-
-				if stacked, ok := b.Props["stacked"].(bool); ok && stacked {
-					if cType != "bar" && cType != "area" {
-						return fmt.Errorf("chart 块 %q: stacked 堆叠选项仅允许在 bar 或 area 图表中使用", b.ID)
-					}
 				}
 			}
 
-			// 规则 9: 链接安全校验 (image / cards / gallery)
-			if b.Type == "image" {
-				src, _ := b.Props["src"].(string)
-				if err := validateSafeURL(src, "image.src", b.ID); err != nil {
-					return err
-				}
-			} else if b.Type == "cards" {
-				if items, ok := b.Props["items"].([]any); ok {
-					for _, it := range items {
-						if itm, isMap := it.(map[string]any); isMap {
-							if href, hasHref := itm["href"].(string); hasHref && href != "" {
-								if err := validateSafeURL(href, "cards.href", b.ID); err != nil {
-									return err
-								}
-							}
-						}
-					}
-				}
-			} else if b.Type == "gallery" {
-				if imgs, ok := b.Props["images"].([]any); ok {
-					for _, img := range imgs {
-						if imgMap, isMap := img.(map[string]any); isMap {
-							if src, _ := imgMap["src"].(string); src != "" {
-								if err := validateSafeURL(src, "gallery.src", b.ID); err != nil {
-									return err
-								}
-							}
-						}
-					}
-				}
+			if pattern == "newspaper" && !progressive && !hasBodyMarkdown {
+				return fmt.Errorf("%s: layout(newspaper) 必须有且仅有一个 role=body 的 markdown 块", jsonPath)
 			}
 
-			// 规则 12: comparison 对齐
-			if b.Type == "comparison" {
-				plans, _ := b.Props["plans"].([]any)
-				rows, _ := b.Props["rows"].([]any)
-				planCount := len(plans)
-				for rIdx, r := range rows {
-					rMap, _ := r.(map[string]any)
-					vals, _ := rMap["values"].([]any)
-					if len(vals) != planCount {
-						return fmt.Errorf("comparison 块 %q: 第 %d 行 values 数量（%d）不等于 plans 数量（%d）", b.ID, rIdx, len(vals), planCount)
-					}
-				}
-			}
-
-			// 规则 13: tree 规模
-			if b.Type == "tree" {
-				nodes, _ := b.Props["nodes"].([]any)
-				totalNodes, maxDepth := measureTree(nodes)
-				if totalNodes > 100 {
-					return fmt.Errorf("tree 块 %q: 节点总数 %d 超过上限 100", b.ID, totalNodes)
-				}
-				if maxDepth > 4 {
-					return fmt.Errorf("tree 块 %q: 树嵌套深度 %d 超过上限 4", b.ID, maxDepth)
-				}
-			}
-
-			// 规则 14: scorecard 对齐
-			if b.Type == "scorecard" {
-				criteria, _ := b.Props["criteria"].([]any)
-				plans, _ := b.Props["plans"].([]any)
-				critCount := len(criteria)
-
-				totalWeight := 0
-				for _, c := range criteria {
-					cMap, _ := c.(map[string]any)
-					wNum, _ := cMap["weight"].(float64)
-					totalWeight += int(wNum)
-				}
-				if totalWeight != 100 {
-					return fmt.Errorf("scorecard 块 %q: 评估准则权重之和必须等于 100（当前为 %d）", b.ID, totalWeight)
-				}
-
-				for _, p := range plans {
-					pMap, _ := p.(map[string]any)
-					scores, _ := pMap["scores"].([]any)
-					if len(scores) != critCount {
-						return fmt.Errorf("scorecard 块 %q: 方案 %v 的 scores 数量（%d）必须等于准则数量（%d）", b.ID, pMap["name"], len(scores), critCount)
-					}
-				}
-			}
-
-			if len(b.Children) > 0 {
-				if err := walk(b.Children, curDepth+1); err != nil {
+			// 递归遍历子节点
+			for idx, child := range n.Children {
+				childPath := fmt.Sprintf("%s/children[%d]", jsonPath, idx)
+				if err := walkNode(child, childPath, &n); err != nil {
 					return err
 				}
 			}
+			return nil
 		}
+
 		return nil
 	}
 
-	return walk(doc.Blocks, 1)
-}
-
-// validateSafeURL 采用协议白名单（S-01）：仅放行 http(s)/mailto 绝对地址与纯相对引用
-// （/、./、../、# 开头或不含冒号的同会话文件名）。浏览器解析 URL 会剔除 scheme 内
-// TAB/LF/CR 等控制字符，黑名单前缀匹配可被穿透，因此含任何控制字符直接整体拒绝。
-func validateSafeURL(u, field, blockID string) error {
-	v := strings.TrimSpace(u)
-	if v == "" {
-		return nil // 空值交由 Schema 必填/长度约束处理
-	}
-	if strings.ContainsFunc(v, func(r rune) bool { return r < 0x20 || r == 0x7f }) {
-		return fmt.Errorf("块 %q 字段 %s 含控制字符，已拒绝: %q", blockID, field, u)
-	}
-	vLower := strings.ToLower(v)
-	if strings.HasPrefix(vLower, "http://") || strings.HasPrefix(vLower, "https://") || strings.HasPrefix(vLower, "mailto:") {
-		return nil
-	}
-	if strings.HasPrefix(v, "/") || strings.HasPrefix(v, "#") || strings.HasPrefix(v, "./") || strings.HasPrefix(v, "../") {
-		return nil
-	}
-	if !strings.Contains(v, ":") {
-		return nil // 同会话相对文件名
-	}
-	return fmt.Errorf("块 %q 字段 %s 使用了不允许的协议或格式: %q（仅允许 http/https/mailto 与相对路径）", blockID, field, u)
-}
-
-func measureTree(nodes []any) (count int, depth int) {
-	if len(nodes) == 0 {
-		return 0, 0
-	}
-	maxSubDepth := 0
-	for _, n := range nodes {
-		count++
-		nMap, ok := n.(map[string]any)
-		if ok {
-			if children, hasChild := nMap["children"].([]any); hasChild && len(children) > 0 {
-				subCount, subDepth := measureTree(children)
-				count += subCount
-				if subDepth > maxSubDepth {
-					maxSubDepth = subDepth
-				}
-			}
+	for i, node := range doc.Content {
+		nodePath := fmt.Sprintf("/content[%d]", i)
+		if err := walkNode(node, nodePath, nil); err != nil {
+			return err
 		}
 	}
-	return count, 1 + maxSubDepth
+
+	return nil
 }

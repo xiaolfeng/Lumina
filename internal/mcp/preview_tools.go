@@ -91,7 +91,7 @@ var previewToolDefs = []previewToolDef{
 		title: "上传或覆写预览文件",
 		description: `用途：向指定 Preview 会话整体写入一个文本型前端文件；同一 session_id 与 filename 已存在时会原位覆写。支持 HTML、CSS、JavaScript/MJS、JSON、SVG 和纯文本，多文件必须逐个调用。
 
-何时调用：已经掌握完整文件内容，需要创建预览、补齐 HTML 的静态依赖，或将整文件重写时调用。只修改局部内容时不要全量重传，改用 preview_file_get 读取目标行区间后调用 preview_file_edit 增量编辑。HTML 可用同层相对路径加载经典 CSS/JS，例如 style.css 和 app.js；React/Vue 可引用固定版本 CDN 的浏览器构建，或者上传预先构建且可由浏览器直接执行的静态产物。文件变更会通过 WebSocket 通知工作台重新加载 iframe，这是自动刷新，不是 React Fast Refresh、Vue HMR 或状态保持热更新。
+何时调用：已经掌握完整文件内容，需要创建预览、补齐 HTML 的静态依赖，或将整文件重写时调用。只修改局部内容时不要全量重传，改用 preview_file_get 读取目标行区间后调用 preview_file_edit 增量编辑（.lpw 交互文档除外，其局部修改应使用 preview_lpw_node_* 节点语义工具族）。HTML 可用同层相对路径加载经典 CSS/JS，例如 style.css 和 app.js；React/Vue 可引用固定版本 CDN 的浏览器构建，或者上传预先构建且可由浏览器直接执行的静态产物。文件变更会通过 WebSocket 通知工作台重新加载 iframe，这是自动刷新，不是 React Fast Refresh、Vue HMR 或状态保持热更新。
 
 限制：文件名只能是扁平单层名称，禁止 /、\\ 和 ..；最长 255 字符；content 按 UTF-8 字节计最大 256 KiB。它不支持目录、二进制附件、Node.js、npm 依赖安装、构建命令、SSR 或服务端代码，也不会修改 Agent 当前项目路径下的真实源文件。沙盒没有 allow-same-origin，本地多文件 ESM 不属于可靠支持范围；外部 CDN 必须允许跨源加载且应固定版本，网络不可用时依赖无法加载。
 
@@ -130,7 +130,7 @@ var previewToolDefs = []previewToolDef{
 
 何时调用：需要修改已上传预览文件的一部分（改几行、插入一段、删除几行）时调用。推荐流程：先 preview_file_get 传行区间拿到带行号源码并确定目标区间，再调用本工具，最后核对返回的 edited_region；多处修改可重复 get→edit 循环。
 
-不要调用：目标文件尚不存在时不要用本工具创建（改用 preview_file_upload 整体写入）；不确定目标行号时必须先读取再编辑，禁止盲猜行号；要删除整个文件时改用 preview_file_delete，不要用 delete 全区间代删。
+不要调用：目标文件尚不存在时不要用本工具创建（改用 preview_file_upload 整体写入）；不确定目标行号时必须先读取再编辑，禁止盲猜行号；要删除整个文件时改用 preview_file_delete，不要用 delete 全区间代删；禁止对 .lpw 文件调用本工具进行行级编辑（.lpw 交互文档的局部增删改查必须使用 preview_lpw_node_* 节点语义工具族）。
 
 限制：仅支持文本行编辑；换行统一按 LF 处理（原文件的 CRLF 会被归一化），原文件结尾换行符原样保留；编辑后文件大小仍受上传上限约束；insert 的 content 不能为空，replace 允许空 content（等价删除该区间），delete 不接受 content；start_line/end_line 对 replace/delete 必填，insert 可省略 start_line（追加到末尾）。
 
@@ -242,7 +242,7 @@ var previewToolDefs = []previewToolDef{
 
 限制：空文件传行区间会报错；start_line 必须落在 1..total_lines 内；end_line 超出总行数时自动钳制到末行（便于读到文件尾）；指定 end_line 时必须同时指定 start_line。不要把 Preview 中的代码默认视为已批准实现；只有用户明确确认后，才能将其作为真实项目修改的参考。
 
-修改路径：局部修改优先调用 preview_file_edit 行级编辑；仅整文件重写才使用 preview_file_upload 覆写；改动后调用 preview_file_list 核对并重新打开预览。`,
+修改路径：局部修改优先调用 preview_file_edit 行级编辑（.lpw 交互文档除外，其局部修改应使用 preview_lpw_node_* 节点语义工具族）；仅整文件重写才使用 preview_file_upload 覆写；改动后调用 preview_file_list 核对并重新打开预览。`,
 		inputSchema: map[string]any{
 			"type":                 "object",
 			"additionalProperties": false,

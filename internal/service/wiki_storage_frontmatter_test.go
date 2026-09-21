@@ -16,16 +16,16 @@ func TestReadPage(t *testing.T) {
 	storage := newTestWikiStorage(t)
 
 	tests := []struct {
-		name           string
-		content        string
+		name            string
+		content         string
 		wantFrontmatter bool
-		wantBody       string
-		frontmatterKey string
-		frontmatterVal interface{}
+		wantBody        string
+		frontmatterKey  string
+		frontmatterVal  interface{}
 	}{
 		{
-			name: "有 frontmatter（标准三字段）",
-			content: "---\ntitle: 入门指南\ndescription: 快速了解\nicon: BookOpen\n---\n\n# 入门指南\n\n正文内容\n",
+			name:            "有 frontmatter（标准三字段）",
+			content:         "---\ntitle: 入门指南\ndescription: 快速了解\nicon: BookOpen\n---\n\n# 入门指南\n\n正文内容\n",
 			wantFrontmatter: true,
 			wantBody:        "\n# 入门指南\n\n正文内容\n",
 			frontmatterKey:  "title",
@@ -44,16 +44,16 @@ func TestReadPage(t *testing.T) {
 			wantBody:        "---\ntitle: 未闭合\n这个文件没有结束分隔符\n",
 		},
 		{
-			name: "frontmatter 含中文与多行 description",
-			content: "---\ntitle: 微明文档\ndescription: |\n  第一行描述\n  第二行描述\nicon: Sparkles\n---\n正文\n",
+			name:            "frontmatter 含中文与多行 description",
+			content:         "---\ntitle: 微明文档\ndescription: |\n  第一行描述\n  第二行描述\nicon: Sparkles\n---\n正文\n",
 			wantFrontmatter: true,
 			wantBody:        "正文\n",
 			frontmatterKey:  "title",
 			frontmatterVal:  "微明文档",
 		},
 		{
-			name: "frontmatter 含 icon 字段",
-			content: "---\ntitle: 测试页面\nicon: FileText\n---\nbody\n",
+			name:            "frontmatter 含 icon 字段",
+			content:         "---\ntitle: 测试页面\nicon: FileText\n---\nbody\n",
 			wantFrontmatter: true,
 			wantBody:        "body\n",
 			frontmatterKey:  "icon",

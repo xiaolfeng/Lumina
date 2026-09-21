@@ -2,7 +2,6 @@ package logic
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -41,8 +40,8 @@ func TestValidateLpwContent(t *testing.T) {
 		t.Errorf("expected non-lpw file to bypass json validation, got: %v", err)
 	}
 
-	// 2. .lpw 文件合法 JSON 且结构合规
-	if err := validateLpwContent("index.lpw", `{"version":"1.0","blocks":[]}`); err != nil {
+	// 2. .lpw 文件合法 JSON 且结构合规 (1.1)
+	if err := validateLpwContent("index.lpw", `{"version":"1.1","content":[]}`); err != nil {
 		t.Errorf("expected valid lpw to pass, got: %v", err)
 	}
 
@@ -57,72 +56,131 @@ func TestValidateLpwContent(t *testing.T) {
 	}
 }
 
+func TestValidateLpwContent_RejectsV10(t *testing.T) {
+	t.Parallel()
+	doc := `{"version":"1.0","content":[]}`
+	err := validateLpwContent("index.lpw", doc)
+	if err == nil {
+		t.Fatalf("expected v1.0 document to be rejected")
+	}
+	if !strings.Contains(err.Error(), "不支持的 LPW 版本") {
+		t.Errorf("expected version error message, got: %v", err)
+	}
+}
+
+func TestValidateLpwContent_RejectsBlocksRootField(t *testing.T) {
+	t.Parallel()
+	doc := `{"version":"1.1","blocks":[]}`
+	err := validateLpwContent("index.lpw", doc)
+	if err == nil {
+		t.Fatalf("expected document with blocks root field to be rejected")
+	}
+	if !strings.Contains(err.Error(), "根字段 blocks") {
+		t.Errorf("expected blocks error message, got: %v", err)
+	}
+}
+
 func TestValidateLpwContentDeepValidation(t *testing.T) {
 	t.Parallel()
 
-	// Q-03 回归：语法合法但结构非法的文档必须拒绝（上传失败不得覆盖已有文件）
 	t.Run("未注册块类型被 Schema 拒绝", func(t *testing.T) {
-		doc := `{"version":"1.0","blocks":[{"id":"b1","type":"not-a-type","props":{}}]}`
+		doc := `{"version":"1.1","content":[{"id":"b1","kind":"block","type":"not-a-type","props":{}}]}`
 		if err := validateLpwContent("index.lpw", doc); err == nil {
 			t.Errorf("expected unknown block type to be rejected")
 		}
 	})
 
 	t.Run("叶子块携带 children 被拒绝", func(t *testing.T) {
-		doc := `{"version":"1.0","blocks":[{"id":"b1","type":"markdown","props":{"content":"x"},"children":[]}]}`
+		doc := `{"version":"1.1","content":[{"id":"b1","kind":"block","type":"markdown","props":{"content":"x"},"children":[]}]}`
 		if err := validateLpwContent("index.lpw", doc); err == nil {
 			t.Errorf("expected leaf with children to be rejected")
 		}
 	})
 
-	// Q-03 回归：深嵌套（6 层容器）必须被结构规则走查拒绝
-	t.Run("深嵌套被结构规则拒绝", func(t *testing.T) {
-		inner := `{"id":"leaf","type":"markdown","props":{"content":"x"}}`
-		doc := `{"version":"1.0","blocks":[` + wrapContainers(inner, 6) + `]}`
-		if err := validateLpwContent("index.lpw", doc); err == nil {
-			t.Errorf("expected deep nesting to be rejected by structure rules")
-		}
-	})
-
-	// Q-07 回归：重复 id 必须被走查拒绝（Schema 不表达唯一性）
 	t.Run("重复块 id 被拒绝", func(t *testing.T) {
-		doc := `{"version":"1.0","blocks":[{"id":"dup","type":"markdown","props":{"content":"a"}},{"id":"dup","type":"markdown","props":{"content":"b"}}]}`
+		doc := `{"version":"1.1","content":[{"id":"dup","kind":"block","type":"markdown","props":{"content":"a"}},{"id":"dup","kind":"block","type":"markdown","props":{"content":"b"}}]}`
 		if err := validateLpwContent("index.lpw", doc); err == nil {
 			t.Errorf("expected duplicate ids to be rejected")
 		}
 	})
 
-	// 规则 8 回归：顶层不超 500 但含子孙总数超 500 必须被拒绝
-	t.Run("全文档总块数超过 500 被拒绝", func(t *testing.T) {
-		var blocks strings.Builder
-		blocks.WriteByte('[')
-		for i := 0; i < 250; i++ {
+	t.Run("全文档总节点数超过 500 被拒绝", func(t *testing.T) {
+		var content strings.Builder
+		content.WriteByte('[')
+		for i := 0; i < 251; i++ {
 			if i > 0 {
-				blocks.WriteByte(',')
+				content.WriteByte(',')
 			}
-			fmt.Fprintf(&blocks, `{"id":"s-%d","type":"section","props":{"title":"t"},"children":[{"id":"c-%d-1","type":"markdown","props":{"content":"a"}},{"id":"c-%d-2","type":"markdown","props":{"content":"b"}},{"id":"c-%d-3","type":"markdown","props":{"content":"c"}}]}`, i, i, i, i)
+			fmt.Fprintf(&content, `{"id":"s-%d","kind":"container","type":"section","props":{"variant":"article","title":"t"},"children":[{"id":"c-%d-1","kind":"block","type":"markdown","props":{"content":"a"}},{"id":"c-%d-2","kind":"block","type":"markdown","props":{"content":"b"}}]}`, i, i, i)
 		}
-		blocks.WriteByte(']')
-		doc := `{"version":"1.0","blocks":` + blocks.String() + `}`
+		content.WriteByte(']')
+		doc := `{"version":"1.1","content":` + content.String() + `}`
 		if err := validateLpwContent("index.lpw", doc); err == nil {
-			t.Errorf("expected total block count > 500 to be rejected")
+			t.Errorf("expected total node count > 500 to be rejected")
 		}
 	})
 
-	// 合法 3 层容器 + 叶子（块深度 4）必须通过——与前端渲染契约一致
-	t.Run("合法 3 层容器嵌套通过", func(t *testing.T) {
-		doc := `{"version":"1.0","blocks":[{"id":"s1","type":"section","props":{"title":"a"},"children":[{"id":"t1","type":"tabs","props":{"items":[{"key":"k","label":"K"}]},"children":[{"id":"c1","type":"columns","props":{"ratio":"1:1"},"children":[{"id":"leaf","type":"markdown","props":{"content":"x"}},{"id":"leaf2","type":"markdown","props":{"content":"y"}}]}]}]}]}`
+	t.Run("合法 layout 与 container 层级通过", func(t *testing.T) {
+		doc := `{
+			"version":"1.1",
+			"content":[
+				{
+					"id":"lay-1",
+					"kind":"layout",
+					"type":"layout",
+					"props":{"pattern":"split"},
+					"children":[
+						{
+							"id":"sec-1",
+							"kind":"container",
+							"type":"section",
+							"props":{"variant":"article","title":"架构"},
+							"children":[
+								{"id":"b1","kind":"block","type":"markdown","props":{"content":"正文"}}
+							]
+						},
+						{
+							"id":"b2",
+							"kind":"block",
+							"type":"markdown",
+							"props":{"content":"右侧正文"}
+						}
+					]
+				}
+			]
+		}`
 		if err := validateLpwContent("index.lpw", doc); err != nil {
-			t.Errorf("expected legal 3-container nesting to pass, got: %v", err)
+			t.Errorf("expected legal layout+container to pass, got: %v", err)
 		}
 	})
 }
 
-// wrapContainers 把 innerJSON 包裹 n 层 section 容器
-func wrapContainers(innerJSON string, n int) string {
-	out := innerJSON
-	for i := 0; i < n; i++ {
-		out = `{"id":"w-` + strconv.Itoa(i) + `","type":"section","props":{"title":"t"},"children":[` + out + `]}`
+// TestValidateLpwContent_ProgressiveVsStrict 验证 Q-13：validateLpwContent 默认渐进式允许中间态合规结构，严格模式拒绝未达完成态下限
+func TestValidateLpwContent_ProgressiveVsStrict(t *testing.T) {
+	t.Parallel()
+	// 渐进构建中间态：split 布局仅挂载了 1 个子节点（未达到完备态的最小 2 个节点要求）
+	intermediateDoc := `{
+		"version": "1.1",
+		"content": [
+			{
+				"id": "lay-1",
+				"kind": "layout",
+				"type": "layout",
+				"props": {"pattern": "split"},
+				"children": [
+					{"id": "b1", "kind": "block", "type": "markdown", "props": {"content": "左侧"}}
+				]
+			}
+		]
+	}`
+
+	// 渐进模式（默认）允许合规的构建中间态，使得 JSON 损坏后可被修复
+	if err := validateLpwContent("index.lpw", intermediateDoc); err != nil {
+		t.Fatalf("expected intermediate doc to pass progressive validation, got: %v", err)
 	}
-	return out
+
+	// 严格模式必须拒绝未达到完备态的文档
+	if err := validateLpwContentWithOptions("index.lpw", intermediateDoc, false); err == nil {
+		t.Fatalf("expected intermediate doc to fail strict validation, got nil")
+	}
 }

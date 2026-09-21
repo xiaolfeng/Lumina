@@ -28,6 +28,20 @@ components/
     │   ├── prose.ts                # proseQuestion / proseHint / proseArticle
     │   └── index.ts
     ├── motion/             # 缓动函数与全局动画变体
+    ├── lpw/                # LPW 1.1 文档渲染引擎（三类节点模型与出版级美学）
+    │   ├── index.ts        # 导出入口（31 种组件注册 + 渲染器 + 解析器 + 契约表）
+    │   ├── types.ts        # 1.1 节点模型、props 与契约类型定义
+    │   ├── parser.ts       # 1.1 节点树 JSON 解析器
+    │   ├── registry.ts     # kind:type 统一节点注册表
+    │   ├── renderer.tsx    # 三类节点统一渲染器与层级/变体走查
+    │   ├── contract.ts     # 策略组/变体契约表（与 Go 端快照对齐）
+    │   ├── annotation.tsx  # 批注系统（装饰层徽标 + 波浪划线）
+    │   ├── diagnostics.tsx # 结构化诊断卡与 props 敏感词遮盖
+    │   ├── source-viewer.tsx # 相对资源基址计算与文件直渲外壳
+    │   ├── document-viewer.tsx # 出版级文档展示壳
+    │   ├── layout/         # 纯结构布局组件（7 种 pattern）
+    │   ├── container/      # 受控美化外壳（section/panel/details/tabs）
+    │   └── block/          # 26 种原子内容块与 ECharts/Mermaid 视口
     ├── styles/
     │   └── theme.css       # 静烛 v1 色盘与 CSS 变量
     ├── hooks/
@@ -45,6 +59,7 @@ components/
 | 改 Markdown 插件链 | `src/markdown/markdown.tsx` | remark-gfm + remark-math + remark-fenced-blocks；rehype-highlight / katex / mermaid / slug |
 | 改排版层级 | `src/markdown/prose.ts` | `proseQuestion`（Q&A 主文）/ `proseHint`（补充）/ `proseArticle`（Wiki 正文，防代码块黑底） |
 | 新增 fenced 块 | `remark-fenced-blocks.ts` + `fenced-components.tsx` | 语法与组件必须成对出现 |
+| 新增 LPW 块/布局/容器 | `src/lpw/` | 三类节点契约见 docs/engineering/design/0003；经 `@lumina/components/lpw` 导出 |
 | 改动画变体 | `src/motion/` | 两端通过 `@lumina/components/motion` 导入 |
 | 改 `cn()` | `src/lib/utils.ts` | 同时经 package exports `./utils` 暴露 |
 
@@ -59,6 +74,7 @@ components/
 ## 反模式
 
 - 禁止在 `web/` 或 `web-wiki/` 内重新创建已迁入本包的 ui / markdown / motion / 主题文件——两端会立刻分叉。
+- 禁止在 `web/` 或 `web-wiki/` 内实现 LPW 渲染——必须从 `@lumina/components/lpw` 导入。
 - 禁止把组件级样式写进本包 `theme.css`；主题文件只放设计 token。
 - 禁止手动在 `web/src` 下新建 shadcn 文件来「图省事」；必须走 CLI 加到本包。
 

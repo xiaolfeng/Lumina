@@ -1,6 +1,6 @@
 import { FileText } from 'lucide-react'
 import { useState } from 'react'
-import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued'
+import { ReactDiffViewer, DiffMethod } from '@lumina/components/lpw'
 
 import { Textarea } from '@lumina/components/ui/textarea'
 
@@ -21,10 +21,10 @@ export function QuestionDiff({
 	const [editedCode, setEditedCode] = useState('')
 	const [feedback, setFeedback] = useState('')
 
-	const before = (question.config?.before as string) ?? ''
-	const after = (question.config?.after as string) ?? ''
-	const filePath = (question.config?.filePath as string) ?? ''
-	const language = (question.config?.language as string) ?? ''
+	const before = (question.config?.before as string | undefined) ?? ''
+	const after = (question.config?.after as string | undefined) ?? ''
+	const filePath = (question.config?.filePath as string | undefined) ?? ''
+	const language = (question.config?.language as string | undefined) ?? ''
 
 	const isEditing = decision === 'edit'
 

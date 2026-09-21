@@ -260,6 +260,21 @@ func (l *PreviewLogic) EditFile(ctx context.Context, sessionID xSnowflake.Snowfl
 		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage("delete 操作不接受 content 参数"), false, nil)
 	}
 
+	// Q-08 修复：.lpw 文件编辑时与 preview_lpw_* 及 UploadFile 共享互斥锁，防并发竞争
+	if strings.ToLower(filepath.Ext(filename)) == ".lpw" {
+		var resp *apiPreview.PreviewFileEditResponse
+		var xErr *xError.Error
+		withLpwFileLock(ctx, sessionID, filename, func(lockedCtx context.Context) {
+			resp, xErr = l.editFileLocked(lockedCtx, sessionID, filename, operation, startLine, endLine, content)
+		})
+		return resp, xErr
+	}
+
+	return l.editFileLocked(ctx, sessionID, filename, operation, startLine, endLine, content)
+}
+
+// editFileLocked 执行实际行级编辑（调用方保证 .lpw 已按需持锁）
+func (l *PreviewLogic) editFileLocked(ctx context.Context, sessionID xSnowflake.SnowflakeID, filename, operation string, startLine, endLine int, content string) (*apiPreview.PreviewFileEditResponse, *xError.Error) {
 	session, xErr := l.repo.session.GetByID(ctx, sessionID)
 	if xErr != nil {
 		return nil, xErr
@@ -290,6 +305,11 @@ func (l *PreviewLogic) EditFile(ctx context.Context, sessionID xSnowflake.Snowfl
 	maxBytes := l.repo.file.MaxContentBytes()
 	if len(newContent) > maxBytes {
 		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(fmt.Sprintf("编辑后文件大小超出上限(%dKB)", maxBytes/1024)), false, nil)
+	}
+
+	// Q-08 修复：行级编辑写回前执行 LPW 语法与契约校验，杜绝非法 JSON 或结构破坏性写回
+	if err := validateLpwContent(filename, newContent); err != nil {
+		return nil, xError.NewError(ctx, xError.ParameterError, xError.ErrMessage(err.Error()), false, nil)
 	}
 
 	// 原位写回（保留原文件 ID 与创建时间）
@@ -670,12 +690,32 @@ func inferMimeType(filename string) string {
 	}
 }
 
-// validateLpwContent 校验 .lpw 文件内容：JSON 语法 → v1 Schema → 结构规则走查。
-// Q-03 修复：所有写通道（含 preview_file_upload 整体覆写）执行与 preview_lpw_* 一致的结构校验。
+// validateLpwContent 校验 .lpw 文件内容：JSON 语法 → version 1.1 → Schema 1.1 → 结构规则走查。
+// 默认采用渐进式校验（progressive=true），允许合法的分步构建中间态（如子节点未达完备态下限），
+// 同时严格校验非法 JSON、旧版 blocks 结构、版本不符、未注册类型契约、ID 冲突与 500 节点上限。
 func validateLpwContent(filename, content string) error {
+	return validateLpwContentWithOptions(filename, content, true)
+}
+
+// validateLpwContentWithOptions 校验 .lpw 文件内容，支持指定是否放宽完成态下限（progressive）
+func validateLpwContentWithOptions(filename, content string, progressive bool) error {
 	if strings.ToLower(filepath.Ext(filename)) == ".lpw" {
 		if !json.Valid([]byte(content)) {
 			return errors.New("LPW 文件必须是合法 JSON")
+		}
+
+		var rawMap map[string]any
+		if err := json.Unmarshal([]byte(content), &rawMap); err != nil {
+			return fmt.Errorf("LPW 文档解析失败: %s", err.Error())
+		}
+
+		if _, hasBlocks := rawMap["blocks"]; hasBlocks {
+			return errors.New("检测到旧版 LPW 文档（根字段 blocks）；仅支持 1.1 content 结构，请用 preview_lpw_init 重建")
+		}
+
+		vStr, _ := rawMap["version"].(string)
+		if vStr != "1.1" {
+			return fmt.Errorf("不支持的 LPW 版本 %q：仅支持 1.1", vStr)
 		}
 
 		loader, err := getLpwSchemaLoader()
@@ -683,7 +723,7 @@ func validateLpwContent(filename, content string) error {
 			return fmt.Errorf("LPW Schema 加载失败: %s", err.Error())
 		}
 
-		failPath, reason, ok := loader.Validate([]byte(content), "1.0")
+		failPath, reason, ok := loader.Validate([]byte(content), "1.1")
 		if !ok {
 			return fmt.Errorf("LPW Schema 校验失败 [%s]: %s", failPath, reason)
 		}
@@ -692,8 +732,14 @@ func validateLpwContent(filename, content string) error {
 		if err := json.Unmarshal([]byte(content), &doc); err != nil {
 			return fmt.Errorf("LPW 文档解析失败: %s", err.Error())
 		}
-		if err := validateContainerRules(&doc); err != nil {
-			return fmt.Errorf("LPW 结构规则校验失败: %s", err.Error())
+		var structErr error
+		if progressive {
+			structErr = validateDocument11Progressive(&doc)
+		} else {
+			structErr = validateDocument11(&doc)
+		}
+		if structErr != nil {
+			return fmt.Errorf("LPW 结构规则校验失败: %s", structErr.Error())
 		}
 	}
 	return nil

@@ -100,8 +100,9 @@ internal/
 │   ├── preview_logic.go      # Preview 逻辑（会话/文件管理 + 会话过期 + WebSocket 同步回调）
 │   ├── preview_lines.go      # Preview 行级编辑纯函数（拆行/合并/行变换/行号格式化）
 │   ├── preview_entry.go      # Preview 根入口文件解析与分流
-│   ├── preview_lpw_logic.go  # Preview LPW 文档渲染与块编排逻辑
-│   ├── preview_lpw_tree.go   # LPW 树节点纯函数（追加/插入/修改/删除/巡检）
+│   ├── preview_lpw_logic.go  # Preview LPW 1.1 节点文档编排（kind 层级校验 + 节点写入）
+│   ├── preview_lpw_contract.go # Container variant / Layout pattern / Annotation 契约表（与前端 contract.ts 快照对齐）
+│   ├── preview_lpw_tree.go   # LPW 1.1 节点树纯函数
 │   ├── pages_logic.go        # Pages 逻辑（晋升快照、Fork、版本指针、密码门）
 │   ├── dashboard.go          # Dashboard 逻辑（六类指标聚合）
 │   ├── runtime_url.go        # 运行时域名解析 + Preview/Pages 路径式深链构建
@@ -198,8 +199,8 @@ internal/
 │   ├── preview_tools.go      # Preview MCP 工具注册（7 个基础文件与会话工具）
 │   ├── preview_handlers.go   # Preview MCP 工具 handler 实现（快照、单文件与行级编辑）
 │   ├── preview_schemas.go    # Preview MCP 输出 Schema 构建器
-│   ├── preview_lpw_tools.go  # Preview LPW 分块写入工具族注册（6 个工具）
-│   ├── preview_lpw_handlers.go # Preview LPW 分块写入工具 handler 实现
+│   ├── preview_lpw_tools.go  # Preview LPW 节点语义工具族注册（7 个工具）
+│   ├── preview_lpw_handlers.go # Preview LPW 节点语义工具 handler 实现
 │   ├── pages_tools.go        # Pages MCP 工具（3 个：pages_list / pages_promote / pages_fork）
 │   ├── qa_tools.go           # Q&A MCP 工具注册（10 个工具定义与 schema）
 │   ├── qa_handlers.go        # Q&A MCP 工具 handler 实现（工具执行逻辑）
@@ -250,7 +251,7 @@ internal/
 | 新增 WebSocket 消息类型 | `websocket/message.go` | 定义 MessageType 常量和 Message 结构 |
 | 新增 Q&A 回答队列 | `qa/queue.go` | 会话级 FIFO 队列，由 `QaLogic` 调用 |
 | 新增 Preview 会话/文件 | `entity/preview_*.go` + `logic/preview_logic.go` + `handler/preview.go` + `mcp/preview_tools.go` | 文件上限 256KB，MIME 推断，`preview_sync` 实时同步 |
-| 新增 LPW 分块写入操作 | `logic/preview_lpw_logic.go` + `preview_lpw_tree.go` + `mcp/preview_lpw_tools.go` | Schema 校验、树形遍历与块增删改查 |
+| 新增 LPW 分块写入操作 | `logic/preview_lpw_logic.go` + `preview_lpw_contract.go` + `mcp/preview_lpw_tools.go` | Schema 1.1、kind 层级与节点增删改查 |
 | 新增 Pages 页面/版本 | `entity/page*.go` + `logic/pages_logic.go` + `handler/pages.go` + `mcp/pages_tools.go` | 不可变快照、Fork 派生、路径直出、密码门 Cookie 鉴权 |
 | 新增 Dashboard 统计 | `logic/dashboard.go` + `repository/dashboard.go` + `handler/dashboard.go` | 六类指标聚合，原生 SQL |
 | 新增 RepoWiki 分析入口 | `logic/repowiki_logic.go` | 配置/版本 CRUD 与分析启动 |
@@ -281,7 +282,7 @@ internal/
 | `WorkspaceLogic` | 结构体 | `logic/workspace.go` | 工作空间 CRUD、默认空间保证与项目计数 |
 | `PagesLogic` | 结构体 | `logic/pages_logic.go` | Pages 晋升快照、Fork、版本指针与密码门认证 |
 | `PreviewLogic` | 结构体 | `logic/preview_logic.go` | Preview 会话/文件编排 + 行级编辑 + 会话过期 + WebSocket 同步回调 |
-| `PreviewLpwLogic` | 结构体 | `logic/preview_lpw_logic.go` | LPW 结构化文档逻辑与 Schema 驱动解析 |
+| `PreviewLpwLogic` | 结构体 | `logic/preview_lpw_logic.go` | LPW 1.1 节点文档编排（kind 层级校验 + 节点写入） |
 | `DashboardLogic` | 结构体 | `logic/dashboard.go` | 看板六类指标聚合 |
 | `resolveRuntimeDomain` | 函数 | `logic/runtime_url.go` | 解析站点运行时域名（Info site.domain → env 回退） |
 | `buildPreviewURL` | 函数 | `logic/runtime_url.go` | 构建路径式 `/preview/<hash>/<filename>` 深链 |
@@ -341,7 +342,7 @@ internal/
 | `RegisterRepoWikiTools` | 函数 | `mcp/repowiki_tools.go` | 注册 RepoWiki MCP 只读工具 |
 | `SetRepoWikiLogic` | 函数 | `mcp/repowiki_tools.go` | 注入 RepoWikiLogic 到 MCP 工具 |
 | `RegisterPreviewTools` | 函数 | `mcp/preview_tools.go` | 注册 Preview 基础 MCP 工具（7 个） |
-| `RegisterPreviewLpwTools` | 函数 | `mcp/preview_lpw_tools.go` | 注册 Preview LPW 分块写入 MCP 工具族（6 个） |
+| `RegisterPreviewLpwTools` | 函数 | `mcp/preview_lpw_tools.go` | 注册 Preview LPW 节点语义 MCP 工具族（7 个） |
 | `RegisterPagesTools` | 函数 | `mcp/pages_tools.go` | 注册 Pages MCP 工具（3 个） |
 
 ## 约定
@@ -375,7 +376,7 @@ internal/
 - **MCP OAuth 2.1**：Lumina 同时当授权服务器与资源服务器；仅 `authorization_code` + PKCE S256 + `refresh_token`；公共客户端无 `client_secret`；访问令牌前缀 `lum_at_`、刷新令牌 `lum_rt_`；令牌原文不进缓存，只存 SHA-256 摘要。TTL 可由 `LUMINA_OAUTH_ACCESS_TTL` / `LUMINA_OAUTH_REFRESH_TTL`（秒）覆盖。
 - **AI 插件分发**：源码在 `resources/ai-plugin`（`go:embed all:ai-plugin`），运行时由 `AIPluginService` 打 ZIP 并渲染带真实 SHA-256 的 marketplace.json。调试态（`XLF_DEBUG=true`）每次从磁盘重读；`LUMINA_AI_PLUGIN_DIR` 可覆盖源目录。ZCode 不支持 archive 源，必须走 `/api/v1/plugins/marketplace.zcode.json`（url+zip）。
 - **MCP Logic 注入**：`startup_mcp.go` 中通过 `mcp.SetQaLogic/SetProjectLogic/SetPinLogic/SetPreviewLogic/SetPreviewLpwLogic/SetPagesLogic/SetWorkspaceLogic/SetRepoWikiLogic` 注入 Logic 实例。
-- **MCP 工具集结构**：MCP 端点共注册 38 个工具，分属八个领域：Workspace（2）、QA（10）、Project（3）、Pin（5）、RepoWiki（2）、Preview（7）、Preview LPW（6）、Pages（3）。
+- **MCP 工具集结构**：MCP 端点共注册 39 个工具，分属八个领域：Workspace（2）、QA（10）、Project（3）、Pin（5）、RepoWiki（2）、Preview（7）、Preview LPW（7）、Pages（3）。
 - **Pages 快照与密码门**：Pages 承接 Preview 的晋升快照，深拷贝文件并冻结为不可变版本；支持 Fork 派生回 Preview 会话。访问策略在控制台配置，密码门走 HMAC Cookie 认证；MCP 工具严禁在晋升时设置密码。
 - **Preview 行级编辑与过期**：Preview 模块支持单文件 256KB 上限、行级精准替换与读取（`preview_lines.go`），历史会话支持自动过期与 Cron 定时清理（`ExpireStaleSessions`）。
 - **LPW 文档渲染引擎**：LPW（Lumina Paper Workshop）支持基于 Schema 校验的结构化分块写入（追加/插入/修改/删除/巡检），前端优先使用 React 原生渲染与 ECharts 懒加载。
@@ -449,7 +450,7 @@ internal/
 20. 系统设置读写异常 → 检查 `logic/settings.go` + `repository/info.go`（Info 表分组键）。
 21. Preview 文件上传或行级编辑失败 → 检查 `logic/preview_logic.go` 的 `validateFilename`/`inferMimeType`、`logic/preview_lines.go` 的行号范围、文件大小是否超过 256KB。
 22. Preview 实时同步不达 → 检查 `logic.OnPreviewChanged` 回调 + `websocket/preview_handler.go` 的 `preview_sync` 推送。
-23. LPW 校验失败 → 检查 `service/lpw_schema.go` 的 Schema 规范 + `preview_lpw_tree.go` 的节点类型与块属性。
+23. LPW 校验失败 → 检查 `resources/lpw/schema/v1.1.json` + `logic/preview_lpw_contract.go` 契约表 + 前端 `components/src/lpw/contract.ts`（三方快照对齐）。
 24. Pages 访问或直出失败 → 检查 `middleware/pages_auth.go` Cookie 签名 + `service/page_auth_token.go` + `handler/serve.go` 文件存在性。
 25. Workspace 切换或归属异常 → 检查 `repository/workspace.go` 的默认空间约束 + `logic/workspace.go` 的项目关联。
 26. Dashboard 统计异常 → 检查 `repository/dashboard.go` 原生 SQL + `logic/dashboard.go` 聚合逻辑。

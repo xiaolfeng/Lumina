@@ -1,0 +1,79 @@
+{
+  "version": "1.1",
+  "meta": {
+    "title": "Newspaper 报纸多栏流版式样例",
+    "description": "导语通栏、正文多栏流动排版与全屏数据图"
+  },
+  "content": [
+    {
+      "id": "lay-news",
+      "kind": "layout",
+      "type": "layout",
+      "props": {
+        "pattern": "newspaper",
+        "placements": [
+          { "nodeId": "hd-lead", "role": "lead", "orderOnMobile": 1 },
+          { "nodeId": "md-body", "role": "body", "orderOnMobile": 2 },
+          { "nodeId": "pan-aside", "role": "aside", "orderOnMobile": 3 },
+          { "nodeId": "ch-full", "role": "full", "orderOnMobile": 4 }
+        ]
+      },
+      "children": [
+        {
+          "id": "hd-lead",
+          "kind": "block",
+          "type": "heading",
+          "props": {
+            "level": 1,
+            "content": "微明知识中枢：赋能全链路工程协作"
+          }
+        },
+        {
+          "id": "md-body",
+          "kind": "block",
+          "type": "markdown",
+          "props": {
+            "content": "在现代复杂软件工程中，AI 与开发者的协作已经从单纯的代码补全走向系统级的长效认知。微明通过将六大核心能力解耦，在保证分层纯粹的同时，为多 Agent 编排提供了稳固的上下文基石。\n\n文档作为认知传递的主要载体，需要同时兼顾长文阅读的呼吸感与严谨的数据可视化。报纸多栏排版为长篇论述提供了绝佳的视觉节奏。"
+          }
+        },
+        {
+          "id": "pan-aside",
+          "kind": "container",
+          "type": "panel",
+          "props": {
+            "variant": "aside",
+            "title": "要点快讯"
+          },
+          "children": [
+            {
+              "id": "co-aside-1",
+              "kind": "block",
+              "type": "callout",
+              "props": {
+                "level": "info",
+                "title": "编者按",
+                "content": "本文档由微明出版级美学引擎自动排版渲染。"
+              }
+            }
+          ]
+        },
+        {
+          "id": "ch-full",
+          "kind": "block",
+          "type": "chart",
+          "props": {
+            "chartType": "line",
+            "title": "全网调用与索引趋势",
+            "categories": ["一月", "二月", "三月", "四月"],
+            "series": [
+              {
+                "name": "活跃会话",
+                "data": [150, 230, 320, 480]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

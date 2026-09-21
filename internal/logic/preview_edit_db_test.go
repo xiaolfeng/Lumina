@@ -188,3 +188,79 @@ func TestPreviewLogicEditFileEmptyFileInsert(t *testing.T) {
 		t.Fatalf("range on empty: xErr = %v, want ParameterError", xErr)
 	}
 }
+
+// TestPreviewLogicEditFileLpwValidation 验证 Q-08：EditFile 对 .lpw 必须校验 LPW 语法与契约
+func TestPreviewLogicEditFileLpwValidation(t *testing.T) {
+	l := newPreviewEditLogic(t)
+	ctx := context.Background()
+	sessionID := newPreviewEditSession(t, l)
+
+	validLpw := `{"version":"1.1","meta":{"title":"合法文档"},"content":[]}`
+	_, xErr := l.UploadFile(ctx, sessionID, "test.lpw", validLpw)
+	if xErr != nil {
+		t.Fatalf("upload valid lpw failed: %s", xErr.Error())
+	}
+
+	// 1. 行级编辑为非法 JSON 必须被拦截并报 ParameterError
+	_, xErr = l.EditFile(ctx, sessionID, "test.lpw", bConst.PreviewEditOperationReplace, 1, 1, "{ invalid json")
+	if xErr == nil {
+		t.Fatalf("expected error when editing .lpw with invalid json, got nil")
+	}
+	if xErr.GetErrorCode() != xError.ParameterError {
+		t.Fatalf("expected ParameterError, got: %v", xErr.GetErrorCode())
+	}
+
+	// 2. 行级编辑为旧版 blocks 必须被拦截并报 ParameterError
+	_, xErr = l.EditFile(ctx, sessionID, "test.lpw", bConst.PreviewEditOperationReplace, 1, 1, `{"version":"1.0","blocks":[]}`)
+	if xErr == nil {
+		t.Fatalf("expected error when editing .lpw with legacy blocks, got nil")
+	}
+	if xErr.GetErrorCode() != xError.ParameterError {
+		t.Fatalf("expected ParameterError, got: %v", xErr.GetErrorCode())
+	}
+
+	// 3. 行级编辑为不支持的版本必须被拦截并报 ParameterError
+	_, xErr = l.EditFile(ctx, sessionID, "test.lpw", bConst.PreviewEditOperationReplace, 1, 1, `{"version":"2.0","content":[]}`)
+	if xErr == nil {
+		t.Fatalf("expected error when editing .lpw with unsupported version, got nil")
+	}
+	if xErr.GetErrorCode() != xError.ParameterError {
+		t.Fatalf("expected ParameterError, got: %v", xErr.GetErrorCode())
+	}
+
+	// 4. 行级编辑为合法 1.1 LPW 放行
+	updatedLpw := `{"version":"1.1","meta":{"title":"更新后的文档"},"content":[]}`
+	editResp, xErr := l.EditFile(ctx, sessionID, "test.lpw", bConst.PreviewEditOperationReplace, 1, 1, updatedLpw)
+	if xErr != nil {
+		t.Fatalf("valid lpw edit failed: %s", xErr.Error())
+	}
+	if editResp.Size != len(updatedLpw) {
+		t.Fatalf("expected size %d, got %d", len(updatedLpw), editResp.Size)
+	}
+
+	// 5. 大写扩展名 .LPW 同样被拦截
+	_, xErr = l.UploadFile(ctx, sessionID, "upper.LPW", validLpw)
+	if xErr != nil {
+		t.Fatalf("upload upper.LPW failed: %s", xErr.Error())
+	}
+	_, xErr = l.EditFile(ctx, sessionID, "upper.LPW", bConst.PreviewEditOperationReplace, 1, 1, "{ invalid json")
+	if xErr == nil {
+		t.Fatalf("expected error when editing upper.LPW with invalid json, got nil")
+	}
+	if xErr.GetErrorCode() != xError.ParameterError {
+		t.Fatalf("expected ParameterError, got: %v", xErr.GetErrorCode())
+	}
+
+	// 6. 验证渐进中间态（split 仅 1 个 child）可通过文件通道正常上传与行级修复
+	intermediateDoc := `{"version":"1.1","content":[{"id":"lay-1","kind":"layout","type":"layout","props":{"pattern":"split"},"children":[{"id":"b1","kind":"block","type":"markdown","props":{"content":"1"}}]}]}`
+	_, xErr = l.UploadFile(ctx, sessionID, "mid.lpw", intermediateDoc)
+	if xErr != nil {
+		t.Fatalf("upload intermediate lpw failed: %s", xErr.Error())
+	}
+	fixedMidDoc := `{"version":"1.1","content":[{"id":"lay-1","kind":"layout","type":"layout","props":{"pattern":"split"},"children":[{"id":"b1","kind":"block","type":"markdown","props":{"content":"fixed"}}]}]}`
+	_, xErr = l.EditFile(ctx, sessionID, "mid.lpw", bConst.PreviewEditOperationReplace, 1, 1, fixedMidDoc)
+	if xErr != nil {
+		t.Fatalf("edit intermediate lpw failed: %s", xErr.Error())
+	}
+}
+

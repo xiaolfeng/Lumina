@@ -1,0 +1,238 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`contract > block groups snapshot matches Go contract 1`] = `
+{
+  "callout": [
+    "notice",
+  ],
+  "cards": [
+    "text",
+  ],
+  "chart": [
+    "data",
+  ],
+  "code": [
+    "technical",
+  ],
+  "comparison": [
+    "decision",
+  ],
+  "diff": [
+    "technical",
+  ],
+  "divider": [],
+  "gallery": [
+    "media",
+  ],
+  "heading": [
+    "text",
+  ],
+  "image": [
+    "media",
+  ],
+  "list": [
+    "text",
+  ],
+  "markdown": [
+    "text",
+  ],
+  "mermaid": [
+    "media",
+  ],
+  "metrics": [
+    "data",
+  ],
+  "open-items": [
+    "process",
+  ],
+  "progress": [
+    "data",
+  ],
+  "quadrant": [
+    "decision",
+  ],
+  "quote": [
+    "text",
+    "notice",
+  ],
+  "scorecard": [
+    "decision",
+  ],
+  "steps": [
+    "process",
+  ],
+  "table": [
+    "data",
+    "technical",
+  ],
+  "takeaway": [
+    "decision",
+    "notice",
+  ],
+  "timeline": [
+    "process",
+  ],
+  "tree": [
+    "process",
+    "technical",
+  ],
+}
+`;
+
+exports[`contract > container variants snapshot matches Go contract 1`] = `
+{
+  "details": {
+    "raw-data": {
+      "AllowedTypes": [
+        "code",
+        "diff",
+        "table",
+        "tree",
+      ],
+      "MaxItems": 6,
+      "MinItems": 1,
+    },
+    "supplement": {
+      "AllowedGroups": [
+        "text",
+        "technical",
+        "media",
+      ],
+      "MaxItems": 10,
+      "MinItems": 1,
+    },
+  },
+  "panel": {
+    "aside": {
+      "AllowedGroups": [
+        "notice",
+        "text",
+      ],
+      "MaxItems": 4,
+      "MinItems": 1,
+    },
+    "dashboard": {
+      "AllowedGroups": [
+        "data",
+        "decision",
+      ],
+      "MaxItems": 8,
+      "MinItems": 1,
+    },
+    "summary": {
+      "AllowedGroups": [
+        "decision",
+        "data",
+      ],
+      "DeniedTypes": [
+        "chart",
+      ],
+      "MaxItems": 4,
+      "MinItems": 1,
+      "NoRepeatTypes": [
+        "takeaway",
+      ],
+    },
+  },
+  "section": {
+    "article": {
+      "AllowedGroups": [
+        "text",
+        "media",
+        "notice",
+      ],
+      "MaxItems": 12,
+      "MinItems": 1,
+    },
+    "evidence": {
+      "AllowedGroups": [
+        "technical",
+        "media",
+        "notice",
+      ],
+      "MaxItems": 8,
+      "MinItems": 1,
+    },
+    "feature": {
+      "AllowedGroups": [
+        "media",
+        "text",
+        "notice",
+      ],
+      "FirstOf": [
+        "image",
+        "gallery",
+        "heading",
+      ],
+      "MaxItems": 6,
+      "MinItems": 2,
+    },
+  },
+  "tabs": {
+    "comparison": {
+      "AllowedTypes": [
+        "comparison",
+        "table",
+        "scorecard",
+        "markdown",
+      ],
+      "MaxItems": 10,
+      "MinItems": 1,
+    },
+    "gallery": {
+      "AllowedTypes": [
+        "image",
+        "gallery",
+      ],
+      "MaxItems": 10,
+      "MinItems": 1,
+    },
+    "reference": {
+      "AllowedTypes": [
+        "markdown",
+        "code",
+        "table",
+        "mermaid",
+        "chart",
+        "image",
+      ],
+      "MaxItems": 10,
+      "MinItems": 1,
+    },
+  },
+}
+`;
+
+exports[`contract > layout patterns snapshot matches Go contract 1`] = `
+{
+  "alternating": {
+    "EvenOnly": true,
+    "MaxChildren": 12,
+    "MinChildren": 2,
+  },
+  "bento": {
+    "MaxChildren": 12,
+    "MinChildren": 2,
+  },
+  "editorial-wrap": {
+    "MaxChildren": 2,
+    "MinChildren": 2,
+  },
+  "flow": {
+    "MaxChildren": 20,
+    "MinChildren": 1,
+  },
+  "grid": {
+    "MaxChildren": 12,
+    "MinChildren": 1,
+  },
+  "newspaper": {
+    "MaxChildren": 4,
+    "MinChildren": 2,
+  },
+  "split": {
+    "MaxChildren": 2,
+    "MinChildren": 2,
+  },
+}
+`;
