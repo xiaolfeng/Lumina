@@ -68,7 +68,7 @@ function recursivelyHighlightNode(
     return highlightText(node, regex, renderMark);
   }
   if (Array.isArray(node)) {
-    return node.map((child, i) =>
+    return node.map((child) =>
       recursivelyHighlightNode(child, regex, renderMark),
     );
   }

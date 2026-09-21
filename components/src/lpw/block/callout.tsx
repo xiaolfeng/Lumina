@@ -1,4 +1,3 @@
-import { MarkdownLite } from "../../markdown";
 import type React from "react";
 import { AnnotatedText } from "../annotation";
 import type { LpwBlockSlotProps, LpwCalloutProps } from "../types";
