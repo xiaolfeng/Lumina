@@ -204,7 +204,7 @@ export function registerAll(): void {
       comp: TakeawayBlock,
       name: "Takeaway",
       groups: ["decision", "notice"],
-      fields: [],
+      fields: ["content"],
     },
     {
       type: "glance",

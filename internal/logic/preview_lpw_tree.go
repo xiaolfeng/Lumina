@@ -436,6 +436,7 @@ var annotatableFields = map[string][]string{
 	"heading":  {"content"},
 	"callout":  {"title", "content"},
 	"quote":    {"content"},
+	"takeaway": {"content"},
 	"list":     {}, // 块级批注可用，无文本划线
 }
 

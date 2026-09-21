@@ -1,10 +1,13 @@
-import type React from 'react'
-import type { LpwBlockSlotProps, LpwTakeawayProps } from '../types'
+import type React from "react";
+import { AnnotatedText } from "../annotation";
+import type { LpwBlockSlotProps, LpwTakeawayProps } from "../types";
 
 export const TakeawayBlock: React.FC<LpwBlockSlotProps<LpwTakeawayProps>> = ({
+  nodeId = "",
   props,
+  annotation,
 }) => {
-  const title = props.title ?? '核心判断'
+  const title = props.title ?? "核心判断";
 
   return (
     <div
@@ -20,9 +23,14 @@ export const TakeawayBlock: React.FC<LpwBlockSlotProps<LpwTakeawayProps>> = ({
 
         {/* 核心引言金句 */}
         <div className="font-serif text-base sm:text-lg lg:text-xl font-normal leading-relaxed text-foam/95">
-          {props.content}
+          <AnnotatedText
+            nodeId={nodeId}
+            field="content"
+            value={props.content}
+            annotation={annotation}
+          />
         </div>
       </div>
     </div>
-  )
-}
+  );
+};

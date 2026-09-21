@@ -92,7 +92,7 @@ func GetLpwTextSpec(kindFilter, typeFilter string) string {
 		sb.WriteString("  comparison:  props: plans*([ {name*, recommended(bool)} ]), rows*([ {dimension*, values*([ {text*, verdict:\"good\"|\"warn\"|\"bad\"} ])} ]), title\n")
 		sb.WriteString("  progress:    props: items*([ {label*, value*(0..100), status:\"wait\"|\"process\"|\"finish\"|\"error\"} ], 1..12), title\n")
 		sb.WriteString("  tree:        props: nodes*([ {label*, note, children:[treeNode]} ]), title\n")
-		sb.WriteString("  takeaway:    props: content*(str, 1..500), title(str, 默认 \"核心判断\")\n")
+		sb.WriteString("  takeaway:    props: content*(str, 1..500), title(str, 默认 \"核心判断\") (支持 content 批注划线)\n")
 		sb.WriteString("  glance:      props: items*([ {label*(1..20), text*(1..200)} ], 1..4)\n")
 		sb.WriteString("  open-items:  props: items*([ {title*, detail, owner, due} ], 1..12), title(str, 默认 \"未决事项\")\n")
 		sb.WriteString("  scorecard:   props: criteria*([ {name*, weight*(1..100)} ]), plans*([ {name*, scores*([num 1..5]), recommended(bool)} ]), title\n")
