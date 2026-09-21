@@ -15,7 +15,7 @@
 - **Pin**：跨项目依赖约束传递，点对点定向推送与 FIFO 队列消费 — ✅ 已实现
 - **Preview / Pages**：前端可视化预览工作台与项目级不可变即时页面（路径式寻址、行级精准编辑、LPW 文档渲染引擎、快照晋升、可选密码门）— ✅ 已实现
 
-后端通过 Streamable MCP 协议 + HTTP REST API + WebSocket 三通道对外暴露能力；MCP 端点认证为 OAuth 2.1（`lum_at_`）优先、API Key 回退，注册了八套共 38 个业务工具，并提供 AI 插件动态打包分发。前端通过 REST API + WebSocket 与后端通信。控制台前端（`web/`）与 Wiki Reader 前端（`web-wiki/`）构建产物分别通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。两前端通过 `@lumina/components` workspace 包共享 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体和微明主题 CSS。项目采用 pnpm monorepo 管理双前端与共享组件包，并提供 Dockerfile + docker-compose 及 GitHub Actions 发布流水线支持容器化部署。数据库与缓存初始化由 `main.go` 的 `xOption.WithDatabase / WithCache` 声明式装配（bamboo-base-go v1.2.3）。
+后端通过 Streamable MCP 协议 + HTTP REST API + WebSocket 三通道对外暴露能力；MCP 端点认证为 OAuth 2.1（`lum_at_`）优先、API Key 回退，注册了八套共 39 个业务工具，并提供 AI 插件动态打包分发。前端通过 REST API + WebSocket 与后端通信。控制台前端（`web/`）与 Wiki Reader 前端（`web-wiki/`）构建产物分别通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。两前端通过 `@lumina/components` workspace 包共享 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体和微明主题 CSS。项目采用 pnpm monorepo 管理双前端与共享组件包，并提供 Dockerfile + docker-compose 及 GitHub Actions 发布流水线支持容器化部署。数据库与缓存初始化由 `main.go` 的 `xOption.WithDatabase / WithCache` 声明式装配（bamboo-base-go v1.2.3）。
 
 > 工程提案与架构决策按生命周期登记在 `docs/README.md`；当前架构地图见 `ARCHITECTURE.md`。
 
@@ -136,8 +136,9 @@
 │   │   ├── settings.go         # 系统设置逻辑（分组配置读写）
 │   │   ├── preview_logic.go    # Preview 逻辑（会话/文件管理 + 行级编辑 + 过期清理 + WebSocket 同步）
 │   │   ├── preview_lines.go    # Preview 行级编辑与区间读取纯函数
-│   │   ├── preview_lpw_logic.go # LPW 结构化文档渲染与分块写入编排
-│   │   ├── preview_lpw_tree.go # LPW 块树增删改查纯函数
+│   │   ├── preview_lpw_logic.go # LPW 1.1 节点文档编排（kind 层级校验 + 节点写入）
+│   │   ├── preview_lpw_contract.go # Container variant / Layout pattern / Annotation 契约表（与前端 contract.ts 快照对齐）
+│   │   ├── preview_lpw_tree.go # LPW 1.1 节点树纯函数
 │   │   ├── pages_logic.go      # Pages 逻辑（快照晋升 + Fork + 密码门 + 静态复制）
 │   │   ├── dashboard.go        # Dashboard 逻辑（六类指标聚合）
 │   │   ├── runtime_url.go      # 运行时域名解析 + Preview/Pages 深链构建
@@ -246,7 +247,7 @@
 | 新增 SSH Key | `internal/entity/ssh_key.go` + `logic/ssh_key.go` + `service/ssh_key_gen.go` | 私钥加密存储 |
 | 新增 Webhook 事件 | `handler/webhook.go` + `logic/repowiki_webhook.go` + `service/webhook_parser.go` | HMAC 签名校验必经 |
 | 新增 Preview 会话/文件 | `entity/preview_*.go` + `logic/preview_logic.go` + `handler/preview.go` + `mcp/preview_tools.go` | 文件上限 256KB，`preview_sync` 实时同步 |
-| 新增 LPW 分块写入操作 | `logic/preview_lpw_logic.go` + `preview_lpw_tree.go` + `mcp/preview_lpw_tools.go` | Schema 校验、树形遍历与块增删改查 |
+| 新增 LPW 分块写入操作 | `logic/preview_lpw_logic.go` + `preview_lpw_contract.go` + `mcp/preview_lpw_tools.go` | Schema 1.1、kind 层级与节点增删改查 |
 | 新增 Pages 页面/版本 | `entity/page*.go` + `logic/pages_logic.go` + `handler/pages.go` + `mcp/pages_tools.go` | 不可变快照、Fork 派生、路径直出、密码门 Cookie 鉴权 |
 | 新增 Dashboard 统计 | `logic/dashboard.go` + `repository/dashboard.go` + `handler/dashboard.go` | 六类指标聚合 |
 | 新增 MCP OAuth | `api/oauth/` + `logic/oauth_logic.go` + `handler/oauth.go` + `route_oauth.go` | 公开端点须在 `engine.Use()` 前注册；consent 走登录态 |
@@ -297,7 +298,7 @@
 | `SshKeyLogic` | 结构体 | `internal/logic/ssh_key.go` | SSH Key 编排（CRUD + 密钥对生成/公钥导出） |
 | `SettingsLogic` | 结构体 | `internal/logic/settings.go` | 系统设置编排（分组配置读写 + Info 表编排） |
 | `PreviewLogic` | 结构体 | `internal/logic/preview_logic.go` | Preview 会话/文件编排 + 行级编辑 + 过期清理 + WebSocket 同步 |
-| `PreviewLpwLogic` | 结构体 | `internal/logic/preview_lpw_logic.go` | LPW 结构化文档渲染与分块写入编排 |
+| `PreviewLpwLogic` | 结构体 | `internal/logic/preview_lpw_logic.go` | LPW 1.1 节点文档编排（kind 层级校验 + 节点写入） |
 | `PagesLogic` | 结构体 | `logic/pages_logic.go` | Pages 业务编排（快照晋升 + Fork + 密码门） |
 | `DashboardLogic` | 结构体 | `internal/logic/dashboard.go` | 看板六类指标聚合 |
 | `ProjectRepo` | 结构体 | `internal/repository/project.go` | 项目持久化（CRUD + Redis Cache-Aside 缓存 + 工作空间过滤） |
@@ -467,7 +468,7 @@
 - **静烛 v1 设计语言**：共享 `theme.css` 全量重写，色盘为静烛/微明意象（`--sea-ink`/`--lagoon`/`--palm`/`--sand`/`--foam`），`--radius:0px` 全平直角。
 - **Preview 实时同步**：`OnPreviewChanged` 回调驱动 `preview_sync` 消息推送，对外分享页与管理端实时同步会话文件变更。
 - **Preview 工作台**：路径式寻址 `/preview/<hash>/<file>`，必须登录（Cookie 回退）；iframe 与地址栏同路径，相对 CSS/JS 原生命中。旧 `?session=` 深链由前端重定向。
-- **LPW 文档渲染引擎**：支持基于 Schema 校验的结构化分块写入（追加/插入/修改/删除/巡检），前端优先使用 React 原生渲染与 ECharts 懒加载，防范 DOM 竞态。
+- **LPW 文档渲染引擎**：支持基于 Schema 1.1 校验的三类同级节点结构化写入（追加/插入/修改/删除/巡检），前端优先使用 React 原生渲染与 ECharts 懒加载，防范 DOM 竞态。
 - **Pages 快照与密码门**：不可变即时页面快照（深拷贝 Preview 文件），支持版本指针与 Fork 回退；密码门走 HMAC 签名 Cookie 校验。
 - **Dashboard KPI 聚合**：`repository/dashboard.go` 用原生 SQL 聚合六类指标，前端 `useDashboardOverview` 被多个 Console 页复用 KPI。
 - **RepoWiki 子 Agent 编排**：`SubAgentOrchestrator` 按预定义 5 阶段（Coordinator → Explore → Architect → Writer → Validator）生成 Wiki，prompt 模板内嵌在 `resources/prompts/*.md` 通过 `service/prompt_loader.go` 加载，`repowiki_subagent_prompts.go` 负责动态构建 user prompt，`repowiki_types.go` 定义内部类型，`repowiki_pipeline.go` 负责 Git 准备与状态机驱动。
@@ -598,7 +599,7 @@ pnpm test         # 运行 Vitest 测试（markdown/remark-fenced-blocks）
 - Webhook 模块已实现（Git Push 事件接收 + HMAC 校验 + RepoWiki 触发 + 事件历史查询）。
 - 系统设置已实现（站点/安全/Q&A/RepoWiki/Preview 分组配置读写 + 前端多标签页设置页）。
 - 安全中间件已实现（CORS 白名单 + 安全响应头 + WebAuthn Origin 解析 + Pages 密码门 + 沙盒子资源隔离）。
-- MCP Server 已实现，注册了 Workspace（2 只读工具）、QA（10 工具）、Project（3 工具）、Pin（5 工具）、RepoWiki（2 只读工具）、Preview（7 基础工具）、Preview LPW（6 分块写入工具族）、Pages（3 工具）八套工具共 38 个；认证为 OAuth 2.1 优先、API Key 回退。
+- MCP Server 已实现，注册了 Workspace（2 只读工具）、QA（10 工具）、Project（3 工具）、Pin（5 工具）、RepoWiki（2 只读工具）、Preview（7 基础工具）、Preview LPW（7 节点语义工具族）、Pages（3 工具）八套工具共 39 个；认证为 OAuth 2.1 优先、API Key 回退。
 - MCP OAuth 2.1 已实现（RFC 8414 / 9728 / 7591 / 8707，PKCE S256，consent 页 `/oauth`）。
 - AI 插件动态分发已实现（marketplace.json、ZCode 专用清单、lumina.zip、`.well-known/skills`）。
 - WebSocket Hub 已实现，支持 sessionID → deviceID 二级索引，连接 `Kind` 区分 qa/preview，心跳检测，优雅关闭，断线重连和会话恢复。

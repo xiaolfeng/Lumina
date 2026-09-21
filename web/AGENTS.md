@@ -125,20 +125,8 @@ web/
     │   │   ├── workbench-page.tsx        # 路径式工作台主体
     │   │   ├── workbench-canvas.tsx      # 工作台画布与视口控制
     │   │   ├── promote-dialog.tsx        # 晋升快照至 Pages 对话框
-    │   │   ├── session-detail-drawer.tsx # 会话详情抽屉（WebSocket 实时 + 文件删除）
-    │   │   └── lpw/                      # LPW 文档渲染引擎
-    │   │       ├── document-viewer.tsx   # LPW 文档渲染主入口（React 直渲优先）
-    │   │       ├── lpw-parser.ts         # LPW JSON/YAML 解析与校验
-    │   │       ├── lpw-registry.ts       # 块组件注册表
-    │   │       ├── lpw-block-renderer.tsx# 块级渲染调度器
-    │   │       ├── render-children.tsx   # 子节点渲染辅助
-    │   │       ├── types.ts              # LPW 块与容器类型定义
-    │   │       ├── viewers.tsx           # 视图模式调度
-    │   │       ├── echarts-lazy.ts       # ECharts 按需懒加载
-    │   │       ├── echarts-module.ts     # ECharts 运行时模块配置
-    │   │       ├── fallback-block.tsx    # 降级容错块
-    │   │       ├── blocks/               # 25+ 块组件（chart/scorecard/diff/steps/quadrant/metrics 等）
-    │   │       └── containers/           # 4 种容器组件（columns/details/section/tabs）
+    │   │   └── session-detail-drawer.tsx # 会话详情抽屉（WebSocket 实时 + 文件删除）
+    │   │   # 注：LPW 文档渲染引擎已全部迁入 @lumina/components/lpw 共享包，由 file-viewer 直接消费
     │   ├── llm/                # LLM 配置业务组件
     │   │   ├── provider-columns.tsx       # Provider 表格列定义
     │   │   ├── provider-create-dialog.tsx # Provider 创建对话框
@@ -305,7 +293,7 @@ web/
 | 新增 Pages 管理页 | `src/routes/console/pages/` | 已发布页面列表、版本查询、访问策略与密码门设置 |
 | 新增 Pages 展示页 | `src/routes/pages/` | 路径式寻址 `/pages/:projectName/:slug`，密码门认证、沉浸壳展示 |
 | 新增 Preview 工作台 | `src/routes/preview/$sessionHash/$.tsx` | 路径式寻址 `/preview/:hash/:file`，视口缩放、源码查看、晋升对话框 |
-| 新增 LPW 文档渲染 | `src/components/preview/lpw/` | 25+ 块组件与 4 种容器，支持 React 直渲与 ECharts 懒加载 |
+| 新增 LPW 文档渲染 | `@lumina/components/lpw` | 25+ 块组件与 4 种容器，支持 React 直渲与 ECharts 懒加载 |
 | 新增 MCP 接入说明 | `src/routes/console/connect.tsx` | 四级信道：插件安装 / 手动 MCP / 技能安装 / 工具速览；模板在 `mcp-connect.ts` + `plugin-connect.ts` |
 | 新增 MCP 接入组件 | `src/components/mcp/` | 复制块/端点卡/插件安装/技能安装/手动配置/工具目录；令牌弹窗复用 `created-key-panel` |
 | 新增 OAuth 同意页 | `src/routes/_public/oauth.tsx` | 公开布局；`?authorize_id=` 对应后端授权请求缓存；未登录先走登录再裁决 |

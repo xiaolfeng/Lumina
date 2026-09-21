@@ -2617,6 +2617,8 @@ function isRenderable(filename: string) {
 
 ## Implementation Roadmap & PR Plan
 
+> 执行状态：按 `.plan/lpw-core-evolution/` 推进。已完成：STEP-1 ~ STEP-9 全部落地。
+
 详细开发、测试、调优、MCP 切换、插件/Skill 同步和最终验收步骤以 [.plan/lpw-core-evolution](../../../.plan/lpw-core-evolution/README.md) 为准。执行时直接按 STEP-1 到 STEP-10 推进。
 
 硬约束：
