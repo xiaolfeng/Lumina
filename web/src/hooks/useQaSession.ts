@@ -16,6 +16,26 @@ interface UseQaSessionOptions {
 
 // ── Hook ──
 
+function parseJsonField<T = any>(field: any): T {
+  let current = field
+  while (typeof current === 'string') {
+    const trimmed = current.trim()
+    if (
+      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+      (trimmed.startsWith('[') && trimmed.endsWith(']'))
+    ) {
+      try {
+        current = JSON.parse(trimmed)
+      } catch {
+        break
+      }
+    } else {
+      break
+    }
+  }
+  return current
+}
+
 export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
   const [questions, setQuestions] = useState<Question[]>([])
   const [activeSupplement, setActiveSupplement] =
@@ -73,11 +93,11 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
         content: data.title || data.Title || '',
         description: data.description || data.Description,
         type: data.type || data.Type || 'text',
-        options: data.options || data.Options,
+        options: parseJsonField(data.options || data.Options),
         allowOther: data.allow_other,
         groupLabel: data.group_label || '',
-        batch: data.batch,
-        config: data.config,
+        batch: parseJsonField(data.batch || data.Batch),
+        config: parseJsonField(data.config || data.Config),
         status: 'pending',
         answered: false,
         answer: undefined,
@@ -111,11 +131,11 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
           content: data.title || data.Title || '',
           description: data.description || data.Description,
           type: data.type || data.Type || 'text',
-          options: data.options || data.Options,
+          options: parseJsonField(data.options || data.Options),
           allowOther: data.allow_other,
           groupLabel: data.group_label || '',
-          batch: data.batch,
-          config: data.config,
+          batch: parseJsonField(data.batch || data.Batch),
+          config: parseJsonField(data.config || data.Config),
           status,
           answered: status === 'answered',
           answer: data.answer || data.Answer,

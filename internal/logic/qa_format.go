@@ -721,7 +721,7 @@ func formatDiffAnswer(m map[string]interface{}, config map[string]interface{}) s
 
 // formatReviewAnswer 格式化 Review 决策题回答（P-12，从 formatDecisionAnswer 拆分）
 //
-// 回答结构：{ decision: "approve"|"revise", feedback?: "..." }
+// 回答结构：{ decision: "approve"|"revise", annotations?: [...], feedback?: "..." }
 // 去除 [已批准]/[已拒绝] 前缀（外层 [ANSWER] 已有标记，避免语义重复）。
 func formatReviewAnswer(m map[string]interface{}) string {
 	decision, _ := m["decision"].(string)
@@ -732,6 +732,18 @@ func formatReviewAnswer(m map[string]interface{}) string {
 		sb.WriteString("用户批准了该修改")
 	case "revise":
 		sb.WriteString("用户要求修改")
+		if annotations, ok := m["annotations"].([]interface{}); ok && len(annotations) > 0 {
+			sb.WriteString("\n[REVISIONS]")
+			for i, ann := range annotations {
+				if annMap, ok := ann.(map[string]interface{}); ok {
+					sectionID, _ := annMap["sectionId"].(string)
+					content, _ := annMap["content"].(string)
+					if content != "" {
+						sb.WriteString(fmt.Sprintf("\n%d. [%s] %s", i+1, sectionID, content))
+					}
+				}
+			}
+		}
 	default:
 		sb.WriteString(fmt.Sprintf("decision=%s", decision))
 	}

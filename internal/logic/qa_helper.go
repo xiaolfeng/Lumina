@@ -89,10 +89,23 @@ func formatTimePtr(t *time.Time) string {
 	return t.Format(time.RFC3339)
 }
 
-// toJSON 将任意值序列化为 datatypes.JSON，nil 返回 nil
+// toJSON 将任意值序列化为 datatypes.JSON，nil 返回 nil。
+// 若输入已是合法的 JSON 对象或数组字符串，直接保留其字节流，避免二次序列化导致的双重转义。
 func toJSON(v any) datatypes.JSON {
 	if v == nil {
 		return nil
+	}
+	if str, ok := v.(string); ok {
+		trimmed := strings.TrimSpace(str)
+		if trimmed == "" {
+			return nil
+		}
+		if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
+			(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
+			if json.Valid([]byte(trimmed)) {
+				return datatypes.JSON([]byte(trimmed))
+			}
+		}
 	}
 	bytes, err := json.Marshal(v)
 	if err != nil {
