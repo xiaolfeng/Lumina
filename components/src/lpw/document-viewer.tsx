@@ -23,7 +23,7 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         <div
           data-testid="document-error"
           className="border border-destructive/40 bg-destructive/5 p-6 text-xs text-destructive shadow-sm"
@@ -49,7 +49,7 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
 
   return (
     <AnnotationProvider>
-      <div className="w-full max-w-5xl mx-auto my-6 px-3 sm:px-6 min-w-0">
+      <div className="w-full max-w-6xl mx-auto my-6 px-3 sm:px-6 min-w-0">
         <div
           data-testid="lpw-paper"
           className="w-full bg-surface-strong border border-line shadow-sm relative text-sea-ink font-sans min-w-0 overflow-visible"
@@ -63,7 +63,7 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
               </h1>
 
               {meta.description && (
-                <p className="text-sm sm:text-base text-sea-ink-soft leading-relaxed italic font-serif max-w-3xl">
+                <p className="text-sm sm:text-base text-sea-ink-soft leading-relaxed italic font-serif max-w-4xl">
                   {meta.description}
                 </p>
               )}
