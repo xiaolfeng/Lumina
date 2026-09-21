@@ -1,3 +1,4 @@
+import { CheckSquare, Square } from 'lucide-react'
 import { MarkdownLite } from '../../markdown'
 import type React from 'react'
 import type { LpwBlockSlotProps, LpwListProps } from '../types'
@@ -31,14 +32,19 @@ export const ListBlock: React.FC<LpwBlockSlotProps<LpwListProps>> = ({
             >
               <span
                 aria-checked={isChecked}
+                aria-readonly="true"
                 role="checkbox"
-                className={`select-none font-mono text-xs mt-0.5 ${
+                className={`select-none font-mono text-xs mt-0.5 inline-flex items-center justify-center shrink-0 ${
                   isChecked ? 'font-bold text-kicker' : 'text-sea-ink-soft/70'
                 }`}
               >
-                {isChecked ? '✓' : '□'}
+                {isChecked ? (
+                  <CheckSquare className="h-4 w-4" />
+                ) : (
+                  <Square className="h-4 w-4" />
+                )}
               </span>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <MarkdownLite>{item.content}</MarkdownLite>
               </div>
             </li>

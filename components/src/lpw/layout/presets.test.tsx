@@ -134,6 +134,36 @@ describe('Q-02 newspaper 正文可跨栏', () => {
     expect(flow.className).toContain('md:columns-2')
     expect(flow.className).not.toContain('lg:columns-3')
   })
+
+  it('Q-03: newspaper 容器移除 space-y-6，改为在 body 和 aside 子项上加 mb-6', () => {
+    const raw: LpwLayoutChild[] = [
+      { id: 'body', kind: 'block', type: 'markdown', props: { content: 'body' } },
+      { id: 'aside', kind: 'block', type: 'quote', props: { content: 'aside' } },
+    ]
+    const rendered = [<div key="body">body</div>, <div key="aside">aside</div>]
+    const props: LpwLayoutProps = {
+      pattern: 'newspaper',
+      placements: [
+        { nodeId: 'body', role: 'body' },
+        { nodeId: 'aside', role: 'aside' },
+      ],
+    }
+    const { container } = render(
+      <>{renderLayoutPreset({ props, rawChildren: raw, renderedChildren: rendered })}</>,
+    )
+    const flow = container.querySelector(
+      '[data-testid="layout-newspaper-flow"]',
+    ) as HTMLElement
+    expect(flow.className).not.toContain('space-y-6')
+    const body = container.querySelector(
+      '[data-testid="layout-newspaper-body"]',
+    ) as HTMLElement
+    const aside = container.querySelector(
+      '[data-testid="layout-newspaper-aside"]',
+    ) as HTMLElement
+    expect(body.className).toContain('mb-6')
+    expect(aside.className).toContain('mb-6')
+  })
 })
 
 describe('Q-03 alternating 窄屏保持语义 DOM 顺序', () => {
@@ -191,5 +221,25 @@ describe('Q-08 orderOnMobile 写入窄屏 order', () => {
     expect((cells[1] as HTMLElement).style.getPropertyValue('--m-order')).toBe(
       '1',
     )
+  })
+
+  it('Q-04: flow 垂直模式容器由 space-y-6 改为 flex flex-col gap-6 确保 orderOnMobile 生效', () => {
+    const { raw, rendered } = pair(['a', 'b'])
+    const props: LpwLayoutProps = {
+      pattern: 'flow',
+      direction: 'vertical',
+      placements: [
+        { nodeId: 'a', orderOnMobile: 2 },
+        { nodeId: 'b', orderOnMobile: 1 },
+      ],
+    }
+    const { container } = render(
+      <>{renderLayoutPreset({ props, rawChildren: raw, renderedChildren: rendered })}</>,
+    )
+    const flow = container.querySelector('[data-testid="layout-flow"]') as HTMLElement
+    expect(flow.className).not.toContain('space-y-6')
+    expect(flow.className).toContain('flex')
+    expect(flow.className).toContain('flex-col')
+    expect(flow.className).toContain('gap-6')
   })
 })

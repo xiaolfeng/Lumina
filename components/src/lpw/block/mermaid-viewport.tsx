@@ -43,14 +43,44 @@ export const MermaidViewport: React.FC<MermaidViewportProps> = ({
 
     // 补齐缺失的 viewBox
     if (!svg.getAttribute('viewBox')) {
-      const w = svg.getAttribute('width') || svg.clientWidth
-      const h = svg.getAttribute('height') || svg.clientHeight
-      if (w && h) {
-        const numW = parseFloat(String(w))
-        const numH = parseFloat(String(h))
-        if (!isNaN(numW) && !isNaN(numH) && numW > 0 && numH > 0) {
-          svg.setAttribute('viewBox', `0 0 ${numW} ${numH}`)
+      let numW = 0
+      let numH = 0
+
+      const rawW = svg.getAttribute('width')
+      const rawH = svg.getAttribute('height')
+
+      if (rawW && !rawW.includes('%')) {
+        const parsed = parseFloat(rawW)
+        if (!isNaN(parsed) && parsed > 0) numW = parsed
+      }
+      if (rawH && !rawH.includes('%')) {
+        const parsed = parseFloat(rawH)
+        if (!isNaN(parsed) && parsed > 0) numH = parsed
+      }
+
+      // 如果未通过属性获取到非百分比绝对尺寸，优先使用 clientWidth / clientHeight
+      if (numW === 0 && svg.clientWidth > 0) {
+        numW = svg.clientWidth
+      }
+      if (numH === 0 && svg.clientHeight > 0) {
+        numH = svg.clientHeight
+      }
+
+      // 回退使用 getBBox
+      if ((numW === 0 || numH === 0) && typeof (svg as unknown as SVGGraphicsElement).getBBox === 'function') {
+        try {
+          const bbox = (svg as unknown as SVGGraphicsElement).getBBox()
+          if (bbox.width > 0 && bbox.height > 0) {
+            numW = bbox.width
+            numH = bbox.height
+          }
+        } catch {
+          // ignore getBBox error in non-rendered or detached SVG
         }
+      }
+
+      if (numW > 0 && numH > 0) {
+        svg.setAttribute('viewBox', `0 0 ${numW} ${numH}`)
       }
     }
 
@@ -153,7 +183,16 @@ export const MermaidViewport: React.FC<MermaidViewportProps> = ({
         data-testid="mermaid-svg-container"
         className={`p-6 w-full ${mode === 'actual' ? 'overflow-x-auto' : ''}`}
       >
-        <div className="flex justify-center w-full">{children}</div>
+        {fullscreen ? (
+          <div
+            data-testid="mermaid-fullscreen-placeholder"
+            className="flex h-32 w-full flex-col items-center justify-center border border-dashed border-line bg-surface/40 p-4 text-xs font-serif italic text-sea-ink-soft/70"
+          >
+            <span>图表已在全屏窗口中打开</span>
+          </div>
+        ) : (
+          <div className="flex justify-center w-full">{children}</div>
+        )}
       </div>
 
       {/* 全屏 Dialog */}
@@ -165,7 +204,7 @@ export const MermaidViewport: React.FC<MermaidViewportProps> = ({
             </DialogTitle>
           </DialogHeader>
           <div className="mt-4 flex justify-center overflow-auto p-4 bg-surface/50 border border-line/40">
-            {children}
+            {fullscreen && children}
           </div>
         </DialogContent>
       </Dialog>

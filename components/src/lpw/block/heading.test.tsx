@@ -69,4 +69,48 @@ describe('HeadingBlock', () => {
     const el = screen.getByRole('heading', { level: 2 })
     expect(el.className).not.toContain('border-b')
   })
+
+  it('Q-03 未受控 level 安全回退至 level 2', () => {
+    render(
+      <HeadingBlock
+        blockId="h-uncontrolled"
+        props={{ level: 4 as never, content: '未受控层级' }}
+        depth={1}
+      />,
+    )
+    const el = screen.getByRole('heading', { level: 2 })
+    expect(el).toBeTruthy()
+    expect(el.getAttribute('data-testid')).toBe('heading-2')
+  })
+
+  it('Q-06 内部文字容器具有 min-w-0、flex-1 与换行类名', () => {
+    render(
+      <HeadingBlock
+        blockId="h-wrap"
+        props={{ level: 1, content: '超长标题文本' }}
+        depth={1}
+      />,
+    )
+    const el = screen.getByRole('heading', { level: 1 })
+    const textContainer = el.querySelector('span')
+    expect(textContainer?.className).toContain('min-w-0')
+    expect(textContainer?.className).toContain('flex-1')
+    expect(textContainer?.className).toContain('break-words')
+    expect(textContainer?.className).toContain('[overflow-wrap:anywhere]')
+  })
+
+  it('Q-07 采用 items-start 对齐且图标带 mt-1', () => {
+    render(
+      <HeadingBlock
+        blockId="h-align"
+        props={{ level: 2, content: '对齐测试' }}
+        depth={1}
+      />,
+    )
+    const el = screen.getByRole('heading', { level: 2 })
+    expect(el.className).toContain('items-start')
+    expect(el.className).not.toContain('items-center')
+    const svg = el.querySelector('svg')
+    expect(svg?.className.baseVal || svg?.getAttribute('class')).toContain('mt-1')
+  })
 })

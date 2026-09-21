@@ -35,4 +35,31 @@ describe('TakeawayBlock', () => {
 
     expect(screen.getByText('关键决策')).toBeTruthy()
   })
+
+  it('移动端边距调优、印信截断与 Lucide 图标', () => {
+    const { container } = render(
+      <TakeawayBlock
+        blockId="tk-3"
+        props={{
+          title: '超长超长超长超长超长超长超长的印信标题',
+          content: '核心文本内容',
+        }}
+        depth={1}
+      />,
+    )
+
+    const box = container.querySelector('[data-testid="takeaway-block"]')
+    expect(box?.className).toContain('p-4')
+    expect(box?.className).toContain('sm:p-7')
+
+    const tag = container.querySelector('.bg-sea-ink.px-3')
+    expect(tag?.className).toContain('max-w-[calc(100%-3rem)]')
+    expect(tag?.className).toContain('truncate')
+
+    const icon = container.querySelector('.lucide-quote, .lucide-sparkles')
+    expect(icon).toBeTruthy()
+
+    const contentWrapper = screen.getByText('核心文本内容').closest('div')
+    expect(contentWrapper?.className).toContain('break-words')
+  })
 })

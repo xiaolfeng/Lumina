@@ -20,15 +20,18 @@ export const CHART_COLORS = [
 ]
 
 export function buildOption(props: LpwChartProps): Record<string, unknown> {
-  const { chartType, title, categories = [], series = [] } = props
+  const { chartType, title, categories = [] } = props
+  const series = (props.series as typeof props.series | undefined) ?? []
   const legendShow = props.legend ?? true
 
   const option: Record<string, unknown> = {
     color: CHART_COLORS,
     tooltip: {
       trigger: chartType === 'pie' || chartType === 'donut' ? 'item' : 'axis',
+      confine: true,
     },
     legend: {
+      type: 'scroll',
       show: legendShow,
       bottom: 4,
       textStyle: { fontSize: 11, color: '#8a7c6e' },
@@ -46,8 +49,9 @@ export function buildOption(props: LpwChartProps): Record<string, unknown> {
 
   if (chartType === 'line' || chartType === 'bar' || chartType === 'area') {
     option.grid = {
-      left: 40,
-      right: 30,
+      containLabel: true,
+      left: 16,
+      right: 16,
       top: title ? 36 : 20,
       bottom: legendShow ? 32 : 16,
     }
@@ -73,16 +77,21 @@ export function buildOption(props: LpwChartProps): Record<string, unknown> {
       if (chartType === 'area') {
         sItem.areaStyle = { opacity: 0.25 }
       }
-      if (chartType === 'bar' && props.stacked) {
+      if ((chartType === 'bar' || chartType === 'area') && props.stacked) {
         sItem.stack = 'total'
       }
       return sItem
     })
   } else if (chartType === 'pie' || chartType === 'donut') {
     const firstSeries = series[0] as (typeof series)[0] | undefined
-    const pieData = categories.map((cat, idx) => {
-      const rawVal = firstSeries?.data[idx]
-      const val = typeof rawVal === 'number' ? rawVal : 0
+    const pieData = (firstSeries?.data ?? []).map((rawVal, idx) => {
+      const cat = categories[idx] ?? (categories.length > 0 ? `Item ${idx + 1}` : String(idx))
+      let val = 0
+      if (typeof rawVal === 'number') {
+        val = rawVal
+      } else if (Array.isArray(rawVal)) {
+        val = rawVal[1]
+      }
       return { name: cat, value: val }
     })
     const sItem: Record<string, unknown> = {
@@ -96,12 +105,13 @@ export function buildOption(props: LpwChartProps): Record<string, unknown> {
     option.series = [sItem]
   } else if (chartType === 'scatter') {
     option.grid = {
-      left: 40,
-      right: 30,
+      containLabel: true,
+      left: 16,
+      right: 16,
       top: title ? 36 : 20,
       bottom: legendShow ? 32 : 16,
     }
-    option.tooltip = { trigger: 'item' }
+    option.tooltip = { trigger: 'item', confine: true }
     option.xAxis = {
       type: 'value',
       name: props.xLabel,
@@ -152,34 +162,40 @@ export const ChartBlock: React.FC<LpwBlockSlotProps<LpwChartProps>> = ({
   props,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<{
+    setOption: (opt: unknown, notMerge?: boolean) => void
+    resize: () => void
+    dispose: () => void
+  } | null>(null)
   const [ready, setReady] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const height = props.height ?? 280
 
-  const hasData = useMemo(() => {
-    if (props.series.length === 0) return false
-    return props.series.some((s) => s.data.length > 0)
-  }, [props.series])
+  const series = (props.series as typeof props.series | undefined) ?? []
 
+  const hasData = useMemo(() => {
+    if (series.length === 0) return false
+    return series.some((s) => s.data.length > 0)
+  }, [series])
+
+  // 初始化 ECharts 实例
   useEffect(() => {
     if (!hasData) return
 
-    let chart: {
-      setOption: (opt: unknown) => void
-      resize: () => void
-      dispose: () => void
-    } | null = null
     let ro: ResizeObserver | null = null
     let disposed = false
 
     void loadEcharts()
       .then(({ echarts }) => {
         if (disposed || !ref.current) return
-        chart = echarts.init(ref.current, undefined, { renderer: 'canvas' })
-        chart.setOption(buildOption(props))
+        const chart = echarts.init(ref.current, undefined, { renderer: 'canvas' })
+        chartRef.current = chart
+        chart.setOption(buildOption(props), true)
 
         if (typeof ResizeObserver !== 'undefined') {
-          ro = new ResizeObserver(() => chart?.resize())
+          ro = new ResizeObserver(() => {
+            chart.resize()
+          })
           ro.observe(ref.current)
         }
         setReady(true)
@@ -193,8 +209,14 @@ export const ChartBlock: React.FC<LpwBlockSlotProps<LpwChartProps>> = ({
     return () => {
       disposed = true
       ro?.disconnect()
-      chart?.dispose()
+      chartRef.current?.dispose()
+      chartRef.current = null
     }
+  }, [hasData]) // 仅当从无数据切换到有数据或挂载时初始化一次
+
+  // props 发生变化时执行增量 setOption
+  useEffect(() => {
+    chartRef.current?.setOption(buildOption(props), true)
   }, [props, hasData])
 
   if (!hasData) {
@@ -225,6 +247,8 @@ export const ChartBlock: React.FC<LpwBlockSlotProps<LpwChartProps>> = ({
   return (
     <div
       data-testid="chart-block"
+      role="img"
+      aria-label={props.title || '数据图表'}
       className="my-8 border-t-2 border-b-2 border-sea-ink bg-surface/30 p-6 shadow-2xs font-sans"
     >
       <div style={{ height }} className="relative w-full">

@@ -285,14 +285,16 @@ export function renderLayoutPreset({
           ) : null}
           <div
             data-testid="layout-newspaper-flow"
-            className={`${colClass} gap-8 space-y-6`}
+            className={`${colClass} gap-8`}
           >
-            <div data-testid="layout-newspaper-body">{bodyNode}</div>
+            <div data-testid="layout-newspaper-body" className="mb-6">
+              {bodyNode}
+            </div>
             {asideNodes.map((fn, idx) => (
               <div
                 key={idx}
                 data-testid="layout-newspaper-aside"
-                className="break-inside-avoid"
+                className="break-inside-avoid mb-6"
               >
                 {fn}
               </div>
@@ -355,38 +357,32 @@ export function renderLayoutPreset({
       return (
         <div
           data-testid="layout-editorial-wrap"
-          className="relative my-6 font-sans"
+          className="relative my-6 font-sans flex flex-col gap-4 md:block"
         >
-          <div className="hidden md:block">
-            <div
-              style={{
-                float: isRight ? "right" : "left",
-                width,
-                aspectRatio: aspectMap[wrapStrategy.mediaShape],
-                marginLeft: isRight ? "1.5rem" : "0",
-                marginRight: isRight ? "0" : "1.5rem",
-                marginBottom: "1rem",
-              }}
-            >
-              {imgNode}
-            </div>
-            <div>{mdNode}</div>
-            <div style={{ clear: "both" }} />
+          <div
+            className="max-md:[order:var(--m-order)] md:my-0"
+            style={{
+              ["--m-order" as string]: String(imgOrder),
+              float: isRight ? "right" : "left",
+              width: "var(--media-width)",
+              aspectRatio: aspectMap[wrapStrategy.mediaShape],
+              marginLeft: isRight ? "1.5rem" : "0",
+              marginRight: isRight ? "0" : "1.5rem",
+              marginBottom: "1rem",
+              ["--media-width" as string]: width,
+            }}
+          >
+            {imgNode}
           </div>
-
-          <div className="flex flex-col gap-4 md:hidden">
-            {imgOrder <= mdOrder ? (
-              <>
-                <div>{imgNode}</div>
-                <div>{mdNode}</div>
-              </>
-            ) : (
-              <>
-                <div>{mdNode}</div>
-                <div>{imgNode}</div>
-              </>
-            )}
+          <div
+            className="max-md:[order:var(--m-order)]"
+            style={{
+              ["--m-order" as string]: String(mdOrder),
+            }}
+          >
+            {mdNode}
           </div>
+          <div className="clear-both hidden md:block" />
         </div>
       );
     }
@@ -411,7 +407,7 @@ export function renderLayoutPreset({
         );
       }
       return (
-        <div data-testid="layout-flow" className="space-y-6">
+        <div data-testid="layout-flow" className="flex flex-col gap-6">
           {renderedChildren.map((child, idx) => {
             const order = mobileOrderProps(rawChildren[idx], placements, idx + 1);
             return (

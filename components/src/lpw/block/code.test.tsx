@@ -49,4 +49,80 @@ describe('CodeBlock', () => {
     const line1 = container.querySelector('[data-line-number="1"]')
     expect(line1?.className).not.toContain('bg-sand')
   })
+
+  it('Q-17 & Q-25: 顶栏长文件名防挤爆并包含 FileCode 图标', () => {
+    const { container } = render(
+      <CodeBlock
+        blockId="cd-long-filename"
+        props={{
+          filename: 'very-long-path-to-deeply-nested-configuration-file.component.tsx',
+          language: 'tsx',
+          content: 'const a = 1',
+        }}
+        depth={1}
+      />,
+    )
+
+    const filenameEl = screen.getByText('very-long-path-to-deeply-nested-configuration-file.component.tsx')
+    expect(filenameEl.className).toContain('truncate')
+    expect(filenameEl.className).toContain('max-w-[200px]')
+    expect(filenameEl.className).toContain('sm:max-w-md')
+    expect(filenameEl.getAttribute('title')).toBe('very-long-path-to-deeply-nested-configuration-file.component.tsx')
+
+    // FileCode 图标位于文件名左侧
+    const icon = container.querySelector('svg.lucide-file-code, svg')
+    expect(icon).toBeTruthy()
+  })
+
+  it('Q-03: 行号宽度支持自适应，大行号切换为 w-10', () => {
+    const smallContent = 'a\nb'
+    const { container: smallContainer } = render(
+      <CodeBlock
+        blockId="cd-small"
+        props={{
+          content: smallContent,
+          showLineNumbers: true,
+        }}
+        depth={1}
+      />,
+    )
+
+    const smallLineNo = smallContainer.querySelector('[data-line-number="1"] > span')
+    expect(smallLineNo?.className).toContain('w-8')
+
+    cleanup()
+
+    const largeContent = Array.from({ length: 1005 }, (_, i) => `line ${i + 1}`).join('\n')
+    const { container: largeContainer } = render(
+      <CodeBlock
+        blockId="cd-large"
+        props={{
+          content: largeContent,
+          showLineNumbers: true,
+        }}
+        depth={1}
+      />,
+    )
+
+    const largeLineNo = largeContainer.querySelector('[data-line-number="1000"] > span')
+    expect(largeLineNo?.className).toContain('w-10')
+  })
+
+  it('Q-04: 代码行包含 min-w-full w-fit 与 items-start', () => {
+    const { container } = render(
+      <CodeBlock
+        blockId="cd-line-style"
+        props={{
+          content: 'console.log("hello world");',
+          highlightLines: [1],
+        }}
+        depth={1}
+      />,
+    )
+
+    const line = container.querySelector('[data-line-number="1"]')
+    expect(line?.className).toContain('min-w-full')
+    expect(line?.className).toContain('w-fit')
+    expect(line?.className).toContain('items-start')
+  })
 })

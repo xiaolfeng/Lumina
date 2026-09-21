@@ -22,8 +22,15 @@ describe('DetailsContainer', () => {
     expect(container.className).toContain('border')
     expect(container.className).toContain('border-line')
     expect(container.className).toContain('bg-surface/40')
-    expect(screen.getByText('EXPANDABLE')).toBeTruthy()
-    expect(screen.getByText('更多详细信息')).toBeTruthy()
+    const badge = screen.getByText('EXPANDABLE')
+    expect(badge).toBeTruthy()
+    expect(badge.className).toContain('hidden')
+    expect(badge.className).toContain('sm:inline')
+    const summarySpan = screen.getByText('更多详细信息')
+    expect(summarySpan).toBeTruthy()
+    expect(summarySpan.className).toContain('min-w-0')
+    expect(summarySpan.className).toContain('break-words')
+    expect(summarySpan.className).toContain('flex-1')
   })
 
   it('button toggles open state and aria-expanded', () => {

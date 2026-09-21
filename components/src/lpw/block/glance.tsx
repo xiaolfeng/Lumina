@@ -7,6 +7,17 @@ export const GlanceBlock: React.FC<LpwBlockSlotProps<LpwGlanceProps>> = ({
   props,
 }) => {
   const len = props.items.length
+  if (len === 0) {
+    return (
+      <div
+        data-testid="glance-block"
+        className="my-6 border border-line bg-surface/30 p-6 text-center text-xs font-serif italic text-sea-ink-soft/70"
+      >
+        暂无速览要点
+      </div>
+    )
+  }
+
   let gridColClass = 'grid-cols-1'
   if (len === 4) {
     gridColClass = 'sm:grid-cols-2 lg:grid-cols-4'

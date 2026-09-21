@@ -186,4 +186,84 @@ describe('TabsContainer', () => {
     expect(screen.getByText('新版第一页内容')).toBeTruthy()
     expect(screen.queryByTestId('tabs-empty-slot')).toBeNull()
   })
+
+  it('WAI-ARIA APG Tabs 属性、标题、横滑类名与键盘导航', () => {
+    lpwRegistry.register('block', 'aria-child-1', {
+      displayName: 'Aria1',
+      Component: () => <div data-testid="t1-block">内容 1</div>,
+      groups: ['text'],
+      annotatableFields: [],
+    })
+    lpwRegistry.register('block', 'aria-child-2', {
+      displayName: 'Aria2',
+      Component: () => <div data-testid="t2-block">内容 2</div>,
+      groups: ['text'],
+      annotatableFields: [],
+    })
+
+    render(
+      <TabsContainer
+        nodeId="tabs-aria"
+        location={loc}
+        props={{
+          title: '配置清单',
+          items: [
+            { key: 'opt1', label: '选项一' },
+            { key: 'opt2', label: '选项二' },
+          ],
+        }}
+        children={[
+          { id: 'c1', kind: 'block', type: 'aria-child-1', props: {} },
+          { id: 'c2', kind: 'block', type: 'aria-child-2', props: {} },
+        ]}
+      />,
+    )
+
+    // 标题渲染验证
+    expect(screen.getByText('配置清单')).toBeTruthy()
+
+    // TabList 与 Tab 属性验证
+    const tablist = screen.getByRole('tablist')
+    const tab1 = screen.getByRole('tab', { name: '选项一' })
+    const tab2 = screen.getByRole('tab', { name: '选项二' })
+
+    expect(tab1.id).toBe('tabs-aria-tab-opt1')
+    expect(tab1.getAttribute('aria-controls')).toBe('tabs-aria-panel')
+    expect(tab1.getAttribute('aria-selected')).toBe('true')
+    expect(tab1.getAttribute('tabindex')).toBe('0')
+    expect(tab1.className).toContain('shrink-0')
+    expect(tab1.className).toContain('whitespace-nowrap')
+
+    expect(tab2.id).toBe('tabs-aria-tab-opt2')
+    expect(tab2.getAttribute('aria-controls')).toBe('tabs-aria-panel')
+    expect(tab2.getAttribute('aria-selected')).toBe('false')
+    expect(tab2.getAttribute('tabindex')).toBe('-1')
+
+    // TabPanel 属性与嵌套 margin collapse 验证
+    const panel = screen.getByRole('tabpanel')
+    expect(panel.id).toBe('tabs-aria-panel')
+    expect(panel.getAttribute('aria-labelledby')).toBe('tabs-aria-tab-opt1')
+    expect(panel.className).toContain("[&>[data-testid$='-block']]:my-2")
+    expect(panel.className).toContain("[&>[data-testid$='-block']:first-child]:mt-0")
+    expect(panel.className).toContain("[&>[data-testid$='-block']:last-child]:mb-0")
+
+    // 键盘导航：ArrowRight 切换到第二个 tab
+    fireEvent.keyDown(tablist, { key: 'ArrowRight' })
+    expect(screen.getByText('内容 2')).toBeTruthy()
+    expect(tab2.getAttribute('aria-selected')).toBe('true')
+    expect(tab2.getAttribute('tabindex')).toBe('0')
+    expect(tab1.getAttribute('aria-selected')).toBe('false')
+    expect(tab1.getAttribute('tabindex')).toBe('-1')
+    expect(panel.getAttribute('aria-labelledby')).toBe('tabs-aria-tab-opt2')
+
+    // 键盘导航：再次 ArrowRight 循环回第一个 tab
+    fireEvent.keyDown(tablist, { key: 'ArrowRight' })
+    expect(screen.getByText('内容 1')).toBeTruthy()
+    expect(tab1.getAttribute('aria-selected')).toBe('true')
+
+    // 键盘导航：ArrowLeft 循环切换到最后一个 tab
+    fireEvent.keyDown(tablist, { key: 'ArrowLeft' })
+    expect(screen.getByText('内容 2')).toBeTruthy()
+    expect(tab2.getAttribute('aria-selected')).toBe('true')
+  })
 })

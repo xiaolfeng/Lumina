@@ -64,4 +64,17 @@ describe('GlanceBlock', () => {
       container.querySelector('[data-testid="glance-block"]')?.className,
     ).toContain('grid-cols-1')
   })
+
+  it('items 为空时安全展示空态', () => {
+    render(
+      <GlanceBlock
+        blockId="gl-empty"
+        props={{
+          items: [],
+        }}
+        depth={1}
+      />,
+    )
+    expect(screen.getByText('暂无速览要点')).toBeTruthy()
+  })
 })

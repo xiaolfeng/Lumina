@@ -20,5 +20,8 @@ describe('DividerBlock', () => {
     expect(el).toBeTruthy()
     expect(el?.className).toContain('bg-gradient-to-r')
     expect(el?.className).toContain('h-px')
+    expect(el?.className).toContain('my-6')
+    expect(el?.className).toContain('sm:my-10')
+    expect(el?.getAttribute('role')).toBe('separator')
   })
 })

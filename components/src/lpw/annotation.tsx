@@ -325,6 +325,7 @@ export const AnnotationGutter: React.FC = () => {
     ) as HTMLElement | null;
 
     const measure = () => {
+      if (typeof window !== "undefined" && window.innerWidth < 768) return;
       const origin = paper?.getBoundingClientRect();
       const next: Record<string, number> = {};
       for (const item of annotations) {
@@ -351,10 +352,8 @@ export const AnnotationGutter: React.FC = () => {
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(measure);
     if (paper) ro.observe(paper);
-    window.addEventListener("scroll", measure, true);
     return () => {
       ro.disconnect();
-      window.removeEventListener("scroll", measure, true);
     };
   }, [annotations]);
 

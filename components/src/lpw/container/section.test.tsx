@@ -45,11 +45,36 @@ describe('SectionContainer', () => {
 
     const btn = screen.getByRole('button', { name: /第二章 详情/ })
     expect(btn.getAttribute('aria-expanded')).toBe('false')
+    expect(btn.getAttribute('aria-controls')).toBe('sec-2-content')
     expect(screen.queryByText('可折叠子块')).toBeNull()
 
     fireEvent.click(btn)
     expect(btn.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByText('可折叠子块')).toBeTruthy()
+
+    const region = screen.getByRole('region')
+    expect(region.id).toBe('sec-2-content')
+    expect(region.getAttribute('aria-labelledby')).toBe('sec-2-title')
+  })
+
+  it('渲染契约受控图标', () => {
+    const { container } = render(
+      <SectionContainer
+        blockId="sec-icon"
+        props={{
+          title: '带图标章节',
+          icon: 'bookmark',
+        }}
+        depth={1}
+      />,
+    )
+
+    const heading = screen.getByRole('heading', { level: 2, name: '带图标章节' })
+    expect(heading).toBeTruthy()
+    const svg = container.querySelector('h2 svg')
+    expect(svg).toBeTruthy()
+    expect(svg?.classList.contains('text-palm')).toBe(true)
+    expect(svg?.classList.contains('shrink-0')).toBe(true)
   })
 
   it('title wrapper has no border-b', () => {

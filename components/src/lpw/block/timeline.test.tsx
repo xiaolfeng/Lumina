@@ -38,4 +38,19 @@ describe('TimelineBlock', () => {
     expect(screen.getByText('2026-09-15')).toBeTruthy()
     expect(screen.getByText('架构定稿')).toBeTruthy()
   })
+
+  it('Q-15: 圆点定位采用 -left-6 top-1.5 -translate-x-1/2 精确对齐', () => {
+    const { container } = render(
+      <TimelineBlock
+        blockId="tl-2"
+        props={{
+          items: [{ time: '2026-09-22', title: '测试基准对齐' }],
+        }}
+        depth={1}
+      />,
+    )
+
+    const dot = container.querySelector('[data-testid="timeline-item-0"] > div.absolute')
+    expect(dot?.className).toContain('absolute -left-6 top-1.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-sea-ink bg-surface shadow-xs transition-transform group-hover:scale-125')
+  })
 })

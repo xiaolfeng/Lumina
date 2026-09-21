@@ -11,26 +11,45 @@ afterEach(() => {
 describe('diagnostics', () => {
   it('masks sensitive keys', () => {
     const raw = {
-      api_token: 'secret_value',
+      token: 'secret_value',
       credential: 'my_credential',
-      access_hash: 'my_hash',
-      jwt_payload: 'my_jwt',
+      hash: 'my_hash',
+      jwt: 'my_jwt',
       nested: {
         password: 'my-pass',
-        private_key: 'my-key',
-        phone: '13800000000',
+        private: 'my-private',
         normal: 'ok',
       },
     }
     const sanitized = summarizeProps(raw) as Record<string, unknown>
-    expect(sanitized.api_token).toBe('***')
+    expect(sanitized.token).toBe('***')
     expect(sanitized.credential).toBe('***')
-    expect(sanitized.access_hash).toBe('***')
-    expect(sanitized.jwt_payload).toBe('***')
+    expect(sanitized.hash).toBe('***')
+    expect(sanitized.jwt).toBe('***')
     expect((sanitized.nested as Record<string, unknown>).password).toBe('***')
-    expect((sanitized.nested as Record<string, unknown>).private_key).toBe('***')
-    expect((sanitized.nested as Record<string, unknown>).phone).toBe('***')
+    expect((sanitized.nested as Record<string, unknown>).private).toBe('***')
     expect((sanitized.nested as Record<string, unknown>).normal).toBe('ok')
+  })
+
+  it('Q-36: summarizeProps 敏感字段过滤使用词边界 \\b 防止非敏感字段误伤', () => {
+    const raw = {
+      token: 'secret1',
+      keyboard: 'mechanical',
+      monkey: 'animal',
+      key: 'secret2',
+      session: 'sess123',
+      session_timeout: 'sess456',
+      possession: 'belonging',
+    }
+    const sanitized = summarizeProps(raw) as Record<string, unknown>
+    // 命中 \b key 词边界
+    expect(sanitized.token).toBe('***')
+    expect(sanitized.key).toBe('***')
+    expect(sanitized.session).toBe('***')
+    // 未命中整个词或边界的复合词不应被误伤（如 keyboard, monkey, possession）
+    expect(sanitized.keyboard).toBe('mechanical')
+    expect(sanitized.monkey).toBe('animal')
+    expect(sanitized.possession).toBe('belonging')
   })
 
   it('truncates long strings at 240', () => {

@@ -6,7 +6,9 @@ export const DividerBlock: React.FC<
 > = () => (
   <div
     data-testid="divider-block"
+    role="separator"
     aria-hidden="true"
-    className="my-10 h-px w-full bg-gradient-to-r from-transparent via-line to-transparent"
+    className="my-6 sm:my-10 h-px w-full bg-gradient-to-r from-transparent via-line to-transparent"
   />
 )
+

@@ -1,10 +1,12 @@
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import type React from 'react'
 import type { LpwBlockSlotProps, LpwMetricsProps } from '../types'
 
 export const MetricsBlock: React.FC<LpwBlockSlotProps<LpwMetricsProps>> = ({
   props,
 }) => {
-  const len = props.items.length
+  const items = (props.items as typeof props.items | undefined) ?? []
+  const len = items.length
   let gridCols = 'sm:grid-cols-2 lg:grid-cols-3'
   if (len === 4) {
     gridCols = 'sm:grid-cols-2 lg:grid-cols-4'
@@ -20,7 +22,7 @@ export const MetricsBlock: React.FC<LpwBlockSlotProps<LpwMetricsProps>> = ({
       className="my-8 border-t border-b border-sea-ink py-6 bg-surface/20"
     >
       <div className={`grid gap-6 sm:gap-0 ${gridCols}`}>
-        {props.items.map((item, idx) => {
+        {items.map((item, idx) => {
           const isLast = idx === len - 1
           return (
             <div
@@ -40,12 +42,12 @@ export const MetricsBlock: React.FC<LpwBlockSlotProps<LpwMetricsProps>> = ({
                 </div>
 
                 {/* 主数值 */}
-                <div className="mt-2 mb-2 flex items-baseline gap-1.5">
-                  <span className="font-serif text-3xl lg:text-4xl font-bold text-sea-ink tracking-tight leading-none">
+                <div className="mt-2 mb-2 flex items-baseline gap-1.5 min-w-0">
+                  <span className="font-serif text-3xl lg:text-4xl font-bold text-sea-ink tracking-tight leading-none min-w-0 break-all">
                     {item.value}
                   </span>
                   {item.unit && (
-                    <span className="text-xs font-mono text-sea-ink-soft">
+                    <span className="text-xs font-mono text-sea-ink-soft shrink-0">
                       {item.unit}
                     </span>
                   )}
@@ -65,10 +67,16 @@ export const MetricsBlock: React.FC<LpwBlockSlotProps<LpwMetricsProps>> = ({
                     }`}
                   >
                     {item.trend === 'up' && (
-                      <span className="font-bold">↑</span>
+                      <>
+                        <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span className="sr-only">上升</span>
+                      </>
                     )}
                     {item.trend === 'down' && (
-                      <span className="font-bold">↓</span>
+                      <>
+                        <ArrowDownRight className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span className="sr-only">下降</span>
+                      </>
                     )}
                     {item.change && <span>{item.change}</span>}
                   </div>

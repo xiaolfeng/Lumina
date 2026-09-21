@@ -51,6 +51,35 @@ describe('LpwDocumentViewer', () => {
     expect(screen.getByTestId('document-empty')).toBeTruthy()
   })
 
+  it('Q-32: DocumentViewer 元信息区（作者、版本、标签）与空状态包含矢量图标与标题折行防护', () => {
+    const source = JSON.stringify({
+      version: '1.1',
+      meta: {
+        title: 'SupercalifragilisticexpialidociousLongWordTitleWithoutSpacesToTestWrapping',
+        author: 'xiao_lfeng',
+        version: '1.0.0',
+        tags: ['demo'],
+      },
+      content: [],
+    })
+
+    const { container } = render(<LpwDocumentViewer source={source} />)
+
+    // 标题 break-words [overflow-wrap:anywhere] 防长英文撑爆
+    const h1 = container.querySelector('h1')
+    expect(h1?.className).toContain('break-words')
+    expect(h1?.className).toContain('[overflow-wrap:anywhere]')
+
+    // 元信息区图标：User, GitBranch, Tag
+    expect(container.querySelector('svg.lucide-user')).toBeTruthy()
+    expect(container.querySelector('svg.lucide-git-branch')).toBeTruthy()
+    expect(container.querySelector('svg.lucide-tag')).toBeTruthy()
+
+    // 空文档状态包含 BookOpen 水墨图标
+    const emptyState = screen.getByTestId('document-empty')
+    expect(emptyState.querySelector('svg.lucide-book-open')).toBeTruthy()
+  })
+
   it('遇到未知组件类型时应渲染 Fallback 诊断卡', () => {
     const source = JSON.stringify({
       version: '1.1',

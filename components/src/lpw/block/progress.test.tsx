@@ -56,4 +56,46 @@ describe('ProgressBlock', () => {
     const bar = screen.getByTestId('progress-bar-0')
     expect(bar.className).toContain('bg-destructive')
   })
+
+  it('Q-09 & Q-10: 标签与百分比样式约束，轨道/进度条具备完整的 a11y 属性', () => {
+    render(
+      <ProgressBlock
+        blockId="pg-a11y"
+        props={{
+          title: '系统同步',
+          items: [{ label: '数据索引构建与全量校验', value: 75 }],
+        }}
+        depth={1}
+      />,
+    )
+
+    const label = screen.getByText('数据索引构建与全量校验')
+    expect(label.className).toContain('truncate')
+    expect(label.className).toContain('min-w-0')
+    expect(label.className).toContain('mr-2')
+
+    const percent = screen.getByText('75%')
+    expect(percent.className).toContain('shrink-0')
+
+    const progressbar = screen.getByRole('progressbar')
+    expect(progressbar.getAttribute('aria-valuenow')).toBe('75')
+    expect(progressbar.getAttribute('aria-valuemin')).toBe('0')
+    expect(progressbar.getAttribute('aria-valuemax')).toBe('100')
+  })
+
+  it('Q-49: 顶栏包含 Activity 或 Gauge 等状态度量图标', () => {
+    const { container } = render(
+      <ProgressBlock
+        blockId="pg-icon"
+        props={{
+          title: '度量测试',
+          items: [{ label: '阶段一', value: 30 }],
+        }}
+        depth={1}
+      />,
+    )
+
+    const svg = container.querySelector('svg')
+    expect(svg).toBeTruthy()
+  })
 })

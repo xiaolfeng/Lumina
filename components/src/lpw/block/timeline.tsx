@@ -14,7 +14,7 @@ export const TimelineBlock: React.FC<LpwBlockSlotProps<LpwTimelineProps>> = ({
           className="relative pl-2 group"
         >
           {/* 左侧编年志轴节点古典印记 */}
-          <div className="absolute -left-[29px] top-1 h-3 w-3 rounded-full border-2 border-sea-ink bg-surface shadow-xs transition-transform group-hover:scale-125" />
+          <div className="absolute -left-6 top-1.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-sea-ink bg-surface shadow-xs transition-transform group-hover:scale-125" />
 
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="font-mono text-xs font-medium text-sea-ink-soft/80 tracking-wider">

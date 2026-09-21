@@ -52,4 +52,99 @@ describe('CalloutBlock', () => {
       expect(screen.getByText(`${lvl} 内容`)).toBeTruthy()
     }
   })
+
+  it('Q-03 未受控 level 安全回退至 info', () => {
+    render(
+      <CalloutBlock
+        blockId="co-invalid"
+        props={{
+          level: 'unknown-level' as never,
+          content: '回退提示',
+        }}
+        depth={1}
+      />,
+    )
+
+    const el = screen.getByTestId('callout-block')
+    expect(el.getAttribute('data-level')).toBe('info')
+    expect(el.className).toContain('border-lagoon')
+  })
+
+  it('Q-08 内边距为 p-4 sm:p-6 且文本容器具有长词换行保护', () => {
+    const { container } = render(
+      <CalloutBlock
+        blockId="co-padding"
+        props={{ content: '换行与内边距保护' }}
+        depth={1}
+      />,
+    )
+
+    const root = container.firstElementChild as HTMLElement
+    expect(root.className).toContain('p-4')
+    expect(root.className).toContain('sm:p-6')
+    expect(root.className).not.toContain('p-5')
+
+    const contentWrapper = screen.getByText('换行与内边距保护').closest('div')
+    expect(contentWrapper?.className).toContain('break-words')
+    expect(contentWrapper?.className).toContain('[overflow-wrap:anywhere]')
+  })
+
+  it('Q-09 移除 border-double 并保持单侧加粗', () => {
+    const { container } = render(
+      <CalloutBlock
+        blockId="co-border"
+        props={{ content: '边框样式检查' }}
+        depth={1}
+      />,
+    )
+
+    const root = container.firstElementChild as HTMLElement
+    expect(root.className).not.toContain('border-double')
+    expect(root.className).toContain('border-solid')
+    expect(root.className).toContain('border-l-4')
+  })
+
+  it('Q-12 role 属性在 error 等级为 alert，其余为 status', () => {
+    const { rerender } = render(
+      <CalloutBlock
+        blockId="co-role-warn"
+        props={{ level: 'warning', content: '警告' }}
+        depth={1}
+      />,
+    )
+    expect(screen.getByTestId('callout-block').getAttribute('role')).toBe('status')
+
+    rerender(
+      <CalloutBlock
+        blockId="co-role-err"
+        props={{ level: 'error', content: '错误' }}
+        depth={1}
+      />,
+    )
+    expect(screen.getByTestId('callout-block').getAttribute('role')).toBe('alert')
+  })
+
+  it('Q-14 根 DOM 节点显式补齐 id', () => {
+    const { container } = render(
+      <CalloutBlock
+        blockId="co-id-1"
+        props={{ content: '测试 id' }}
+        depth={1}
+      />,
+    )
+    expect(container.firstElementChild?.getAttribute('id')).toBe('co-id-1')
+  })
+
+  it('Q-30 分类标签前渲染 Lucide 图标', () => {
+    const { container } = render(
+      <CalloutBlock
+        blockId="co-icon"
+        props={{ level: 'info', content: '带图标提示' }}
+        depth={1}
+      />,
+    )
+    const icon = container.querySelector('svg')
+    expect(icon).toBeTruthy()
+    expect(icon?.getAttribute('aria-hidden')).toBe('true')
+  })
 })

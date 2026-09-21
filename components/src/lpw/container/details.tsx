@@ -31,11 +31,11 @@ export const DetailsContainer: React.FC<
         onClick={() => setOpen((o) => !o)}
         className="flex w-full cursor-pointer select-none items-center justify-between gap-3 px-3 py-3.5 text-left hover:bg-surface/40 transition-colors"
       >
-        <span className="font-serif text-sm font-semibold text-sea-ink">
+        <span className="min-w-0 break-words flex-1 font-serif text-sm font-semibold text-sea-ink">
           {props.summary}
         </span>
         <span className="flex shrink-0 items-center gap-2">
-          <span className="font-mono text-[10px] tracking-widest text-sea-ink-soft/60 uppercase">
+          <span className="hidden sm:inline font-mono text-[10px] tracking-widest text-sea-ink-soft/60 uppercase">
             EXPANDABLE
           </span>
           <ChevronRight

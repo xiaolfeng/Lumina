@@ -33,6 +33,8 @@ var blockTypeGroups = map[string][]lpwBlockGroup{
 	"timeline":   {groupProcess},
 	"tree":       {groupProcess, groupTechnical},
 	"open-items": {groupProcess},
+	"glance":     {groupDecision},
+	"personnel":  {groupProcess, groupText},
 	"code":       {groupTechnical},
 	"diff":       {groupTechnical},
 	"callout":    {groupNotice},

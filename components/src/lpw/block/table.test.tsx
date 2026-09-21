@@ -33,21 +33,25 @@ describe('TableBlock', () => {
     const dashes = screen.getAllByText('—')
     expect(dashes.length).toBeGreaterThanOrEqual(2)
 
-    // 排序按钮与三态
+    // 排序按钮与 th aria-sort 三态
     const sortBtn = screen.getByRole('button', { name: /得分/ })
-    expect(sortBtn.getAttribute('aria-sort')).toBe('none')
+    const th = sortBtn.closest('th')
+    expect(th?.getAttribute('aria-sort')).toBe('none')
+    expect(th?.getAttribute('scope')).toBe('col')
+    expect(sortBtn.className).toContain('min-h-[40px]')
+    expect(sortBtn.className).toContain('py-2')
 
     // 第 1 次点击：升序 (80 -> 95 -> null 恒末尾)
     fireEvent.click(sortBtn)
-    expect(sortBtn.getAttribute('aria-sort')).toBe('ascending')
+    expect(th?.getAttribute('aria-sort')).toBe('ascending')
 
     // 第 2 次点击：降序 (95 -> 80 -> null 恒末尾)
     fireEvent.click(sortBtn)
-    expect(sortBtn.getAttribute('aria-sort')).toBe('descending')
+    expect(th?.getAttribute('aria-sort')).toBe('descending')
 
     // 第 3 次点击：恢复原顺序 (Beta -> Alpha -> Gamma)
     fireEvent.click(sortBtn)
-    expect(sortBtn.getAttribute('aria-sort')).toBe('none')
+    expect(th?.getAttribute('aria-sort')).toBe('none')
   })
 
   it('多个 null/undefined 项排序保持稳定且满足严格弱序', () => {
@@ -128,5 +132,23 @@ describe('TableBlock', () => {
     )
 
     expect(screen.getByText('暂无数据')).toBeTruthy()
+  })
+
+  it('外层包含移动端横滑感知提示与渐变阴影遮罩 (Q-18)', () => {
+    const { container } = render(
+      <TableBlock
+        blockId="tb-scroll"
+        props={{
+          columns: [{ key: 'name', title: '名称' }],
+          data: [{ name: 'A' }],
+        }}
+        depth={1}
+      />,
+    )
+
+    const block = container.querySelector('[data-testid="table-block"]')
+    expect(block).toBeTruthy()
+    const mask = block?.querySelector('.sm\\:hidden')
+    expect(mask).toBeTruthy()
   })
 })

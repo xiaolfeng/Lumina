@@ -1,3 +1,4 @@
+import { AlertCircle, Check } from 'lucide-react'
 import type React from 'react'
 import type { LpwBlockSlotProps, LpwStepItem, LpwStepsProps } from '../types'
 
@@ -29,29 +30,51 @@ export const StepsBlock: React.FC<LpwBlockSlotProps<LpwStepsProps>> = ({
   const current = props.current
 
   return (
-    <ol className="my-6 flex flex-wrap items-start gap-6 sm:gap-8 text-xs font-sans">
+    <ol className="my-6 flex flex-col sm:flex-row sm:flex-wrap items-start gap-4 sm:gap-8 text-xs font-sans">
       {props.items.map((item, idx) => {
         const isCurrent = current !== undefined && current === idx
-        const status = item.status ?? (isCurrent ? 'process' : 'wait')
+        const derivedStatus =
+          current !== undefined
+            ? idx < current
+              ? 'finish'
+              : idx === current
+                ? 'process'
+                : 'wait'
+            : 'wait'
+        const status = item.status ?? derivedStatus
         const color = STATUS_COLORS[status]
 
         return (
           <li
             key={idx}
             data-testid={`step-item-${idx}`}
-            className="flex items-start gap-3 relative group max-w-xs"
+            className="flex items-start gap-3 relative group w-full sm:w-auto sm:max-w-xs"
           >
+            {/* 移动端左侧流程连接视觉元素 */}
+            {idx < props.items.length - 1 && (
+              <span
+                aria-hidden="true"
+                className="absolute left-3 top-7 -bottom-4 w-px -translate-x-1/2 bg-line sm:hidden"
+              />
+            )}
+
             {/* 序号章 */}
             <div
               className={`flex h-6 w-6 shrink-0 items-center justify-center border font-mono text-[11px] shadow-2xs ${
                 color.dot
               } ${isCurrent ? 'ring-2 ring-lagoon/40 font-bold' : ''}`}
             >
-              {status === 'finish' ? '✓' : status === 'error' ? '!' : idx + 1}
+              {status === 'finish' ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : status === 'error' ? (
+                <AlertCircle className="h-3.5 w-3.5" />
+              ) : (
+                idx + 1
+              )}
             </div>
 
             {/* 标题与描述 */}
-            <div className="flex flex-col">
+            <div className="flex flex-col flex-1 min-w-0">
               <span
                 className={`font-serif text-sm font-semibold tracking-tight text-sea-ink ${
                   isCurrent ? 'text-lagoon-deep' : ''

@@ -1,3 +1,4 @@
+import { ArrowRight, ArrowUp } from 'lucide-react'
 import type React from 'react'
 import type {
   LpwBlockSlotProps,
@@ -28,7 +29,7 @@ export const QuadrantBlock: React.FC<LpwBlockSlotProps<LpwQuadrantProps>> = ({
     return (
       <div
         data-testid={testId}
-        className="flex min-h-28 flex-col bg-surface p-4 text-xs"
+        className="flex min-h-24 sm:min-h-28 flex-col bg-surface p-2.5 sm:p-4 text-xs"
       >
         <div className="mb-2.5 font-mono text-[10px] uppercase tracking-wider text-sea-ink-soft/70 border-b border-line/40 pb-1">
           {tag}
@@ -60,7 +61,7 @@ export const QuadrantBlock: React.FC<LpwBlockSlotProps<LpwQuadrantProps>> = ({
   return (
     <div
       data-testid="quadrant-block"
-      className="my-8 border-t-2 border-b-2 border-sea-ink bg-surface/30 p-6 text-xs shadow-2xs font-sans"
+      className="my-8 overflow-x-auto min-w-0 border-t-2 border-b-2 border-sea-ink bg-surface/30 p-3 sm:p-6 text-xs shadow-2xs font-sans"
     >
       {title && (
         <div className="mb-4 pb-2 border-b border-line/60 font-serif font-semibold text-base text-sea-ink flex items-center justify-between">
@@ -71,14 +72,15 @@ export const QuadrantBlock: React.FC<LpwBlockSlotProps<LpwQuadrantProps>> = ({
         </div>
       )}
 
-      <div className="flex items-stretch gap-3">
+      <div className="flex items-stretch gap-3 min-w-[260px]">
         {/* Y 轴名 */}
         {props.yLabel && (
           <div
             style={{ writingMode: 'vertical-rl' }}
             className="flex select-none items-center justify-center text-center font-mono font-semibold text-xs tracking-widest text-sea-ink-soft/90 px-1 border-r border-line/60"
           >
-            {props.yLabel}
+            <span>{props.yLabel}</span>
+            <ArrowUp className="h-3.5 w-3.5 inline mb-1" />
           </div>
         )}
 
@@ -113,8 +115,9 @@ export const QuadrantBlock: React.FC<LpwBlockSlotProps<LpwQuadrantProps>> = ({
 
           {/* X 轴名 */}
           {props.xLabel && (
-            <div className="mt-2 text-center font-mono font-semibold text-xs tracking-widest text-sea-ink-soft/90">
-              {props.xLabel}
+            <div className="mt-2 text-center font-mono font-semibold text-xs tracking-widest text-sea-ink-soft/90 flex items-center justify-center">
+              <span>{props.xLabel}</span>
+              <ArrowRight className="h-3.5 w-3.5 inline ml-1" />
             </div>
           )}
         </div>

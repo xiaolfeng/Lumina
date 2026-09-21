@@ -23,6 +23,8 @@ export const blockTypeGroups: Record<string, LpwBlockGroup[]> = {
   timeline: ['process'],
   tree: ['process', 'technical'],
   'open-items': ['process'],
+  glance: ['decision'],
+  personnel: ['process', 'text'],
   code: ['technical'],
   diff: ['technical'],
   callout: ['notice'],

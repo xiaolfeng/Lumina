@@ -49,7 +49,8 @@ export const HeadingBlock: React.FC<LpwBlockSlotProps<LpwHeadingProps>> = ({
   annotation,
 }) => {
   const actualId = nodeId || blockId;
-  const level = props.level ?? 2;
+  const rawLevel = Number(props.level);
+  const level: 1 | 2 | 3 = rawLevel === 1 || rawLevel === 3 ? rawLevel : 2;
   const spec = LEVEL_SPEC[level];
   const iconName = isLpwIconName(props.icon) ? props.icon : DEFAULT_ICON[level];
   const Icon = ICON_COMPONENTS[iconName];
@@ -58,13 +59,13 @@ export const HeadingBlock: React.FC<LpwBlockSlotProps<LpwHeadingProps>> = ({
     <spec.Tag
       id={actualId}
       data-testid={`heading-${level}`}
-      className={`font-serif font-semibold tracking-tight scroll-mt-16 flex items-center gap-2.5 ${spec.bar} ${spec.size} ${spec.color} ${spec.margin}`}
+      className={`font-serif font-semibold tracking-tight scroll-mt-16 flex items-start gap-2.5 ${spec.bar} ${spec.size} ${spec.color} ${spec.margin}`}
     >
       <Icon
         aria-hidden="true"
-        className={`shrink-0 ${spec.iconSize} ${spec.iconColor}`}
+        className={`shrink-0 mt-1 ${spec.iconSize} ${spec.iconColor}`}
       />
-      <span>
+      <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">
         <AnnotatedText
           nodeId={actualId}
           field="content"

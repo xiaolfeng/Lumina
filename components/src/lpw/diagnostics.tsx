@@ -27,7 +27,7 @@ export interface LpwDiagnostic {
 }
 
 const SENSITIVE_KEY_REGEX =
-  /token|secret|password|passwd|authorization|bearer|cookie|key|credential|private|cert|signature|salt|session|hash|jwt|nonce|phone|email|access/i
+  /\b(token|secret|password|passwd|authorization|bearer|cookie|key|credential|private|cert|signature|salt|session|hash|jwt|nonce|access)\b/i
 
 /**
  * 递归生成安全的 props 摘要对象

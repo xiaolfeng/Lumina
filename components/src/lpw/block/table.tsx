@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import type React from 'react'
 import { useMemo, useState } from 'react'
 import type {
@@ -73,82 +74,91 @@ export const TableBlock: React.FC<LpwBlockSlotProps<LpwTableProps>> = ({
   return (
     <div
       data-testid="table-block"
-      className="my-8 overflow-x-auto border-t-2 border-b-2 border-sea-ink bg-surface/30 shadow-2xs font-sans"
+      className="relative my-8 border-t-2 border-b-2 border-sea-ink bg-surface/30 shadow-2xs font-sans"
     >
-      <table className="w-full border-collapse text-xs text-sea-ink">
-        <thead>
-          <tr className="border-b border-sea-ink bg-surface/50">
-            {props.columns.map((col) => {
-              const isCurrent = sortKey === col.key
-              const currentDir = isCurrent ? sortDir : null
-              const ariaSort =
-                currentDir === 'asc'
-                  ? 'ascending'
-                  : currentDir === 'desc'
-                    ? 'descending'
-                    : 'none'
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-surface via-surface/40 to-transparent sm:hidden z-10"
+      />
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-xs text-sea-ink">
+          <thead>
+            <tr className="border-b border-sea-ink bg-surface/50">
+              {props.columns.map((col) => {
+                const isCurrent = sortKey === col.key
+                const currentDir = isCurrent ? sortDir : null
+                const ariaSort =
+                  currentDir === 'asc'
+                    ? 'ascending'
+                    : currentDir === 'desc'
+                      ? 'descending'
+                      : 'none'
 
-              return (
-                <th
-                  key={col.key}
-                  style={col.width ? { width: col.width } : undefined}
-                  className={`p-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-sea-ink ${getAlignClass(
-                    col.align,
-                  )}`}
-                >
-                  {props.sortable ? (
-                    <button
-                      type="button"
-                      aria-sort={ariaSort}
-                      onClick={() => handleSort(col.key)}
-                      className="inline-flex cursor-pointer items-center gap-1.5 select-none hover:text-lagoon transition-colors"
-                    >
-                      <span>{col.title}</span>
-                      <span className="font-mono text-[10px] text-sea-ink-soft">
-                        {currentDir === 'asc'
-                          ? '▲'
-                          : currentDir === 'desc'
-                            ? '▼'
-                            : '⇅'}
-                      </span>
-                    </button>
-                  ) : (
-                    <span>{col.title}</span>
-                  )}
-                </th>
-              )
-            })}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line/60">
-          {sortedData.length === 0 ? (
-            <tr>
-              <td
-                colSpan={props.columns.length}
-                className="p-8 text-center text-xs font-serif italic text-sea-ink-soft/70"
-              >
-                暂无数据
-              </td>
-            </tr>
-          ) : (
-            sortedData.map((row, rowIdx) => (
-              <tr
-                key={rowIdx}
-                className="transition-colors hover:bg-surface/60"
-              >
-                {props.columns.map((col) => (
-                  <td
+                return (
+                  <th
                     key={col.key}
-                    className={`p-3.5 text-xs text-sea-ink/90 ${getAlignClass(col.align)}`}
+                    scope="col"
+                    aria-sort={props.sortable ? ariaSort : undefined}
+                    style={col.width ? { width: col.width } : undefined}
+                    className={`p-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-sea-ink ${getAlignClass(
+                      col.align,
+                    )}`}
                   >
-                    {renderCell(row[col.key])}
-                  </td>
-                ))}
+                    {props.sortable ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSort(col.key)}
+                        className="inline-flex cursor-pointer items-center gap-1.5 select-none py-2 px-1 min-h-[40px] hover:text-lagoon transition-colors"
+                      >
+                        <span>{col.title}</span>
+                        <span className="text-sea-ink-soft">
+                          {currentDir === 'asc' ? (
+                            <ArrowUp className="h-3 w-3 inline" />
+                          ) : currentDir === 'desc' ? (
+                            <ArrowDown className="h-3 w-3 inline" />
+                          ) : (
+                            <ArrowUpDown className="h-3 w-3 inline" />
+                          )}
+                        </span>
+                      </button>
+                    ) : (
+                      <span>{col.title}</span>
+                    )}
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line/60">
+            {sortedData.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={props.columns.length}
+                  className="p-8 text-center text-xs font-serif italic text-sea-ink-soft/70"
+                >
+                  暂无数据
+                </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              sortedData.map((row, rowIdx) => (
+                <tr
+                  key={rowIdx}
+                  className="transition-colors hover:bg-surface/60"
+                >
+                  {props.columns.map((col) => (
+                    <td
+                      key={col.key}
+                      className={`p-3.5 text-xs text-sea-ink/90 ${getAlignClass(col.align)}`}
+                    >
+                      {renderCell(row[col.key])}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

@@ -47,4 +47,37 @@ describe('QuadrantBlock', () => {
     const leftBottom = screen.getByTestId('quadrant-left-bottom')
     expect(leftBottom.textContent).toContain('—')
   })
+
+  it('Q-11 & Q-29: 包含动势箭头与移动端响应式网格布局类名', () => {
+    const { container } = render(
+      <QuadrantBlock
+        blockId="qd-2"
+        props={{
+          xLabel: '影响面',
+          yLabel: '可行性',
+          items: [],
+        }}
+        depth={1}
+      />,
+    )
+
+    const block = container.querySelector('[data-testid="quadrant-block"]')
+    expect(block?.className).toContain('overflow-x-auto')
+    expect(block?.className).toContain('min-w-0')
+    expect(block?.className).toContain('p-3')
+    expect(block?.className).toContain('sm:p-6')
+
+    const grid = block?.querySelector('.min-w-\\[260px\\]')
+    expect(grid).toBeTruthy()
+
+    const cell = block?.querySelector('[data-testid="quadrant-left-top"]')
+    expect(cell?.className).toContain('p-2.5')
+    expect(cell?.className).toContain('sm:p-4')
+    expect(cell?.className).toContain('min-h-24')
+    expect(cell?.className).toContain('sm:min-h-28')
+
+    // 动势箭头 svg
+    const svgs = block?.querySelectorAll('svg')
+    expect(svgs?.length).toBeGreaterThanOrEqual(2)
+  })
 })

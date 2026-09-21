@@ -57,8 +57,27 @@ describe('ListBlock', () => {
 
     const checkboxes = screen.getAllByRole('checkbox')
     expect(checkboxes[0].getAttribute('aria-checked')).toBe('true')
-    expect(checkboxes[0].textContent).toBe('✓')
+    expect(checkboxes[0].getAttribute('aria-readonly')).toBe('true')
+    expect(checkboxes[0].querySelector('svg')).toBeTruthy()
+
     expect(checkboxes[1].getAttribute('aria-checked')).toBe('false')
-    expect(checkboxes[1].textContent).toBe('□')
+    expect(checkboxes[1].getAttribute('aria-readonly')).toBe('true')
+    expect(checkboxes[1].querySelector('svg')).toBeTruthy()
+  })
+
+  it('Q-05: check 模式下内容容器 div 包含 min-w-0 类名', () => {
+    const { container } = render(
+      <ListBlock
+        blockId="l-4"
+        props={{
+          style: 'check',
+          items: [{ content: '列表项排版测试' }],
+        }}
+        depth={1}
+      />,
+    )
+
+    const contentDiv = container.querySelector('li > div')
+    expect(contentDiv?.className).toBe('flex-1 min-w-0')
   })
 })

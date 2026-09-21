@@ -24,7 +24,7 @@ const GalleryItem: React.FC<{ image: LpwGalleryImage; index: number }> = ({
         <span className="font-serif font-semibold text-sea-ink">
           {image.alt}
         </span>
-        <span className="mt-1 font-mono text-[10px] text-sea-ink-soft/70">
+        <span className="mt-1 font-mono text-[10px] text-sea-ink-soft/70 break-all">
           加载失败: {image.src}
         </span>
       </figure>
@@ -41,7 +41,7 @@ const GalleryItem: React.FC<{ image: LpwGalleryImage; index: number }> = ({
           src={resolvedSrc}
           alt={image.alt}
           onError={() => setHasError(true)}
-          className="h-40 w-full object-cover bg-surface-muted/20"
+          className="w-full max-h-72 sm:h-40 object-contain sm:object-cover bg-surface-muted/20"
         />
       </div>
       {image.caption && (
@@ -59,10 +59,10 @@ export const GalleryBlock: React.FC<LpwBlockSlotProps<LpwGalleryProps>> = ({
   return (
     <div
       data-testid="gallery-block"
-      className="my-8 grid grid-cols-2 gap-6 lg:grid-cols-3"
+      className="my-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
     >
       {props.images.map((img, idx) => (
-        <GalleryItem key={idx} image={img} index={idx} />
+        <GalleryItem key={`${img.src}-${idx}`} image={img} index={idx} />
       ))}
     </div>
   )

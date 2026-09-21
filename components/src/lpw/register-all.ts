@@ -210,7 +210,7 @@ export function registerAll(): void {
       type: "glance",
       comp: GlanceBlock,
       name: "Glance",
-      groups: [],
+      groups: ["decision"],
       fields: [],
     },
     {
@@ -238,7 +238,7 @@ export function registerAll(): void {
       type: "personnel",
       comp: PersonnelBlock,
       name: "Personnel",
-      groups: [],
+      groups: ["process", "text"],
       fields: [],
     },
     {

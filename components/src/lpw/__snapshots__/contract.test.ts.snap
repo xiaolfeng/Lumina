@@ -24,6 +24,9 @@ exports[`contract > block groups snapshot matches Go contract 1`] = `
   "gallery": [
     "media",
   ],
+  "glance": [
+    "decision",
+  ],
   "heading": [
     "text",
   ],
@@ -44,6 +47,10 @@ exports[`contract > block groups snapshot matches Go contract 1`] = `
   ],
   "open-items": [
     "process",
+  ],
+  "personnel": [
+    "process",
+    "text",
   ],
   "progress": [
     "data",

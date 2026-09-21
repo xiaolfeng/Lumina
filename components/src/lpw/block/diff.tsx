@@ -1,15 +1,25 @@
-import { Badge } from "../../ui/badge";
-import React, { useState } from "react";
+import { Columns, Rows } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import ReactDiffViewer from "react-diff-viewer-continued";
+import { Badge } from "../../ui/badge";
 import type { LpwBlockSlotProps, LpwDiffProps } from "../types";
 
 export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
   props,
 }) => {
-  const [splitView, setSplitView] = useState<boolean>(props.splitView ?? true);
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+  const [splitView, setSplitView] = useState<boolean>(
+    props.splitView ?? !isMobile,
+  );
+
+  useEffect(() => {
+    if (props.splitView !== undefined) {
+      setSplitView(props.splitView);
+    }
+  }, [props.splitView]);
 
   const isIdentical = props.oldCode === props.newCode;
-  const showHeader = Boolean(props.filename || props.language || true);
+  const showHeader = Boolean(props.filename || props.language);
 
   return (
     <div
@@ -18,16 +28,19 @@ export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
     >
       {showHeader && (
         <div className="flex items-center justify-between border-b border-line bg-surface/60 px-4 py-2.5">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             {props.filename && (
-              <span className="font-mono text-xs font-semibold text-sea-ink">
+              <span
+                className="font-mono text-xs font-semibold text-sea-ink truncate max-w-[160px] sm:max-w-sm"
+                title={props.filename}
+              >
                 {props.filename}
               </span>
             )}
             {props.language && (
               <Badge
                 variant="outline"
-                className="font-mono text-[10px] uppercase border-line text-sea-ink-soft px-1.5 py-0"
+                className="font-mono text-[10px] uppercase border-line text-sea-ink-soft px-1.5 py-0 shrink-0"
               >
                 {props.language}
               </Badge>
@@ -36,9 +49,19 @@ export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
           <button
             type="button"
             onClick={() => setSplitView((v) => !v)}
-            className="cursor-pointer border border-line bg-surface px-2.5 py-1 font-mono text-[11px] text-sea-ink hover:border-sea-ink/40 transition-colors"
+            className="cursor-pointer border border-line bg-surface px-2.5 py-1 font-mono text-[11px] text-sea-ink hover:border-sea-ink/40 transition-colors shrink-0 flex items-center gap-1.5"
           >
-            {splitView ? "切换为统一视图" : "切换为并排视图"}
+            {splitView ? (
+              <>
+                <Rows className="h-3 w-3 shrink-0" />
+                <span>切换为统一视图</span>
+              </>
+            ) : (
+              <>
+                <Columns className="h-3 w-3 shrink-0" />
+                <span>切换为并排视图</span>
+              </>
+            )}
           </button>
         </div>
       )}

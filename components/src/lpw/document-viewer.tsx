@@ -1,3 +1,4 @@
+import { BookOpen, GitBranch, Tag, User } from "lucide-react";
 import { Badge } from "../ui/badge";
 import type React from "react";
 import { useMemo } from "react";
@@ -58,7 +59,7 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
 
           {meta && (
             <header className="px-6 sm:px-10 pt-10 pb-8 bg-surface/40">
-              <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-sea-ink leading-snug mb-3.5">
+              <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-sea-ink leading-snug mb-3.5 break-words [overflow-wrap:anywhere]">
                 {meta.title}
               </h1>
 
@@ -69,14 +70,15 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
               )}
 
               {meta.tags && meta.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-4">
+                <div className="flex flex-wrap items-center gap-1.5 pt-4">
                   {meta.tags.map((tag) => (
                     <Badge
                       key={tag}
                       variant="secondary"
-                      className="text-[11px] font-mono uppercase px-2.5 py-0.5 border border-line/60 bg-surface-muted text-sea-ink-soft hover:bg-surface-muted"
+                      className="inline-flex items-center gap-1 text-[11px] font-mono uppercase px-2.5 py-0.5 border border-line/60 bg-surface-muted text-sea-ink-soft hover:bg-surface-muted"
                     >
-                      {tag}
+                      <Tag className="h-3 w-3 shrink-0 text-sea-ink-soft/70" />
+                      <span>{tag}</span>
                     </Badge>
                   ))}
                 </div>
@@ -85,15 +87,17 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
               {(meta.author || meta.version) && (
                 <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-sea-ink-soft/80 font-mono">
                   {meta.author && (
-                    <span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5 shrink-0 text-sea-ink-soft" />
                       <strong className="text-sea-ink font-semibold">
                         {meta.author}
                       </strong>
                     </span>
                   )}
                   {meta.version && (
-                    <span className="bg-surface-muted border border-line/60 px-2 py-0.5">
-                      v{meta.version}
+                    <span className="inline-flex items-center gap-1 bg-surface-muted border border-line/60 px-2 py-0.5">
+                      <GitBranch className="h-3 w-3 shrink-0 text-sea-ink-soft" />
+                      <span>v{meta.version}</span>
                     </span>
                   )}
                 </div>
@@ -108,6 +112,7 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
                   data-testid="document-empty"
                   className="border-2 border-dashed border-line/50 p-12 text-center text-xs font-mono text-sea-ink-soft/70 bg-surface/30 my-6"
                 >
+                  <BookOpen className="mx-auto h-8 w-8 text-sea-ink-soft/60 mb-3" />
                   <div className="font-serif italic text-base text-sea-ink-soft mb-1">
                     空白典籍 · 等待分块生息
                   </div>

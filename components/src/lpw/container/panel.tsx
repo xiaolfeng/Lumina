@@ -32,9 +32,9 @@ export const PanelContainer: React.FC<
         </div>
       )}
       <div
-        className={
-          variant === "dashboard" ? "grid gap-4 sm:grid-cols-2" : "space-y-4"
-        }
+        className={`${
+          variant === "dashboard" ? "grid gap-4 md:grid-cols-2" : "space-y-4"
+        } [&>[data-testid$='-block']]:my-2 [&>[data-testid$='-block']:first-child]:mt-0 [&>[data-testid$='-block']:last-child]:mb-0`}
       >
         {renderContainerBlocks(
           children || [],

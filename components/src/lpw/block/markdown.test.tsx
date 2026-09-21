@@ -47,4 +47,37 @@ describe('MarkdownBlock', () => {
     const link = container.querySelector('a')
     expect(link?.querySelector('mark')).toBeNull()
   })
+
+  it('Q-04 content 为空或 undefined 时不抛错', () => {
+    expect(() => {
+      render(
+        <MarkdownBlock
+          blockId="md-null"
+          props={{ content: undefined as unknown as string }}
+          depth={1}
+        />,
+      )
+    }).not.toThrow()
+
+    expect(() => {
+      render(
+        <MarkdownBlock
+          blockId="md-empty"
+          props={{ content: '' }}
+          depth={1}
+        />,
+      )
+    }).not.toThrow()
+  })
+
+  it('Q-14 根 DOM 节点显式补齐 id', () => {
+    const { container } = render(
+      <MarkdownBlock
+        blockId="md-id-test"
+        props={{ content: '正文测试' }}
+        depth={1}
+      />,
+    )
+    expect(container.firstElementChild?.getAttribute('id')).toBe('md-id-test')
+  })
 })

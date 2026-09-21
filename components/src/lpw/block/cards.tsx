@@ -1,3 +1,4 @@
+import { ExternalLink } from 'lucide-react'
 import type React from 'react'
 import type { LpwBlockSlotProps, LpwCardsProps } from '../types'
 
@@ -12,9 +13,9 @@ function sanitizeHref(href?: string): string | undefined {
   const value = href.trim()
   if (CONTROL_CHARS.test(value)) return undefined
   if (/^(https?:|mailto:)/i.test(value)) return value
-  if (/^[/?#]/.test(value)) return value
+  if (/^\/(?!\/)/.test(value) || /^[?#]/.test(value)) return value
   if (/^\.\.?\//.test(value)) return value
-  if (!value.includes(':')) return value
+  if (!value.includes(':') && !value.startsWith('//')) return value
   return undefined
 }
 
@@ -25,16 +26,17 @@ export const CardsBlock: React.FC<LpwBlockSlotProps<LpwCardsProps>> = ({
     <div className="my-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 font-sans">
       {props.items.map((item, idx) => {
         const safeHref = sanitizeHref(item.href)
+        const isExternal = Boolean(safeHref && /^https?:\/\//i.test(safeHref))
         const content = (
           <>
-            <div className="font-serif font-semibold text-sm text-sea-ink tracking-tight flex items-center justify-between group-hover:text-lagoon transition-colors">
-              <span>{item.title}</span>
+            <div className="font-serif font-semibold text-sm text-sea-ink tracking-tight flex items-center justify-between group-hover:text-lagoon transition-colors gap-2">
+              <span className="min-w-0 break-words">{item.title}</span>
               {safeHref && (
                 <span
                   aria-hidden="true"
-                  className="font-mono text-xs text-sea-ink-soft/60 group-hover:translate-x-0.5 transition-transform"
+                  className="font-mono text-xs text-sea-ink-soft/60 group-hover:translate-x-0.5 transition-transform shrink-0"
                 >
-                  ↗
+                  <ExternalLink className="h-3.5 w-3.5" />
                 </span>
               )}
             </div>
@@ -47,12 +49,15 @@ export const CardsBlock: React.FC<LpwBlockSlotProps<LpwCardsProps>> = ({
         )
 
         if (safeHref) {
+          const externalProps = isExternal
+            ? { target: '_blank', rel: 'noopener noreferrer' }
+            : {}
+
           return (
             <a
               key={idx}
               href={safeHref}
-              target="_blank"
-              rel="noopener noreferrer"
+              {...externalProps}
               className="block border border-line bg-surface p-5 transition-all duration-150 hover:border-sea-ink/60 hover:bg-surface-muted/40 cursor-pointer shadow-2xs group"
             >
               {content}

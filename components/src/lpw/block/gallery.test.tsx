@@ -42,4 +42,59 @@ describe('GalleryBlock', () => {
     // 图一仍然正常存在
     expect(screen.getByRole('img', { name: '图一正常' })).toBeTruthy()
   })
+
+  it('Q-10: 移动端网格与图片样式响应式布局', () => {
+    render(
+      <GalleryBlock
+        blockId="gy-responsive"
+        props={{
+          images: [
+            {
+              src: '/img1.png',
+              alt: '图一',
+            },
+          ],
+        }}
+        depth={1}
+      />,
+    )
+
+    const grid = screen.getByTestId('gallery-block')
+    expect(grid.className).toContain('grid-cols-1')
+    expect(grid.className).toContain('sm:grid-cols-2')
+    expect(grid.className).toContain('lg:grid-cols-3')
+    expect(grid.className).toContain('gap-4')
+    expect(grid.className).toContain('sm:gap-6')
+
+    const img = screen.getByRole('img', { name: '图一' })
+    expect(img.className).toContain('w-full')
+    expect(img.className).toContain('max-h-72')
+    expect(img.className).toContain('sm:h-40')
+    expect(img.className).toContain('object-contain')
+    expect(img.className).toContain('sm:object-cover')
+    expect(img.className).toContain('bg-surface-muted/20')
+  })
+
+  it('Q-07: Fallback 提示文字包含 break-all', () => {
+    render(
+      <GalleryBlock
+        blockId="gy-fallback-break"
+        props={{
+          images: [
+            {
+              src: '/very/long/nested/path/to/gallery/image/broken.png',
+              alt: '长路径图',
+            },
+          ],
+        }}
+        depth={1}
+      />,
+    )
+
+    const img = screen.getByRole('img', { name: '长路径图' })
+    fireEvent.error(img)
+
+    const fallbackText = screen.getByText(/broken\.png/)
+    expect(fallbackText.className).toContain('break-all')
+  })
 })

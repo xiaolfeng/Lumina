@@ -28,6 +28,7 @@ function highlightText(
   regex: RegExp,
   renderMark: (match: string, key: string | number) => React.ReactNode,
 ): React.ReactNode {
+  regex.lastIndex = 0;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -96,9 +97,11 @@ function recursivelyHighlightNode(
 
 export const MarkdownBlock: React.FC<LpwBlockSlotProps<LpwMarkdownProps>> = ({
   nodeId = "",
+  blockId = "",
   props,
   annotation,
 }) => {
+  const actualId = nodeId || blockId;
   const ctx = useAnnotationContext();
   const isHovered = ctx?.hoveredAnnotationId === nodeId;
   const isActive = ctx?.activeAnnotationId === nodeId;
@@ -176,11 +179,15 @@ export const MarkdownBlock: React.FC<LpwBlockSlotProps<LpwMarkdownProps>> = ({
     target?.pattern && !isSafeAnnotationPattern(target.pattern),
   );
 
+  const rawContent = (props as { content?: string | null }).content;
+  const content = rawContent ?? "";
+
   return (
     <div
+      id={actualId}
       className={`${proseArticle} my-5 font-sans leading-relaxed text-sea-ink min-w-0 max-w-full`}
     >
-      <Markdown components={customComponents}>{props.content}</Markdown>
+      <Markdown components={customComponents}>{content}</Markdown>
       {patternInvalid ? <InvalidPatternNotice /> : null}
     </div>
   );

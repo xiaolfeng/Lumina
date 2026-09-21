@@ -135,4 +135,80 @@ describe('CardsBlock', () => {
     expect(container.querySelector('a')).toBeNull()
     expect(screen.getByText('FTP 链接')).toBeTruthy()
   })
+
+  it('Q-23: sanitizeHref 拒绝协议相对地址 //，防范跨域逃逸', () => {
+    render(
+      <CardsBlock
+        blockId="ca-q23"
+        props={{
+          items: [
+            { title: '协议相对恶意链接', href: '//evil.com/phishing' },
+            { title: '合法单斜杠路径', href: '/dashboard/overview' },
+          ],
+        }}
+        depth={1}
+      />,
+    )
+
+    // //evil.com 应被拦截
+    expect(screen.queryByRole('link', { name: /协议相对恶意链接/ })).toBeNull()
+    // 合法单斜杠 /dashboard/overview 应放行
+    const validLink = screen.getByRole('link', { name: /合法单斜杠路径/ })
+    expect(validLink.getAttribute('href')).toBe('/dashboard/overview')
+  })
+
+  it('Q-24: 仅 http(s) 外链打开新标签页，站内相对路径与锚点不设 target="_blank"', () => {
+    render(
+      <CardsBlock
+        blockId="ca-q24"
+        props={{
+          items: [
+            { title: '外部链接', href: 'https://lumina.wiki' },
+            { title: '站内路径', href: '/docs/guide' },
+            { title: '同页锚点', href: '#features' },
+          ],
+        }}
+        depth={1}
+      />,
+    )
+
+    const externalLink = screen.getByRole('link', { name: /外部链接/ })
+    expect(externalLink.getAttribute('target')).toBe('_blank')
+    expect(externalLink.getAttribute('rel')).toBe('noopener noreferrer')
+
+    const internalLink = screen.getByRole('link', { name: /站内路径/ })
+    expect(internalLink.getAttribute('target')).toBeNull()
+    expect(internalLink.getAttribute('rel')).toBeNull()
+
+    const anchorLink = screen.getByRole('link', { name: /同页锚点/ })
+    expect(anchorLink.getAttribute('target')).toBeNull()
+    expect(anchorLink.getAttribute('rel')).toBeNull()
+  })
+
+  it('Q-08 & Q-30: 标题左侧排版 min-w-0 break-words，右侧使用 Lucide ExternalLink 图标且 shrink-0', () => {
+    render(
+      <CardsBlock
+        blockId="ca-q08-q30"
+        props={{
+          items: [
+            { title: '超长卡片标题测试排版边界超长卡片标题测试排版边界', href: 'https://example.com' },
+          ],
+        }}
+        depth={1}
+      />,
+    )
+
+    const titleSpan = screen.getByText(/超长卡片标题测试排版边界/)
+    expect(titleSpan.className).toContain('min-w-0')
+    expect(titleSpan.className).toContain('break-words')
+
+    const link = screen.getByRole('link')
+    const svg = link.querySelector('svg')
+    expect(svg).toBeTruthy()
+    // 右侧箭头包含 shrink-0
+    const iconWrapper = svg?.parentElement
+    expect(iconWrapper?.className).toContain('shrink-0')
+    // 纯字符 ↗ 已被替换
+    expect(link.textContent).not.toContain('↗')
+  })
 })

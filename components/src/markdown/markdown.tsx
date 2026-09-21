@@ -29,7 +29,8 @@ interface MarkdownProps extends Omit<
 }
 
 export function Markdown({ children, className, ...rest }: MarkdownProps) {
-  const hasMermaid = children.includes("```mermaid");
+  const contentStr = typeof children === "string" ? children : "";
+  const hasMermaid = contentStr.includes("```mermaid");
 
   if (hasMermaid) {
     return (
@@ -37,8 +38,8 @@ export function Markdown({ children, className, ...rest }: MarkdownProps) {
         data-slot="markdown"
         className={cn("min-w-0 max-w-full break-words", className)}
       >
-        <Suspense fallback={<MarkdownLite {...rest}>{children}</MarkdownLite>}>
-          <MarkdownMermaid {...rest}>{children}</MarkdownMermaid>
+        <Suspense fallback={<MarkdownLite {...rest}>{contentStr}</MarkdownLite>}>
+          <MarkdownMermaid {...rest}>{contentStr}</MarkdownMermaid>
         </Suspense>
       </div>
     );
@@ -49,7 +50,7 @@ export function Markdown({ children, className, ...rest }: MarkdownProps) {
       data-slot="markdown"
       className={cn("min-w-0 max-w-full break-words", className)}
     >
-      <MarkdownLite {...rest}>{children}</MarkdownLite>
+      <MarkdownLite {...rest}>{contentStr}</MarkdownLite>
     </div>
   );
 }

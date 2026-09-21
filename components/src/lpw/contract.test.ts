@@ -25,6 +25,8 @@ describe('contract', () => {
       Object.entries(blockTypeGroups).sort(([a], [b]) => a.localeCompare(b)),
     )
     expect(sorted).toMatchSnapshot()
+    expect(blockTypeGroups.glance).toEqual(['decision'])
+    expect(blockTypeGroups.personnel).toEqual(['process', 'text'])
   })
 
   it('layout patterns snapshot matches Go contract', () => {

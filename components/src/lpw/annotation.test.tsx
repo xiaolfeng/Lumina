@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AnnotatedText, AnnotationFrame, AnnotationGutter } from './annotation'
 import { AnnotationProvider } from './annotation-context'
 import { parseLpwSource } from './parser'
@@ -82,6 +82,30 @@ describe('annotation', () => {
     expect(screen.getByTestId('annotation-invalid-pattern').textContent).toContain(
       '批注匹配器无效',
     )
+  })
+
+  it('Q-05: AnnotationGutter 不再在全局 window 上注册 capture 阶段的 scroll 监听器', () => {
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
+    const ann: LpwAnnotation = { kind: 'note', message: 'test note' }
+
+    render(
+      <AnnotationProvider>
+        <div data-testid="lpw-paper">
+          <AnnotationFrame nodeId="test-node" annotation={ann}>
+            <div id="frame-test-node">Content</div>
+          </AnnotationFrame>
+          <AnnotationGutter />
+        </div>
+      </AnnotationProvider>,
+    )
+
+    // 验证没有对 window.addEventListener("scroll", measure, true) 的调用
+    const scrollCalls = addEventListenerSpy.mock.calls.filter(
+      (call: [string, ...unknown[]]) => call[0] === 'scroll',
+    )
+    expect(scrollCalls.length).toBe(0)
+
+    addEventListenerSpy.mockRestore()
   })
 
   it('invalid pattern shows diagnostic not crash', () => {
