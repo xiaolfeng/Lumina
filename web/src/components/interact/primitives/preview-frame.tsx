@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { PreviewLpwInlineViewer } from '#/components/preview/lpw'
+import { PreviewLpwInlineViewer } from '@lumina/components/lpw'
 import { getPreviewFileByID } from '#/lib/apis/preview'
 import { previewKindFromFilename } from '#/lib/preview-file'
 

@@ -1,0 +1,70 @@
+{
+  "version": "1.1",
+  "meta": {
+    "title": "Bento 便当格排版样例",
+    "description": "多维异形卡片自适应拼接"
+  },
+  "content": [
+    {
+      "id": "lay-bento",
+      "kind": "layout",
+      "type": "layout",
+      "props": {
+        "pattern": "bento",
+        "strategy": {
+          "type": "spans",
+          "columns": 3
+        },
+        "placements": [
+          { "nodeId": "card-hero", "colSpan": 2, "rowSpan": 2, "orderOnMobile": 1 },
+          { "nodeId": "card-sub1", "colSpan": 1, "rowSpan": 1, "orderOnMobile": 2 },
+          { "nodeId": "card-sub2", "colSpan": 1, "rowSpan": 1, "orderOnMobile": 3 },
+          { "nodeId": "blk-bottom", "colSpan": 3, "rowSpan": 1, "orderOnMobile": 4 }
+        ]
+      },
+      "children": [
+        {
+          "id": "card-hero",
+          "kind": "block",
+          "type": "markdown",
+          "props": {
+            "content": "# 核心视觉中心\n\n以大尺寸突出最关键的系统指标与架构蓝图，吸引读者的核心注意力。"
+          }
+        },
+        {
+          "id": "card-sub1",
+          "kind": "block",
+          "type": "metrics",
+          "props": {
+            "items": [
+              { "label": "并发", "value": 500, "unit": "conn" }
+            ]
+          }
+        },
+        {
+          "id": "card-sub2",
+          "kind": "block",
+          "type": "callout",
+          "props": {
+            "level": "success",
+            "title": "就绪",
+            "content": "系统状态正常。"
+          }
+        },
+        {
+          "id": "blk-bottom",
+          "kind": "block",
+          "type": "steps",
+          "props": {
+            "current": 2,
+            "items": [
+              { "title": "构想" },
+              { "title": "设计", "status": "finish" },
+              { "title": "落地", "status": "process" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import { PreviewFrame } from '#/components/interact/primitives/preview-frame'
 import { formatPreviewSource } from '#/lib/format-preview-source'
 import type { PreviewKind } from '#/lib/preview-file'
 import { PreviewCodeView } from './code-view'
-import { PreviewLpwViewer } from './lpw'
+import { PreviewLpwViewer } from '@lumina/components/lpw'
 import { PreviewMarkdownView } from './markdown-view'
 
 export function PreviewFileViewer({

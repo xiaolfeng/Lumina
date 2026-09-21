@@ -1,0 +1,45 @@
+{
+  "version": "1.1",
+  "meta": {
+    "title": "批注系统演示文档",
+    "description": "展示波浪下划线划线批注与块级徽标"
+  },
+  "content": [
+    {
+      "id": "md-annotated",
+      "kind": "block",
+      "type": "markdown",
+      "props": {
+        "content": "在分布式会话保持中，我们建议优先评估 Redis 缓存方案以实现横向扩展。"
+      },
+      "annotation": {
+        "kind": "issue",
+        "label": "需复核",
+        "message": "请复核 Redis 缓存的高可用与哨兵配置是否已就绪",
+        "author": "架构评审组",
+        "targets": [
+          {
+            "field": "content",
+            "pattern": "Redis\\s缓存"
+          }
+        ]
+      }
+    },
+    {
+      "id": "co-approved",
+      "kind": "block",
+      "type": "callout",
+      "props": {
+        "level": "success",
+        "title": "设计定稿",
+        "content": "该部分的接口定义已获技术委员会全票通过。"
+      },
+      "annotation": {
+        "kind": "approved",
+        "label": "已准入",
+        "message": "通过评审，可直接合入主干",
+        "author": "筱锋"
+      }
+    }
+  ]
+}

@@ -57,7 +57,7 @@ describe('PreviewSupplement', () => {
 
     // fetch 模拟返回原始 JSON
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ version: '1.0', blocks: [] }), {
+      new Response(JSON.stringify({ version: '1.1', content: [] }), {
         status: 200,
       }),
     )

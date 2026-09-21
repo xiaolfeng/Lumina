@@ -1,0 +1,76 @@
+{
+  "version": "1.1",
+  "meta": {
+    "title": "Split Ratio 2:1 验收样例",
+    "description": "左侧证据代码，右侧关键指标"
+  },
+  "content": [
+    {
+      "id": "lay-split-r",
+      "kind": "layout",
+      "type": "layout",
+      "props": {
+        "pattern": "split",
+        "strategy": {
+          "type": "ratio",
+          "tracks": [2, 1]
+        }
+      },
+      "children": [
+        {
+          "id": "sec-evidence",
+          "kind": "container",
+          "type": "section",
+          "props": {
+            "variant": "evidence",
+            "title": "系统接口实现证据"
+          },
+          "children": [
+            {
+              "id": "code-impl",
+              "kind": "block",
+              "type": "code",
+              "props": {
+                "language": "go",
+                "filename": "lpw_tree.go",
+                "content": "func ValidateDocument(doc *LpwDocument) error {\n    return validateHierarchy(doc.Content)\n}",
+                "showLineNumbers": true
+              }
+            },
+            {
+              "id": "co-note",
+              "kind": "block",
+              "type": "callout",
+              "props": {
+                "level": "info",
+                "title": "合规提示",
+                "content": "核心校验必须在原子落库之前完成。"
+              }
+            }
+          ]
+        },
+        {
+          "id": "mt-stats",
+          "kind": "block",
+          "type": "metrics",
+          "props": {
+            "items": [
+              {
+                "label": "P99 延迟",
+                "value": "12ms",
+                "trend": "down",
+                "change": "-35%"
+              },
+              {
+                "label": "QPS 吞吐",
+                "value": "24,500",
+                "trend": "up",
+                "change": "+120%"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

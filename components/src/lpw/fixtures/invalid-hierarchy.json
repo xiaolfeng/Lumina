@@ -1,0 +1,60 @@
+{
+  "version": "1.1",
+  "meta": {
+    "title": "非法层级诊断样例",
+    "description": "用于走查结构化错误诊断卡输出"
+  },
+  "content": [
+    {
+      "id": "lay-outer",
+      "kind": "layout",
+      "type": "layout",
+      "props": {
+        "pattern": "split"
+      },
+      "children": [
+        {
+          "id": "lay-inner-bad",
+          "kind": "layout",
+          "type": "layout",
+          "props": {
+            "pattern": "grid"
+          },
+          "children": [
+            {
+              "id": "b1",
+              "kind": "block",
+              "type": "markdown",
+              "props": { "content": "非法嵌套" }
+            }
+          ]
+        },
+        {
+          "id": "pan-bad",
+          "kind": "container",
+          "type": "panel",
+          "props": {
+            "variant": "summary"
+          },
+          "children": [
+            {
+              "id": "cd-illegal",
+              "kind": "block",
+              "type": "code",
+              "props": { "content": "code in summary is denied" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hd-sibling",
+      "kind": "block",
+      "type": "heading",
+      "props": {
+        "level": 2,
+        "content": "后续正常兄弟节点"
+      }
+    }
+  ]
+}

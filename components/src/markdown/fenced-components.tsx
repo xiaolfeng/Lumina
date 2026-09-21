@@ -46,6 +46,7 @@ interface CardProps {
 function sanitizeHref(href?: string): string | undefined {
   if (!href) return undefined
   const value = href.trim()
+  // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001f\u007f]/.test(value)) return undefined
   if (/^(https?:|mailto:)/i.test(value)) return value
   if (/^[/?#]/.test(value)) return value

@@ -12,6 +12,7 @@
     ".": "./src/index.ts",
     "./ui/*": "./src/ui/*",
     "./markdown": "./src/markdown/index.ts",
+    "./lpw": "./src/lpw/index.ts",
     "./motion": "./src/motion/index.ts",
     "./utils": "./src/lib/utils.ts",
     "./hooks/use-mobile": "./src/hooks/use-mobile.ts",
@@ -35,7 +36,9 @@
     "rehype-slug": "^6.0.0",
     "highlight.js": "^11.11.1",
     "katex": "^0.17.0",
-    "motion": "^12.40.0"
+    "motion": "^12.40.0",
+    "echarts": "^6.1.0",
+    "react-diff-viewer-continued": "^4.4.0"
   },
   "peerDependencies": {
     "react": "^19.0.0",

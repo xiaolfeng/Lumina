@@ -1,0 +1,116 @@
+{
+  "version": "1.1",
+  "meta": {
+    "title": "Container Variants 综合演示样例",
+    "description": "展示各受控容器变体的视觉外壳与专属能力约束"
+  },
+  "content": [
+    {
+      "id": "sec-feat",
+      "kind": "container",
+      "type": "section",
+      "props": {
+        "variant": "feature",
+        "title": "特性精选",
+        "icon": "bookmark"
+      },
+      "children": [
+        {
+          "id": "hd-sub",
+          "kind": "block",
+          "type": "heading",
+          "props": { "level": 3, "content": "特性综述" }
+        },
+        {
+          "id": "md-feat-desc",
+          "kind": "block",
+          "type": "markdown",
+          "props": { "content": "通过左侧强调边和字号阶梯建立视觉秩序，避免过多横线干扰。" }
+        }
+      ]
+    },
+    {
+      "id": "pan-sum",
+      "kind": "container",
+      "type": "panel",
+      "props": {
+        "variant": "summary",
+        "title": "架构裁决总结"
+      },
+      "children": [
+        {
+          "id": "tk-sum",
+          "kind": "block",
+          "type": "takeaway",
+          "props": {
+            "title": "结论",
+            "content": "全面采用 1.1 节点模型，彻底摒弃旧版 blocks 递归结构。"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pan-dash",
+      "kind": "container",
+      "type": "panel",
+      "props": {
+        "variant": "dashboard",
+        "title": "运行监控大盘"
+      },
+      "children": [
+        {
+          "id": "mt-dash",
+          "kind": "block",
+          "type": "metrics",
+          "props": {
+            "items": [
+              { "label": "CPU 负载", "value": "18%" },
+              { "label": "内存占用", "value": "240MB" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "det-raw",
+      "kind": "container",
+      "type": "details",
+      "props": {
+        "variant": "raw-data",
+        "summary": "原始调用代码清单",
+        "defaultOpen": false
+      },
+      "children": [
+        {
+          "id": "cd-raw",
+          "kind": "block",
+          "type": "code",
+          "props": {
+            "language": "json",
+            "content": "{\n  \"action\": \"promote\",\n  \"slug\": \"v1-preview\"\n}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "tb-ref",
+      "kind": "container",
+      "type": "tabs",
+      "props": {
+        "variant": "reference",
+        "items": [
+          { "key": "spec", "label": "规范定义" }
+        ],
+        "defaultKey": "spec"
+      },
+      "children": [
+        {
+          "id": "md-spec",
+          "kind": "block",
+          "type": "markdown",
+          "props": { "content": "每个页签均对应一个完整的 Block 节点。" }
+        }
+      ]
+    }
+  ]
+}
