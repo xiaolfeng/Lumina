@@ -1,471 +1,860 @@
 package logic
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
 
-func TestPreviewLpwTreeOperations(t *testing.T) {
+// ── 1. 合法层级用例 ──────────────────────────────────────────
+
+func TestHierarchy_RootLayout_Container_Block(t *testing.T) {
 	t.Parallel()
-
-	// 1. insertBlock 正常与异常
-	t.Run("insertBlock", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{ID: "b1", Type: "markdown", Props: map[string]any{"content": "hello"}},
-			},
-		}
-
-		// 顶层末尾插入
-		err := insertBlock(doc, "", nil, lpwBlock{ID: "b2", Type: "heading", Props: map[string]any{"content": "title"}})
-		if err != nil {
-			t.Fatalf("unexpected insert error: %v", err)
-		}
-		if len(doc.Blocks) != 2 || doc.Blocks[1].ID != "b2" {
-			t.Errorf("expected b2 at index 1")
-		}
-
-		// 指定位置插入
-		pos := 0
-		err = insertBlock(doc, "", &pos, lpwBlock{ID: "b0", Type: "divider", Props: map[string]any{}})
-		if err != nil {
-			t.Fatalf("unexpected insert error: %v", err)
-		}
-		if doc.Blocks[0].ID != "b0" {
-			t.Errorf("expected b0 at index 0")
-		}
-
-		// ID 冲突错误
-		err = insertBlock(doc, "", nil, lpwBlock{ID: "b1", Type: "markdown", Props: map[string]any{}})
-		if err == nil || !strings.Contains(err.Error(), "已存在") {
-			t.Errorf("expected id duplicate error, got: %v", err)
-		}
-
-		// 目标父级不是容器
-		err = insertBlock(doc, "b1", nil, lpwBlock{ID: "c1", Type: "markdown", Props: map[string]any{}})
-		if err == nil || !strings.Contains(err.Error(), "不是容器组件") {
-			t.Errorf("expected not-a-container error, got: %v", err)
-		}
-
-		// 目标父级不存在
-		err = insertBlock(doc, "non-exist", nil, lpwBlock{ID: "c1", Type: "markdown", Props: map[string]any{}})
-		if err == nil || !strings.Contains(err.Error(), "不存在") {
-			t.Errorf("expected parent not found error, got: %v", err)
-		}
-
-		// Q-08：负数 position 显式报错，不静默降级
-		neg := -1
-		err = insertBlock(doc, "", &neg, lpwBlock{ID: "neg-1", Type: "divider", Props: map[string]any{}})
-		if err == nil || !strings.Contains(err.Error(), "不能为负数") {
-			t.Errorf("expected negative position error, got: %v", err)
-		}
-		if _, total := collectBlockIDs(doc); total != 3 {
-			t.Errorf("negative position insert must not mutate document, got %d blocks", total)
-		}
-	})
-
-	// 2. removeBlocks 正常与异常
-	t.Run("removeBlocks", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{ID: "b1", Type: "markdown"},
-				{ID: "b2", Type: "heading"},
-				{
-					ID:   "sec-1",
-					Type: "section",
-					Children: []lpwBlock{
-						{ID: "sub-1", Type: "callout"},
-					},
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "lay-1",
+				Kind: "layout",
+				Type: "layout",
+				Props: map[string]any{
+					"pattern": "split",
 				},
-			},
-		}
-
-		// 删除子块和顶层块
-		err := removeBlocks(doc, []string{"b1", "sub-1"})
-		if err != nil {
-			t.Fatalf("unexpected remove error: %v", err)
-		}
-		ids, total := collectBlockIDs(doc)
-		if total != 2 {
-			t.Errorf("expected 2 blocks left, got %d", total)
-		}
-		if _, exists := ids["b1"]; exists {
-			t.Errorf("expected b1 to be deleted")
-		}
-		if _, exists := ids["sub-1"]; exists {
-			t.Errorf("expected sub-1 to be deleted")
-		}
-
-		// 删除不存在的块报错
-		err = removeBlocks(doc, []string{"b1"})
-		if err == nil || !strings.Contains(err.Error(), "不存在") {
-			t.Errorf("expected error when deleting non-existing block, got: %v", err)
-		}
-	})
-
-	// 3. reorderSiblings 正常与异常
-	t.Run("reorderSiblings", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{ID: "b1", Type: "markdown"},
-				{ID: "b2", Type: "heading"},
-				{ID: "b3", Type: "callout"},
-			},
-		}
-
-		err := reorderSiblings(doc, "", []string{"b3", "b1", "b2"})
-		if err != nil {
-			t.Fatalf("unexpected reorder error: %v", err)
-		}
-		if doc.Blocks[0].ID != "b3" || doc.Blocks[1].ID != "b1" || doc.Blocks[2].ID != "b2" {
-			t.Errorf("reorder failed: %v", doc.Blocks)
-		}
-
-		// 非完整排列（缺项）
-		err = reorderSiblings(doc, "", []string{"b3", "b1"})
-		if err == nil || !strings.Contains(err.Error(), "完整子块排列") {
-			t.Errorf("expected incomplete order error, got: %v", err)
-		}
-	})
-
-	// 4. patchProps
-	t.Run("patchProps", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{ID: "b1", Type: "heading", Props: map[string]any{"level": 2, "content": "old"}},
-			},
-		}
-
-		err := patchProps(doc, "b1", map[string]any{"content": "new", "level": nil})
-		if err != nil {
-			t.Fatalf("unexpected patch error: %v", err)
-		}
-		if doc.Blocks[0].Props["content"] != "new" {
-			t.Errorf("expected content updated")
-		}
-		if _, exists := doc.Blocks[0].Props["level"]; exists {
-			t.Errorf("expected level to be deleted when nil")
-		}
-
-		// 不存在
-		err = patchProps(doc, "non-exist", map[string]any{})
-		if err == nil || !strings.Contains(err.Error(), "不存在") {
-			t.Errorf("expected block not found, got: %v", err)
-		}
-	})
-
-	// 5. replaceBlock
-	t.Run("replaceBlock", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{ID: "b1", Type: "markdown"},
-			},
-		}
-
-		err := replaceBlock(doc, "b1", lpwBlock{ID: "b1-new", Type: "heading", Props: map[string]any{"content": "ok"}})
-		if err != nil {
-			t.Fatalf("unexpected replace error: %v", err)
-		}
-		if doc.Blocks[0].ID != "b1-new" {
-			t.Errorf("expected b1-new, got: %s", doc.Blocks[0].ID)
-		}
-	})
-}
-
-func TestValidateContainerRules(t *testing.T) {
-	t.Parallel()
-
-	// 1. tabs children != items
-	t.Run("tabs children != items", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{
-					ID:   "t1",
-					Type: "tabs",
-					Props: map[string]any{
-						"items": []any{
-							map[string]any{"key": "a", "label": "A"},
-							map[string]any{"key": "b", "label": "B"},
-						},
-					},
-					Children: []lpwBlock{
-						{ID: "c1", Type: "markdown"},
-					},
-				},
-			},
-		}
-		err := validateContainerRules(doc)
-		if err == nil || !strings.Contains(err.Error(), "必须等于 items 数量") {
-			t.Errorf("expected tabs length mismatch error, got: %v", err)
-		}
-	})
-
-	// 2. tabs defaultKey 未命中
-	t.Run("tabs defaultKey not matched", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{
-					ID:   "t1",
-					Type: "tabs",
-					Props: map[string]any{
-						"items": []any{
-							map[string]any{"key": "a", "label": "A"},
-						},
-						"defaultKey": "bad-key",
-					},
-					Children: []lpwBlock{
-						{ID: "c1", Type: "markdown"},
-					},
-				},
-			},
-		}
-		err := validateContainerRules(doc)
-		if err == nil || !strings.Contains(err.Error(), "未命中任何 items.key") {
-			t.Errorf("expected defaultKey error, got: %v", err)
-		}
-	})
-
-	// 3. columns children 与 ratio 不对齐
-	t.Run("columns ratio mismatch", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{
-					ID:       "col1",
-					Type:     "columns",
-					Props:    map[string]any{"ratio": "1:1:1"},
-					Children: []lpwBlock{{ID: "c1"}, {ID: "c2"}}, // 只有 2 列
-				},
-			},
-		}
-		err := validateContainerRules(doc)
-		if err == nil || !strings.Contains(err.Error(), "期望 3 列子块") {
-			t.Errorf("expected columns ratio mismatch error, got: %v", err)
-		}
-	})
-
-	// 4. scorecard weight 之和 != 100
-	t.Run("scorecard weight sum", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{
-					ID:   "sc1",
-					Type: "scorecard",
-					Props: map[string]any{
-						"criteria": []any{
-							map[string]any{"name": "C1", "weight": float64(40)},
-							map[string]any{"name": "C2", "weight": float64(50)},
-						},
-						"plans": []any{
-							map[string]any{"name": "P1", "scores": []any{float64(4), float64(5)}},
-						},
-					},
-				},
-			},
-		}
-		err := validateContainerRules(doc)
-		if err == nil || !strings.Contains(err.Error(), "权重之和必须等于 100") {
-			t.Errorf("expected scorecard weight error, got: %v", err)
-		}
-	})
-
-	// 5. scorecard plan scores 长度 != criteria
-	t.Run("scorecard scores length mismatch", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{
-					ID:   "sc1",
-					Type: "scorecard",
-					Props: map[string]any{
-						"criteria": []any{
-							map[string]any{"name": "C1", "weight": float64(50)},
-							map[string]any{"name": "C2", "weight": float64(50)},
-						},
-						"plans": []any{
-							map[string]any{"name": "P1", "scores": []any{float64(4)}}, // 只有 1 个得分
-						},
-					},
-				},
-			},
-		}
-		err := validateContainerRules(doc)
-		if err == nil || !strings.Contains(err.Error(), "必须等于准则数量") {
-			t.Errorf("expected scorecard scores length error, got: %v", err)
-		}
-	})
-
-	// 6. comparison rows values 长度 != plans
-	t.Run("comparison rows values length mismatch", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{
-					ID:   "cp1",
-					Type: "comparison",
-					Props: map[string]any{
-						"plans": []any{map[string]any{"name": "A"}, map[string]any{"name": "B"}},
-						"rows": []any{
-							map[string]any{"dimension": "D1", "values": []any{map[string]any{"text": "T1"}}}, // 只有 1 个
-						},
-					},
-				},
-			},
-		}
-		err := validateContainerRules(doc)
-		if err == nil || !strings.Contains(err.Error(), "不等于 plans 数量") {
-			t.Errorf("expected comparison length mismatch error, got: %v", err)
-		}
-	})
-
-	// 7. chart scatter 包含 categories
-	t.Run("chart scatter has categories", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{
-					ID:   "ch1",
-					Type: "chart",
-					Props: map[string]any{
-						"chartType":  "scatter",
-						"categories": []any{"A", "B"},
-						"series":     []any{},
-					},
-				},
-			},
-		}
-		err := validateContainerRules(doc)
-		if err == nil || !strings.Contains(err.Error(), "scatter 图表禁止指定 categories") {
-			t.Errorf("expected scatter categories error, got: %v", err)
-		}
-	})
-
-	// 8. cards 包含 javascript: 协议
-	t.Run("cards javascript protocol", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{
-					ID:   "card1",
-					Type: "cards",
-					Props: map[string]any{
-						"items": []any{
-							map[string]any{"title": "恶意链接", "href": "javascript:alert(1)"},
-						},
-					},
-				},
-			},
-		}
-		err := validateContainerRules(doc)
-		if err == nil || !strings.Contains(err.Error(), "不允许的协议") {
-			t.Errorf("expected disallowed protocol error, got: %v", err)
-		}
-	})
-
-	// 9. S-01 回归：scheme 内夹杂控制字符的伪协议串必须整体拒绝
-	t.Run("cards scheme with control chars", func(t *testing.T) {
-		doc := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{
-					ID:   "card-ctrl",
-					Type: "cards",
-					Props: map[string]any{
-						"items": []any{
-							// "jav\tascript:notice"（惰性串，无攻击体）
-							map[string]any{"title": "夹 TAB", "href": "jav\tascript:notice"},
-							map[string]any{"title": "夹换行", "href": "jav\nascript:notice"},
-						},
-					},
-				},
-			},
-		}
-		err := validateContainerRules(doc)
-		if err == nil || !strings.Contains(err.Error(), "控制字符") {
-			t.Errorf("expected control character rejection, got: %v", err)
-		}
-	})
-
-	// 10. S-01 回归：白名单放行合法形态，拒绝白名单外 scheme
-	t.Run("cards url whitelist", func(t *testing.T) {
-		makeCards := func(href string) *lpwDocument {
-			return &lpwDocument{
-				Version: "1.0",
-				Blocks: []lpwBlock{
+				Children: []lpwNode{
 					{
-						ID:   "card-wl",
-						Type: "cards",
+						ID:   "sec-1",
+						Kind: "container",
+						Type: "section",
 						Props: map[string]any{
-							"items": []any{
-								map[string]any{"title": "链接", "href": href},
+							"variant": "evidence",
+							"title":   "技术证据",
+						},
+						Children: []lpwNode{
+							{
+								ID:    "diff-1",
+								Kind:  "block",
+								Type:  "diff",
+								Props: map[string]any{"oldCode": "a", "newCode": "b"},
 							},
 						},
 					},
+					{
+						ID:    "blk-2",
+						Kind:  "block",
+						Type:  "markdown",
+						Props: map[string]any{"content": "右侧说明"},
+					},
 				},
-			}
-		}
-		for _, okHref := range []string{
-			"https://example.com/a",
-			"http://example.com/b",
-			"mailto:someone@example.com",
-			"/pages/demo/landing",
-			"./page.html",
-			"../page.html",
-			"#section",
-			"detail.html",
-		} {
-			if err := validateContainerRules(makeCards(okHref)); err != nil {
-				t.Errorf("whitelisted href %q should pass, got: %v", okHref, err)
-			}
-		}
-		for _, badHref := range []string{
-			"ftp://files.example.com/x",
-			"data:text/html,notice",
-			"vbscript:notice",
-			"javascript:void",
-		} {
-			if err := validateContainerRules(makeCards(badHref)); err == nil {
-				t.Errorf("non-whitelisted href %q should be rejected", badHref)
-			}
-		}
-	})
-
-	// 11. S-01 回归：image 与 gallery 的 src 同样走白名单
-	t.Run("image and gallery src whitelist", func(t *testing.T) {
-		badImage := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{ID: "img1", Type: "image", Props: map[string]any{"src": "jav\tascript:notice", "alt": "x"}},
 			},
-		}
-		if err := validateContainerRules(badImage); err == nil || !strings.Contains(err.Error(), "控制字符") {
-			t.Errorf("expected image control-char rejection, got: %v", err)
-		}
+		},
+	}
+	if err := validateDocument11(doc); err != nil {
+		t.Fatalf("expected legal root layout->container->block to pass, got: %v", err)
+	}
+}
 
-		badGallery := &lpwDocument{
-			Version: "1.0",
-			Blocks: []lpwBlock{
-				{
-					ID:   "gal1",
-					Type: "gallery",
-					Props: map[string]any{
-						"images": []any{
-							map[string]any{"src": "ftp://x/y.png", "alt": "x"},
+func TestHierarchy_RootLayout_DirectBlock(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "lay-1",
+				Kind: "layout",
+				Type: "layout",
+				Props: map[string]any{
+					"pattern": "split",
+				},
+				Children: []lpwNode{
+					{
+						ID:    "img-1",
+						Kind:  "block",
+						Type:  "image",
+						Props: map[string]any{"src": "https://example.com/a.png"},
+					},
+					{
+						ID:    "md-1",
+						Kind:  "block",
+						Type:  "markdown",
+						Props: map[string]any{"content": "说明文本"},
+					},
+				},
+			},
+		},
+	}
+	if err := validateDocument11(doc); err != nil {
+		t.Fatalf("expected legal layout direct blocks to pass, got: %v", err)
+	}
+}
+
+func TestHierarchy_RootContainer_Block(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "pan-1",
+				Kind: "container",
+				Type: "panel",
+				Props: map[string]any{
+					"variant": "aside",
+				},
+				Children: []lpwNode{
+					{
+						ID:    "co-1",
+						Kind:  "block",
+						Type:  "callout",
+						Props: map[string]any{"content": "侧栏提示"},
+					},
+				},
+			},
+		},
+	}
+	if err := validateDocument11(doc); err != nil {
+		t.Fatalf("expected root container->block to pass, got: %v", err)
+	}
+}
+
+func TestHierarchy_RootBlock(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:    "md-1",
+				Kind:  "block",
+				Type:  "markdown",
+				Props: map[string]any{"content": "单篇长文"},
+			},
+		},
+	}
+	if err := validateDocument11(doc); err != nil {
+		t.Fatalf("expected root block to pass, got: %v", err)
+	}
+}
+
+func TestHierarchy_EditorialWrap_ImagePlusMarkdown(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "lay-wrap",
+				Kind: "layout",
+				Type: "layout",
+				Props: map[string]any{
+					"pattern": "editorial-wrap",
+				},
+				Children: []lpwNode{
+					{
+						ID:    "img-1",
+						Kind:  "block",
+						Type:  "image",
+						Props: map[string]any{"src": "https://example.com/cover.png"},
+					},
+					{
+						ID:    "md-1",
+						Kind:  "block",
+						Type:  "markdown",
+						Props: map[string]any{"content": "图文环绕正文"},
+					},
+				},
+			},
+		},
+	}
+	if err := validateDocument11(doc); err != nil {
+		t.Fatalf("expected editorial-wrap image+markdown to pass, got: %v", err)
+	}
+}
+
+func TestHierarchy_Newspaper_BodyMarkdownFullChart(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "lay-news",
+				Kind: "layout",
+				Type: "layout",
+				Props: map[string]any{
+					"pattern": "newspaper",
+					"placements": []any{
+						map[string]any{"nodeId": "md-body", "role": "body"},
+						map[string]any{"nodeId": "ch-full", "role": "full"},
+					},
+				},
+				Children: []lpwNode{
+					{
+						ID:    "md-body",
+						Kind:  "block",
+						Type:  "markdown",
+						Props: map[string]any{"content": "报纸正文多栏流"},
+					},
+					{
+						ID:    "ch-full",
+						Kind:  "block",
+						Type:  "chart",
+						Props: map[string]any{"chartType": "line", "series": []any{}},
+					},
+				},
+			},
+		},
+	}
+	if err := validateDocument11(doc); err != nil {
+		t.Fatalf("expected newspaper body markdown + full chart to pass, got: %v", err)
+	}
+}
+
+func TestContract_TabsItemsMatchChildren(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "tb-1",
+				Kind: "container",
+				Type: "tabs",
+				Props: map[string]any{
+					"variant": "reference",
+					"items": []any{
+						map[string]any{"key": "k1", "label": "L1"},
+						map[string]any{"key": "k2", "label": "L2"},
+						map[string]any{"key": "k3", "label": "L3"},
+					},
+					"defaultKey": "k2",
+				},
+				Children: []lpwNode{
+					{ID: "b1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "1"}},
+					{ID: "b2", Kind: "block", Type: "code", Props: map[string]any{"content": "2"}},
+					{ID: "b3", Kind: "block", Type: "table", Props: map[string]any{}},
+				},
+			},
+		},
+	}
+	if err := validateDocument11(doc); err != nil {
+		t.Fatalf("expected tabs items == children to pass, got: %v", err)
+	}
+}
+
+// ── 2. 非法层级用例（必须断言错误含路径或关键词） ─────────────
+
+func TestHierarchy_RejectsLayoutInsideLayout(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:    "lay-1",
+				Kind:  "layout",
+				Type:  "layout",
+				Props: map[string]any{"pattern": "split"},
+				Children: []lpwNode{
+					{
+						ID:    "lay-nested",
+						Kind:  "layout",
+						Type:  "layout",
+						Props: map[string]any{"pattern": "grid"},
+						Children: []lpwNode{
+							{ID: "b1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "x"}},
+						},
+					},
+					{ID: "b2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "y"}},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected nested layout to be rejected")
+	}
+	if !strings.Contains(err.Error(), "layout") || !strings.Contains(err.Error(), "不允许包含") {
+		t.Errorf("expected error message explaining layout cannot contain layout, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsContainerInsideContainer(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:    "sec-1",
+				Kind:  "container",
+				Type:  "section",
+				Props: map[string]any{"variant": "article", "title": "t1"},
+				Children: []lpwNode{
+					{
+						ID:    "sec-2",
+						Kind:  "container",
+						Type:  "section",
+						Props: map[string]any{"variant": "article", "title": "t2"},
+						Children: []lpwNode{
+							{ID: "b1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "x"}},
 						},
 					},
 				},
 			},
-		}
-		if err := validateContainerRules(badGallery); err == nil {
-			t.Errorf("expected gallery non-whitelisted scheme rejection")
-		}
-	})
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected nested container to be rejected")
+	}
+	if !strings.Contains(err.Error(), "container") || !strings.Contains(err.Error(), "只能包含 block") {
+		t.Errorf("expected error message explaining container cannot contain container, got: %v", err)
+	}
 }
+
+func TestHierarchy_RejectsContainerInsideLayout_WrongVariant(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:    "lay-1",
+				Kind:  "layout",
+				Type:  "layout",
+				Props: map[string]any{"pattern": "split"},
+				Children: []lpwNode{
+					{
+						ID:    "pan-1",
+						Kind:  "container",
+						Type:  "panel",
+						Props: map[string]any{"variant": "summary"},
+						Children: []lpwNode{
+							// panel/summary 只能放 decision / data，不允许 code
+							{ID: "c1", Kind: "block", Type: "code", Props: map[string]any{"content": "x"}},
+						},
+					},
+					{ID: "b2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "y"}},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected panel/summary with code block to be rejected")
+	}
+	if !strings.Contains(err.Error(), "不允许子块类型 code") {
+		t.Errorf("expected variant contract rejection, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsBlockWithChildren(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:    "b1",
+				Kind:  "block",
+				Type:  "markdown",
+				Props: map[string]any{"content": "x"},
+				Children: []lpwNode{
+					{ID: "b2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "y"}},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected block with children to be rejected")
+	}
+	if !strings.Contains(err.Error(), "block 不允许 children") {
+		t.Errorf("expected 'block 不允许 children' error, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsBlockAsParent(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{ID: "b1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "parent"}},
+		},
+	}
+	err := insertNode(doc, "b1", nil, lpwNode{ID: "b2", Kind: "block", Type: "markdown", Props: map[string]any{}})
+	if err == nil {
+		t.Fatalf("expected insert into block to be rejected")
+	}
+	if !strings.Contains(err.Error(), "不能作为 parent") {
+		t.Errorf("expected cannot be parent error, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsEditorialWrapWithContainer(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:    "lay-wrap",
+				Kind:  "layout",
+				Type:  "layout",
+				Props: map[string]any{"pattern": "editorial-wrap"},
+				Children: []lpwNode{
+					{
+						ID:    "sec-1",
+						Kind:  "container",
+						Type:  "section",
+						Props: map[string]any{"variant": "article", "title": "t"},
+						Children: []lpwNode{
+							{ID: "m1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "c"}},
+						},
+					},
+					{ID: "b2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "y"}},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected editorial-wrap with container to be rejected")
+	}
+	if !strings.Contains(err.Error(), "editorial-wrap") {
+		t.Errorf("expected editorial-wrap error, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsNewspaperBodyChart(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "lay-news",
+				Kind: "layout",
+				Type: "layout",
+				Props: map[string]any{
+					"pattern": "newspaper",
+					"placements": []any{
+						map[string]any{"nodeId": "ch-1", "role": "body"},
+						map[string]any{"nodeId": "md-2", "role": "full"},
+					},
+				},
+				Children: []lpwNode{
+					{ID: "ch-1", Kind: "block", Type: "chart", Props: map[string]any{}},
+					{ID: "md-2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "m"}},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected newspaper body chart to be rejected")
+	}
+	if !strings.Contains(err.Error(), "role=body 的节点必须是 markdown 块") {
+		t.Errorf("expected newspaper body markdown error, got: %v", err)
+	}
+}
+
+func TestContract_NewspaperRequiresRoleBody(t *testing.T) {
+	t.Parallel()
+
+	// 1. 省略 placements 时，必须拦截
+	docWithoutPlacements := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "lay-news",
+				Kind: "layout",
+				Type: "layout",
+				Props: map[string]any{
+					"pattern": "newspaper",
+				},
+				Children: []lpwNode{
+					{ID: "md-1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "正文 1"}},
+					{ID: "md-2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "正文 2"}},
+				},
+			},
+		},
+	}
+	err1 := validateDocument11(docWithoutPlacements)
+	if err1 == nil {
+		t.Fatalf("expected newspaper without placements to fail role=body check")
+	}
+	if !strings.Contains(err1.Error(), "必须有且仅有一个 role=body 的 markdown 块") {
+		t.Errorf("expected role=body error, got: %v", err1)
+	}
+
+	// 2. 提供了 placements 但缺少 role=body 时，必须拦截
+	docWithoutBody := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "lay-news",
+				Kind: "layout",
+				Type: "layout",
+				Props: map[string]any{
+					"pattern": "newspaper",
+					"placements": []any{
+						map[string]any{"nodeId": "md-1", "role": "full"},
+						map[string]any{"nodeId": "md-2", "role": "full"},
+					},
+				},
+				Children: []lpwNode{
+					{ID: "md-1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "正文 1"}},
+					{ID: "md-2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "正文 2"}},
+				},
+			},
+		},
+	}
+	err2 := validateDocument11(docWithoutBody)
+	if err2 == nil {
+		t.Fatalf("expected newspaper without role=body to fail")
+	}
+	if !strings.Contains(err2.Error(), "必须有且仅有一个 role=body 的 markdown 块") {
+		t.Errorf("expected role=body error, got: %v", err2)
+	}
+}
+
+func TestHierarchy_RejectsAnnotationOnLayout(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:         "lay-1",
+				Kind:       "layout",
+				Type:       "layout",
+				Props:      map[string]any{"pattern": "split"},
+				Annotation: &lpwAnnotation{Kind: "note", Message: "非法批注"},
+				Children: []lpwNode{
+					{ID: "b1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "1"}},
+					{ID: "b2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "2"}},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected annotation on layout to be rejected")
+	}
+	if !strings.Contains(err.Error(), "不允许设置 annotation") {
+		t.Errorf("expected error rejecting annotation on layout, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsAnnotationOnContainer(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:         "sec-1",
+				Kind:       "container",
+				Type:       "section",
+				Props:      map[string]any{"variant": "article", "title": "t"},
+				Annotation: &lpwAnnotation{Kind: "note", Message: "非法批注"},
+				Children: []lpwNode{
+					{ID: "b1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "1"}},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected annotation on container to be rejected")
+	}
+	if !strings.Contains(err.Error(), "不允许设置 annotation") {
+		t.Errorf("expected error rejecting annotation on container, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsUnknownAnnotationField(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:    "md-1",
+				Kind:  "block",
+				Type:  "markdown",
+				Props: map[string]any{"content": "abc"},
+				Annotation: &lpwAnnotation{
+					Kind:    "note",
+					Message: "字段不对",
+					Targets: []lpwAnnotationTarget{
+						{Field: "src", Pattern: "abc"},
+					},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected annotation with target field=src on markdown to be rejected")
+	}
+	if !strings.Contains(err.Error(), "不在 markdown 的可批注字段") {
+		t.Errorf("expected unknown field error, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsBadAnnotationRegex(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:    "md-1",
+				Kind:  "block",
+				Type:  "markdown",
+				Props: map[string]any{"content": "abc"},
+				Annotation: &lpwAnnotation{
+					Kind:    "note",
+					Message: "坏正则",
+					Targets: []lpwAnnotationTarget{
+						{Field: "content", Pattern: "(("},
+					},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected bad regex to be rejected")
+	}
+	if !strings.Contains(err.Error(), "批注正则无效") {
+		t.Errorf("expected invalid regex error, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsDuplicateIDs(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{ID: "dup-id", Kind: "block", Type: "markdown", Props: map[string]any{"content": "1"}},
+			{ID: "dup-id", Kind: "block", Type: "markdown", Props: map[string]any{"content": "2"}},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected duplicate IDs to be rejected")
+	}
+	if !strings.Contains(err.Error(), "全文档必须唯一") {
+		t.Errorf("expected duplicate ID error, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsOver500Nodes(t *testing.T) {
+	t.Parallel()
+	nodes := make([]lpwNode, 501)
+	for i := 0; i < 501; i++ {
+		nodes[i] = lpwNode{
+			ID:    strings.ToLower(strings.ReplaceAll(strings.Repeat("a", 1)+string(rune('a'+i%26))+string(rune('a'+i/26%26))+string(rune('0'+i%10)), " ", "")),
+			Kind:  "block",
+			Type:  "markdown",
+			Props: map[string]any{"content": "x"},
+		}
+	}
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: nodes,
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected >500 nodes to be rejected")
+	}
+	if !strings.Contains(err.Error(), "超过上限 500") {
+		t.Errorf("expected over 500 nodes error, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsMissingPattern(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:    "lay-1",
+				Kind:  "layout",
+				Type:  "layout",
+				Props: map[string]any{},
+				Children: []lpwNode{
+					{ID: "b1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "1"}},
+					{ID: "b2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "2"}},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected layout missing pattern to be rejected")
+	}
+	if !strings.Contains(err.Error(), "缺少必填属性 pattern") {
+		t.Errorf("expected missing pattern error, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsPlacementsForeignNodeId(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "lay-1",
+				Kind: "layout",
+				Type: "layout",
+				Props: map[string]any{
+					"pattern": "split",
+					"placements": []any{
+						map[string]any{"nodeId": "foreign-id", "role": "primary"},
+					},
+				},
+				Children: []lpwNode{
+					{ID: "b1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "1"}},
+					{ID: "b2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "2"}},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected foreign nodeId in placements to be rejected")
+	}
+	if !strings.Contains(err.Error(), "不是该 layout 的直接子节点") {
+		t.Errorf("expected foreign nodeId error, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsFirstOfViolation(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "sec-feat",
+				Kind: "container",
+				Type: "section",
+				Props: map[string]any{
+					"variant": "feature",
+					"title":   "亮点特性",
+				},
+				Children: []lpwNode{
+					// section/feature 首个必须是 image / gallery / heading，放 callout 应该违背 FirstOf
+					{ID: "co-1", Kind: "block", Type: "callout", Props: map[string]any{"content": "提示"}},
+					{ID: "md-1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "正文"}},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected FirstOf violation to be rejected")
+	}
+	if !strings.Contains(err.Error(), "第一个子块类型必须在") {
+		t.Errorf("expected FirstOf error, got: %v", err)
+	}
+}
+
+func TestHierarchy_RejectsRepeatTakeaway(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{
+				ID:   "pan-sum",
+				Kind: "container",
+				Type: "panel",
+				Props: map[string]any{
+					"variant": "summary",
+				},
+				Children: []lpwNode{
+					{ID: "tk-1", Kind: "block", Type: "takeaway", Props: map[string]any{"content": "结论1"}},
+					{ID: "tk-2", Kind: "block", Type: "takeaway", Props: map[string]any{"content": "结论2"}},
+				},
+			},
+		},
+	}
+	err := validateDocument11(doc)
+	if err == nil {
+		t.Fatalf("expected repeat takeaway in summary panel to be rejected")
+	}
+	if !strings.Contains(err.Error(), "不允许重复出现") {
+		t.Errorf("expected no-repeat error, got: %v", err)
+	}
+}
+
+// ── 3. 写入原子性用例 ──────────────────────────────────────────
+
+func TestInsertNode_NegativePositionRejected(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{ID: "b1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "1"}},
+		},
+	}
+	neg := -1
+	err := insertNode(doc, "", &neg, lpwNode{ID: "b2", Kind: "block", Type: "markdown", Props: map[string]any{}})
+	if err == nil {
+		t.Fatalf("expected negative position to fail")
+	}
+	if !strings.Contains(err.Error(), "不能为负数") {
+		t.Errorf("expected negative position error, got: %v", err)
+	}
+	if len(doc.Content) != 1 {
+		t.Errorf("document should remain untouched on error, len=%d", len(doc.Content))
+	}
+}
+
+func TestRemoveNodes_AllOrNothing(t *testing.T) {
+	t.Parallel()
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: []lpwNode{
+			{ID: "b1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "1"}},
+			{ID: "b2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "2"}},
+		},
+	}
+	// b1 存在，b3 不存在，整批必须失败且不删除 b1
+	err := removeNodes(doc, []string{"b1", "b3"})
+	if err == nil {
+		t.Fatalf("expected removeNodes to fail when some ids do not exist")
+	}
+	if !strings.Contains(err.Error(), "不存在") {
+		t.Errorf("expected missing id error, got: %v", err)
+	}
+	if len(doc.Content) != 2 {
+		t.Errorf("expected document to remain unchanged (len=2), got %d", len(doc.Content))
+	}
+}
+
+func TestReplaceNode_ExceedsMaxNodes(t *testing.T) {
+	t.Parallel()
+	// 构建一个拥有 499 个节点的文档
+	doc := &lpwDocument{
+		Version: "1.1",
+		Content: make([]lpwNode, 499),
+	}
+	for i := 0; i < 499; i++ {
+		doc.Content[i] = lpwNode{
+			ID:    fmt.Sprintf("n-%d", i),
+			Kind:  "block",
+			Type:  "markdown",
+			Props: map[string]any{"content": "t"},
+		}
+	}
+
+	// 构造一个包含 3 个节点的替换子树（替换 1 个节点后总数变为 499 - 1 + 3 = 501 > 500）
+	replacement := lpwNode{
+		ID:   "repl-container",
+		Kind: "container",
+		Type: "section",
+		Props: map[string]any{"variant": "article", "title": "t"},
+		Children: []lpwNode{
+			{ID: "repl-1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "1"}},
+			{ID: "repl-2", Kind: "block", Type: "markdown", Props: map[string]any{"content": "2"}},
+		},
+	}
+
+	err := replaceNode(doc, "n-0", replacement)
+	if err == nil {
+		t.Fatalf("expected replaceNode exceeding 500 nodes to fail, got nil")
+	}
+	if !strings.Contains(err.Error(), "超过上限 500") {
+		t.Errorf("expected error message containing '超过上限 500', got: %v", err)
+	}
+}
+

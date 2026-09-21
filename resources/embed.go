@@ -39,12 +39,12 @@ var WikiFrontendDist embed.FS
 //go:embed all:ai-plugin
 var AIPluginFS embed.FS
 
-//go:embed lpw/schema/v1.json
+//go:embed lpw/schema/v1.1.json
 var lpwSchemaFS embed.FS
 
-// LpwSchemaFiles key 为格式版本号
+// LpwSchemaFiles key 为格式版本号。v1.json 保留在仓库作为历史基线，但不再注册。
 var LpwSchemaFiles = map[string][]byte{
-	"1.0": mustReadFile(lpwSchemaFS, "lpw/schema/v1.json"),
+	"1.1": mustReadFile(lpwSchemaFS, "lpw/schema/v1.1.json"),
 }
 
 func mustReadFile(fs embed.FS, path string) []byte {
