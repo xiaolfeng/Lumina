@@ -124,7 +124,10 @@ func TestLpwCrossChannelSerialization(t *testing.T) {
 
 	// 不变量：任何通道的 begin 与 end 之间不得插入另一通道的操作；
 	// 重入保存必须发生在其所属 lpw 临界区内。
-	type span struct{ owner string; begin, end int }
+	type span struct {
+		owner      string
+		begin, end int
+	}
 	var spans []span
 	reentrantOwners := make(map[int]struct{})
 	var current map[string]*span = map[string]*span{}
