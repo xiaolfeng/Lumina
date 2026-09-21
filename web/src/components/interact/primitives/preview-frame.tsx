@@ -102,10 +102,14 @@ export function PreviewSupplement({ content }: { content: string }) {
         if (detail) {
           // filename 需编码（含 #/? 时原样拼接会 404）；lumina_frame=1 标记为
           // 非顶层文档，后端直出文件内容而不回落 SPA
-          setFilename(detail.filename)
+          const finalFilename =
+            detail.filename || (detail as any).file_name || ''
+          const finalHash =
+            detail.session_hash || (detail as any).sessionHash || ''
+          setFilename(finalFilename)
           setSrc(
-            `/preview/${detail.session_hash}/${encodeURIComponent(
-              detail.filename,
+            `/preview/${finalHash}/${encodeURIComponent(
+              finalFilename,
             )}?lumina_frame=1`,
           )
         } else {

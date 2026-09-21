@@ -66,7 +66,7 @@ export function HistoryCard({ groupedHistory }: HistoryCardProps) {
                     )}
                     <div className="min-w-0 flex-1">
                       <p
-                        className="line-clamp-2 text-xs leading-relaxed text-sea-ink-soft"
+                        className="line-clamp-2 break-words [overflow-wrap:anywhere] text-xs leading-relaxed text-sea-ink-soft"
                         title={item.content}
                       >
                         {plainTextSummary(item.content)}

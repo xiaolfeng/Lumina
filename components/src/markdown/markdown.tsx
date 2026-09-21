@@ -1,9 +1,10 @@
-import type { ComponentPropsWithoutRef } from 'react'
-import { lazy, Suspense } from 'react'
-import type ReactMarkdown from 'react-markdown'
-import { MarkdownLite } from './markdown-lite'
+import type { ComponentPropsWithoutRef } from "react";
+import { lazy, Suspense } from "react";
+import type ReactMarkdown from "react-markdown";
+import { cn } from "../lib/utils";
+import { MarkdownLite } from "./markdown-lite";
 
-const MarkdownMermaid = lazy(() => import('./markdown-mermaid'))
+const MarkdownMermaid = lazy(() => import("./markdown-mermaid"));
 
 /**
  * 统一 Markdown 渲染组件。
@@ -19,27 +20,36 @@ const MarkdownMermaid = lazy(() => import('./markdown-mermaid'))
  *
  * 用法：<Markdown className={proseQuestion}>{content}</Markdown>
  */
-interface MarkdownProps extends Omit<ComponentPropsWithoutRef<typeof ReactMarkdown>, 'children'> {
-  children: string
-  className?: string
+interface MarkdownProps extends Omit<
+  ComponentPropsWithoutRef<typeof ReactMarkdown>,
+  "children"
+> {
+  children: string;
+  className?: string;
 }
 
 export function Markdown({ children, className, ...rest }: MarkdownProps) {
-  const hasMermaid = children.includes('```mermaid')
+  const hasMermaid = children.includes("```mermaid");
 
   if (hasMermaid) {
     return (
-      <div className={className}>
+      <div
+        data-slot="markdown"
+        className={cn("min-w-0 max-w-full break-words", className)}
+      >
         <Suspense fallback={<MarkdownLite {...rest}>{children}</MarkdownLite>}>
           <MarkdownMermaid {...rest}>{children}</MarkdownMermaid>
         </Suspense>
       </div>
-    )
+    );
   }
 
   return (
-    <div className={className}>
+    <div
+      data-slot="markdown"
+      className={cn("min-w-0 max-w-full break-words", className)}
+    >
       <MarkdownLite {...rest}>{children}</MarkdownLite>
     </div>
-  )
+  );
 }

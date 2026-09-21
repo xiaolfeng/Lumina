@@ -34,14 +34,16 @@ const CODE_EXT = new Set([
   'txt',
 ])
 
-export function fileExtension(filename: string): string {
+export function fileExtension(filename?: string | null): string {
+  if (!filename || typeof filename !== 'string') return ''
   const base = filename.split(/[/\\]/).pop() ?? filename
   const dot = base.lastIndexOf('.')
   if (dot <= 0 || dot === base.length - 1) return ''
   return base.slice(dot + 1).toLowerCase()
 }
 
-export function previewKindFromFilename(filename: string): PreviewKind {
+export function previewKindFromFilename(filename?: string | null): PreviewKind {
+  if (!filename) return 'code'
   const ext = fileExtension(filename)
   if (LPW_EXT.has(ext)) return 'lpw'
   if (HTML_EXT.has(ext)) return 'html'
@@ -53,7 +55,8 @@ export function previewKindFromFilename(filename: string): PreviewKind {
 }
 
 /** CodeMirror / 格式化用的语言键 */
-export function previewLanguageFromFilename(filename: string): string {
+export function previewLanguageFromFilename(filename?: string | null): string {
+  if (!filename) return 'text'
   const ext = fileExtension(filename)
   switch (ext) {
     case 'htm':

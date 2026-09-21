@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   computeSessionProgress,
   sessionProgressPercent,
+  sessionProgressCancelledPercent,
 } from './session-progress'
 import type { Question } from './types'
 
@@ -21,7 +22,7 @@ function q(
 }
 
 describe('computeSessionProgress', () => {
-  it('counts answered, pending, and total including skipped/cancelled', () => {
+  it('counts answered, pending, cancelled, and total', () => {
     expect(
       computeSessionProgress([
         q({ id: 'a', status: 'answered' }),
@@ -30,13 +31,14 @@ describe('computeSessionProgress', () => {
         q({ id: 'd', status: 'skipped', answered: false }),
         q({ id: 'e', status: 'cancelled', answered: false }),
       ]),
-    ).toEqual({ total: 5, answered: 2, remaining: 1 })
+    ).toEqual({ total: 5, answered: 2, cancelled: 1, remaining: 1 })
   })
 
   it('returns zeros for an empty list', () => {
     expect(computeSessionProgress([])).toEqual({
       total: 0,
       answered: 0,
+      cancelled: 0,
       remaining: 0,
     })
   })
@@ -45,16 +47,44 @@ describe('computeSessionProgress', () => {
 describe('sessionProgressPercent', () => {
   it('rounds answered over total', () => {
     expect(
-      sessionProgressPercent({ total: 3, answered: 1, remaining: 2 }),
+      sessionProgressPercent({
+        total: 3,
+        answered: 1,
+        cancelled: 0,
+        remaining: 2,
+      }),
     ).toBe(33)
     expect(
-      sessionProgressPercent({ total: 4, answered: 2, remaining: 2 }),
+      sessionProgressPercent({
+        total: 4,
+        answered: 2,
+        cancelled: 1,
+        remaining: 1,
+      }),
     ).toBe(50)
   })
 
   it('is 0 when there are no questions', () => {
     expect(
-      sessionProgressPercent({ total: 0, answered: 0, remaining: 0 }),
+      sessionProgressPercent({
+        total: 0,
+        answered: 0,
+        cancelled: 0,
+        remaining: 0,
+      }),
     ).toBe(0)
+  })
+})
+
+describe('sessionProgressCancelledPercent', () => {
+  it('rounds cancelled over total', () => {
+    expect(
+      sessionProgressCancelledPercent({
+        total: 4,
+        answered: 1,
+        cancelled: 1,
+        remaining: 2,
+      }),
+    ).toBe(25)
   })
 })

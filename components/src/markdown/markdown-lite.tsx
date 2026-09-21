@@ -1,11 +1,12 @@
-import type { ComponentPropsWithoutRef } from 'react'
-import { useEffect, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import remarkMath from 'remark-math'
-import rehypeSlug from 'rehype-slug'
-import { remarkFencedBlocks } from './remark-fenced-blocks'
-import { Callout, Card, Steps, Step } from './fenced-components'
+import type { ComponentPropsWithoutRef } from "react";
+import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeSlug from "rehype-slug";
+import { cn } from "../lib/utils";
+import { remarkFencedBlocks } from "./remark-fenced-blocks";
+import { Callout, Card, Steps, Step } from "./fenced-components";
 
 /**
  * 轻量 Markdown 渲染组件（不含 mermaid）。
@@ -21,46 +22,55 @@ import { Callout, Card, Steps, Step } from './fenced-components'
  *
  * 用法：<MarkdownLite className={proseQuestion}>{content}</MarkdownLite>
  */
-interface MarkdownLiteProps extends Omit<ComponentPropsWithoutRef<typeof ReactMarkdown>, 'children'> {
-  children: string
-  className?: string
+interface MarkdownLiteProps extends Omit<
+  ComponentPropsWithoutRef<typeof ReactMarkdown>,
+  "children"
+> {
+  children: string;
+  className?: string;
 }
 
-export function MarkdownLite({ children, className, components: userComponents, ...rest }: MarkdownLiteProps) {
+export function MarkdownLite({
+  children,
+  className,
+  components: userComponents,
+  ...rest
+}: MarkdownLiteProps) {
   // rehype-slug 静态加载：必须同步可用，否则标题无 id，TOC scrollspy 失效
-  const [rehypePlugins, setRehypePlugins] = useState<any[]>([rehypeSlug])
+  const [rehypePlugins, setRehypePlugins] = useState<any[]>([rehypeSlug]);
 
   useEffect(() => {
-    let cancelled = false
-    Promise.all([
-      import('rehype-highlight'),
-      import('rehype-katex'),
-    ]).then(([hl, katex]) => {
-      if (!cancelled) {
-        setRehypePlugins([rehypeSlug, hl.default, katex.default])
-      }
-    })
+    let cancelled = false;
+    Promise.all([import("rehype-highlight"), import("rehype-katex")]).then(
+      ([hl, katex]) => {
+        if (!cancelled) {
+          setRehypePlugins([rehypeSlug, hl.default, katex.default]);
+        }
+      },
+    );
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   return (
-    <div className={className}>
+    <div className={cn("min-w-0 max-w-full break-words", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath, remarkFencedBlocks]}
         rehypePlugins={rehypePlugins as never}
-        components={{
-          callout: Callout,
-          card: Card,
-          steps: Steps,
-          step: Step,
-          ...(userComponents || {}),
-        } as never}
+        components={
+          {
+            callout: Callout,
+            card: Card,
+            steps: Steps,
+            step: Step,
+            ...(userComponents || {}),
+          } as never
+        }
         {...rest}
       >
         {children}
       </ReactMarkdown>
     </div>
-  )
+  );
 }

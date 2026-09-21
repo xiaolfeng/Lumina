@@ -1,14 +1,16 @@
-import * as React from "react"
-import { ScrollArea as ScrollAreaPrimitive } from "radix-ui"
+import * as React from "react";
+import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 
-import { cn } from "../lib/utils.ts"
+import { cn } from "../lib/utils.ts";
 
 function ScrollArea({
   className,
   children,
   hideScrollbar,
   ...props
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & { hideScrollbar?: boolean }) {
+}: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
+  hideScrollbar?: boolean;
+}) {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
@@ -17,7 +19,7 @@ function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 [&>div]:!block [&>div]:!min-w-0 [&>div]:!w-full"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
@@ -26,10 +28,12 @@ function ScrollArea({
         Radix Viewport 的 overflowY 由 scrollbarYEnabled 控制：挂载 = scroll，卸载 = hidden。
         移除 ScrollBar DOM 会关闭原生滚动。
       */}
-      <ScrollBar className={hideScrollbar ? "opacity-0 pointer-events-none" : undefined} />
+      <ScrollBar
+        className={hideScrollbar ? "opacity-0 pointer-events-none" : undefined}
+      />
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
-  )
+  );
 }
 
 function ScrollBar({
@@ -47,7 +51,7 @@ function ScrollBar({
           "h-full w-2.5 border-l border-l-transparent",
         orientation === "horizontal" &&
           "h-2.5 flex-col border-t border-t-transparent",
-        className
+        className,
       )}
       {...props}
     >
@@ -56,7 +60,7 @@ function ScrollBar({
         className="relative flex-1 rounded-full bg-border"
       />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>
-  )
+  );
 }
 
-export { ScrollArea, ScrollBar }
+export { ScrollArea, ScrollBar };

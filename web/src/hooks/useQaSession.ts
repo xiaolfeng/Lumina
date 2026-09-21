@@ -46,6 +46,26 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
   // questions 的同步镜像 —— WS handler 里读取最新状态判断目标问题是否 pending，
   // 避免依赖 setState updater 的异步时序（updater 不保证在 setState 返回前同步执行）。
   const questionsRef = useRef<Question[]>([])
+  const prevActivePendingIdRef = useRef<string | undefined>(undefined)
+
+  const activePendingQuestion = questions.find((q) => q.status === 'pending')
+  const activePendingId = activePendingQuestion?.id
+
+  // 活跃 pending 问题切换时（如当前题作答完成流转至下一题，或首题推送），
+  // 自动激活该题目已挂载的问题级 supplement，防止刷新前右侧面板空白或丢失。
+  useEffect(() => {
+    if (prevActivePendingIdRef.current !== activePendingId) {
+      prevActivePendingIdRef.current = activePendingId
+      if (activePendingQuestion) {
+        const questionSupp = (activePendingQuestion.supplements ?? []).find(
+          (s) => s.target_type === 'question',
+        )
+        setActiveSupplement(questionSupp ?? null)
+      } else {
+        setActiveSupplement(null)
+      }
+    }
+  }, [activePendingId, activePendingQuestion])
 
   const updateQuestions = useCallback(
     (updater: (prev: Question[]) => Question[]) => {
@@ -63,6 +83,7 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
   //  WebSocket 重连后由后端重新推送，不会丢失）
   useEffect(() => {
     questionsRef.current = []
+    prevActivePendingIdRef.current = undefined
     setQuestions([])
     setActiveSupplement(null)
     setIsSupplementLoading(false)
@@ -171,16 +192,18 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
         prev.map((q) => {
           const belongsToThis =
             (supplement.target_type === 'question' &&
-              q.id === supplement.target_id) ||
+              String(q.id) === String(supplement.target_id)) ||
             (supplement.target_type === 'option' &&
-              (q.options ?? []).some((o) => o.id === supplement.target_id))
+              (q.options ?? []).some(
+                (o) => String(o.id) === String(supplement.target_id),
+              ))
           if (!belongsToThis) return q
           // 覆写：按 target_type + target_id 替换同目标的旧 supplement（后端 CreateOrUpdate 会生成新 ID）
           const filtered = (q.supplements ?? []).filter(
             (s) =>
               !(
                 s.target_type === supplement.target_type &&
-                s.target_id === supplement.target_id
+                String(s.target_id) === String(supplement.target_id)
               ),
           )
           return {
@@ -189,13 +212,21 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
           }
         }),
       )
-      // 仅当存在 pending 问题（用户正在回答）时才打开详情面板。
-      // 重连时后端推送的历史 supplement（目标问题已 answered/skipped）只作数据挂载，
-      // 不激活面板，避免无 pending 问题时详情列空白占位、第一列无法居中。
-      const hasPending = questionsRef.current.some(
+      // 仅当推送的 supplement 属于当前正在作答的活跃 pending 问题时才立即激活面板。
+      // 后续题目的 supplement 仅挂载到数据层，待用户作答流转到该题时自动激活，避免打断当前题目预览。
+      const activePending = questionsRef.current.find(
         (q) => q.status === 'pending',
       )
-      if (hasPending) {
+      const belongsToActive =
+        activePending &&
+        ((supplement.target_type === 'question' &&
+          String(activePending.id) === String(supplement.target_id)) ||
+          (supplement.target_type === 'option' &&
+            (activePending.options ?? []).some(
+              (o) => String(o.id) === String(supplement.target_id),
+            )))
+
+      if (belongsToActive) {
         setActiveSupplement(supplement)
       }
       stopSupplementLoading()
@@ -271,9 +302,7 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
             : q,
         )
       })
-      // 若当前激活问题被取消，清空详情面板
-      setActiveSupplement(null)
-      // 提示用户
+      // 提示用户（详情面板的清空或流转由 activePendingId effect 自动处理）
       toast.info(cancelAll ? '所有待回答问题已被取消' : '问题已被取消', {
         description: 'AI Agent 已取消该问题',
         duration: 4000,
@@ -319,8 +348,6 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
             : q,
         ),
       )
-      // Clear active supplement panel after submission
-      setActiveSupplement(null)
     },
     [ws, updateQuestions],
   )
@@ -333,8 +360,6 @@ export function useQaSession({ sessionHash, onReject }: UseQaSessionOptions) {
           q.id === questionId ? { ...q, status: 'skipped' as const } : q,
         ),
       )
-      // 跳过后清除详情面板，避免残留上一个问题的补充内容
-      setActiveSupplement(null)
     },
     [ws, updateQuestions],
   )
