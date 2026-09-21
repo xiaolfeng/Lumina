@@ -275,6 +275,30 @@ var previewLpwToolDefs = []previewLpwToolDef{
 		outputSchema: previewLpwOutlineOutputSchema(),
 		annotations:  previewToolAnnotations(true, false, false),
 	},
+	{
+		name:  "preview_lpw_schema",
+		title: "查询 LPW 节点规范与组件契约",
+		description: `用途：按高信噪比纯文本大纲查询 LPW 1.1 的完整节点规范、容器变体与原子块字段约束。剔除了繁琐的 JSON Schema 标点与语法噪音，极度节省 Token。
+
+何时调用：外部 Agent 在编写或编辑 LPW 节点前，确认可用类型、变体契约、必填属性与取值范围时调用。
+
+参数说明：
+- 不提供参数：返回三层节点体系完整速查大纲（布局模式、容器变体与 26 种原子块列表）。
+- type：指定查询具体类型（如 split、bento、section、panel、chart、diff、table 等），返回精准属性定义与示例。
+- kind：按大类过滤（layout、container、block）。
+
+副作用：只读无副作用。`,
+		inputSchema: map[string]any{
+			"type":                 "object",
+			"additionalProperties": false,
+			"properties": map[string]any{
+				"type": map[string]any{"type": "string", "description": "可选。指定组件类型，如 chart、diff、bento、section 等。"},
+				"kind": map[string]any{"type": "string", "enum": []string{"layout", "container", "block"}, "description": "可选。按节点大类过滤。"},
+			},
+		},
+		outputSchema: previewLpwSchemaOutputSchema(),
+		annotations:  previewToolAnnotations(true, false, false),
+	},
 }
 
 func previewLpwWriteOutputSchema() map[string]any {
@@ -325,6 +349,15 @@ func previewLpwOutlineOutputSchema() map[string]any {
 			},
 		}, "version", "node_count", "total_size", "revision", "completeness_warnings", "items"),
 	}, "status", "outline")
+}
+
+func previewLpwSchemaOutputSchema() map[string]any {
+	return objectSchema(map[string]any{
+		"status":  map[string]any{"type": "string", "const": "success"},
+		"message": map[string]any{"type": "string"},
+		"format":  map[string]any{"type": "string", "const": "text"},
+		"spec":    map[string]any{"type": "string", "description": "紧凑层级纯文本规范。"},
+	}, "status", "message", "format", "spec")
 }
 
 // RegisterPreviewLpwTools 向 MCP Server 注册 7 个 LPW 节点级增量写入工具

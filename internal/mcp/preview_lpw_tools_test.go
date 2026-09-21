@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/google/jsonschema-go/jsonschema"
@@ -18,10 +19,11 @@ func TestPreviewLpwToolDefinitions(t *testing.T) {
 		"preview_lpw_node_sort":   true,
 		"preview_lpw_meta_set":    true,
 		"preview_lpw_outline":     true,
+		"preview_lpw_schema":      true,
 	}
 
-	if len(previewLpwToolDefs) != 7 {
-		t.Fatalf("expected 7 preview lpw tools, got %d", len(previewLpwToolDefs))
+	if len(previewLpwToolDefs) != 8 {
+		t.Fatalf("expected 8 preview lpw tools, got %d", len(previewLpwToolDefs))
 	}
 
 	for _, def := range previewLpwToolDefs {
@@ -188,5 +190,43 @@ func TestPreviewLpwNodeEdit_UnmarshalErrors(t *testing.T) {
 	}
 	if !res2.IsError {
 		t.Errorf("expected error for invalid node type")
+	}
+}
+
+func TestPreviewLpwSchemaTextOutput(t *testing.T) {
+	t.Parallel()
+
+	// 1. 全局大纲必须包含三层体系，且结构清晰
+	fullSpec := GetLpwTextSpec("", "")
+	if !strings.Contains(fullSpec, "Layout 布局体系") || !strings.Contains(fullSpec, "Container 受控容器体系") || !strings.Contains(fullSpec, "Block 原子内容组件") {
+		t.Fatalf("fullSpec missing three tier headers")
+	}
+	if !strings.Contains(fullSpec, "chart:") || !strings.Contains(fullSpec, "diff:") || !strings.Contains(fullSpec, "annotation:") {
+		t.Fatalf("fullSpec missing essential components")
+	}
+
+	// 2. 指定单个类型输出精准参数
+	chartSpec := GetLpwTextSpec("", "chart")
+	if !strings.Contains(chartSpec, "[Block / type: chart]") || !strings.Contains(chartSpec, "chartType") {
+		t.Fatalf("chartSpec missing details, got: %s", chartSpec)
+	}
+
+	bentoSpec := GetLpwTextSpec("", "bento")
+	if !strings.Contains(bentoSpec, "[Layout / pattern: bento]") || !strings.Contains(bentoSpec, "placements") {
+		t.Fatalf("bentoSpec missing details, got: %s", bentoSpec)
+	}
+
+	// 3. MCP Handler 调用验证
+	handler := previewLpwToolHandlers["preview_lpw_schema"]
+	reqBytes, _ := json.Marshal(map[string]any{"type": "section"})
+	res, err := handler(t.Context(), &mcp.CallToolRequest{Params: &mcp.CallToolParamsRaw{Arguments: reqBytes}})
+	if err != nil {
+		t.Fatalf("handler err: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("unexpected error result")
+	}
+	if len(res.Content) == 0 {
+		t.Fatalf("expected text content in response")
 	}
 }

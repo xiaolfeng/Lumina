@@ -58,6 +58,29 @@ func InitMCPServer(ctx context.Context) http.Handler {
 	// 注册 Pages 模块工具
 	RegisterPagesTools(server)
 
+	// 注册 LPW 规范与契约文本 Resource，供外部 MCP 客户端随时通过 resources/read 读取
+	server.AddResource(
+		&mcp.Resource{
+			URI:         "lumina://preview/lpw-schema",
+			Name:        "Lumina LPW 1.1 Specification",
+			Title:       "LPW 1.1 纯文本层级规范速查",
+			Description: "LPW 1.1 节点体系、受控容器变体与原子组件的高信噪比层级文本速查大纲",
+			MIMEType:    "text/plain; charset=utf-8",
+		},
+		func(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+			specText := GetLpwTextSpec("", "")
+			return &mcp.ReadResourceResult{
+				Contents: []*mcp.ResourceContents{
+					{
+						URI:      req.Params.URI,
+						MIMEType: "text/plain; charset=utf-8",
+						Text:     specText,
+					},
+				},
+			}, nil
+		},
+	)
+
 	log := xLog.WithName(xLog.NamedINIT)
 	log.Info(ctx, "MCP Server initialized with Workspace, QA, Project, Pin, RepoWiki, Preview and Pages tools registered")
 

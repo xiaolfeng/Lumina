@@ -15,7 +15,7 @@
 - **Pin**：跨项目依赖约束传递，点对点定向推送与 FIFO 队列消费 — ✅ 已实现
 - **Preview / Pages**：前端可视化预览工作台与项目级不可变即时页面（路径式寻址、行级精准编辑、LPW 文档渲染引擎、快照晋升、可选密码门）— ✅ 已实现
 
-后端通过 Streamable MCP 协议 + HTTP REST API + WebSocket 三通道对外暴露能力；MCP 端点认证为 OAuth 2.1（`lum_at_`）优先、API Key 回退，注册了八套共 39 个业务工具，并提供 AI 插件动态打包分发。前端通过 REST API + WebSocket 与后端通信。控制台前端（`web/`）与 Wiki Reader 前端（`web-wiki/`）构建产物分别通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。两前端通过 `@lumina/components` workspace 包共享 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体和微明主题 CSS。项目采用 pnpm monorepo 管理双前端与共享组件包，并提供 Dockerfile + docker-compose 及 GitHub Actions 发布流水线支持容器化部署。数据库与缓存初始化由 `main.go` 的 `xOption.WithDatabase / WithCache` 声明式装配（bamboo-base-go v1.2.3）。
+后端通过 Streamable MCP 协议 + HTTP REST API + WebSocket 三通道对外暴露能力；MCP 端点认证为 OAuth 2.1（`lum_at_`）优先、API Key 回退，注册了八套共 40 个业务工具，并提供 AI 插件动态打包分发。前端通过 REST API + WebSocket 与后端通信。控制台前端（`web/`）与 Wiki Reader 前端（`web-wiki/`）构建产物分别通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。两前端通过 `@lumina/components` workspace 包共享 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体和微明主题 CSS。项目采用 pnpm monorepo 管理双前端与共享组件包，并提供 Dockerfile + docker-compose 及 GitHub Actions 发布流水线支持容器化部署。数据库与缓存初始化由 `main.go` 的 `xOption.WithDatabase / WithCache` 声明式装配（bamboo-base-go v1.2.3）。
 
 > 工程提案与架构决策按生命周期登记在 `docs/README.md`；当前架构地图见 `ARCHITECTURE.md`。
 
@@ -599,7 +599,7 @@ pnpm test         # 运行 Vitest 测试（markdown/remark-fenced-blocks）
 - Webhook 模块已实现（Git Push 事件接收 + HMAC 校验 + RepoWiki 触发 + 事件历史查询）。
 - 系统设置已实现（站点/安全/Q&A/RepoWiki/Preview 分组配置读写 + 前端多标签页设置页）。
 - 安全中间件已实现（CORS 白名单 + 安全响应头 + WebAuthn Origin 解析 + Pages 密码门 + 沙盒子资源隔离）。
-- MCP Server 已实现，注册了 Workspace（2 只读工具）、QA（10 工具）、Project（3 工具）、Pin（5 工具）、RepoWiki（2 只读工具）、Preview（7 基础工具）、Preview LPW（7 节点语义工具族）、Pages（3 工具）八套工具共 39 个；认证为 OAuth 2.1 优先、API Key 回退。
+- MCP Server 已实现，注册了 Workspace（2 只读工具）、QA（10 工具）、Project（3 工具）、Pin（5 工具）、RepoWiki（2 只读工具）、Preview（7 基础工具）、Preview LPW（8 节点语义工具族）、Pages（3 工具）八套工具共 40 个；认证为 OAuth 2.1 优先、API Key 回退。
 - MCP OAuth 2.1 已实现（RFC 8414 / 9728 / 7591 / 8707，PKCE S256，consent 页 `/oauth`）。
 - AI 插件动态分发已实现（marketplace.json、ZCode 专用清单、lumina.zip、`.well-known/skills`）。
 - WebSocket Hub 已实现，支持 sessionID → deviceID 二级索引，连接 `Kind` 区分 qa/preview，心跳检测，优雅关闭，断线重连和会话恢复。

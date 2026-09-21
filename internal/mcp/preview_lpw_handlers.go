@@ -27,6 +27,7 @@ var previewLpwToolHandlers = map[string]mcp.ToolHandler{
 	"preview_lpw_node_sort":   handlePreviewLpwNodeSort,
 	"preview_lpw_meta_set":    handlePreviewLpwMetaSet,
 	"preview_lpw_outline":     handlePreviewLpwOutline,
+	"preview_lpw_schema":      handlePreviewLpwSchema,
 }
 
 func parseLpwSessionAndFilename(args map[string]any) (sessionID xSnowflake.SnowflakeID, filename string, revision string, errResult *mcp.CallToolResult) {
@@ -410,4 +411,32 @@ func handlePreviewLpwOutline(ctx context.Context, req *mcp.CallToolRequest) (*mc
 	}
 
 	return previewStructuredResult(resultData), nil
+}
+
+func handlePreviewLpwSchema(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := parseArgs(req.Params.Arguments)
+	typeFilter, _ := args["type"].(string)
+	kindFilter, _ := args["kind"].(string)
+
+	specText := GetLpwTextSpec(kindFilter, typeFilter)
+
+	msg := "已获取 LPW 1.1 节点规范与组件契约大纲"
+	if typeFilter != "" {
+		msg = fmt.Sprintf("已获取 [%s] 节点规范与参数契约", typeFilter)
+	}
+
+	resultData := map[string]any{
+		"status":  "success",
+		"message": msg,
+		"format":  "text",
+		"spec":    specText,
+	}
+
+	res := previewStructuredResult(resultData)
+	res.Content = append([]mcp.Content{
+		&mcp.TextContent{
+			Text: specText,
+		},
+	}, res.Content...)
+	return res, nil
 }
