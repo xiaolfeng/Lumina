@@ -1,4 +1,4 @@
-<!-- deep-init:synced@d1ef58c -->
+<!-- deep-init:synced@fa47a98 -->
 
 # components 知识库
 
@@ -23,7 +23,7 @@ components/
     │   ├── markdown-lite.tsx       # 轻量渲染
     │   ├── markdown-mermaid.tsx    # Mermaid 初始化
     │   ├── remark-fenced-blocks.ts # :::callout/card/steps 解析
-    │   ├── fenced-components.tsx   # fenced 块 React 组件
+    │   ├── fenced-components.tsx   # fenced 块 React 组件（含协议白名单防 XSS）
     │   ├── table-of-contents.tsx   # TOC 提取与渲染
     │   ├── prose.ts                # proseQuestion / proseHint / proseArticle
     │   └── index.ts
@@ -54,7 +54,7 @@ components/
 - **包导出走 `exports`**：消费方按 `@lumina/components/ui/button`、`@lumina/components/markdown`、`@lumina/components/motion`、`@lumina/components/theme.css` 导入，避免从 `src/` 相对路径穿透。
 - **shadcn 安装目标是本包**：`components.json` 指向 `src/ui`，CLI 加组件不会落到 `web/src`。
 - **`proseArticle` 是 Wiki 正文的护栏**：它把 `<pre>` 设为白底墨字；绕过它直接用 `Markdown` 会让代码块回到黑底。
-- **fenced 块不依赖 rehype-raw**：`:::callout` 等由 remark 插件转成组件，这样 Markdown 可以保持默认不渲染 raw HTML。
+- **fenced 块不依赖 rehype-raw**：`:::callout` 等由 remark 插件转成组件，保持默认不渲染 raw HTML；Card 等链接采用严格协议白名单（http/https/mailto/相对路径）并拦截控制字符防范 XSS。
 
 ## 反模式
 

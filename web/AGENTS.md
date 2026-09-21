@@ -1,4 +1,4 @@
-<!-- deep-init:synced@d1ef58c -->
+<!-- deep-init:synced@fa47a98 -->
 
 # WEB 前端知识库
 
@@ -40,6 +40,7 @@ web/
     │   │   ├── dashboard.tsx   # 仪表盘（KPI 分栏 + 功能模块 bento grid + 最近预览）
     │   │   ├── connect.tsx     # 接入指南（插件安装 → 手动 MCP → 技能安装 → 工具速览）
     │   │   ├── apikey.tsx      # API Key 管理
+    │   │   ├── workspace.tsx   # 工作空间管理（空间切换、创建、编辑与图标配置）
     │   │   ├── project.tsx     # 项目管理（含项目列表 + 跳转到子页面）
     │   │   ├── project/        # 项目子路由
     │   │   │   ├── index.tsx            # 项目列表页
@@ -47,7 +48,7 @@ web/
     │   │   │       └── repowiki/        # 项目级 RepoWiki 配置
     │   │   │           ├── index.tsx   # RepoWiki 配置 + 版本列表
     │   │   │           └── create.tsx   # 新建 RepoWiki 配置
-    │   │   ├── pin.tsx         # Pin 约束管理
+    │   │   ├── pin.tsx         # Pin 约束管理（列表 + 推送 + 消费）
     │   │   ├── qa.tsx          # Q&A 会话管理（状态筛选 + 分页列表 + 删除）
     │   │   ├── qa/             # Q&A 子路由
     │   │   │   └── $sessionId.tsx  # Q&A 会话详情（问题列表）
@@ -56,7 +57,7 @@ web/
     │   │   ├── pages/          # Pages 管理端
     │   │   │   └── index.tsx   # 已发布页面列表 + 访问策略（密码只在此设置）
     │   │   ├── ssh.tsx         # SSH Key 管理
-    │   │   ├── settings.tsx    # 系统设置（站点/安全/Q&A/RepoWiki 多标签页）
+    │   │   ├── settings.tsx    # 系统设置（站点/安全/Q&A/RepoWiki/Preview 多标签页）
     │   │   └── profile.tsx     # 个人资料（资料/密码/生物认证三标签页）
     │   ├── interact.tsx        # Interact 交互布局（品牌栏 + 三栏主体）
     │   │   └── interact/
@@ -66,15 +67,26 @@ web/
     │   ├── preview/
     │   │   ├── index.tsx       # 旧 Query 深链重定向到 /preview/:hash/:file
     │   │   └── $sessionHash/
+    │   │       ├── index.tsx   # 会话默认重定向
     │   │       └── $.tsx       # 路径式工作台（视口/源码/晋升）
     │   ├── pages.tsx           # Pages 展示态布局
     │   └── pages/
+    │       ├── $projectName/$slug.tsx     # Pages 重定向到根入口
     │       └── $projectName/$slug/$.tsx  # 沉浸展示 + 密码门 + 可拖拽胶囊
     ├── components/             # 组件
     │   ├── Navbar.tsx          # 公开页面导航栏
     │   ├── Footer.tsx          # 公开页面页脚
-    │   ├── app-sidebar.tsx     # 控制台侧边栏（导航 + 底部用户弹出菜单：资料/退出）
+    │   ├── app-sidebar.tsx     # 控制台侧边栏（工作空间选择器 + 导航 + 用户菜单）
     │   ├── console-breadcrumb.tsx # 控制台面包屑
+    │   ├── workspace-icon.tsx  # 工作空间图标渲染
+    │   ├── workspace-icon-picker.tsx # 工作空间图标选择器
+    │   ├── workspace-icon-utils.ts   # 图标元数据与映射工具
+    │   ├── workspace/          # 工作空间业务组件（columns/create/edit-dialog）
+    │   ├── pages/              # Pages 展示态业务组件
+    │   │   ├── brand-header.tsx    # 品牌顶栏
+    │   │   ├── password-gate.tsx   # 密码门认证表单
+    │   │   ├── showcase-page.tsx   # 页面展示承载器
+    │   │   └── showcase-shell.tsx  # 沉浸壳（含全屏、拖拽胶囊与元信息）
     │   ├── mcp/                # 接入指南业务组件
     │   │   ├── channel-band.tsx         # 实心信道编号轨 + 斑马填充
     │   │   ├── copy-block.tsx           # 墨井代码块（一键复制）
@@ -84,7 +96,7 @@ web/
     │   │   ├── plugin-install-panel.tsx # Claude / Codex / 市场 ZIP 安装命令
     │   │   ├── skills-install-panel.tsx # npx skills add 安装命令
     │   │   ├── manual-connect-panel.tsx # 手动 MCP JSON/TOML 配置
-    │   │   └── tool-catalog.tsx         # 25 工具速览 + 协作顺序
+    │   │   └── tool-catalog.tsx         # 工具速览 + 协作顺序
     │   ├── data-table.tsx      # 通用数据表格组件
     │   ├── data-table-pagination.tsx # 通用分页组件
     │   ├── confirm-delete-dialog.tsx # 通用删除确认对话框（跨模块复用）
@@ -96,10 +108,7 @@ web/
     │   │   └── tech-section.tsx     # 首页技术栈区域
     │   ├── apikey/             # API Key 业务组件（columns/create/edit/reset-dialog）
     │   ├── project/            # 项目业务组件（columns/create/edit）
-    │   ├── pin/                # Pin 约束业务组件
-    │   │   ├── columns.tsx     # 表格列定义
-    │   │   ├── create-dialog.tsx # 创建对话框
-    │   │   └── edit-dialog.tsx   # 编辑对话框
+    │   ├── pin/                # Pin 约束业务组件（create/edit-dialog）
     │   ├── profile/            # 个人资料业务组件
     │   │   ├── profile-tab.tsx     # 资料编辑标签页
     │   │   ├── password-tab.tsx    # 密码修改标签页
@@ -110,10 +119,26 @@ web/
     │   │   └── session-detail-drawer.tsx # 会话详情抽屉
     │   ├── preview/            # Preview 业务组件
     │   │   ├── brand-header.tsx          # 对外预览品牌栏（标题右置）
-    │   │   ├── file-viewer.tsx           # 按 kind 分发：html/svg iframe、markdown、code
+    │   │   ├── file-viewer.tsx           # 按 kind 分发：html/svg iframe、markdown、code、lpw
     │   │   ├── markdown-view.tsx         # Markdown 预览（共享 Markdown + proseArticle）
     │   │   ├── code-view.tsx             # 代码高亮预览（CodeMirror）
-    │   │   └── session-detail-drawer.tsx # 会话详情抽屉（WebSocket 实时 + 文件删除）
+    │   │   ├── workbench-page.tsx        # 路径式工作台主体
+    │   │   ├── workbench-canvas.tsx      # 工作台画布与视口控制
+    │   │   ├── promote-dialog.tsx        # 晋升快照至 Pages 对话框
+    │   │   ├── session-detail-drawer.tsx # 会话详情抽屉（WebSocket 实时 + 文件删除）
+    │   │   └── lpw/                      # LPW 文档渲染引擎
+    │   │       ├── document-viewer.tsx   # LPW 文档渲染主入口（React 直渲优先）
+    │   │       ├── lpw-parser.ts         # LPW JSON/YAML 解析与校验
+    │   │       ├── lpw-registry.ts       # 块组件注册表
+    │   │       ├── lpw-block-renderer.tsx# 块级渲染调度器
+    │   │       ├── render-children.tsx   # 子节点渲染辅助
+    │   │       ├── types.ts              # LPW 块与容器类型定义
+    │   │       ├── viewers.tsx           # 视图模式调度
+    │   │       ├── echarts-lazy.ts       # ECharts 按需懒加载
+    │   │       ├── echarts-module.ts     # ECharts 运行时模块配置
+    │   │       ├── fallback-block.tsx    # 降级容错块
+    │   │       ├── blocks/               # 25+ 块组件（chart/scorecard/diff/steps/quadrant/metrics 等）
+    │   │       └── containers/           # 4 种容器组件（columns/details/section/tabs）
     │   ├── llm/                # LLM 配置业务组件
     │   │   ├── provider-columns.tsx       # Provider 表格列定义
     │   │   ├── provider-create-dialog.tsx # Provider 创建对话框
@@ -141,7 +166,8 @@ web/
     │   │   ├── site-settings-form.tsx     # 站点设置表单
     │   │   ├── security-settings-form.tsx # 安全设置表单
     │   │   ├── qa-settings-form.tsx       # Q&A 设置表单
-    │   │   └── repowiki-settings-form.tsx # RepoWiki 设置表单
+    │   │   ├── repowiki-settings-form.tsx # RepoWiki 设置表单
+    │   │   └── preview-settings-form.tsx  # Preview 与 Pages 设置表单
     │   └── interact/           # Interact 交互组件
     │       ├── types.ts        # 类型定义（Question/Session/SupplementItem）
     │       ├── question-shell.tsx    # 题型统一外壳（布局 + 动画）
@@ -184,14 +210,17 @@ web/
     │           └── state-views.tsx   # 状态视图（空/加载/错误）
     ├── hooks/                  # React Hooks
     │   ├── useAuth.ts          # 认证 Hook（登录/登出/刷新/初始化/自动续期/WebAuthn）
+    │   ├── useWorkspace.ts     # 工作空间数据 Hook（CRUD + 切换 + 列表）
+    │   ├── useCurrentWorkspace.ts # 当前激活空间状态 Hook（持久化 + 回退默认空间）
     │   ├── useApikey.ts        # API Key 数据 Hook（CRUD + 分页）
-    │   ├── useProject.ts       # 项目数据 Hook（CRUD + 分页）
-    │   ├── usePin.ts           # Pin 数据 Hook（CRUD + 分页）
+    │   ├── useProject.ts       # 项目数据 Hook（CRUD + 分页 + 空间过滤）
+    │   ├── usePin.ts           # Pin 数据 Hook（CRUD + 分页 + 空间支持）
     │   ├── useProfile.ts       # 用户资料 Hook（资料更新 + 密码修改）
     │   ├── useBiometric.ts     # WebAuthn 生物认证 Hook（注册/登录/凭证管理）
     │   ├── useQaAdmin.ts       # Q&A 管理 Hook（会话列表/详情/删除/配置）
     │   ├── useQaSession.ts     # Q&A 会话 Hook（问题状态管理 + 回答提交 + 文件上传）
     │   ├── useQaWebSocket.ts   # Q&A WebSocket Hook（连接管理 + 消息回调 + 重连恢复）
+    │   ├── usePages.ts         # Pages 页面 Hook（列表/详情/版本/晋升/密码门/Fork）
     │   ├── useLlmConfig.ts     # LLM 配置 Hook（Provider/Model CRUD + Agent 模型分配）
     │   ├── useSshKey.ts        # SSH Key 数据 Hook（CRUD + 分页）
     │   ├── useRepoWiki.ts      # RepoWiki Hook（配置/版本/分析触发/Webhook 事件）
@@ -207,9 +236,9 @@ web/
         ├── utils.ts            # cn() 工具（clsx + tailwind-merge）
         ├── format-answer.ts    # 题型 answer 格式化（各题型 → 可读字符串，跨 QA/interact 复用）
         ├── format-date.ts      # 日期格式化
-        ├── mcp-connect.ts      # MCP 端点拼装、客户端配置模板、25 工具目录（单一数据源）
+        ├── mcp-connect.ts      # MCP 端点拼装、客户端配置模板、工具目录（单一数据源）
         ├── plugin-connect.ts   # 插件/技能安装命令（路径必须与后端 ai_plugin 常量一致）
-        ├── preview-file.ts     # 预览文件 kind 推断（html/markdown/code/svg）
+        ├── preview-file.ts     # 预览文件 kind 推断（html/markdown/code/svg/lpw）
         ├── format-preview-source.ts # 预览源码拉取与展示辅助
         ├── auth/
         │   └── cookie-utils.ts # Cookie 操作工具（AT/RT/expires_at 读写）
@@ -221,9 +250,11 @@ web/
         │   ├── user.ts         # 用户 API（资料/密码）
         │   ├── biometric.ts    # WebAuthn API（注册/登录/凭证 CRUD）
         │   ├── apikey.ts       # API Key API
-        │   ├── project.ts      # 项目 API
+        │   ├── workspace.ts    # 工作空间 API（CRUD + 默认空间）
+        │   ├── project.ts      # 项目 API（带 workspace 归属）
         │   ├── pin.ts          # Pin API（CRUD + 分页）
         │   ├── qa-admin.ts     # Q&A 管理 API（会话/问题/配置）
+        │   ├── pages.ts        # Pages API（列表/版本/Fork/密码验证）
         │   ├── llm.ts          # LLM API（Provider/Model CRUD + Agent 模型分配）
         │   ├── ssh.ts          # SSH Key API（CRUD + 分页 + 公钥导出）
         │   ├── repowiki.ts     # RepoWiki API（配置/版本/分析触发）
@@ -238,6 +269,7 @@ web/
             │   ├── user.ts     # 用户请求（更新资料/修改密码）
             │   ├── biometric.ts # WebAuthn 请求（注册/登录/更新凭证）
             │   ├── apikey.ts
+            │   ├── workspace.ts # 工作空间请求（创建/更新）
             │   ├── project.ts
             │   ├── pin.ts      # Pin 请求（创建/更新/筛选）
             │   ├── qa-admin.ts # Q&A 请求参数
@@ -251,9 +283,11 @@ web/
                 ├── user.ts     # 用户响应（资料/密码状态）
                 ├── biometric.ts # WebAuthn 响应（凭证列表/注册选项）
                 ├── apikey.ts
+                ├── workspace.ts # 工作空间响应
                 ├── project.ts
                 ├── pin.ts      # Pin 响应（Pin 详情/分页）
                 ├── qa-admin.ts # Q&A 响应类型
+                ├── pages.ts    # Pages 响应类型（页面/版本列表/元信息）
                 ├── llm.ts      # LLM 响应（Provider/Model 详情/分页）
                 ├── ssh.ts      # SSH Key 响应（详情/分页/公钥）
                 ├── repowiki.ts # RepoWiki 响应（配置/版本/状态）
@@ -267,23 +301,25 @@ web/
 |---|---|---|
 | 新增页面 | `src/routes/` | 文件路径即路由路径；布局路由以 `_` 前缀 |
 | 新增控制台子页面 | `src/routes/console/` | 在 `console.tsx` 布局下添加，自动继承 Sidebar + Breadcrumb |
+| 新增工作空间管理 | `src/routes/console/workspace.tsx` | 工作空间增删改查、默认空间保障与图标配置 |
+| 新增 Pages 管理页 | `src/routes/console/pages/` | 已发布页面列表、版本查询、访问策略与密码门设置 |
+| 新增 Pages 展示页 | `src/routes/pages/` | 路径式寻址 `/pages/:projectName/:slug`，密码门认证、沉浸壳展示 |
+| 新增 Preview 工作台 | `src/routes/preview/$sessionHash/$.tsx` | 路径式寻址 `/preview/:hash/:file`，视口缩放、源码查看、晋升对话框 |
+| 新增 LPW 文档渲染 | `src/components/preview/lpw/` | 25+ 块组件与 4 种容器，支持 React 直渲与 ECharts 懒加载 |
 | 新增 MCP 接入说明 | `src/routes/console/connect.tsx` | 四级信道：插件安装 / 手动 MCP / 技能安装 / 工具速览；模板在 `mcp-connect.ts` + `plugin-connect.ts` |
 | 新增 MCP 接入组件 | `src/components/mcp/` | 复制块/端点卡/插件安装/技能安装/手动配置/工具目录；令牌弹窗复用 `created-key-panel` |
 | 新增 OAuth 同意页 | `src/routes/_public/oauth.tsx` | 公开布局；`?authorize_id=` 对应后端授权请求缓存；未登录先走登录再裁决 |
 | 新增项目级子页面 | `src/routes/console/project/$projectId/` | 按模块划分子目录（如 `repowiki/`） |
 | 新增 Interact 子页面 | `src/routes/interact/` | 在 `interact.tsx` 布局下添加 |
-| 新增对外预览页 | `src/routes/preview.tsx` + `preview/` | 公开分享页，非 console 布局；`file-viewer` 按 kind 分发 html/svg/markdown/code |
-| 新增 Preview 管理页 | `src/routes/console/preview/` | 管理端预览会话列表 |
-| 新增布局路由 | `src/routes/<name>.tsx` | 含 `Outlet` 的布局组件 |
 | 新增通用组件 | `src/components/` | 全局级组件（Navbar/Footer/Sidebar/通用对话框/骨架屏等） |
 | 新增首页落地页区块 | `src/components/landing/` | 首页拆分为 hero/features/tech 等区块组件 |
-| 新增业务组件 | `src/components/<domain>/` | 按业务域组织（apikey/、project/、pin/、profile/、qa/、preview/、interact/、llm/、ssh/、repowiki/、settings/） |
+| 新增业务组件 | `src/components/<domain>/` | 按业务域组织（apikey/、workspace/、project/、pin/、profile/、qa/、preview/、pages/、interact/、llm/、ssh/、repowiki/、settings/） |
 | 新增题型组件 | `src/components/interact/question-*.tsx` | 遵循 `question-<type>.tsx` 命名，通过 `question-card.tsx` 分发 |
 | 新增交互原语 | `src/components/interact/primitives/` | 可复用的展示原语（Kicker/PanelCard/SandboxFrame/PreviewFrame 等）；Markdown 原语由 `@lumina/components` 提供 |
 | 新增 LLM 配置组件 | `src/components/llm/` | Provider/Model CRUD + Agent 角色模型分配 |
 | 新增 SSH Key 组件 | `src/components/ssh/` | CRUD 对话框 + 密钥生成入口 |
 | 新增 RepoWiki 组件 | `src/components/repowiki/` | 配置表单/版本管理/分析触发/Webhook 配置 |
-| 新增系统设置组件 | `src/components/settings/` | 按分组组织（站点/安全/Q&A/RepoWiki） |
+| 新增系统设置组件 | `src/components/settings/` | 按分组组织（站点/安全/Q&A/RepoWiki/Preview） |
 | 新增 shadcn/ui 组件 | `components/src/ui/` | 通过 `pnpm dlx shadcn@latest add <name>` 添加到共享包 |
 | 新增 API 接口 | `src/lib/apis/` | 使用 apiClient 封装，返回类型化响应 |
 | 新增数据 Hook | `src/hooks/` | 基于 TanStack Query 的 useMutation/useQuery |
@@ -301,6 +337,7 @@ web/
 - **代码风格**：Prettier（`semi: false`、`singleQuote: true`、`trailingComma: "all"`）+ ESLint（`@tanstack/eslint-config`）。
 - **路径别名**：`#/*` 映射到 `./src/*`；组件内使用 `#/components/xxx` 导入。
 - **共享组件包**：shadcn/ui 组件、Markdown 渲染原语、motion 动画变体、微明主题 CSS 统一在 `@lumina/components` workspace 包管理，被 `web` 和 `web-wiki` 共同消费。禁止在 `web` 内重新创建这些已迁出的代码。
+- **工作空间身份隔离**：`useCurrentWorkspace` Hook 管理当前激活的工作空间，持久化到 localStorage 并回退默认空间；侧边栏顶部展示空间切换器；项目、Pin 等数据均受工作空间联动约束。
 - **路由模式**：TanStack Start file-router；文件名即路由路径，`_` 前缀为布局路由。
 - **项目级子路由**：`console/project/$projectId/` 下按模块划分子目录（如 `repowiki/`），便于项目级配置的聚合。
 - **认证守卫**：`__root.tsx` 通过 `beforeLoad` 检查初始化状态并自动重定向；`console.tsx` 通过 Cookie 检查 `access_token` 守卫。
@@ -314,13 +351,16 @@ web/
 - **主题配色**：静烛 v1 设计语言，色盘为静烛/微明意象（`--sea-ink` 墨褐、`--lagoon` 琥珀、`--palm` 余烬橙、`--sand` 暖纸、`--foam` 纸白），`--radius:0px` 全平直角；亮/暗模式通过 `:root` / `.dark` CSS 变量切换；主题 CSS 由 `@lumina/components` 的 `theme.css` 提供。
 - **Toast 通知**：使用 `sonner`（shadcn/ui 集成），在 `console.tsx` 布局中挂载 `<Toaster />`。
 - **前端嵌入**：构建产物输出到 `resources/web/dist`（由 `web/vite.config.ts` 的 `build.outDir` 指定），通过 `go:embed` 嵌入 Go 二进制实现单文件部署。
-- **代码拆分**：`vite.config.ts` 配置了 Vite 代码拆分策略，Mermaid 等大型库懒加载以减小首屏体积。
+- **代码拆分**：`vite.config.ts` 配置了 Vite 代码拆分策略，Mermaid 与 ECharts 等大型库懒加载以减小首屏体积。
 - **Q&A 实时通信**：Interact 页面通过 WebSocket 与后端通信，`useQaWebSocket` 管理连接状态和消息分发，支持断线重连和会话恢复。
 - **Q&A 管理端**：Console Q&A 页面通过 REST API 管理会话，使用 `useQaAdmin` Hook。
 - **题型组件**：Interact 页面每种题型对应独立的 `question-<type>.tsx` 组件，通过 `question-card.tsx` 统一分发渲染，`question-shell.tsx` 提供统一外壳布局。
 - **交互原语**：`interact/primitives/` 包含可复用的展示原语组件，通过 `index.ts` 统一导出；文件名统一使用 **kebab-case**（如 `kicker.tsx`、`panel-card.tsx`），禁止使用 PascalCase 命名。Markdown 渲染原语（markdown/markdown-lite/markdown-mermaid/prose）已迁入 `@lumina/components`。
 - **HTML 沙盒**：`sandbox-frame.tsx` 使用 iframe `sandbox="allow-scripts"`（刻意不加 `allow-same-origin`）实现 opaque origin 隔离渲染不可信 HTML/CSS/JS，主题变量注入 iframe `:root`，高度经 `postMessage` 回传自适应；禁止直接使用 `dangerouslySetInnerHTML`。
-- **Preview 对外页**：`routes/preview/index.tsx` 通过 `?session=<hash>` 深链公开分享，`PreviewFrame`（iframe src 指向后端 serve 接口）渲染，`usePreviewWebSocket` 驱动 `preview_sync` 实时同步；管理端在 `console/preview/`。
+- **Preview 路径式工作台**：`/preview/:sessionHash/:file` 路径寻址，需登录（Cookie 回退）；iframe 与地址栏同路径使得相对资源自然命中；支持视口切换、源码阅读、会话详情抽屉以及一键晋升到 Pages。
+- **Preview 实时同步**：`usePreviewWebSocket` 驱动 `preview_sync` 实时同步，会话文件变更时自动刷新画布。
+- **LPW 文档渲染**：LPW（Lumina Paper Workshop）支持结构化声明式块渲染；在预览和工作台模式下优先使用 React 原生组件直渲，ECharts 按需懒加载并规避 DOM 卸载竞态。
+- **Pages 沉浸展示**：`/pages/:projectName/:slug/:file` 提供生产级展示态；支持密码门拦截（Cookie 会话）、全屏沉浸视口以及可拖拽元信息胶囊。
 - **Dashboard 看板**：`console/dashboard.tsx` 通过 `useDashboardOverview`（queryKey `['dashboard','overview']`）展示 KPI 分栏 + 功能模块 bento grid；该 Hook 同时被 `console/qa` 与 `console/preview` 复用 KPI。
 - **WebAuthn 集成**：浏览器端通过 `lib/webauthn/helpers.ts` 处理 ArrayBuffer/Base64 编解码，`useBiometric` Hook 管理注册/登录/凭证 CRUD 流程。
 - **个人资料管理**：`console/profile.tsx` 页面包含三个标签页（资料/密码/生物认证），分别对应 `profile/` 下的三个组件。
@@ -328,10 +368,10 @@ web/
 - **LLM 配置**：Provider/Model CRUD + Agent 角色模型分配通过 `useLlmConfig` Hook + `components/llm/` 组件实现，API Key 仅在创建/编辑时输入，不在前端缓存。
 - **SSH Key 管理**：通过 `useSshKey` Hook + `components/ssh/` 实现，密钥对生成请求后端，前端不接触私钥明文。
 - **RepoWiki 配置**：通过 `useRepoWiki` Hook + `components/repowiki/` 实现，包括配置表单、版本管理、分析触发、Webhook 配置四部分；版本切换需二次确认（逻辑在 `version-list.tsx`）。
-- **系统设置**：`console/settings.tsx` 重构为多标签页（站点/安全/Q&A/RepoWiki），对应 `components/settings/` 下五个表单组件，统一通过 `useSettings` Hook 读写。
-- **MCP 接入指南**：端点拼装、客户端模板和 30 个工具名统一来自 `lib/mcp-connect.ts`；插件/技能安装命令统一来自 `lib/plugin-connect.ts`（路径必须与 `internal/constant/ai_plugin.go` 一致）。控制台页 `console/connect.tsx` 按信道 1–4 排列：插件安装 → 手动 MCP → 技能安装 → 工具速览。令牌创建/重置成功态复用 `created-key-panel.tsx`。禁止再写独立 CLI、SSE 问答通道或 camelCase 旧工具名。
+- **系统设置**：`console/settings.tsx` 重构为多标签页（站点/安全/Q&A/RepoWiki/Preview），对应 `components/settings/` 下表单组件，统一通过 `useSettings` Hook 读写。
+- **MCP 接入指南**：端点拼装、客户端模板和工具目录统一来自 `lib/mcp-connect.ts`；插件/技能安装命令统一来自 `lib/plugin-connect.ts`。控制台页 `console/connect.tsx` 按信道 1–4 排列：插件安装 → 手动 MCP → 技能安装 → 工具速览。令牌创建/重置成功态复用 `created-key-panel.tsx`。
 - **MCP OAuth 同意页**：`/_public/oauth?authorize_id=` 是浏览器授权 UI，调用 `lib/apis/oauth.ts` 的 consent 接口；客户端发现与令牌交换在后端公开端点完成，前端不保存 `lum_at_`。
-- **Preview 文件分发**：`lib/preview-file.ts` 按扩展名得到 kind；`file-viewer.tsx` 将 html/svg 交给 iframe，`markdown` 走共享 Markdown + `proseArticle`，其余走 CodeMirror。不要在预览页对源码使用 `dangerouslySetInnerHTML`。
+- **Preview 文件分发**：`lib/preview-file.ts` 按扩展名得到 kind；`file-viewer.tsx` 将 html/svg 交给 iframe，`markdown` 走共享 Markdown + `proseArticle`，`lpw` 走 `DocumentViewer`，其余走 CodeMirror。不要在预览页对源码使用 `dangerouslySetInnerHTML`。
 - **Interact 进度与历史**：`session-progress.ts` 计算 answered/remaining，`session-progress-bar.tsx` 画在 Header；`group-history.ts` 按 `answeredAt`（否则 `createdAt`）DESC 分组，保证最新问答置顶。
 - **侧边栏用户区**：`app-sidebar.tsx` 底栏用弹出菜单承载资料与退出，不再把个人入口塞进主导航。
 
@@ -368,24 +408,42 @@ web/
 7. 动画不播放 → 确认 `motion` 导入是否正确（来自 `@lumina/components`）；检查 `prefers-reduced-motion` 设置。
 8. API 请求 401 → 检查 `lib/apis/client.ts` 拦截器是否正确附加 Token，Cookie 是否过期。
 9. 数据表格不刷新 → 检查 `useQuery` 的 `queryKey` 和 `staleTime` 配置。
-10. Q&A WebSocket 断连 → 检查 `useQaWebSocket.ts` 连接状态和后端 `route_ws.go` 端点。
-11. Interact 题型渲染异常 → 检查 `components/interact/question-card.tsx` 的题型分发逻辑。
-12. WebAuthn 注册失败 → 检查 `lib/webauthn/helpers.ts` 编解码 + `useBiometric.ts` 流程 + 浏览器控制台 WebAuthn 错误。
-13. Interact 连接后无问题推送 → 检查 `useQaWebSocket.ts` 消息回调注册 + `lobby-view.tsx` 是否正确切换到问题视图。
-14. 补充内容未显示 → 检查 `supplement-dialog.tsx` + `detail-panel.tsx` 的 Markdown 渲染（原语来自 `@lumina/components`）。
-15. LLM 配置保存失败 → 检查 `useLlmConfig.ts` mutation + `lib/apis/llm.ts` 请求 + 后端 `LLM_ENCRYPT_SECRET` 是否设置。
-16. SSH Key 创建无响应 → 检查 `useSshKey.ts` + `components/ssh/create-dialog.tsx`，确认后端密钥生成成功。
-17. RepoWiki 版本切换无效 → 检查 `useRepoWiki.ts` 的切换 mutation + `components/repowiki/version-list.tsx` 的选中逻辑。
-18. Webhook 事件不刷新 → 检查 `useWebhook.ts` queryKey + `components/repowiki/webhook-events.tsx` 轮询配置。
-19. 系统设置保存后未生效 → 检查 `useSettings.ts` mutation 失效策略 + `components/settings/*-form.tsx` 表单初始值。
-20. Preview 对外页无法打开 → 检查 URL 的 `?session=<hash>` 是否正确 + `usePreviewWebSocket.ts` 连接状态（idle/connecting/connected/disconnected/rejected）。
-21. Preview 管理页列表为空 → 检查 `usePreviewAdmin.ts` queryKey + 后端 `route_preview.go` 的 Bearer 鉴权。
-22. Dashboard KPI 不刷新 → 检查 `useDashboardOverview` queryKey（`['dashboard','overview']`）+ `lib/apis/dashboard.ts` 请求路径。
-23. 接入指南命令与后端路径不一致 → 核对 `plugin-connect.ts` 常量与 `internal/constant/ai_plugin.go` / `route_plugin.go`。
-24. OAuth 同意页空白 → 检查 URL 是否带 `authorize_id`、Cookie 登录态、以及 `GET /api/v1/oauth/consent`。
-25. Preview Markdown/代码不渲染 → 检查 `preview-file.ts` 的 kind 与 `file-viewer.tsx` 分发；Markdown 必须套 `proseArticle`。
-26. Interact 历史最新条目沉底 → 检查 `group-history.ts` 是否按 `historyEventTime` DESC。
-27. 补充等待遮罩不统一 → 检查 `supplement-loading-banner.tsx` 是否被各题型外壳复用。
+10. 工作空间切换异常 → 检查 `useCurrentWorkspace.ts` 持久化状态与 `useWorkspace.ts` 列表同步。
+11. Pages 密码门无法解锁 → 检查 `pages.ts` 的 `verifyPagePassword` 接口响应与 Cookie 写入。
+12. Preview 路径直出无法加载 → 检查 `/preview/:hash/:file` 地址参数与后端直出服务接口。
+13. LPW 渲染崩溃或白屏 → 检查 `lpw-parser.ts` 块结构解析，确认 ECharts 容器实例生命周期与懒加载状态。
+14. Q&A WebSocket 断连 → 检查 `useQaWebSocket.ts` 连接状态和后端 `route_ws.go` 端点。
+15. Interact 题型渲染异常 → 检查 `components/interact/question-card.tsx` 的题型分发逻辑。
+16. WebAuthn 注册失败 → 检查 `lib/webauthn/helpers.ts` 编解码 + `useBiometric.ts` 流程 + 浏览器控制台 WebAuthn 错误。
+17. Interact 连接后无问题推送 → 检查 `useQaWebSocket.ts` 消息回调注册 + `lobby-view.tsx` 是否正确切换到问题视图。
+18. 补充内容未显示 → 检查 `supplement-dialog.tsx` + `detail-panel.tsx` 的 Markdown 渲染（原语来自 `@lumina/components`）。
+19. LLM 配置保存失败 → 检查 `useLlmConfig.ts` mutation + `lib/apis/llm.ts` 请求 + 后端 `LLM_ENCRYPT_SECRET` 是否设置。
+20. SSH Key 创建无响应 → 检查 `useSshKey.ts` + `components/ssh/create-dialog.tsx`，确认后端密钥生成成功。
+21. RepoWiki 版本切换无效 → 检查 `useRepoWiki.ts` 的切换 mutation + `components/repowiki/version-list.tsx` 的选中逻辑。
+22. Webhook 事件不刷新 → 检查 `useWebhook.ts` queryKey + `components/repowiki/webhook-events.tsx` 轮询配置。
+23. 系统设置保存后未生效 → 检查 `useSettings.ts` mutation 失效策略 + `components/settings/*-form.tsx` 表单初始值。
+24. Preview 对外页无法打开 → 检查 URL 的 `?session=<hash>` 是否正确 + `usePreviewWebSocket.ts` 连接状态。
+25. Preview 管理页列表为空 → 检查 `usePreviewAdmin.ts` queryKey + 后端 `route_preview.go` 的 Bearer 鉴权。
+26. Dashboard KPI 不刷新 → 检查 `useDashboardOverview` queryKey（`['dashboard','overview']`）+ `lib/apis/dashboard.ts` 请求路径。
+27. 接入指南命令与后端路径不一致 → 核对 `plugin-connect.ts` 常量与 `internal/constant/ai_plugin.go` / `route_plugin.go`。
+28. OAuth 同意页空白 → 检查 URL 是否带 `authorize_id`、Cookie 登录态、以及 `GET /api/v1/oauth/consent`。
+29. Preview Markdown/代码不渲染 → 检查 `preview-file.ts` 的 kind 与 `file-viewer.tsx` 分发；Markdown 必须套 `proseArticle`。
+30. Interact 历史最新条目沉底 → 检查 `group-history.ts` 是否按 `historyEventTime` DESC。
+31. 补充等待遮罩不统一 → 检查 `supplement-loading-banner.tsx` 是否被各题型外壳复用。
+
+## 常用命令
+
+```bash
+cd web
+pnpm install      # 安装依赖
+pnpm dev          # 启动 Vite 开发服务器（端口 3000）
+pnpm build        # 生产构建（产物输出到 resources/web/dist）
+pnpm preview      # 预览生产构建
+pnpm test         # 运行 Vitest 测试
+pnpm lint         # ESLint 检查
+pnpm format       # Prettier 格式化 + ESLint 自动修复
+pnpm check        # Prettier 格式检查
+```
 
 ## 引用
 
