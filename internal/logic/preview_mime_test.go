@@ -153,6 +153,31 @@ func TestValidateLpwContentDeepValidation(t *testing.T) {
 			t.Errorf("expected legal layout+container to pass, got: %v", err)
 		}
 	})
+
+	t.Run("带合法 annotation 的 Block 节点通过校验", func(t *testing.T) {
+		doc := `{
+			"version":"1.1",
+			"content":[
+				{
+					"id":"b-anno",
+					"kind":"block",
+					"type":"markdown",
+					"props":{"content":"带有批注划线的正文"},
+					"annotation":{
+						"kind":"suggestion",
+						"message":"这里建议调整语气",
+						"author":"审查员",
+						"targets":[
+							{"field":"content","pattern":"建议"}
+						]
+					}
+				}
+			]
+		}`
+		if err := validateLpwContent("index.lpw", doc); err != nil {
+			t.Errorf("expected block with annotation to pass, got: %v", err)
+		}
+	})
 }
 
 // TestValidateLpwContent_ProgressiveVsStrict 验证 Q-13：validateLpwContent 默认渐进式允许中间态合规结构，严格模式拒绝未达完成态下限

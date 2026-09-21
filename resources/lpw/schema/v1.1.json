@@ -549,6 +549,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -597,6 +600,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -671,6 +677,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -736,6 +745,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -799,6 +811,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -850,6 +865,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -938,6 +956,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -995,6 +1016,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1055,6 +1079,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1098,6 +1125,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1153,6 +1183,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1203,6 +1236,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1229,6 +1265,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1286,6 +1325,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1325,6 +1367,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1442,6 +1487,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1545,6 +1593,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1612,6 +1663,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1652,6 +1706,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1693,6 +1750,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1748,6 +1808,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1815,6 +1878,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -1909,6 +1975,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -2008,6 +2077,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -2071,6 +2143,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
@@ -2130,6 +2205,9 @@
         },
         "kind": {
           "const": "block"
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
         }
       }
     },
