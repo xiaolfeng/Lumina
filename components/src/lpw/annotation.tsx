@@ -312,7 +312,7 @@ function clusterAnnotations(
 export const AnnotationGutter: React.FC = () => {
   const ctx = useAnnotationContext();
   const annotations = ctx?.annotations ?? [];
-  const hostRef = useRef<HTMLDivElement>(null);
+  const asideRef = useRef<HTMLElement>(null);
   const [tops, setTops] = useState<Record<string, number>>({});
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -320,13 +320,11 @@ export const AnnotationGutter: React.FC = () => {
   useLayoutEffect(() => {
     if (annotations.length === 0) return;
 
-    const paper = hostRef.current?.closest(
-      '[data-testid="lpw-paper"]',
-    ) as HTMLElement | null;
-
     const measure = () => {
       if (typeof window !== "undefined" && window.innerWidth < 768) return;
-      const origin = paper?.getBoundingClientRect();
+      const asideEl = asideRef.current;
+      const asideTop = asideEl ? asideEl.getBoundingClientRect().top : 0;
+
       const next: Record<string, number> = {};
       for (const item of annotations) {
         const el =
@@ -334,7 +332,7 @@ export const AnnotationGutter: React.FC = () => {
           document.getElementById(item.nodeId);
         if (!el) continue;
         const r = el.getBoundingClientRect();
-        next[item.nodeId] = Math.max(0, r.top - (origin?.top ?? 0));
+        next[item.nodeId] = Math.max(0, r.top - asideTop);
       }
       setTops((prev) => {
         const keys = Object.keys(next);
@@ -351,7 +349,9 @@ export const AnnotationGutter: React.FC = () => {
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(measure);
+    const paper = document.querySelector('[data-testid="lpw-paper"]');
     if (paper) ro.observe(paper);
+    if (asideRef.current) ro.observe(asideRef.current);
     return () => {
       ro.disconnect();
     };
@@ -362,26 +362,41 @@ export const AnnotationGutter: React.FC = () => {
     [annotations, tops],
   );
 
+  const clusterTops = useMemo(() => {
+    const result: Record<string, number> = {};
+    let minTop = 0;
+    for (const group of clusters) {
+      const key = group.map((g) => g.nodeId).join("-");
+      const ideal = tops[group[0].nodeId] ?? 0;
+      const actual = Math.max(ideal, minTop);
+      result[key] = actual;
+      // 每个气泡高度预留约 80px，保留 12px 间距，彻底杜绝气泡垂直重叠串行
+      minTop = actual + 92;
+    }
+    return result;
+  }, [clusters, tops]);
+
   if (annotations.length === 0) {
     return null;
   }
 
   return (
-    <div ref={hostRef} className="contents">
+    <>
       <aside
+        ref={asideRef}
         data-testid="annotation-gutter"
         aria-label="文档批注"
-        className="relative hidden w-52 shrink-0 self-stretch py-8 pr-3 md:block"
+        className="relative hidden w-64 shrink-0 self-stretch py-2 pr-2 md:block"
       >
         {clusters.map((group) => {
           const key = group.map((g) => g.nodeId).join("-");
-          const top = tops[group[0].nodeId] ?? 0;
+          const top = clusterTops[key] ?? (tops[group[0].nodeId] ?? 0);
           const expanded = expandedKey === key || group.length === 1;
 
           return (
             <div
               key={key}
-              className="absolute left-0 right-1"
+              className="absolute left-0 right-1 transition-[top] duration-150"
               style={{ top }}
             >
               {expanded ? (
@@ -397,7 +412,7 @@ export const AnnotationGutter: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setExpandedKey(null)}
-                      className="font-mono text-[10px] text-sea-ink-soft hover:text-sea-ink"
+                      className="font-mono text-[10px] text-sea-ink-soft hover:text-sea-ink cursor-pointer"
                     >
                       收起
                     </button>
@@ -454,6 +469,6 @@ export const AnnotationGutter: React.FC = () => {
           </div>
         ) : null}
       </div>
-    </div>
+    </>
   );
 };

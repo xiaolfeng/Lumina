@@ -50,10 +50,10 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
 
   return (
     <AnnotationProvider>
-      <div className="w-full max-w-6xl mx-auto my-6 px-3 sm:px-6 min-w-0">
+      <div className="w-full max-w-7xl mx-auto my-6 px-3 sm:px-6 flex justify-center items-start gap-8 min-w-0">
         <div
           data-testid="lpw-paper"
-          className="w-full bg-surface-strong border border-line shadow-sm relative text-sea-ink font-sans min-w-0 overflow-visible"
+          className="w-full max-w-5xl shrink-0 bg-surface-strong border border-line shadow-sm relative text-sea-ink font-sans min-w-0"
         >
           <div aria-hidden="true" className="h-1 bg-lagoon" />
 
@@ -105,34 +105,34 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
             </header>
           )}
 
-          <div className="flex flex-wrap items-start min-w-0">
-            <div className="min-w-0 w-full flex-1 px-6 sm:px-10 py-8 md:w-auto">
-              {content.length === 0 ? (
-                <div
-                  data-testid="document-empty"
-                  className="border-2 border-dashed border-line/50 p-12 text-center text-xs font-mono text-sea-ink-soft/70 bg-surface/30 my-6"
-                >
-                  <BookOpen className="mx-auto h-8 w-8 text-sea-ink-soft/60 mb-3" />
-                  <div className="font-serif italic text-base text-sea-ink-soft mb-1">
-                    空白典籍 · 等待分块生息
-                  </div>
-                  空文档：等待节点写入
+          <div className="px-6 sm:px-10 py-8 min-w-0 max-w-full">
+            {content.length === 0 ? (
+              <div
+                data-testid="document-empty"
+                className="border-2 border-dashed border-line/50 p-12 text-center text-xs font-mono text-sea-ink-soft/70 bg-surface/30 my-6"
+              >
+                <BookOpen className="mx-auto h-8 w-8 text-sea-ink-soft/60 mb-3" />
+                <div className="font-serif italic text-base text-sea-ink-soft mb-1">
+                  空白典籍 · 等待分块生息
                 </div>
-              ) : (
-                <main className="space-y-4 min-w-0 max-w-full">
-                  {content.map((node, i) => (
-                    <LpwNodeRenderer
-                      key={node.id}
-                      node={node}
-                      location={childLocation(rootLocation(), i, node.id)}
-                    />
-                  ))}
-                </main>
-              )}
-            </div>
-            <AnnotationGutter />
+                空文档：等待节点写入
+              </div>
+            ) : (
+              <main className="space-y-4 min-w-0 max-w-full">
+                {content.map((node, i) => (
+                  <LpwNodeRenderer
+                    key={node.id}
+                    node={node}
+                    location={childLocation(rootLocation(), i, node.id)}
+                  />
+                ))}
+              </main>
+            )}
           </div>
         </div>
+
+        {/* 纸张右侧外部批注边栏 */}
+        <AnnotationGutter />
       </div>
     </AnnotationProvider>
   );
