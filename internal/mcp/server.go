@@ -52,7 +52,7 @@ func InitMCPServer(ctx context.Context) http.Handler {
 	// 注册 Preview 模块工具
 	RegisterPreviewTools(server)
 
-	// 注册 Preview LPW 分块写入工具族
+	// 注册 Preview LPW 节点级增量写入工具族
 	RegisterPreviewLpwTools(server)
 
 	// 注册 Pages 模块工具

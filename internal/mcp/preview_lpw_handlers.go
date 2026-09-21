@@ -20,13 +20,13 @@ func SetPreviewLpwLogic(l *logic.PreviewLpwLogic) {
 }
 
 var previewLpwToolHandlers = map[string]mcp.ToolHandler{
-	"preview_lpw_init":         handlePreviewLpwInit,
-	"preview_lpw_block_add":    handlePreviewLpwBlockAdd,
-	"preview_lpw_block_edit":   handlePreviewLpwBlockEdit,
-	"preview_lpw_block_remove": handlePreviewLpwBlockRemove,
-	"preview_lpw_block_sort":   handlePreviewLpwBlockSort,
-	"preview_lpw_meta_set":     handlePreviewLpwMetaSet,
-	"preview_lpw_outline":      handlePreviewLpwOutline,
+	"preview_lpw_init":        handlePreviewLpwInit,
+	"preview_lpw_node_add":    handlePreviewLpwNodeAdd,
+	"preview_lpw_node_edit":   handlePreviewLpwNodeEdit,
+	"preview_lpw_node_remove": handlePreviewLpwNodeRemove,
+	"preview_lpw_node_sort":   handlePreviewLpwNodeSort,
+	"preview_lpw_meta_set":    handlePreviewLpwMetaSet,
+	"preview_lpw_outline":     handlePreviewLpwOutline,
 }
 
 func parseLpwSessionAndFilename(args map[string]any) (sessionID xSnowflake.SnowflakeID, filename string, revision string, errResult *mcp.CallToolResult) {
@@ -59,12 +59,13 @@ func buildLpwWriteResponse(
 		return previewErrorResult(errMsg)
 	}
 
-	state, nextTool, workflowMsg, instructions := previewWriteWorkflow(snapshot, "分块写入成功")
+	state, nextTool, workflowMsg, instructions := previewWriteWorkflow(snapshot, "节点写入成功")
 
 	resultData := map[string]any{
 		"status":        "success",
 		"message":       message,
-		"total_blocks":  writeResult.TotalBlocks,
+		"total_nodes":   writeResult.TotalNodes,
+		"node_kind":     writeResult.NodeKind,
 		"file_size":     writeResult.FileSize,
 		"revision":      writeResult.Revision.UTC().Format(time.RFC3339),
 		"session":       previewSessionData(snapshot.session, snapshot.previewURL),
@@ -79,8 +80,8 @@ func buildLpwWriteResponse(
 			"instructions": instructions,
 		},
 	}
-	if writeResult.BlockID != "" {
-		resultData["block_id"] = writeResult.BlockID
+	if writeResult.NodeID != "" {
+		resultData["node_id"] = writeResult.NodeID
 	}
 
 	return previewStructuredResult(resultData)
@@ -100,46 +101,45 @@ func handlePreviewLpwInit(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 		return errRes, nil
 	}
 
-	var title, desc, author string
-	var tags []string
-	if rawMeta, ok := args["meta"].(map[string]any); ok && rawMeta != nil {
-		title, _ = rawMeta["title"].(string)
-		desc, _ = rawMeta["description"].(string)
-		author, _ = rawMeta["author"].(string)
-		if rawTags, ok := rawMeta["tags"].([]any); ok {
-			for _, t := range rawTags {
-				if tStr, ok := t.(string); ok {
-					tags = append(tags, tStr)
-				}
-			}
-		}
-	}
-	if title == "" {
-		title = "LPW 预览文档"
+	rawMeta, ok := args["meta"].(map[string]any)
+	if !ok || rawMeta == nil {
+		return previewErrorResult("缺少必填参数 meta"), nil
 	}
 
-	// Q-05：解析可选初始块列表（design 0003 init 契约）
-	var initialBlocks []logic.LpwBlockExport
-	if rawBlocks, ok := args["blocks"].([]any); ok && len(rawBlocks) > 0 {
-		initialBlocks = make([]logic.LpwBlockExport, 0, len(rawBlocks))
-		for i, rb := range rawBlocks {
-			rbMap, isMap := rb.(map[string]any)
-			if !isMap || rbMap == nil {
-				return previewErrorResult(fmt.Sprintf("blocks[%d] 必须是对象", i)), nil
+	metaBytes, err := json.Marshal(rawMeta)
+	if err != nil {
+		return previewErrorResult("序列化 meta 参数失败: " + err.Error()), nil
+	}
+
+	var m logic.LpwMetaExport
+	if err := json.Unmarshal(metaBytes, &m); err != nil {
+		return previewErrorResult("解析 meta 结构失败: " + err.Error()), nil
+	}
+	if m.Title == "" {
+		return previewErrorResult("meta.title 不能为空"), nil
+	}
+
+	var initialNodes []logic.LpwNodeExport
+	if rawContent, ok := args["content"].([]any); ok && len(rawContent) > 0 {
+		initialNodes = make([]logic.LpwNodeExport, 0, len(rawContent))
+		for i, rn := range rawContent {
+			rnMap, isMap := rn.(map[string]any)
+			if !isMap || rnMap == nil {
+				return previewErrorResult(fmt.Sprintf("content[%d] 必须是对象", i)), nil
 			}
-			blockBytes, err := json.Marshal(rbMap)
+			nodeBytes, err := json.Marshal(rnMap)
 			if err != nil {
-				return previewErrorResult(fmt.Sprintf("序列化 blocks[%d] 失败: %s", i, err.Error())), nil
+				return previewErrorResult(fmt.Sprintf("序列化 content[%d] 失败: %s", i, err.Error())), nil
 			}
-			var b logic.LpwBlockRaw
-			if err := json.Unmarshal(blockBytes, &b); err != nil {
-				return previewErrorResult(fmt.Sprintf("解析 blocks[%d] 结构失败: %s", i, err.Error())), nil
+			var n logic.LpwNodeRaw
+			if err := json.Unmarshal(nodeBytes, &n); err != nil {
+				return previewErrorResult(fmt.Sprintf("解析 content[%d] 结构失败: %s", i, err.Error())), nil
 			}
-			initialBlocks = append(initialBlocks, b.ToInternal())
+			initialNodes = append(initialNodes, n.ToInternal())
 		}
 	}
 
-	res, xErr := previewLpwLogic.InitDocument(ctx, sessionID, filename, title, desc, author, tags, initialBlocks, revision)
+	res, xErr := previewLpwLogic.InitDocument(ctx, sessionID, filename, m, initialNodes, revision)
 	if xErr != nil {
 		return previewErrorResult(xErr.Error()), nil
 	}
@@ -147,7 +147,7 @@ func handlePreviewLpwInit(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 	return buildLpwWriteResponse(ctx, sessionID, res, fmt.Sprintf("已成功初始化 LPW 文档 %s", filename)), nil
 }
 
-func handlePreviewLpwBlockAdd(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handlePreviewLpwNodeAdd(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if previewLpwLogic == nil {
 		return previewErrorResult("PreviewLpwLogic 未初始化"), nil
 	}
@@ -161,19 +161,19 @@ func handlePreviewLpwBlockAdd(ctx context.Context, req *mcp.CallToolRequest) (*m
 		return errRes, nil
 	}
 
-	rawBlock, ok := args["block"].(map[string]any)
-	if !ok || rawBlock == nil {
-		return previewErrorResult("缺少必填参数 block"), nil
+	rawNode, ok := args["node"].(map[string]any)
+	if !ok || rawNode == nil {
+		return previewErrorResult("缺少必填参数 node"), nil
 	}
 
-	blockBytes, err := json.Marshal(rawBlock)
+	nodeBytes, err := json.Marshal(rawNode)
 	if err != nil {
-		return previewErrorResult("序列化 block 参数失败: " + err.Error()), nil
+		return previewErrorResult("序列化 node 参数失败: " + err.Error()), nil
 	}
 
-	var b logic.LpwBlockRaw
-	if err := json.Unmarshal(blockBytes, &b); err != nil {
-		return previewErrorResult("解析 block 结构失败: " + err.Error()), nil
+	var n logic.LpwNodeRaw
+	if err := json.Unmarshal(nodeBytes, &n); err != nil {
+		return previewErrorResult("解析 node 结构失败: " + err.Error()), nil
 	}
 
 	parentID, _ := args["parent_id"].(string)
@@ -183,15 +183,16 @@ func handlePreviewLpwBlockAdd(ctx context.Context, req *mcp.CallToolRequest) (*m
 		posPtr = &p
 	}
 
-	res, xErr := previewLpwLogic.AddBlock(ctx, sessionID, filename, parentID, posPtr, b.ToInternal(), revision)
+	node := n.ToInternal()
+	res, xErr := previewLpwLogic.AddNode(ctx, sessionID, filename, node, parentID, posPtr, revision)
 	if xErr != nil {
 		return previewErrorResult(xErr.Error()), nil
 	}
 
-	return buildLpwWriteResponse(ctx, sessionID, res, fmt.Sprintf("成功添加块 [%s#%s]", b.Type, b.ID)), nil
+	return buildLpwWriteResponse(ctx, sessionID, res, fmt.Sprintf("成功添加节点 [%s/%s#%s]", node.Kind, node.Type, node.ID)), nil
 }
 
-func handlePreviewLpwBlockEdit(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handlePreviewLpwNodeEdit(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if previewLpwLogic == nil {
 		return previewErrorResult("PreviewLpwLogic 未初始化"), nil
 	}
@@ -205,9 +206,9 @@ func handlePreviewLpwBlockEdit(ctx context.Context, req *mcp.CallToolRequest) (*
 		return errRes, nil
 	}
 
-	blockID, _ := args["block_id"].(string)
-	if blockID == "" {
-		return previewErrorResult("缺少必填参数 block_id"), nil
+	nodeID, _ := args["node_id"].(string)
+	if nodeID == "" {
+		return previewErrorResult("缺少必填参数 node_id"), nil
 	}
 
 	var propsPatch map[string]any
@@ -215,29 +216,62 @@ func handlePreviewLpwBlockEdit(ctx context.Context, req *mcp.CallToolRequest) (*
 		propsPatch = rawPatch
 	}
 
-	var replaceBlock *logic.LpwBlockExport
-	if rawBlock, ok := args["block"].(map[string]any); ok && rawBlock != nil {
-		blockBytes, _ := json.Marshal(rawBlock)
-		var b logic.LpwBlockRaw
-		if err := json.Unmarshal(blockBytes, &b); err == nil {
-			internalB := b.ToInternal()
-			replaceBlock = &internalB
+	var annPatch *logic.LpwNodeAnnotationPatch
+	if rawAnn, exists := args["annotation"]; exists {
+		if rawAnn == nil {
+			annPatch = &logic.LpwNodeAnnotationPatch{Clear: true}
+		} else {
+			m, ok := rawAnn.(map[string]any)
+			if !ok {
+				return previewErrorResult("annotation 参数必须为对象或 null"), nil
+			}
+			b, err := json.Marshal(m)
+			if err != nil {
+				return previewErrorResult("序列化 annotation 参数失败: " + err.Error()), nil
+			}
+			var a logic.LpwAnnotationExport
+			if err := json.Unmarshal(b, &a); err != nil {
+				return previewErrorResult("解析 annotation 结构失败: " + err.Error()), nil
+			}
+			annPatch = &logic.LpwNodeAnnotationPatch{Value: &a}
 		}
 	}
 
-	if propsPatch == nil && replaceBlock == nil {
-		return previewErrorResult("必须提供 props 或 block 之一进行编辑"), nil
+	var replacement *logic.LpwNodeExport
+	if rawNode, exists := args["node"]; exists && rawNode != nil {
+		m, ok := rawNode.(map[string]any)
+		if !ok {
+			return previewErrorResult("node 参数必须为对象"), nil
+		}
+		nodeBytes, err := json.Marshal(m)
+		if err != nil {
+			return previewErrorResult("序列化 node 参数失败: " + err.Error()), nil
+		}
+		var n logic.LpwNodeRaw
+		if err := json.Unmarshal(nodeBytes, &n); err != nil {
+			return previewErrorResult("解析 node 结构失败: " + err.Error()), nil
+		}
+		internalNode := n.ToInternal()
+		replacement = &internalNode
 	}
 
-	res, xErr := previewLpwLogic.EditBlock(ctx, sessionID, filename, blockID, propsPatch, replaceBlock, revision)
+	if replacement != nil && (propsPatch != nil || annPatch != nil) {
+		return previewErrorResult("整节点替换 node 与 props/annotation 互斥，不能同时提供"), nil
+	}
+
+	if propsPatch == nil && annPatch == nil && replacement == nil {
+		return previewErrorResult("必须提供 props、annotation 或 node 之一进行编辑"), nil
+	}
+
+	res, xErr := previewLpwLogic.EditNode(ctx, sessionID, filename, nodeID, propsPatch, annPatch, replacement, revision)
 	if xErr != nil {
 		return previewErrorResult(xErr.Error()), nil
 	}
 
-	return buildLpwWriteResponse(ctx, sessionID, res, fmt.Sprintf("成功修改块 [%s]", blockID)), nil
+	return buildLpwWriteResponse(ctx, sessionID, res, fmt.Sprintf("成功修改节点 [%s]", nodeID)), nil
 }
 
-func handlePreviewLpwBlockRemove(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handlePreviewLpwNodeRemove(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if previewLpwLogic == nil {
 		return previewErrorResult("PreviewLpwLogic 未初始化"), nil
 	}
@@ -251,26 +285,26 @@ func handlePreviewLpwBlockRemove(ctx context.Context, req *mcp.CallToolRequest) 
 		return errRes, nil
 	}
 
-	rawIDs, ok := args["block_ids"].([]any)
+	rawIDs, ok := args["node_ids"].([]any)
 	if !ok || len(rawIDs) == 0 {
-		return previewErrorResult("缺少必填参数 block_ids"), nil
+		return previewErrorResult("缺少必填参数 node_ids"), nil
 	}
-	var blockIDs []string
+	var nodeIDs []string
 	for _, it := range rawIDs {
 		if s, ok := it.(string); ok && s != "" {
-			blockIDs = append(blockIDs, s)
+			nodeIDs = append(nodeIDs, s)
 		}
 	}
 
-	res, xErr := previewLpwLogic.RemoveBlocks(ctx, sessionID, filename, blockIDs, revision)
+	res, xErr := previewLpwLogic.RemoveNodes(ctx, sessionID, filename, nodeIDs, revision)
 	if xErr != nil {
 		return previewErrorResult(xErr.Error()), nil
 	}
 
-	return buildLpwWriteResponse(ctx, sessionID, res, fmt.Sprintf("成功删除 %d 个块", len(blockIDs))), nil
+	return buildLpwWriteResponse(ctx, sessionID, res, fmt.Sprintf("成功删除 %d 个节点", len(nodeIDs))), nil
 }
 
-func handlePreviewLpwBlockSort(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handlePreviewLpwNodeSort(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if previewLpwLogic == nil {
 		return previewErrorResult("PreviewLpwLogic 未初始化"), nil
 	}
@@ -297,12 +331,12 @@ func handlePreviewLpwBlockSort(ctx context.Context, req *mcp.CallToolRequest) (*
 
 	parentID, _ := args["parent_id"].(string)
 
-	res, xErr := previewLpwLogic.SortBlocks(ctx, sessionID, filename, parentID, order, revision)
+	res, xErr := previewLpwLogic.SortNodes(ctx, sessionID, filename, parentID, order, revision)
 	if xErr != nil {
 		return previewErrorResult(xErr.Error()), nil
 	}
 
-	return buildLpwWriteResponse(ctx, sessionID, res, fmt.Sprintf("成功重排 %d 个块", len(order))), nil
+	return buildLpwWriteResponse(ctx, sessionID, res, fmt.Sprintf("成功重排 %d 个节点", len(order))), nil
 }
 
 func handlePreviewLpwMetaSet(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -361,9 +395,17 @@ func handlePreviewLpwOutline(ctx context.Context, req *mcp.CallToolRequest) (*mc
 		return previewErrorResult(xErr.Error()), nil
 	}
 
+	message := fmt.Sprintf("获取大纲成功，包含 %d 个节点", outline.NodeCount)
+	if len(outline.CompletenessWarnings) > 0 {
+		message = fmt.Sprintf(
+			"获取大纲成功，包含 %d 个节点；注意：文档尚未满足完成态契约（%d 条完备性告警），收工前需补齐",
+			outline.NodeCount, len(outline.CompletenessWarnings),
+		)
+	}
+
 	resultData := map[string]any{
 		"status":  "success",
-		"message": fmt.Sprintf("获取大纲成功，包含 %d 个块", outline.BlockCount),
+		"message": message,
 		"outline": outline,
 	}
 
