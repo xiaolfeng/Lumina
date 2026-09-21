@@ -1,20 +1,20 @@
-import { Badge } from '../../ui/badge'
-import React, { useState } from 'react'
-import ReactDiffViewer from 'react-diff-viewer-continued'
-import type { LpwBlockSlotProps, LpwDiffProps } from '../types'
+import { Badge } from "../../ui/badge";
+import React, { useState } from "react";
+import ReactDiffViewer from "react-diff-viewer-continued";
+import type { LpwBlockSlotProps, LpwDiffProps } from "../types";
 
 export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
   props,
 }) => {
-  const [splitView, setSplitView] = useState<boolean>(props.splitView ?? true)
+  const [splitView, setSplitView] = useState<boolean>(props.splitView ?? true);
 
-  const isIdentical = props.oldCode === props.newCode
-  const showHeader = Boolean(props.filename || props.language || true)
+  const isIdentical = props.oldCode === props.newCode;
+  const showHeader = Boolean(props.filename || props.language || true);
 
   return (
     <div
       data-testid="diff-block"
-      className="my-8 border border-line bg-surface/30 text-xs shadow-2xs font-sans"
+      className="my-6 border border-line/60 bg-surface/30 text-xs shadow-2xs font-sans w-full max-w-full overflow-hidden min-w-0"
     >
       {showHeader && (
         <div className="flex items-center justify-between border-b border-line bg-surface/60 px-4 py-2.5">
@@ -38,7 +38,7 @@ export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
             onClick={() => setSplitView((v) => !v)}
             className="cursor-pointer border border-line bg-surface px-2.5 py-1 font-mono text-[11px] text-sea-ink hover:border-sea-ink/40 transition-colors"
           >
-            {splitView ? '切换为统一视图' : '切换为并排视图'}
+            {splitView ? "切换为统一视图" : "切换为并排视图"}
           </button>
         </div>
       )}
@@ -48,7 +48,7 @@ export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
           文件内容一致，无差异
         </div>
       ) : (
-        <div className="overflow-x-auto text-xs font-mono">
+        <div className="w-full max-w-full overflow-x-auto text-xs font-mono min-w-0">
           <ReactDiffViewer
             oldValue={props.oldCode}
             newValue={props.newCode}
@@ -57,17 +57,17 @@ export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
             styles={{
               variables: {
                 light: {
-                  diffViewerBackground: 'var(--surface, #ffffff)',
-                  addedBackground: 'rgba(122, 78, 26, 0.08)',
-                  addedColor: 'var(--kicker, #7a4e1a)',
-                  removedBackground: 'rgba(184, 112, 80, 0.08)',
-                  removedColor: 'var(--palm, #b87050)',
-                  wordAddedBackground: 'rgba(122, 78, 26, 0.2)',
-                  wordRemovedBackground: 'rgba(184, 112, 80, 0.2)',
-                  gutterBackground: 'var(--surface-muted, #faf7f1)',
-                  gutterColor: 'var(--sea-ink-soft, #8a7c6e)',
-                  codeFoldGutterBackground: 'var(--surface-muted, #faf7f1)',
-                  codeFoldBackground: 'var(--surface-muted, #faf7f1)',
+                  diffViewerBackground: "var(--surface, #ffffff)",
+                  addedBackground: "rgba(122, 78, 26, 0.08)",
+                  addedColor: "var(--kicker, #7a4e1a)",
+                  removedBackground: "rgba(184, 112, 80, 0.08)",
+                  removedColor: "var(--palm, #b87050)",
+                  wordAddedBackground: "rgba(122, 78, 26, 0.2)",
+                  wordRemovedBackground: "rgba(184, 112, 80, 0.2)",
+                  gutterBackground: "var(--surface-muted, #faf7f1)",
+                  gutterColor: "var(--sea-ink-soft, #8a7c6e)",
+                  codeFoldGutterBackground: "var(--surface-muted, #faf7f1)",
+                  codeFoldBackground: "var(--surface-muted, #faf7f1)",
                 },
               },
             }}
@@ -75,5 +75,5 @@ export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
         </div>
       )}
     </div>
-  )
-}
+  );
+};

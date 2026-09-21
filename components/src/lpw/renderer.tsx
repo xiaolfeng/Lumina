@@ -169,7 +169,9 @@ export const LpwNodeRenderer: React.FC<LpwNodeRendererProps> = ({
       />
     );
     return (
-      <AnnotationFrame annotation={block.annotation}>{content}</AnnotationFrame>
+      <AnnotationFrame nodeId={block.id} annotation={block.annotation}>
+        {content}
+      </AnnotationFrame>
     );
   };
 

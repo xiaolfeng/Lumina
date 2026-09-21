@@ -33,7 +33,7 @@ export const LayoutNode: React.FC<LpwLayoutSlotProps<LpwLayoutProps>> = ({
   const renderedChildren = renderLayoutChildren(children, location)
 
   return (
-    <section id={nodeId} data-testid="layout-node" className="my-8">
+    <section id={nodeId} data-testid="layout-node" className="my-4">
       {renderLayoutPreset({
         props,
         rawChildren: children,
