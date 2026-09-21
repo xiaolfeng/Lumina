@@ -259,8 +259,10 @@ function SplitterHandle({
       e.preventDefault();
     setDragging(true);
     onDragStart?.();
-    // 捕获指针：拖出分割条后仍持续接收事件
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    // 捕获指针：拖出分割条后仍持续接收事件（防范测试或老环境缺失 setPointerCapture）
+    if (typeof e.currentTarget.setPointerCapture === "function") {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
     // 立即同步一次，避免 click 与拖拽起始抖动
     if (onResize) onResize(index, e.clientX, e.clientY);
   };

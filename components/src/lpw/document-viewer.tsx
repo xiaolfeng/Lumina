@@ -1,21 +1,23 @@
-import { Badge } from '../ui/badge'
-import type React from 'react'
-import { useMemo } from 'react'
-import { parseLpwSource } from './parser'
-import { childLocation, rootLocation } from './render-location'
-import { LpwNodeRenderer } from './renderer'
+import { Badge } from "../ui/badge";
+import type React from "react";
+import { useMemo } from "react";
+import { parseLpwSource } from "./parser";
+import { ensureRegistered } from "./register-all";
+import { childLocation, rootLocation } from "./render-location";
+import { LpwNodeRenderer } from "./renderer";
 
 export interface LpwDocumentViewerProps {
-  source: string
+  source: string;
 }
 
 export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
   source,
 }) => {
+  ensureRegistered();
   const { document: doc, error } = useMemo(
     () => parseLpwSource(source),
     [source],
-  )
+  );
 
   if (error) {
     return (
@@ -38,10 +40,10 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
           </p>
         </div>
       </div>
-    )
+    );
   }
 
-  const { meta, content = [] } = doc
+  const { meta, content = [] } = doc;
 
   return (
     <div className="max-w-4xl mx-auto my-6 bg-surface-strong border border-line shadow-sm relative text-sea-ink font-sans">
@@ -95,7 +97,7 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
             <div className="flex items-center gap-4">
               {meta.author && (
                 <span>
-                  ARCHITECT:{' '}
+                  ARCHITECT:{" "}
                   <strong className="text-sea-ink font-semibold">
                     {meta.author}
                   </strong>
@@ -148,5 +150,5 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
         <span>TYPESET IN NEW-YORK SERIF & MONO</span>
       </footer>
     </div>
-  )
-}
+  );
+};
