@@ -19,6 +19,8 @@ describe('previewKindFromFilename', () => {
     expect(previewKindFromFilename('index.lpw')).toBe('lpw')
     expect(previewKindFromFilename('App.tsx')).toBe('tsx')
     expect(previewKindFromFilename('App.jsx')).toBe('tsx')
+    expect(previewKindFromFilename('App.vue')).toBe('code')
+    expect(previewKindFromFilename('App.svelte')).toBe('code')
     expect(previewKindFromFilename('app.ts')).toBe('code')
     expect(previewKindFromFilename('theme.css')).toBe('code')
   })
@@ -30,6 +32,9 @@ describe('previewLanguageFromFilename', () => {
     expect(previewLanguageFromFilename('a.mjs')).toBe('js')
     expect(previewLanguageFromFilename('a.scss')).toBe('css')
     expect(previewLanguageFromFilename('a.md')).toBe('markdown')
+    expect(previewLanguageFromFilename('App.vue')).toBe('vue')
+    expect(previewLanguageFromFilename('App.svelte')).toBe('html')
+    expect(previewLanguageFromFilename('config.toml')).toBe('toml')
   })
 })
 

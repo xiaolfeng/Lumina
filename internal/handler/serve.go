@@ -55,6 +55,9 @@ func isTSXMime(mimeType string) bool {
 
 func writeServedFile(ctx *gin.Context, filename, mimeType, content string) {
 	ctx.Header("Cache-Control", "no-cache")
+	ctx.Header("Access-Control-Allow-Origin", "*")
+	ctx.Header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+	ctx.Header("Access-Control-Allow-Headers", "*")
 	mime := strings.ToLower(mimeType)
 	body := content
 
@@ -86,8 +89,8 @@ func renderTSXVirtualHost(filename, content string) string {
   <title>%s · Lumina Preview</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script crossorigin src="https://unpkg.com/react@19/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@19/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.26.9/babel.min.js"></script>
   <style>
     html, body, #root { min-height: 100%%; margin: 0; }
@@ -100,6 +103,12 @@ func renderTSXVirtualHost(filename, content string) string {
     (function() {
       var rootEl = document.getElementById('root');
       try {
+        if (typeof window.React === 'undefined' || typeof window.ReactDOM === 'undefined') {
+          throw new Error('React 或 ReactDOM 运行时加载失败，请检查网络连接或 CDN 状态');
+        }
+        var React = window.React;
+        var ReactDOM = window.ReactDOM;
+
         var sourceEl = document.getElementById('__lumina_tsx_source__');
         var rawBase64 = (sourceEl.textContent || '').trim();
         var code = '';

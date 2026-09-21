@@ -83,6 +83,32 @@ func TestRenderTSXVirtualHost(t *testing.T) {
 	if !strings.Contains(got, "function require(name)") {
 		t.Fatal("missing runtime mock require implementation")
 	}
+	if strings.Contains(got, "react@19/umd") || strings.Contains(got, "react-dom@19/umd") {
+		t.Fatal("react@19 does not have UMD builds, must use react@18 UMD")
+	}
+	if !strings.Contains(got, "react@18") || !strings.Contains(got, "react-dom@18") {
+		t.Fatal("missing react 18 UMD script in virtual host")
+	}
+	if !strings.Contains(got, "window.React") {
+		t.Fatal("missing runtime defensive guard for window.React")
+	}
+}
+
+func TestWriteServedFile_CORS(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+	req := httptest.NewRequest(http.MethodGet, "/preview/abc/demo.tsx", nil)
+	req.Header.Set("Origin", "null")
+	ctx.Request = req
+
+	writeServedFile(ctx, "demo.tsx", "text/typescript-jsx", "export default function App() {}")
+
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "*" && got != "null" {
+		t.Fatalf("writeServedFile missing Access-Control-Allow-Origin, got %q", got)
+	}
 }
 
 func TestRenderTSXVirtualHost_SecurityEscaping(t *testing.T) {

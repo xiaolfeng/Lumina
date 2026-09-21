@@ -15,24 +15,84 @@ import (
 // 顶层与 iframe 文档导航仍走原有鉴权。
 
 var sandboxStaticExt = map[string]struct{}{
-	".css":   {},
-	".js":    {},
-	".mjs":   {},
-	".cjs":   {},
+	// 现代前端组件与源码
+	".js":     {},
+	".mjs":    {},
+	".cjs":    {},
+	".ts":     {},
+	".mts":    {},
+	".cts":    {},
+	".jsx":    {},
+	".tsx":    {},
+	".vue":    {},
+	".svelte": {},
+
+	// 样式与样式预处理
+	".css":     {},
+	".scss":    {},
+	".sass":    {},
+	".less":    {},
+	".styl":    {},
+	".postcss": {},
+
+	// 结构化文档、数据与配置
 	".json":  {},
-	".map":   {},
+	".jsonc": {},
+	".json5": {},
+	".lpw":   {},
+	".xml":   {},
+	".yaml":  {},
+	".yml":   {},
+	".toml":  {},
+	".ini":   {},
+	".csv":   {},
+	".tsv":   {},
 	".txt":   {},
-	".png":   {},
-	".jpg":   {},
-	".jpeg":  {},
-	".gif":   {},
-	".webp":  {},
-	".ico":   {},
-	".svg":   {},
+	".map":   {},
+
+	// 图像与图标资源
+	".png":  {},
+	".jpg":  {},
+	".jpeg": {},
+	".gif":  {},
+	".webp": {},
+	".avif": {},
+	".apng": {},
+	".bmp":  {},
+	".ico":  {},
+	".svg":  {},
+	".tiff": {},
+	".tif":  {},
+
+	// 字体与排版
 	".woff":  {},
 	".woff2": {},
 	".ttf":   {},
 	".otf":   {},
+	".eot":   {},
+
+	// 音频与视频媒体
+	".mp3":  {},
+	".wav":  {},
+	".ogg":  {},
+	".flac": {},
+	".aac":  {},
+	".m4a":  {},
+	".mp4":  {},
+	".webm": {},
+	".ogv":  {},
+	".mov":  {},
+
+	// 3D 渲染与模型
+	".gltf": {},
+	".glb":  {},
+	".obj":  {},
+	".mtl":  {},
+	".hdr":  {},
+
+	// WebAssembly 与通用二进制
+	".wasm": {},
+	".bin":  {},
 }
 
 // IsSandboxStaticSubresource 判断当前请求是否为沙盒内相对引用的静态子资源。

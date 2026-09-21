@@ -9,6 +9,9 @@ const CODE_EXT = new Set([
   'css',
   'scss',
   'less',
+  'sass',
+  'styl',
+  'postcss',
   'js',
   'mjs',
   'cjs',
@@ -17,12 +20,21 @@ const CODE_EXT = new Set([
   'tsx',
   'mts',
   'cts',
+  'vue',
+  'svelte',
   'json',
   'jsonc',
+  'json5',
   'html',
   'xml',
   'yml',
   'yaml',
+  'toml',
+  'ini',
+  'csv',
+  'tsv',
+  'graphql',
+  'proto',
   'go',
   'py',
   'rs',
@@ -31,6 +43,9 @@ const CODE_EXT = new Set([
   'sql',
   'sh',
   'bash',
+  'zsh',
+  'diff',
+  'patch',
   'txt',
 ])
 
@@ -73,7 +88,23 @@ export function previewLanguageFromFilename(filename?: string | null): string {
       return 'tsx'
     case 'scss':
     case 'less':
+    case 'sass':
+    case 'styl':
+    case 'postcss':
       return 'css'
+    case 'vue':
+      return 'vue'
+    case 'svelte':
+      return 'html'
+    case 'xml':
+      return 'xml'
+    case 'toml':
+      return 'toml'
+    case 'ini':
+      return 'ini'
+    case 'csv':
+    case 'tsv':
+      return 'text'
     case 'md':
     case 'markdown':
       return 'markdown'
