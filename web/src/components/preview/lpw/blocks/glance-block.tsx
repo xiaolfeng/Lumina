@@ -1,6 +1,8 @@
 import type React from 'react'
 import type { LpwBlockSlotProps, LpwGlanceProps } from '../types'
 
+const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
+
 export const GlanceBlock: React.FC<LpwBlockSlotProps<LpwGlanceProps>> = ({
   props,
 }) => {
@@ -15,25 +17,32 @@ export const GlanceBlock: React.FC<LpwBlockSlotProps<LpwGlanceProps>> = ({
   return (
     <div
       data-testid="glance-block"
-      className={`my-4 grid gap-4 ${gridColClass}`}
+      className={`my-6 grid gap-4 ${gridColClass}`}
     >
       {props.items.map((item, idx) => {
         const orderStr = String(idx + 1).padStart(2, '0')
+        const roman = ROMAN_NUMERALS[idx] || String(idx + 1)
         return (
           <div
             key={idx}
             data-testid={`glance-item-${idx}`}
-            className="relative border border-line bg-surface p-4 text-xs"
+            className="relative border border-line bg-surface p-5 text-xs transition-all duration-150 hover:border-sea-ink/40 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between"
           >
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-sm text-sea-ink">
+            <div>
+              {/* 顶部古典罗马数字与序号 */}
+              <div className="flex items-center justify-between border-b border-line/60 pb-2 mb-3">
+                <span className="font-serif text-base italic font-semibold text-lagoon">
+                  {roman}.
+                </span>
+                <span className="font-mono text-[11px] text-sea-ink-soft/60">
+                  {orderStr}
+                </span>
+              </div>
+              <div className="font-serif text-sm font-semibold text-sea-ink tracking-tight">
                 {item.label}
-              </span>
-              <span className="font-mono text-xs text-sea-ink-soft/60">
-                {orderStr}
-              </span>
+              </div>
             </div>
-            <p className="mt-2 text-xs text-sea-ink-soft leading-relaxed">
+            <p className="mt-2.5 text-xs text-sea-ink-soft leading-relaxed font-sans">
               {item.text}
             </p>
           </div>

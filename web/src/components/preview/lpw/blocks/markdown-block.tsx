@@ -6,7 +6,9 @@ export const MarkdownBlock: React.FC<LpwBlockSlotProps<LpwMarkdownProps>> = ({
   props,
 }) => {
   return (
-    <div className={proseArticle}>
+    <div
+      className={`${proseArticle} my-5 font-sans leading-relaxed text-sea-ink`}
+    >
       <Markdown>{props.content}</Markdown>
     </div>
   )

@@ -16,17 +16,17 @@ export const CodeBlock: React.FC<LpwBlockSlotProps<LpwCodeProps>> = ({
   return (
     <div
       data-testid="code-block"
-      className="my-4 border border-line bg-surface text-xs"
+      className="my-6 border border-line bg-surface/40 text-xs shadow-2xs font-mono"
     >
       {showHeader && (
-        <div className="flex items-center justify-between border-b border-line bg-surface-muted/30 px-3 py-1.5">
-          <span className="font-mono text-sea-ink-soft">
+        <div className="flex items-center justify-between border-b border-line bg-surface/60 px-4 py-2">
+          <span className="font-mono text-xs font-semibold text-sea-ink">
             {props.filename ?? ''}
           </span>
           {props.language && (
             <Badge
               variant="outline"
-              className="font-mono text-[10px] uppercase"
+              className="font-mono text-[10px] uppercase border-line text-sea-ink-soft px-1.5 py-0"
             >
               {props.language}
             </Badge>
@@ -34,7 +34,7 @@ export const CodeBlock: React.FC<LpwBlockSlotProps<LpwCodeProps>> = ({
         </div>
       )}
 
-      <pre className="overflow-x-auto p-3 font-mono text-xs leading-relaxed text-sea-ink">
+      <pre className="overflow-x-auto p-4 font-mono text-xs leading-relaxed text-sea-ink bg-surface/20">
         <code>
           {lines.map((line, idx) => {
             const lineNum = idx + 1
@@ -43,12 +43,12 @@ export const CodeBlock: React.FC<LpwBlockSlotProps<LpwCodeProps>> = ({
               <div
                 key={idx}
                 data-line-number={lineNum}
-                className={`flex items-center px-1 ${
-                  isHighlighted ? 'bg-sand' : ''
+                className={`flex items-center px-1.5 py-0.5 ${
+                  isHighlighted ? 'bg-sand font-semibold' : ''
                 }`}
               >
                 {showLineNumbers && (
-                  <span className="w-8 shrink-0 select-none pr-3 text-right text-sea-ink-soft/40">
+                  <span className="w-8 shrink-0 select-none pr-3 text-right text-sea-ink-soft/40 font-mono text-[11px]">
                     {lineNum}
                   </span>
                 )}

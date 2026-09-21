@@ -195,7 +195,7 @@ export const ChartBlock: React.FC<LpwBlockSlotProps<LpwChartProps>> = ({
       <div
         data-testid="chart-empty"
         style={{ height }}
-        className="my-4 flex items-center justify-center border border-dashed border-line bg-surface p-4 text-xs text-sea-ink-soft/60"
+        className="my-8 flex items-center justify-center border border-dashed border-line bg-surface/40 p-6 text-xs font-serif italic text-sea-ink-soft/70 shadow-2xs"
       >
         暂无图表数据
       </div>
@@ -205,24 +205,19 @@ export const ChartBlock: React.FC<LpwBlockSlotProps<LpwChartProps>> = ({
   return (
     <div
       data-testid="chart-block"
-      className="my-4 border border-line bg-surface p-4"
+      className="my-8 border-t-2 border-b-2 border-sea-ink bg-surface/30 p-6 shadow-2xs font-sans"
     >
       <div style={{ height }} className="relative w-full">
         {!ready && (
           <div
             data-testid="chart-loading-skeleton"
             style={{ height }}
-            className="absolute inset-0 flex items-center justify-center text-xs text-sea-ink-soft/40"
+            className="absolute inset-0 flex items-center justify-center bg-surface-muted/40 font-serif italic text-xs text-sea-ink-soft/60"
           >
-            图表加载中…
+            图表渲染中...
           </div>
         )}
-        <div
-          ref={ref}
-          data-testid="chart-canvas-container"
-          style={{ height }}
-          className={`w-full ${!ready ? 'invisible' : ''}`}
-        />
+        <div ref={ref} style={{ height }} className="w-full" />
       </div>
     </div>
   )

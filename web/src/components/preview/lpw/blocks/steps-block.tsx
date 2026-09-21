@@ -29,7 +29,7 @@ export const StepsBlock: React.FC<LpwBlockSlotProps<LpwStepsProps>> = ({
   const current = props.current
 
   return (
-    <ol className="my-4 flex flex-wrap gap-6 text-xs">
+    <ol className="my-6 flex flex-wrap items-start gap-6 sm:gap-8 text-xs font-sans">
       {props.items.map((item, idx) => {
         const isCurrent = current !== undefined && current === idx
         const status = item.status ?? (isCurrent ? 'process' : 'wait')
@@ -39,25 +39,28 @@ export const StepsBlock: React.FC<LpwBlockSlotProps<LpwStepsProps>> = ({
           <li
             key={idx}
             data-testid={`step-item-${idx}`}
-            className="flex items-start gap-3"
+            className="flex items-start gap-3 relative group max-w-xs"
           >
+            {/* 序号章 */}
             <div
-              className={`flex h-6 w-6 shrink-0 items-center justify-center border font-mono text-[11px] ${
+              className={`flex h-6 w-6 shrink-0 items-center justify-center border font-mono text-[11px] shadow-2xs ${
                 color.dot
               } ${isCurrent ? 'ring-2 ring-lagoon/40 font-bold' : ''}`}
             >
               {status === 'finish' ? '✓' : status === 'error' ? '!' : idx + 1}
             </div>
+
+            {/* 标题与描述 */}
             <div className="flex flex-col">
               <span
-                className={`font-semibold text-sea-ink ${
+                className={`font-serif text-sm font-semibold tracking-tight text-sea-ink ${
                   isCurrent ? 'text-lagoon-deep' : ''
                 }`}
               >
                 {item.title}
               </span>
               {item.desc && (
-                <span className="mt-0.5 text-[11px] text-sea-ink-soft/70 leading-relaxed max-w-xs">
+                <span className="mt-1 text-[11px] text-sea-ink-soft leading-relaxed">
                   {item.desc}
                 </span>
               )}

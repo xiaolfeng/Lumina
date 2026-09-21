@@ -15,9 +15,11 @@ const GalleryItem: React.FC<{ image: LpwGalleryImage; index: number }> = ({
     return (
       <figure
         data-testid={`gallery-fallback-${index}`}
-        className="flex h-40 w-full flex-col items-center justify-center border border-dashed border-line bg-surface-muted/20 p-2 text-center text-xs text-sea-ink-soft"
+        className="flex h-44 w-full flex-col items-center justify-center border border-dashed border-line bg-surface-muted/30 p-3 text-center text-xs text-sea-ink-soft shadow-2xs font-sans"
       >
-        <span className="font-semibold text-sea-ink">{image.alt}</span>
+        <span className="font-serif font-semibold text-sea-ink">
+          {image.alt}
+        </span>
         <span className="mt-1 font-mono text-[10px] text-sea-ink-soft/70">
           加载失败: {image.src}
         </span>
@@ -26,15 +28,20 @@ const GalleryItem: React.FC<{ image: LpwGalleryImage; index: number }> = ({
   }
 
   return (
-    <figure data-testid={`gallery-item-${index}`} className="flex flex-col">
-      <img
-        src={image.src}
-        alt={image.alt}
-        onError={() => setHasError(true)}
-        className="h-40 w-full border border-line bg-surface-muted/30 object-cover"
-      />
+    <figure
+      data-testid={`gallery-item-${index}`}
+      className="flex flex-col group font-sans"
+    >
+      <div className="border border-line bg-surface p-1 shadow-2xs transition-all duration-150 group-hover:border-sea-ink/60">
+        <img
+          src={image.src}
+          alt={image.alt}
+          onError={() => setHasError(true)}
+          className="h-40 w-full object-cover bg-surface-muted/20"
+        />
+      </div>
       {image.caption && (
-        <figcaption className="mt-1.5 text-center text-xs text-sea-ink-soft">
+        <figcaption className="mt-2 text-center text-xs font-serif italic text-sea-ink-soft">
           {image.caption}
         </figcaption>
       )}
@@ -48,7 +55,7 @@ export const GalleryBlock: React.FC<LpwBlockSlotProps<LpwGalleryProps>> = ({
   return (
     <div
       data-testid="gallery-block"
-      className="my-4 grid grid-cols-2 gap-4 lg:grid-cols-3"
+      className="my-8 grid grid-cols-2 gap-6 lg:grid-cols-3"
     >
       {props.images.map((img, idx) => (
         <GalleryItem key={idx} image={img} index={idx} />

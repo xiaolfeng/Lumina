@@ -11,12 +11,15 @@ export const DetailsContainer: React.FC<LpwBlockSlotProps<LpwDetailsProps>> = ({
     <details
       data-testid="details-container"
       open={props.defaultOpen ?? false}
-      className="my-4 border border-line bg-surface p-4 text-xs"
+      className="my-6 border border-line bg-surface/40 p-5 text-xs shadow-2xs font-sans group"
     >
-      <summary className="cursor-pointer select-none font-semibold text-sm text-sea-ink hover:text-lagoon-deep">
-        {props.summary}
+      <summary className="cursor-pointer select-none font-serif font-semibold text-sm text-sea-ink hover:text-lagoon transition-colors flex items-center justify-between">
+        <span>{props.summary}</span>
+        <span className="font-mono text-[10px] text-sea-ink-soft/60 uppercase tracking-widest">
+          ADDENDUM
+        </span>
       </summary>
-      <div className="mt-3 space-y-4">
+      <div className="mt-4 pt-3 border-t border-line/50 space-y-4">
         {renderChildren(childrenBlocks, depth)}
       </div>
     </details>

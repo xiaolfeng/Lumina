@@ -14,20 +14,20 @@ export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
   return (
     <div
       data-testid="diff-block"
-      className="my-4 border border-line bg-surface text-xs"
+      className="my-8 border border-line bg-surface/30 text-xs shadow-2xs font-sans"
     >
       {showHeader && (
-        <div className="flex items-center justify-between border-b border-line bg-surface-muted/30 px-3 py-1.5">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between border-b border-line bg-surface/60 px-4 py-2.5">
+          <div className="flex items-center gap-2.5">
             {props.filename && (
-              <span className="font-mono text-sea-ink-soft">
+              <span className="font-mono text-xs font-semibold text-sea-ink">
                 {props.filename}
               </span>
             )}
             {props.language && (
               <Badge
                 variant="outline"
-                className="font-mono text-[10px] uppercase"
+                className="font-mono text-[10px] uppercase border-line text-sea-ink-soft px-1.5 py-0"
               >
                 {props.language}
               </Badge>
@@ -36,7 +36,7 @@ export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
           <button
             type="button"
             onClick={() => setSplitView((v) => !v)}
-            className="cursor-pointer border border-line bg-surface px-2 py-0.5 text-[11px] text-sea-ink hover:bg-surface-muted"
+            className="cursor-pointer border border-line bg-surface px-2.5 py-1 font-mono text-[11px] text-sea-ink hover:border-sea-ink/40 transition-colors"
           >
             {splitView ? '切换为统一视图' : '切换为并排视图'}
           </button>
@@ -44,7 +44,7 @@ export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
       )}
 
       {isIdentical ? (
-        <div className="p-8 text-center text-xs text-sea-ink-soft/60">
+        <div className="p-8 text-center text-xs font-serif italic text-sea-ink-soft/70">
           文件内容一致，无差异
         </div>
       ) : (

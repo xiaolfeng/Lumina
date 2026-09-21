@@ -21,7 +21,7 @@ export const ColumnsContainer: React.FC<LpwBlockSlotProps<LpwColumnsProps>> = ({
     <div
       data-testid="columns-container"
       data-ratio={ratio}
-      className={`my-4 grid grid-cols-1 gap-4 ${colClass}`}
+      className={`my-6 grid grid-cols-1 gap-6 ${colClass} font-sans`}
     >
       {childrenBlocks.map((child) => (
         <div key={child.id} className="min-w-0 flex-1">

@@ -9,30 +9,45 @@ export const OpenItemsBlock: React.FC<LpwBlockSlotProps<LpwOpenItemsProps>> = ({
   return (
     <div
       data-testid="open-items-block"
-      className="my-4 border border-dashed border-line bg-surface p-4 text-xs"
+      className="my-6 border border-dashed border-line bg-surface/40 p-6 text-xs shadow-2xs font-sans"
     >
-      <div className="mb-3 font-semibold text-sm text-sea-ink">{title}</div>
+      <div className="mb-4 pb-2 border-b border-dashed border-line/60 font-serif font-semibold text-base text-sea-ink flex items-center justify-between">
+        <span>{title}</span>
+        <span className="font-mono text-[10px] text-sea-ink-soft uppercase tracking-widest">
+          ADDENDA // 待决备忘
+        </span>
+      </div>
 
       <div className="divide-y divide-line/60">
         {props.items.map((item, idx) => (
           <div
             key={idx}
             data-testid={`open-item-${idx}`}
-            className="flex flex-col gap-1 py-2.5 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between"
+            className="flex flex-col gap-1.5 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between hover:bg-surface/40 px-1 transition-colors"
           >
             <div className="flex-1">
-              <div className="font-semibold text-sea-ink">{item.title}</div>
+              <div className="font-serif font-semibold text-sm text-sea-ink">
+                {item.title}
+              </div>
               {item.detail && (
-                <p className="mt-0.5 text-xs text-sea-ink-soft leading-relaxed">
+                <p className="mt-1 text-xs text-sea-ink-soft leading-relaxed font-sans">
                   {item.detail}
                 </p>
               )}
             </div>
 
             {(item.owner || item.due) && (
-              <div className="flex shrink-0 items-center gap-2 font-mono text-[11px] text-sea-ink-soft/70">
-                {item.owner && <span>负责人: {item.owner}</span>}
-                {item.due && <span>截止: {item.due}</span>}
+              <div className="flex shrink-0 items-center gap-3 font-mono text-[11px] text-sea-ink-soft sm:pl-4 sm:pt-0.5">
+                {item.owner && (
+                  <span className="bg-surface-muted/60 border border-line/40 px-2 py-0.5">
+                    负责人: {item.owner}
+                  </span>
+                )}
+                {item.due && (
+                  <span className="bg-surface-muted/60 border border-line/40 px-2 py-0.5">
+                    截止: {item.due}
+                  </span>
+                )}
               </div>
             )}
           </div>

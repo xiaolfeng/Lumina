@@ -28,22 +28,24 @@ export const QuadrantBlock: React.FC<LpwBlockSlotProps<LpwQuadrantProps>> = ({
     return (
       <div
         data-testid={testId}
-        className="flex min-h-24 flex-col bg-surface p-3 text-xs"
+        className="flex min-h-28 flex-col bg-surface p-4 text-xs"
       >
-        <div className="mb-2 font-mono text-[10px] text-sea-ink-soft/60">
+        <div className="mb-2.5 font-mono text-[10px] uppercase tracking-wider text-sea-ink-soft/70 border-b border-line/40 pb-1">
           {tag}
         </div>
         {cellItems.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-sea-ink-soft/40">
+          <div className="flex flex-1 items-center justify-center font-serif text-sm text-sea-ink-soft/40">
             —
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {cellItems.map((item, idx) => (
               <div key={idx} className="leading-snug">
-                <span className="font-semibold text-sea-ink">{item.label}</span>
+                <span className="font-serif font-semibold text-sea-ink text-[13px]">
+                  {item.label}
+                </span>
                 {item.note && (
-                  <span className="ml-1 text-[11px] text-sea-ink-soft/70">
+                  <span className="ml-1.5 font-mono text-[11px] text-sea-ink-soft/80">
                     ({item.note})
                   </span>
                 )}
@@ -58,18 +60,23 @@ export const QuadrantBlock: React.FC<LpwBlockSlotProps<LpwQuadrantProps>> = ({
   return (
     <div
       data-testid="quadrant-block"
-      className="my-4 border border-line bg-surface p-4 text-xs"
+      className="my-8 border-t-2 border-b-2 border-sea-ink bg-surface/30 p-6 text-xs shadow-2xs font-sans"
     >
       {title && (
-        <div className="mb-3 font-semibold text-sm text-sea-ink">{title}</div>
+        <div className="mb-4 pb-2 border-b border-line/60 font-serif font-semibold text-base text-sea-ink flex items-center justify-between">
+          <span>{title}</span>
+          <span className="font-mono text-[10px] text-sea-ink-soft uppercase tracking-widest">
+            QUADRANT MATRIX // 战略象限
+          </span>
+        </div>
       )}
 
-      <div className="flex items-stretch gap-2">
+      <div className="flex items-stretch gap-3">
         {/* Y 轴名 */}
         {props.yLabel && (
           <div
             style={{ writingMode: 'vertical-rl' }}
-            className="flex select-none items-center justify-center text-center font-semibold text-[11px] text-sea-ink-soft/80"
+            className="flex select-none items-center justify-center text-center font-mono font-semibold text-xs tracking-widest text-sea-ink-soft/90 px-1 border-r border-line/60"
           >
             {props.yLabel}
           </div>
@@ -106,7 +113,7 @@ export const QuadrantBlock: React.FC<LpwBlockSlotProps<LpwQuadrantProps>> = ({
 
           {/* X 轴名 */}
           {props.xLabel && (
-            <div className="mt-2 select-none text-center font-semibold text-[11px] text-sea-ink-soft/80">
+            <div className="mt-2 text-center font-mono font-semibold text-xs tracking-widest text-sea-ink-soft/90">
               {props.xLabel}
             </div>
           )}

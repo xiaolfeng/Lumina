@@ -28,12 +28,12 @@ export const TabsContainer: React.FC<LpwBlockSlotProps<LpwTabsProps>> = ({
   return (
     <div
       data-testid="tabs-container"
-      className="my-4 border border-line bg-surface"
+      className="my-8 border-t-2 border-b border-sea-ink bg-surface/30 shadow-2xs font-sans"
     >
       {/* TabList 标头 */}
       <div
         role="tablist"
-        className="flex overflow-x-auto border-b border-line bg-surface-muted/30"
+        className="flex overflow-x-auto border-b border-line bg-surface/50 font-mono text-xs"
       >
         {items.map((item) => {
           const isSelected = item.key === resolvedKey
@@ -44,10 +44,10 @@ export const TabsContainer: React.FC<LpwBlockSlotProps<LpwTabsProps>> = ({
               type="button"
               aria-selected={isSelected}
               onClick={() => setActiveKey(item.key)}
-              className={`cursor-pointer px-4 py-2 text-xs font-semibold select-none border-b-2 transition-colors ${
+              className={`cursor-pointer px-5 py-2.5 text-xs font-semibold select-none border-b-2 transition-colors uppercase tracking-wider ${
                 isSelected
-                  ? 'border-lagoon text-lagoon-deep bg-surface'
-                  : 'border-transparent text-sea-ink-soft hover:text-sea-ink hover:bg-surface-muted/40'
+                  ? 'border-lagoon text-lagoon-deep bg-surface font-bold'
+                  : 'border-transparent text-sea-ink-soft hover:text-sea-ink hover:bg-surface/80'
               }`}
             >
               {item.label}
@@ -57,13 +57,13 @@ export const TabsContainer: React.FC<LpwBlockSlotProps<LpwTabsProps>> = ({
       </div>
 
       {/* 面板内容 */}
-      <div role="tabpanel" className="p-4">
+      <div role="tabpanel" className="p-6">
         {activeChild ? (
           renderChildren([activeChild], depth)
         ) : (
           <div
             data-testid="tabs-empty-slot"
-            className="p-6 text-center text-xs text-sea-ink-soft/60"
+            className="p-8 text-center text-xs font-serif italic text-sea-ink-soft/70"
           >
             该页签缺少内容块
           </div>

@@ -22,16 +22,24 @@ export const CardsBlock: React.FC<LpwBlockSlotProps<LpwCardsProps>> = ({
   props,
 }) => {
   return (
-    <div className="my-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="my-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 font-sans">
       {props.items.map((item, idx) => {
         const safeHref = sanitizeHref(item.href)
         const content = (
           <>
-            <div className="font-semibold text-sm text-sea-ink">
-              {item.title}
+            <div className="font-serif font-semibold text-sm text-sea-ink tracking-tight flex items-center justify-between group-hover:text-lagoon transition-colors">
+              <span>{item.title}</span>
+              {safeHref && (
+                <span
+                  aria-hidden="true"
+                  className="font-mono text-xs text-sea-ink-soft/60 group-hover:translate-x-0.5 transition-transform"
+                >
+                  ↗
+                </span>
+              )}
             </div>
             {item.description && (
-              <p className="mt-1.5 text-xs text-sea-ink-soft leading-relaxed">
+              <p className="mt-2 text-xs text-sea-ink-soft leading-relaxed font-sans">
                 {item.description}
               </p>
             )}
@@ -45,7 +53,7 @@ export const CardsBlock: React.FC<LpwBlockSlotProps<LpwCardsProps>> = ({
               href={safeHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="block border border-line bg-surface p-4 transition-colors hover:bg-surface-muted cursor-pointer"
+              className="block border border-line bg-surface p-5 transition-all duration-150 hover:border-sea-ink/60 hover:bg-surface-muted/40 cursor-pointer shadow-2xs group"
             >
               {content}
             </a>
@@ -53,7 +61,10 @@ export const CardsBlock: React.FC<LpwBlockSlotProps<LpwCardsProps>> = ({
         }
 
         return (
-          <div key={idx} className="block border border-line bg-surface p-4">
+          <div
+            key={idx}
+            className="block border border-line bg-surface p-5 shadow-2xs"
+          >
             {content}
           </div>
         )

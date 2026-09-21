@@ -23,26 +23,29 @@ export const ScorecardBlock: React.FC<LpwBlockSlotProps<LpwScorecardProps>> = ({
   return (
     <div
       data-testid="scorecard-block"
-      className="my-4 overflow-x-auto border border-line bg-surface text-xs"
+      className="my-8 overflow-x-auto border-t-2 border-b-2 border-sea-ink bg-surface/30 text-xs shadow-2xs font-sans"
     >
       {title && (
-        <div className="border-b border-line bg-surface-muted/30 px-4 py-2 font-semibold text-sm text-sea-ink">
-          {title}
+        <div className="border-b border-sea-ink/80 bg-surface/60 px-5 py-3 font-serif font-semibold text-base text-sea-ink flex items-center justify-between">
+          <span>{title}</span>
+          <span className="font-mono text-[10px] text-sea-ink-soft uppercase tracking-widest">
+            EVALUATION MATRIX
+          </span>
         </div>
       )}
 
       <table className="w-full border-collapse text-left">
         <thead>
-          <tr className="border-b border-line bg-surface-muted/20">
-            <th className="p-3 font-semibold text-sea-ink w-1/3">
+          <tr className="border-b border-sea-ink bg-surface/50">
+            <th className="p-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-sea-ink w-1/3">
               评估准则 (权重)
             </th>
             {plans.map((plan, pIdx) => (
               <th
                 key={pIdx}
-                className={`p-3 font-semibold text-sea-ink ${
+                className={`p-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-sea-ink ${
                   plan.recommended
-                    ? 'bg-lagoon/5 border-x border-lagoon/20'
+                    ? 'bg-lagoon/5 border-x border-lagoon/20 text-lagoon-deep'
                     : ''
                 }`}
               >
@@ -51,7 +54,7 @@ export const ScorecardBlock: React.FC<LpwBlockSlotProps<LpwScorecardProps>> = ({
                   {plan.recommended && (
                     <Badge
                       variant="default"
-                      className="text-[10px] bg-lagoon text-foam"
+                      className="text-[9.5px] font-mono uppercase bg-lagoon text-foam px-1.5 py-0 rounded-none tracking-normal"
                     >
                       推荐
                     </Badge>
@@ -63,38 +66,63 @@ export const ScorecardBlock: React.FC<LpwBlockSlotProps<LpwScorecardProps>> = ({
         </thead>
         <tbody className="divide-y divide-line/60">
           {criteria.map((crit, cIdx) => (
-            <tr key={cIdx} className="hover:bg-surface-muted/10">
-              <td className="p-3 text-sea-ink">
-                <span className="font-semibold">{crit.name}</span>
-                <span className="ml-1 text-[11px] text-sea-ink-soft/70">
+            <tr key={cIdx} className="hover:bg-surface/60 transition-colors">
+              <td className="p-3.5 text-sea-ink">
+                <span className="font-medium">{crit.name}</span>
+                <span className="ml-1.5 font-mono text-[11px] text-sea-ink-soft/80">
                   ({crit.weight}%)
                 </span>
               </td>
-              {plans.map((plan, pIdx) => (
-                <td
-                  key={pIdx}
-                  className={`p-3 font-mono ${
-                    plan.recommended
-                      ? 'bg-lagoon/5 border-x border-lagoon/20'
-                      : ''
-                  }`}
-                >
-                  {plan.scores[cIdx] ?? '—'}
-                </td>
-              ))}
+              {plans.map((plan, pIdx) => {
+                const score = plan.scores[cIdx]
+                const maxScore = 5
+                const scorePercent =
+                  typeof score === 'number'
+                    ? Math.min(100, (score / maxScore) * 100)
+                    : 0
+
+                return (
+                  <td
+                    key={pIdx}
+                    className={`p-3.5 font-mono ${
+                      plan.recommended
+                        ? 'bg-lagoon/5 border-x border-lagoon/20'
+                        : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs font-semibold w-5 ${plan.recommended ? 'text-lagoon-deep' : 'text-sea-ink'}`}
+                      >
+                        {score ?? '—'}
+                      </span>
+                      {typeof score === 'number' && (
+                        <div className="flex-1 max-w-[60px] h-1 bg-line/60 rounded-none overflow-hidden">
+                          <div
+                            className={`h-full ${plan.recommended ? 'bg-lagoon' : 'bg-sea-ink-soft'}`}
+                            style={{ width: `${scorePercent}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                )
+              })}
             </tr>
           ))}
 
           {/* 末行：加权总分 */}
-          <tr className="border-t-2 border-line bg-surface-muted/30 font-semibold">
-            <td className="p-3 text-sea-ink">加权总分</td>
+          <tr className="border-t-[1.5px] border-sea-ink bg-surface/60 font-semibold">
+            <td className="p-3.5 font-mono text-xs uppercase tracking-wider text-sea-ink">
+              加权总分
+            </td>
             {plans.map((plan, pIdx) => (
               <td
                 key={pIdx}
                 data-testid={`scorecard-total-${pIdx}`}
-                className={`p-3 font-mono text-sm text-sea-ink ${
+                className={`p-3.5 font-mono text-sm text-sea-ink ${
                   plan.recommended
-                    ? 'bg-lagoon/5 border-x border-lagoon/20 text-lagoon-deep font-bold'
+                    ? 'bg-lagoon/5 border-x border-lagoon/20 text-lagoon-deep font-bold text-base'
                     : ''
                 }`}
               >

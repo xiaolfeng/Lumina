@@ -68,11 +68,11 @@ export const TableBlock: React.FC<LpwBlockSlotProps<LpwTableProps>> = ({
   return (
     <div
       data-testid="table-block"
-      className="my-4 overflow-x-auto border border-line bg-surface"
+      className="my-8 overflow-x-auto border-t-2 border-b-2 border-sea-ink bg-surface/30 shadow-2xs font-sans"
     >
       <table className="w-full border-collapse text-xs text-sea-ink">
         <thead>
-          <tr className="border-b border-line bg-surface-muted/30">
+          <tr className="border-b border-sea-ink bg-surface/50">
             {props.columns.map((col) => {
               const isCurrent = sortKey === col.key
               const currentDir = isCurrent ? sortDir : null
@@ -87,7 +87,7 @@ export const TableBlock: React.FC<LpwBlockSlotProps<LpwTableProps>> = ({
                 <th
                   key={col.key}
                   style={col.width ? { width: col.width } : undefined}
-                  className={`p-3 font-semibold text-sea-ink ${getAlignClass(
+                  className={`p-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-sea-ink ${getAlignClass(
                     col.align,
                   )}`}
                 >
@@ -96,10 +96,10 @@ export const TableBlock: React.FC<LpwBlockSlotProps<LpwTableProps>> = ({
                       type="button"
                       aria-sort={ariaSort}
                       onClick={() => handleSort(col.key)}
-                      className="inline-flex cursor-pointer items-center gap-1 select-none hover:text-lagoon-deep"
+                      className="inline-flex cursor-pointer items-center gap-1.5 select-none hover:text-lagoon transition-colors"
                     >
                       <span>{col.title}</span>
-                      <span className="font-mono text-[10px] text-sea-ink-soft/60">
+                      <span className="font-mono text-[10px] text-sea-ink-soft">
                         {currentDir === 'asc'
                           ? '▲'
                           : currentDir === 'desc'
@@ -120,7 +120,7 @@ export const TableBlock: React.FC<LpwBlockSlotProps<LpwTableProps>> = ({
             <tr>
               <td
                 colSpan={props.columns.length}
-                className="p-8 text-center text-xs text-sea-ink-soft/60"
+                className="p-8 text-center text-xs font-serif italic text-sea-ink-soft/70"
               >
                 暂无数据
               </td>
@@ -129,12 +129,12 @@ export const TableBlock: React.FC<LpwBlockSlotProps<LpwTableProps>> = ({
             sortedData.map((row, rowIdx) => (
               <tr
                 key={rowIdx}
-                className="transition-colors hover:bg-surface-muted/20"
+                className="transition-colors hover:bg-surface/60"
               >
                 {props.columns.map((col) => (
                   <td
                     key={col.key}
-                    className={`p-3 text-xs ${getAlignClass(col.align)}`}
+                    className={`p-3.5 text-xs text-sea-ink/90 ${getAlignClass(col.align)}`}
                   >
                     {renderCell(row[col.key])}
                   </td>
