@@ -61,20 +61,18 @@ describe('Interact flow integration & regression verification', () => {
       total: 3,
       answered: 1,
       cancelled: 1,
+      skipped: 0,
       remaining: 1,
     })
 
     const { container } = render(<SessionProgressBar progress={progress} />)
 
-    // 验证文字区包含已答、取消、未答
+    // 验证紧凑读数保留「已答」，取消/未答明细收进详情浮层
     expect(screen.getByText('已答')).toBeTruthy()
-    expect(screen.getByText('取消')).toBeTruthy()
-    expect(screen.getByText('未答')).toBeTruthy()
-    expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(3)
 
-    // 验证进度条分段颜色：已答含 bg-lagoon，取消含 bg-rose-400
+    // 验证进度条分段颜色：已答含 bg-lagoon，取消含 bg-rose-500
     const lagoonSegment = container.querySelector('.bg-lagoon')
-    const roseSegment = container.querySelector('.bg-rose-400')
+    const roseSegment = container.querySelector('.bg-rose-500')
     expect(lagoonSegment).not.toBeNull()
     expect(roseSegment).not.toBeNull()
   })
@@ -188,8 +186,12 @@ describe('Interact flow integration & regression verification', () => {
       )
     }
 
-    const { rerender, container } = render(<TestInteractHarness questionIndex={1} />)
-    const splitter1 = container.querySelector<HTMLElement>('[data-testid="splitter"]')!
+    const { rerender, container } = render(
+      <TestInteractHarness questionIndex={1} />,
+    )
+    const splitter1 = container.querySelector<HTMLElement>(
+      '[data-testid="splitter"]',
+    )!
     vi.spyOn(splitter1, 'getBoundingClientRect').mockReturnValue({
       left: 0,
       top: 0,
@@ -208,7 +210,9 @@ describe('Interact flow integration & regression verification', () => {
     )
 
     // 用户拖动到 36% (360px)
-    const handle = container.querySelector<HTMLElement>('[data-testid="splitter-handle"]')!
+    const handle = container.querySelector<HTMLElement>(
+      '[data-testid="splitter-handle"]',
+    )!
     fireEvent.pointerDown(handle, { clientX: 450, clientY: 300 })
     fireEvent.pointerMove(handle, { clientX: 360, clientY: 300 })
     fireEvent.pointerUp(handle)
@@ -222,7 +226,9 @@ describe('Interact flow integration & regression verification', () => {
     // 模拟回答完问题 1，下一个问题 2 弹出（重新挂载 Splitter）
     rerender(<TestInteractHarness questionIndex={2} />)
 
-    const splitter2 = container.querySelector<HTMLElement>('[data-testid="splitter"]')!
+    const splitter2 = container.querySelector<HTMLElement>(
+      '[data-testid="splitter"]',
+    )!
     vi.spyOn(splitter2, 'getBoundingClientRect').mockReturnValue({
       left: 0,
       top: 0,
@@ -242,7 +248,9 @@ describe('Interact flow integration & regression verification', () => {
 
     // 模拟新页面打开（重新执行 useState 初始化读取 Cookie）
     const secondVisit = render(<TestInteractHarness questionIndex={3} />)
-    const splitter3 = secondVisit.container.querySelector<HTMLElement>('[data-testid="splitter"]')!
+    const splitter3 = secondVisit.container.querySelector<HTMLElement>(
+      '[data-testid="splitter"]',
+    )!
     vi.spyOn(splitter3, 'getBoundingClientRect').mockReturnValue({
       left: 0,
       top: 0,

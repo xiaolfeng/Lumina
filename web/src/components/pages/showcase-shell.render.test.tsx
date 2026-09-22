@@ -1,8 +1,14 @@
 /** @vitest-environment jsdom */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ShowcaseShell } from './showcase-shell'
+
+const authState = { isAuthenticated: false }
+
+vi.mock('#/hooks/useAuth', () => ({
+  useAuth: () => ({ isAuthenticated: authState.isAuthenticated }),
+}))
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
@@ -18,6 +24,10 @@ vi.mock('#/components/preview/file-viewer', () => ({
     <div data-testid="file-viewer">{filename}</div>
   ),
 }))
+
+beforeEach(() => {
+  authState.isAuthenticated = false
+})
 
 afterEach(() => {
   cleanup()
@@ -35,6 +45,13 @@ describe('ShowcaseShell UI', () => {
     created_by: 'admin',
     is_active: true,
     created_at: '2026-09-16T12:00:00Z',
+  }
+
+  const mockInactiveVersion = {
+    ...mockVersion,
+    id: 'ver_2',
+    version: 'v1.1.0',
+    is_active: false,
   }
 
   const mockPage = {
@@ -74,8 +91,9 @@ describe('ShowcaseShell UI', () => {
     },
   ]
 
-  it('renders top Header and floating Bar with capsule header', () => {
-    render(
+  function renderShell(isAuthenticated: boolean, versions = [mockVersion]) {
+    authState.isAuthenticated = isAuthenticated
+    return render(
       <ShowcaseShell
         projectName="lumina"
         slug="design-system"
@@ -83,9 +101,13 @@ describe('ShowcaseShell UI', () => {
         page={mockPage}
         version={mockVersion}
         files={mockFiles}
-        versions={[mockVersion]}
+        versions={versions}
       />,
     )
+  }
+
+  it('renders top Header and floating Bar with capsule header', () => {
+    renderShell(true)
 
     // 顶部 Header
     expect(screen.getByText('Lumina')).toBeTruthy()
@@ -121,5 +143,57 @@ describe('ShowcaseShell UI', () => {
     expect(screen.getByText('元信息')).toBeTruthy()
     fireEvent.pointerDown(document.body)
     expect(screen.queryByText('元信息')).toBeNull()
+  })
+
+  it('S-01: hides meta, version list, fork and console entries from anonymous visitors', () => {
+    renderShell(false)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: '展开或折叠页面管理卡片' }),
+    )
+
+    // 匿名访客仅保留「可渲染页面」与「高级资源」文件切换视图
+    expect(screen.getByText('可渲染页面')).toBeTruthy()
+    expect(screen.getAllByText('index.html').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByText('高级资源'))
+    expect(screen.getByText('style.css')).toBeTruthy()
+
+    // 管理入口彻底隐藏
+    expect(screen.queryByText('元信息')).toBeNull()
+    expect(screen.queryByText('版本')).toBeNull()
+    expect(screen.queryByText('当前生效: v1.0.0')).toBeNull()
+    expect(screen.queryByText('设为生效')).toBeNull()
+    expect(screen.queryByText('复制当前路径')).toBeNull()
+    expect(screen.queryByText('Fork 到新预览')).toBeNull()
+    expect(screen.queryByText('管理员端口 · 页面安全设置')).toBeNull()
+  })
+
+  it('S-01: keeps version switching available for authenticated visitors', () => {
+    renderShell(true, [mockVersion, mockInactiveVersion])
+
+    fireEvent.click(
+      screen.getByRole('button', { name: '展开或折叠页面管理卡片' }),
+    )
+
+    expect(screen.getByText('元信息')).toBeTruthy()
+    expect(screen.getByText('版本')).toBeTruthy()
+    expect(screen.getByText('v1.1.0')).toBeTruthy()
+    expect(screen.getByText('设为生效')).toBeTruthy()
+    expect(screen.getByText('Fork 到新预览')).toBeTruthy()
+    expect(screen.getByText('管理员端口 · 页面安全设置')).toBeTruthy()
+  })
+
+  it('Q-03: expands the floating card with a top-down slide instead of zoom', () => {
+    renderShell(true)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: '展开或折叠页面管理卡片' }),
+    )
+
+    const card = screen.getByText('可渲染页面').closest('div.animate-in')
+    expect(card).not.toBeNull()
+    expect(card?.classList.contains('slide-in-from-top-2')).toBe(true)
+    expect(card?.classList.contains('fade-in')).toBe(true)
+    expect(card?.classList.contains('zoom-in-95')).toBe(false)
   })
 })
