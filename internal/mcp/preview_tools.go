@@ -8,12 +8,11 @@ import (
 
 // previewToolDef 定义 Preview MCP 工具的模型提示、Schema 与行为元数据。
 type previewToolDef struct {
-	name         string
-	title        string
-	description  string
-	inputSchema  map[string]any
-	outputSchema map[string]any
-	annotations  *mcp.ToolAnnotations
+	name        string
+	title       string
+	description string
+	inputSchema map[string]any
+	annotations *mcp.ToolAnnotations
 }
 
 // previewToolDefs 定义 Preview 模块的全部 MCP 工具。
@@ -47,8 +46,7 @@ var previewToolDefs = []previewToolDef{
 			},
 			"required": []string{"project_id"},
 		},
-		outputSchema: previewSessionCreateOutputSchema(),
-		annotations:  previewToolAnnotations(false, false, false),
+		annotations: previewToolAnnotations(false, false, false),
 	},
 	{
 		name:  "preview_session_list",
@@ -83,8 +81,7 @@ var previewToolDefs = []previewToolDef{
 			},
 			"required": []string{"project_id"},
 		},
-		outputSchema: previewSessionListOutputSchema(),
-		annotations:  previewToolAnnotations(true, false, true),
+		annotations: previewToolAnnotations(true, false, true),
 	},
 	{
 		name:  "preview_file_upload",
@@ -95,7 +92,7 @@ var previewToolDefs = []previewToolDef{
 
 限制：文件名只能是扁平单层名称，禁止 /、\\ 和 ..；最长 255 字符；content 按 UTF-8 字节计最大 256 KiB。它不支持目录、二进制附件、Node.js、npm 依赖安装、构建命令、SSR 或服务端代码，也不会修改 Agent 当前项目路径下的真实源文件。沙盒没有 allow-same-origin，本地多文件 ESM 不属于可靠支持范围；外部 CDN 必须允许跨源加载且应固定版本，网络不可用时依赖无法加载。
 
-副作用：可能创建新文件，也可能覆盖既有内容；同参数重试后的最终文件内容相同，但覆盖前应确认会话属于当前任务。返回 file_id；preview_url 指向当前可预览文件——会话已有 HTML 入口时指向入口文件，否则指向本次上传的文件；仅当存在 HTML 入口时，qa_supplement.content 才会返回可直接传给 qa_push_supplement 的非空引用 JSON。
+副作用：可能创建新文件，也可能覆盖既有内容；同参数重试后的最终文件内容相同，但覆盖前应确认会话属于当前任务。返回 file_id；preview_url 指向当前可预览文件——会话已有 HTML 入口时指向入口文件，否则指向本次上传的文件；仅当存在 HTML 入口时，qa_supplement 区段下的 content 标签 才会返回可直接传给 qa_push_supplement 的非空引用 JSON。
 
 下一步：仍有依赖文件时继续上传；全部上传后必须调用 preview_file_list 核对。只有最终清单包含可渲染 HTML 入口且依赖齐全时，才打开/分享 preview_url 或挂载到 Q&A。`,
 		inputSchema: map[string]any{
@@ -120,8 +117,7 @@ var previewToolDefs = []previewToolDef{
 			},
 			"required": []string{"session_id", "filename", "content"},
 		},
-		outputSchema: previewFileUploadOutputSchema(),
-		annotations:  previewToolAnnotations(false, true, true),
+		annotations: previewToolAnnotations(false, true, true),
 	},
 	{
 		name:  "preview_file_edit",
@@ -174,8 +170,7 @@ var previewToolDefs = []previewToolDef{
 			},
 			"required": []string{"session_id", "filename", "operation"},
 		},
-		outputSchema: previewFileEditOutputSchema(),
-		annotations:  previewToolAnnotations(false, true, true),
+		annotations: previewToolAnnotations(false, true, true),
 	},
 	{
 		name:  "preview_file_delete",
@@ -207,8 +202,7 @@ var previewToolDefs = []previewToolDef{
 			},
 			"required": []string{"session_id", "filename"},
 		},
-		outputSchema: previewFileDeleteOutputSchema(),
-		annotations:  previewToolAnnotations(false, true, true),
+		annotations: previewToolAnnotations(false, true, true),
 	},
 	{
 		name:  "preview_file_list",
@@ -217,7 +211,7 @@ var previewToolDefs = []previewToolDef{
 
 何时调用：复用会话前检查内容、上传/编辑/删除过程中确认状态，以及全部变更完成后的最终核对。该工具只读且可安全重试。
 
-返回后的分支必须遵守：没有文件时继续 preview_file_upload；没有 HTML 入口时先上传 HTML；存在 HTML 入口且依赖齐全时，若用户请求视觉评审，优先用客户端原生浏览器/打开链接能力访问 preview_url，能力不可用则把可点击 URL 交给用户。若预览属于 Q&A 问题或选项，则调用 qa_push_supplement，content_type=preview，content 严格使用返回的 qa_supplement.content，然后再 qa_get_answer。`,
+返回后的分支必须遵守：没有文件时继续 preview_file_upload；没有 HTML 入口时先上传 HTML；存在 HTML 入口且依赖齐全时，若用户请求视觉评审，优先用客户端原生浏览器/打开链接能力访问 preview_url，能力不可用则把可点击 URL 交给用户。若预览属于 Q&A 问题或选项，则调用 qa_push_supplement，content_type=preview，content 严格使用返回的 qa_supplement 区段下的 content 标签，然后再 qa_get_answer。`,
 		inputSchema: map[string]any{
 			"type":                 "object",
 			"additionalProperties": false,
@@ -230,8 +224,7 @@ var previewToolDefs = []previewToolDef{
 			},
 			"required": []string{"session_id"},
 		},
-		outputSchema: previewFileListOutputSchema(),
-		annotations:  previewToolAnnotations(true, false, true),
+		annotations: previewToolAnnotations(true, false, true),
 	},
 	{
 		name:  "preview_file_get",
@@ -271,8 +264,7 @@ var previewToolDefs = []previewToolDef{
 			},
 			"required": []string{"session_id", "filename"},
 		},
-		outputSchema: previewFileGetOutputSchema(),
-		annotations:  previewToolAnnotations(true, false, true),
+		annotations: previewToolAnnotations(true, false, true),
 	},
 }
 
@@ -295,14 +287,12 @@ func boolPtr(value bool) *bool {
 func RegisterPreviewTools(server *mcp.Server) {
 	for _, def := range previewToolDefs {
 		inputSchemaBytes, _ := json.Marshal(def.inputSchema)
-		outputSchemaBytes, _ := json.Marshal(def.outputSchema)
 		tool := &mcp.Tool{
-			Name:         def.name,
-			Title:        def.title,
-			Description:  def.description,
-			InputSchema:  json.RawMessage(inputSchemaBytes),
-			OutputSchema: json.RawMessage(outputSchemaBytes),
-			Annotations:  def.annotations,
+			Name:        def.name,
+			Title:       def.title,
+			Description: def.description,
+			InputSchema: json.RawMessage(inputSchemaBytes),
+			Annotations: def.annotations,
 		}
 
 		var handler mcp.ToolHandler

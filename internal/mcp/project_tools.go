@@ -125,15 +125,15 @@ func resolveProjectWorkspaceArg(args map[string]any) (xSnowflake.SnowflakeID, st
 // handleProjectCreate 创建项目
 func handleProjectCreate(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if projectLogic == nil {
-		return textResult("ProjectLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("ProjectLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	name, _ := args["name"].(string)
 	if name == "" {
-		return textResult("缺少必填参数: name"), nil
+		return errorTextResult("缺少必填参数: name"), nil
 	}
 	var matchPath []string
 	if mp, ok := args["match_path"].([]interface{}); ok {
@@ -144,20 +144,20 @@ func handleProjectCreate(_ context.Context, req *mcp.CallToolRequest) (*mcp.Call
 		}
 	}
 	if len(matchPath) == 0 {
-		return textResult("缺少必填参数: match_path"), nil
+		return errorTextResult("缺少必填参数: match_path"), nil
 	}
 	aliasName, _ := args["alias_name"].(string)
 	description, _ := args["description"].(string)
 	workspaceID, errMsg := resolveProjectWorkspaceArg(args)
 	if errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	apiReq := &apiProject.CreateProjectRequest{
 		Name: name, AliasName: aliasName, MatchPath: matchPath, Description: description, WorkspaceID: workspaceID,
 	}
 	resp, xErr := projectLogic.Create(context.Background(), apiReq)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("创建项目失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("创建项目失败: %s", xErr.Error())), nil
 	}
 	return textResult(fmt.Sprintf(`项目创建成功！
 
@@ -173,31 +173,31 @@ func handleProjectCreate(_ context.Context, req *mcp.CallToolRequest) (*mcp.Call
 // handleProjectGet 查询项目详情
 func handleProjectGet(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if projectLogic == nil {
-		return textResult("ProjectLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("ProjectLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 
 	if projectID, _ := args["project_id"].(string); projectID != "" {
 		resp, xErr := projectLogic.GetByID(context.Background(), projectID)
 		if xErr != nil {
-			return textResult(fmt.Sprintf("查询项目失败: %s", xErr.Error())), nil
+			return errorTextResult(fmt.Sprintf("查询项目失败: %s", xErr.Error())), nil
 		}
 		return textResult(formatProjectDetail(resp)), nil
 	}
 	if name, _ := args["name"].(string); name != "" {
 		workspaceID, errMsg := resolveProjectWorkspaceArg(args)
 		if errMsg != "" {
-			return textResult(errMsg), nil
+			return errorTextResult(errMsg), nil
 		}
 		resp, xErr := projectLogic.GetByName(context.Background(), name)
 		if xErr != nil {
-			return textResult(fmt.Sprintf("查询项目失败: %s", xErr.Error())), nil
+			return errorTextResult(fmt.Sprintf("查询项目失败: %s", xErr.Error())), nil
 		}
 		if resp.WorkspaceID != workspaceID {
-			return textResult("查询项目失败: 项目不存在"), nil
+			return errorTextResult("查询项目失败: 项目不存在"), nil
 		}
 		return textResult(formatProjectDetail(resp)), nil
 	}
@@ -215,25 +215,25 @@ func handleProjectGet(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToo
 	if mp != "" {
 		workspaceID, errMsg := resolveProjectWorkspaceArg(args)
 		if errMsg != "" {
-			return textResult(errMsg), nil
+			return errorTextResult(errMsg), nil
 		}
 		resp, xErr := projectLogic.GetByMatchPath(context.Background(), mp, workspaceID)
 		if xErr != nil {
-			return textResult(fmt.Sprintf("查询项目失败: %s", xErr.Error())), nil
+			return errorTextResult(fmt.Sprintf("查询项目失败: %s", xErr.Error())), nil
 		}
 		return textResult(formatProjectDetail(resp)), nil
 	}
-	return textResult("请至少指定一个查询条件: project_id、name 或 match_path"), nil
+	return errorTextResult("请至少指定一个查询条件: project_id、name 或 match_path"), nil
 }
 
 // handleProjectList 获取项目列表
 func handleProjectList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if projectLogic == nil {
-		return textResult("ProjectLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("ProjectLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	page := 1
 	size := 20
@@ -246,11 +246,11 @@ func handleProjectList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallTo
 	matchPathFilter, _ := args["match_path"].(string)
 	workspaceID, errMsg := resolveProjectWorkspaceArg(args)
 	if errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	resp, xErr := projectLogic.List(context.Background(), page, size, workspaceID)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("获取项目列表失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("获取项目列表失败: %s", xErr.Error())), nil
 	}
 
 	var items []apiProject.ProjectResponse

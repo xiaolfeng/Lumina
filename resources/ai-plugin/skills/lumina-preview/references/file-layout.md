@@ -35,4 +35,4 @@ HTML、CSS、JavaScript / MJS、JSON、SVG、纯文本。React/Vue 可通过浏�
 
 - 没有文件 → 继续 `preview_file_upload`
 - 没有 HTML 入口 → 先上传 HTML
-- `workflow.state` 为 `ready_for_review` 且依赖齐全 → 才能交付 URL 或挂 Q&A
+- `workflow` 区段下的 `state` 标签为 `ready_for_review` 且依赖齐全 → 才能交付 URL 或挂 Q&A

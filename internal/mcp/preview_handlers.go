@@ -67,7 +67,7 @@ func handlePreviewSessionCreate(ctx context.Context, req *mcp.CallToolRequest) (
 			},
 		},
 	}
-	return previewStructuredResult(result), nil
+	return labeledTextResult("PREVIEW_SESSION_CREATED", result), nil
 }
 
 // handlePreviewSessionList 分页获取预览会话列表
@@ -125,7 +125,7 @@ func handlePreviewSessionList(ctx context.Context, req *mcp.CallToolRequest) (*m
 		instructions = []string{"需要可视化预览时调用 preview_session_create 创建新会话。"}
 	}
 
-	return previewStructuredResult(map[string]any{
+	return labeledTextResult("PREVIEW_SESSION_LIST", map[string]any{
 		"status":      "success",
 		"message":     message,
 		"items":       items,
@@ -180,7 +180,7 @@ func handlePreviewFileUpload(ctx context.Context, req *mcp.CallToolRequest) (*mc
 	}
 	state, nextTool, message, instructions := previewWriteWorkflow(snapshot, "文件已写入")
 
-	return previewStructuredResult(map[string]any{
+	return labeledTextResult("PREVIEW_FILE_WRITTEN", map[string]any{
 		"status":        "success",
 		"message":       message,
 		"session":       previewSessionData(snapshot.session, snapshot.previewURL),
@@ -260,7 +260,7 @@ func handlePreviewFileEdit(ctx context.Context, req *mcp.CallToolRequest) (*mcp.
 	}
 	state, nextTool, message, instructions := previewWriteWorkflow(snapshot, "文件已编辑")
 
-	return previewStructuredResult(map[string]any{
+	return labeledTextResult("PREVIEW_FILE_EDITED", map[string]any{
 		"status":        "success",
 		"message":       message,
 		"session":       previewSessionData(snapshot.session, snapshot.previewURL),
@@ -341,7 +341,7 @@ func handlePreviewFileDelete(ctx context.Context, req *mcp.CallToolRequest) (*mc
 		fileItems = append(fileItems, previewFileData(&snapshot.files[i]))
 	}
 
-	return previewStructuredResult(map[string]any{
+	return labeledTextResult("PREVIEW_FILE_DELETED", map[string]any{
 		"status":        "success",
 		"message":       message,
 		"deleted_file":  map[string]any{"id": deleted.ID.String(), "filename": deleted.Filename},
@@ -406,12 +406,12 @@ func handlePreviewFileList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.
 		message = fmt.Sprintf("文件清单已核对，共 %d 个文件，HTML 入口为 %s。", len(snapshot.files), snapshot.entry.Filename)
 		instructions = []string{
 			"若用户请求视觉评审，优先使用客户端原生浏览器/打开链接能力访问 preview_url；能力不可用时向用户提供可点击 URL。",
-			"若这是 Q&A 的问题或选项补充，调用 qa_push_supplement，并将 content_type 设为 preview、content 原样设为 qa_supplement.content。",
+			"若这是 Q&A 的问题或选项补充，调用 qa_push_supplement，并将 content_type 设为 preview、content 原样设为 qa_supplement 区段下的 content 标签。",
 			"挂载 Q&A 补充后调用 qa_get_answer；不要把 Preview 当作真实项目实现已完成的证据。",
 		}
 	}
 
-	return previewStructuredResult(map[string]any{
+	return labeledTextResult("PREVIEW_FILE_LIST", map[string]any{
 		"status":        "success",
 		"message":       message,
 		"session":       previewSessionData(snapshot.session, snapshot.previewURL),
@@ -498,7 +498,7 @@ func handlePreviewFileGet(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 			},
 		},
 	}
-	return previewFileContentResult(metadata, resp.Filename, resp.MimeType, resp.Content), nil
+	return labeledTextResult("PREVIEW_FILE_CONTENT", metadata), nil
 }
 
 // ─── 共享响应骨架 ───────────────────────────────────────────────────────
@@ -651,34 +651,6 @@ func previewSupplementData(sessionID, fileID string) map[string]any {
 		"content_type": "preview",
 		"content":      content,
 	}
-}
-
-// previewStructuredResult 同时返回结构化结果与其 JSON 文本，兼容尚未消费
-// structuredContent 的 MCP 客户端。
-func previewStructuredResult(structured map[string]any) *mcp.CallToolResult {
-	payload, err := json.Marshal(structured)
-	if err != nil {
-		return previewErrorResult(fmt.Sprintf("序列化 Preview 工具结果失败: %s", err.Error()))
-	}
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{Text: string(payload)},
-		},
-		StructuredContent: structured,
-	}
-}
-
-// previewFileContentResult 将元数据作为结构化结果返回，并单独附加原始源码，避免
-// structuredContent 与兼容 JSON 文本重复携带大段文件内容。
-func previewFileContentResult(structured map[string]any, filename, mimeType, content string) *mcp.CallToolResult {
-	result := previewStructuredResult(structured)
-	if result.IsError {
-		return result
-	}
-	result.Content = append(result.Content, &mcp.TextContent{
-		Text: fmt.Sprintf("=== %s（%s）===\n\n%s", filename, mimeType, content),
-	})
-	return result
 }
 
 func previewErrorResult(message string) *mcp.CallToolResult {

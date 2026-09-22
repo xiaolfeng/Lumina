@@ -25,7 +25,7 @@ Input: 购物车交互稿已经在 Preview 里核对通过，用户要对外分�
 }
 ```
 
-打开返回的 `page.page_url`，形如 `http://127.0.0.1:8080/pages/<project>/design-cart/index.html`。
+打开返回文本 `page` 区段下的 `page_url` 标签，形如 `http://127.0.0.1:8080/pages/<project>/design-cart/index.html`。
 
 ```bash
 open "<page_url>"
@@ -34,7 +34,7 @@ open "<page_url>"
 ## 4. 继续改
 
 ```json
-{ "page_id": "<page.id>" }
+{ "page_id": "<pages_promote 返回的 page 区段下的 id>" }
 ```
 
 用返回的 `preview_url` 打开登录工作台，`preview_file_upload` 覆写文件后再晋升。Fork 会话不必再传 slug。

@@ -198,8 +198,8 @@ internal/
 │   ├── repowiki_tools.go     # RepoWiki MCP 工具（只读：repoWiki_query / repoWiki_list）
 │   ├── preview_tools.go      # Preview MCP 工具注册（7 个基础文件与会话工具）
 │   ├── preview_handlers.go   # Preview MCP 工具 handler 实现（快照、单文件与行级编辑）
-│   ├── preview_schemas.go    # Preview MCP 输出 Schema 构建器
-│   ├── preview_lpw_tools.go  # Preview LPW 节点语义工具族注册（7 个工具）
+│   ├── result_text.go        # MCP 统一带标签文本结果格式化器
+│   ├── preview_lpw_tools.go  # Preview LPW 节点语义工具族注册（8 个工具）
 │   ├── preview_lpw_handlers.go # Preview LPW 节点语义工具 handler 实现
 │   ├── pages_tools.go        # Pages MCP 工具（3 个：pages_list / pages_promote / pages_fork）
 │   ├── qa_tools.go           # Q&A MCP 工具注册（10 个工具定义与 schema）
@@ -376,7 +376,8 @@ internal/
 - **MCP OAuth 2.1**：Lumina 同时当授权服务器与资源服务器；仅 `authorization_code` + PKCE S256 + `refresh_token`；公共客户端无 `client_secret`；访问令牌前缀 `lum_at_`、刷新令牌 `lum_rt_`；令牌原文不进缓存，只存 SHA-256 摘要。TTL 可由 `LUMINA_OAUTH_ACCESS_TTL` / `LUMINA_OAUTH_REFRESH_TTL`（秒）覆盖。
 - **AI 插件分发**：源码在 `resources/ai-plugin`（`go:embed all:ai-plugin`），运行时由 `AIPluginService` 打 ZIP 并渲染带真实 SHA-256 的 marketplace.json。调试态（`XLF_DEBUG=true`）每次从磁盘重读；`LUMINA_AI_PLUGIN_DIR` 可覆盖源目录。ZCode 不支持 archive 源，必须走 `/api/v1/plugins/marketplace.zcode.json`（url+zip）。
 - **MCP Logic 注入**：`startup_mcp.go` 中通过 `mcp.SetQaLogic/SetProjectLogic/SetPinLogic/SetPreviewLogic/SetPreviewLpwLogic/SetPagesLogic/SetWorkspaceLogic/SetRepoWikiLogic` 注入 Logic 实例。
-- **MCP 工具集结构**：MCP 端点共注册 39 个工具，分属八个领域：Workspace（2）、QA（10）、Project（3）、Pin（5）、RepoWiki（2）、Preview（7）、Preview LPW（7）、Pages（3）。
+- **MCP 工具集结构**：MCP 端点共注册 40 个工具，分属八个领域：Workspace（2）、QA（10）、Project（3）、Pin（5）、RepoWiki（2）、Preview（7）、Preview LPW（8）、Pages（3）。
+- **MCP 返回契约**：全部业务工具使用 `TextContent` 返回带稳定标签的可读文本，禁止声明 `OutputSchema` 或设置 `StructuredContent`；业务失败使用 `errorTextResult` 并设置 `IsError=true`。
 - **Pages 快照与密码门**：Pages 承接 Preview 的晋升快照，深拷贝文件并冻结为不可变版本；支持 Fork 派生回 Preview 会话。访问策略在控制台配置，密码门走 HMAC Cookie 认证；MCP 工具严禁在晋升时设置密码。
 - **Preview 行级编辑与过期**：Preview 模块支持单文件 256KB 上限、行级精准替换与读取（`preview_lines.go`），历史会话支持自动过期与 Cron 定时清理（`ExpireStaleSessions`）。
 - **LPW 文档渲染引擎**：LPW（Lumina Paper Workshop）支持基于 Schema 校验的结构化分块写入（追加/插入/修改/删除/巡检），前端优先使用 React 原生渲染与 ECharts 懒加载。

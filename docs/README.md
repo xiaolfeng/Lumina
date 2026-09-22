@@ -46,6 +46,7 @@
 | 0006 | [Pin 同空间隔离](./engineering/adr/0006-pin-workspace-isolation.md) | proposed |
 | 0007 | [Preview 与 Pages 区分](./engineering/adr/0007-preview-pages-separation.md) | proposed |
 | 0008 | [LPW 文档文件与专用组件契约](./engineering/adr/0008-preview-lpw-document-contract.md) | proposed |
+| 0009 | [MCP 工具文本结果契约](./engineering/adr/0009-architecture-mcp-text-results.md) | proposed |
 
 ### draft/
 

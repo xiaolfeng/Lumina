@@ -7,12 +7,11 @@ import (
 )
 
 type previewLpwToolDef struct {
-	name         string
-	title        string
-	description  string
-	inputSchema  map[string]any
-	outputSchema map[string]any
-	annotations  *mcp.ToolAnnotations
+	name        string
+	title       string
+	description string
+	inputSchema map[string]any
+	annotations *mcp.ToolAnnotations
 }
 
 var previewLpwToolDefs = []previewLpwToolDef{
@@ -60,8 +59,7 @@ var previewLpwToolDefs = []previewLpwToolDef{
 				"revision": map[string]any{"type": "string", "description": "可选乐观锁：上次响应返回的 revision。"},
 			},
 		},
-		outputSchema: previewLpwWriteOutputSchema(),
-		annotations:  previewToolAnnotations(false, true, true),
+		annotations: previewToolAnnotations(false, true, true),
 	},
 	{
 		name:  "preview_lpw_node_add",
@@ -108,8 +106,7 @@ var previewLpwToolDefs = []previewLpwToolDef{
 				"revision":  map[string]any{"type": "string", "description": "可选乐观锁 revision。"},
 			},
 		},
-		outputSchema: previewLpwWriteOutputSchema(),
-		annotations:  previewToolAnnotations(false, false, false),
+		annotations: previewToolAnnotations(false, false, false),
 	},
 	{
 		name:  "preview_lpw_node_edit",
@@ -142,8 +139,7 @@ var previewLpwToolDefs = []previewLpwToolDef{
 				"revision": map[string]any{"type": "string", "description": "可选乐观锁 revision。"},
 			},
 		},
-		outputSchema: previewLpwWriteOutputSchema(),
-		annotations:  previewToolAnnotations(false, false, false),
+		annotations: previewToolAnnotations(false, false, false),
 	},
 	{
 		name:  "preview_lpw_node_remove",
@@ -173,8 +169,7 @@ var previewLpwToolDefs = []previewLpwToolDef{
 				"revision": map[string]any{"type": "string", "description": "可选乐观锁 revision。"},
 			},
 		},
-		outputSchema: previewLpwWriteOutputSchema(),
-		annotations:  previewToolAnnotations(false, false, false),
+		annotations: previewToolAnnotations(false, false, false),
 	},
 	{
 		name:  "preview_lpw_node_sort",
@@ -205,8 +200,7 @@ var previewLpwToolDefs = []previewLpwToolDef{
 				"revision": map[string]any{"type": "string", "description": "可选乐观锁 revision。"},
 			},
 		},
-		outputSchema: previewLpwWriteOutputSchema(),
-		annotations:  previewToolAnnotations(false, false, false),
+		annotations: previewToolAnnotations(false, false, false),
 	},
 	{
 		name:  "preview_lpw_meta_set",
@@ -247,8 +241,7 @@ var previewLpwToolDefs = []previewLpwToolDef{
 				"revision": map[string]any{"type": "string", "description": "可选乐观锁 revision。"},
 			},
 		},
-		outputSchema: previewLpwWriteOutputSchema(),
-		annotations:  previewToolAnnotations(false, false, false),
+		annotations: previewToolAnnotations(false, false, false),
 	},
 	{
 		name:  "preview_lpw_outline",
@@ -271,8 +264,7 @@ var previewLpwToolDefs = []previewLpwToolDef{
 				"filename":   map[string]any{"type": "string", "default": "index.lpw", "description": "目标 LPW 文件名。"},
 			},
 		},
-		outputSchema: previewLpwOutlineOutputSchema(),
-		annotations:  previewToolAnnotations(true, false, false),
+		annotations: previewToolAnnotations(true, false, false),
 	},
 	{
 		name:  "preview_lpw_schema",
@@ -295,82 +287,20 @@ var previewLpwToolDefs = []previewLpwToolDef{
 				"kind": map[string]any{"type": "string", "enum": []string{"layout", "container", "block"}, "description": "可选。按节点大类过滤。"},
 			},
 		},
-		outputSchema: previewLpwSchemaOutputSchema(),
-		annotations:  previewToolAnnotations(true, false, false),
+		annotations: previewToolAnnotations(true, false, false),
 	},
 }
 
-func previewLpwWriteOutputSchema() map[string]any {
-	return objectSchema(map[string]any{
-		"status":        map[string]any{"type": "string", "const": "success"},
-		"message":       map[string]any{"type": "string"},
-		"node_id":       map[string]any{"type": "string", "description": "受影响的节点 ID。"},
-		"node_kind":     map[string]any{"type": "string", "enum": []string{"layout", "container", "block"}, "description": "受影响节点的类别。"},
-		"total_nodes":   map[string]any{"type": "integer", "description": "变更后文档总节点数。"},
-		"file_size":     map[string]any{"type": "integer"},
-		"revision":      map[string]any{"type": "string"},
-		"session":       previewSessionSchema(),
-		"file":          previewFileSchema(),
-		"entry_file":    map[string]any{"type": "string"},
-		"preview_url":   map[string]any{"type": "string", "format": "uri"},
-		"qa_supplement": previewSupplementSchema(),
-		"workflow":      previewWorkflowSchema(),
-	}, "status", "message", "node_id", "node_kind", "total_nodes", "file_size", "revision",
-		"session", "file", "entry_file", "preview_url", "qa_supplement", "workflow")
-}
-
-func previewLpwOutlineOutputSchema() map[string]any {
-	return objectSchema(map[string]any{
-		"status":  map[string]any{"type": "string", "const": "success"},
-		"message": map[string]any{"type": "string"},
-		"outline": objectSchema(map[string]any{
-			"version":    map[string]any{"type": "string"},
-			"node_count": map[string]any{"type": "integer"},
-			"total_size": map[string]any{"type": "integer"},
-			"revision":   map[string]any{"type": "string"},
-			"completeness_warnings": map[string]any{
-				"type":        "array",
-				"items":       map[string]any{"type": "string"},
-				"description": "完备性告警：文档尚未满足完成态结构契约（如 layout 子节点不足、newspaper 缺 role=body）。构建收工前必须处理至该列表为空。",
-			},
-			"items": map[string]any{
-				"type": "array",
-				"items": objectSchema(map[string]any{
-					"id":                 map[string]any{"type": "string"},
-					"kind":               map[string]any{"type": "string", "enum": []string{"layout", "container", "block"}},
-					"type":               map[string]any{"type": "string"},
-					"pattern_or_variant": map[string]any{"type": "string"},
-					"json_path":          map[string]any{"type": "string"},
-					"depth":              map[string]any{"type": "integer"},
-					"children":           map[string]any{"type": "integer"},
-					"props_bytes":        map[string]any{"type": "integer"},
-				}, "id", "kind", "type", "json_path", "depth", "children", "props_bytes"),
-			},
-		}, "version", "node_count", "total_size", "revision", "completeness_warnings", "items"),
-	}, "status", "outline")
-}
-
-func previewLpwSchemaOutputSchema() map[string]any {
-	return objectSchema(map[string]any{
-		"status":  map[string]any{"type": "string", "const": "success"},
-		"message": map[string]any{"type": "string"},
-		"format":  map[string]any{"type": "string", "const": "text"},
-		"spec":    map[string]any{"type": "string", "description": "紧凑层级纯文本规范。"},
-	}, "status", "message", "format", "spec")
-}
-
-// RegisterPreviewLpwTools 向 MCP Server 注册 7 个 LPW 节点级增量写入工具
+// RegisterPreviewLpwTools 向 MCP Server 注册 8 个 LPW 节点级增量写入工具
 func RegisterPreviewLpwTools(server *mcp.Server) {
 	for _, def := range previewLpwToolDefs {
 		inputSchemaBytes, _ := json.Marshal(def.inputSchema)
-		outputSchemaBytes, _ := json.Marshal(def.outputSchema)
 		tool := &mcp.Tool{
-			Name:         def.name,
-			Title:        def.title,
-			Description:  def.description,
-			InputSchema:  json.RawMessage(inputSchemaBytes),
-			OutputSchema: json.RawMessage(outputSchemaBytes),
-			Annotations:  def.annotations,
+			Name:        def.name,
+			Title:       def.title,
+			Description: def.description,
+			InputSchema: json.RawMessage(inputSchemaBytes),
+			Annotations: def.annotations,
 		}
 
 		server.AddTool(tool, previewLpwToolHandlers[def.name])

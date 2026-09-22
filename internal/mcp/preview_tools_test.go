@@ -12,16 +12,6 @@ import (
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
 )
 
-func TestPreviewSessionSchemaDeclaresSourceFields(t *testing.T) {
-	schema := previewSessionSchema()
-	props, _ := schema["properties"].(map[string]any)
-	for _, key := range []string{"expires_at", "source_page_id", "source_page_slug", "source_version_id", "preview_url"} {
-		if _, ok := props[key]; !ok {
-			t.Fatalf("previewSessionSchema missing %s", key)
-		}
-	}
-}
-
 func TestPreviewSessionDataIncludesSourceSlug(t *testing.T) {
 	session := &apiPreview.PreviewSessionResponse{
 		Title:          "forked",
@@ -58,24 +48,19 @@ func TestPreviewToolDefinitions(t *testing.T) {
 		if def.title == "" || !strings.Contains(def.description, "何时调用") {
 			t.Errorf("tool %s 缺少标题或调用时机说明", def.name)
 		}
-		if def.inputSchema["type"] != "object" || def.outputSchema["type"] != "object" {
-			t.Errorf("tool %s 的输入/输出 Schema 根类型必须为 object", def.name)
+		if def.inputSchema["type"] != "object" {
+			t.Errorf("tool %s 的输入 Schema 根类型必须为 object", def.name)
 		}
-		for schemaName, schemaValue := range map[string]map[string]any{
-			"input":  def.inputSchema,
-			"output": def.outputSchema,
-		} {
-			payload, err := json.Marshal(schemaValue)
-			if err != nil {
-				t.Fatalf("marshal %s schema for %s: %v", schemaName, def.name, err)
-			}
-			var schema jsonschema.Schema
-			if err := json.Unmarshal(payload, &schema); err != nil {
-				t.Fatalf("unmarshal %s schema for %s: %v", schemaName, def.name, err)
-			}
-			if _, err := schema.Resolve(nil); err != nil {
-				t.Errorf("resolve %s schema for %s: %v", schemaName, def.name, err)
-			}
+		payload, err := json.Marshal(def.inputSchema)
+		if err != nil {
+			t.Fatalf("marshal input schema for %s: %v", def.name, err)
+		}
+		var schema jsonschema.Schema
+		if err := json.Unmarshal(payload, &schema); err != nil {
+			t.Fatalf("unmarshal input schema for %s: %v", def.name, err)
+		}
+		if _, err := schema.Resolve(nil); err != nil {
+			t.Errorf("resolve input schema for %s: %v", def.name, err)
 		}
 		if def.annotations == nil || def.annotations.OpenWorldHint == nil || *def.annotations.OpenWorldHint {
 			t.Errorf("tool %s 应声明为 Lumina 内部闭合世界操作", def.name)
@@ -156,27 +141,28 @@ func TestFindPreviewEntry(t *testing.T) {
 	}
 }
 
-func TestPreviewStructuredResult(t *testing.T) {
-	structured := map[string]any{"status": "success", "message": "ok"}
-	result := previewStructuredResult(structured)
-	if result.IsError || result.StructuredContent == nil || len(result.Content) != 1 {
+func TestLabeledTextResultUsesSingleTextBlock(t *testing.T) {
+	source := strings.Repeat("x", 256*1024)
+	result := labeledTextResult("PREVIEW_FILE_CONTENT", map[string]any{
+		"status": "success",
+		"file": map[string]any{
+			"filename": "index.html",
+			"content":  source,
+		},
+	})
+	if result.IsError || result.StructuredContent != nil || len(result.Content) != 1 {
 		t.Fatalf("unexpected result: %#v", result)
 	}
 
-	text := result.Content[0]
-	payload, err := text.MarshalJSON()
-	if err != nil {
-		t.Fatalf("marshal text content: %v", err)
+	content, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("content type = %T, want *mcp.TextContent", result.Content[0])
 	}
-	var wire struct {
-		Text string `json:"text"`
+	if !strings.HasPrefix(content.Text, "[PREVIEW_FILE_CONTENT]\n") {
+		t.Fatalf("unexpected text prefix: %.64q", content.Text)
 	}
-	if err := json.Unmarshal(payload, &wire); err != nil {
-		t.Fatalf("unmarshal text content: %v", err)
-	}
-	var decoded map[string]any
-	if err := json.Unmarshal([]byte(wire.Text), &decoded); err != nil {
-		t.Fatalf("compatibility text is not JSON: %v", err)
+	if occurrences := strings.Count(content.Text, source); occurrences != 1 {
+		t.Fatalf("source occurrences = %d, want 1", occurrences)
 	}
 }
 
@@ -214,22 +200,5 @@ func TestPreviewFileDataWithLines(t *testing.T) {
 	data := previewFileDataWithLines(file, 128)
 	if data["total_lines"] != 128 || data["filename"] != "app.js" {
 		t.Fatalf("previewFileDataWithLines = %#v", data)
-	}
-}
-
-func TestPreviewFileEditOutputSchemaDeclaresRegion(t *testing.T) {
-	schema := previewFileEditOutputSchema()
-	props, _ := schema["properties"].(map[string]any)
-	fileSchema, _ := props["file"].(map[string]any)
-	fileProps, _ := fileSchema["properties"].(map[string]any)
-	if _, ok := fileProps["total_lines"]; !ok {
-		t.Fatal("edit 输出 Schema 的 file 应包含 total_lines")
-	}
-	regionSchema, _ := props["edited_region"].(map[string]any)
-	regionProps, _ := regionSchema["properties"].(map[string]any)
-	for _, key := range []string{"start_line", "end_line", "content"} {
-		if _, ok := regionProps[key]; !ok {
-			t.Fatalf("edited_region 缺少 %s", key)
-		}
 	}
 }

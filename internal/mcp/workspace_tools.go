@@ -48,11 +48,11 @@ var workspaceToolDefs = []struct {
 
 func handleWorkspaceList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if workspaceLogic == nil {
-		return textResult("WorkspaceLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("WorkspaceLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	page := 1
 	size := 50
@@ -64,7 +64,7 @@ func handleWorkspaceList(_ context.Context, req *mcp.CallToolRequest) (*mcp.Call
 	}
 	resp, xErr := workspaceLogic.List(context.Background(), page, size)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("获取空间列表失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("获取空间列表失败: %s", xErr.Error())), nil
 	}
 	totalPages := (resp.Total + int64(size) - 1) / int64(size)
 	result := fmt.Sprintf("空间列表（共 %d 个，第 %d/%d 页）：\n\n", resp.Total, page, totalPages)
@@ -83,29 +83,29 @@ func handleWorkspaceList(_ context.Context, req *mcp.CallToolRequest) (*mcp.Call
 
 func handleWorkspaceGet(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if workspaceLogic == nil {
-		return textResult("WorkspaceLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("WorkspaceLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	workspaceID, _ := args["workspace_id"].(string)
 	slug, _ := args["slug"].(string)
 	if workspaceID == "" && slug == "" {
-		return textResult("请指定 workspace_id 或 slug"), nil
+		return errorTextResult("请指定 workspace_id 或 slug"), nil
 	}
 
 	var resp *apiWorkspace.WorkspaceResponse
 	if workspaceID != "" {
 		got, xErr := workspaceLogic.GetByID(context.Background(), workspaceID)
 		if xErr != nil {
-			return textResult(fmt.Sprintf("查询空间失败: %s", xErr.Error())), nil
+			return errorTextResult(fmt.Sprintf("查询空间失败: %s", xErr.Error())), nil
 		}
 		resp = got
 	} else {
 		got, xErr := workspaceLogic.GetBySlug(context.Background(), slug)
 		if xErr != nil {
-			return textResult(fmt.Sprintf("查询空间失败: %s", xErr.Error())), nil
+			return errorTextResult(fmt.Sprintf("查询空间失败: %s", xErr.Error())), nil
 		}
 		resp = got
 	}

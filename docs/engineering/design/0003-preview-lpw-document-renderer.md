@@ -1964,7 +1964,7 @@ func inferMimeType(filename string) string {
 // 3. 均无 → snapshot.entry 为空，保持 awaiting_html_entry
 ```
 
-配套调整：`previewWriteWorkflow` 的状态文案与指引需把「HTML 入口」泛化为「可评审入口」；Pages 侧 `pages_promote` 生成的 `PageVersion.EntryFilename` 同样允许 `.lpw`。`internal/mcp/preview_schemas.go` 中 `entry_file` 字段描述一并更新，禁止残留「仅 HTML」语义。
+配套调整：`previewWriteWorkflow` 的状态文案与指引需把「HTML 入口」泛化为「可评审入口」；Pages 侧 `pages_promote` 生成的 `PageVersion.EntryFilename` 同样允许 `.lpw`。MCP 文本结果中的 `entry_file` 标签描述一并更新，禁止残留「仅 HTML」语义；业务工具遵循 [ADR-0009](../adr/0009-architecture-mcp-text-results.md)，不再维护输出 Schema。
 
 ### 4. LPW Schema 内嵌与加载服务
 

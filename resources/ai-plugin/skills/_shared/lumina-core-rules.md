@@ -43,7 +43,7 @@
 | **Q&A 轮询** | **NEVER** | 严禁使用 `qa_reget_answer` 轮询等待用户回答。`qa_reget_answer` 是非阻塞的，仅用于“重新获取已回答问题内容或多媒体附件”。等待必须使用 `qa_get_answer`。 |
 | **Supplement 时序** | **MUST** | 当 `qa_push_question` 携带 `supplement: true` 时，必须先调用 `qa_push_supplement` 注入详情，然后再调用 `qa_get_answer`，否则前端将因等待详情而一直加载阻塞用户。 |
 | **Preview 交付** | **MUST** | Preview 内容完成后必须调用 `preview_file_list` 核对，确保识别出有效 `entry_file`（LPW / HTML / TSX / JSX）后再提供 URL 或挂载到 Q&A。 |
-| **Preview 联动** | **NEVER** | 挂载 Preview 到 Q&A 时，严禁传递 URL 或 Hash；必须原样传递 `qa_supplement.content`（纯 JSON 字符串 `{"session_id":"...","file_id":"..."}`），严禁添加 Markdown 代码围栏（\`\`\`json）。 |
+| **Preview 联动** | **NEVER** | 挂载 Preview 到 Q&A 时，严禁传递 URL 或 Hash；必须原样传递 `qa_supplement` 区段下的 `content` 标签（纯 JSON 字符串 `{"session_id":"...","file_id":"..."}`），严禁添加 Markdown 代码围栏（\`\`\`json）。 |
 | **Pin 消费** | **MUST** | 约束消费只能通过 `pin_consume` 单向流转（pending → consumed），`pin_update` 仅允许修改优先级与分类。 |
 | **RepoWiki 定位** | **MUST** | RepoWiki MCP 工具（`repoWiki_list` / `repoWiki_query`）为纯只读知识库，生成与更新由 Git Webhook 自动触发，MCP 端不提供写入接口。 |
 | **Pages 晋升** | **MUST** | 无有效 Preview 入口不得 `pages_promote`。密码与访问策略只在控制台 `/console/pages` 配置，MCP 禁止传密码。继续改已发布页面必须先 `pages_fork`。 |

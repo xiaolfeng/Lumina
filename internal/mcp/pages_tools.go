@@ -7,6 +7,7 @@ import (
 
 	xSnowflake "github.com/bamboo-services/bamboo-base-go/common/snowflake"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	apiPages "github.com/xiaolfeng/Lumina/api/pages"
 	apiPreview "github.com/xiaolfeng/Lumina/api/preview"
 	"github.com/xiaolfeng/Lumina/internal/logic"
 )
@@ -19,12 +20,11 @@ func SetPagesLogic(l *logic.PagesLogic) {
 }
 
 type pagesToolDef struct {
-	name         string
-	title        string
-	description  string
-	inputSchema  map[string]any
-	outputSchema map[string]any
-	annotations  *mcp.ToolAnnotations
+	name        string
+	title       string
+	description string
+	inputSchema map[string]any
+	annotations *mcp.ToolAnnotations
 }
 
 var pagesToolDefs = []pagesToolDef{
@@ -50,8 +50,7 @@ var pagesToolDefs = []pagesToolDef{
 			},
 			"required": []string{"project_id"},
 		},
-		outputSchema: pagesListOutputSchema(),
-		annotations:  previewToolAnnotations(true, false, true),
+		annotations: previewToolAnnotations(true, false, true),
 	},
 	{
 		name:  "pages_promote",
@@ -76,8 +75,7 @@ var pagesToolDefs = []pagesToolDef{
 			},
 			"required": []string{"session_id", "title"},
 		},
-		outputSchema: pagesPromoteOutputSchema(),
-		annotations:  previewToolAnnotations(false, false, false),
+		annotations: previewToolAnnotations(false, false, false),
 	},
 	{
 		name:  "pages_fork",
@@ -98,83 +96,8 @@ var pagesToolDefs = []pagesToolDef{
 			},
 			"required": []string{"page_id"},
 		},
-		outputSchema: pagesForkOutputSchema(),
-		annotations:  previewToolAnnotations(false, false, false),
+		annotations: previewToolAnnotations(false, false, false),
 	},
-}
-
-func pagesListOutputSchema() map[string]any {
-	return objectSchema(map[string]any{
-		"status":      map[string]any{"type": "string", "const": "success"},
-		"message":     map[string]any{"type": "string"},
-		"items":       map[string]any{"type": "array", "items": pageItemSchema()},
-		"total":       map[string]any{"type": "integer", "minimum": 0},
-		"page":        map[string]any{"type": "integer", "minimum": 1},
-		"size":        map[string]any{"type": "integer", "minimum": 1},
-		"total_pages": map[string]any{"type": "integer", "minimum": 0},
-	}, "status", "message", "items", "total", "page", "size", "total_pages")
-}
-
-func pagesForkOutputSchema() map[string]any {
-	return objectSchema(map[string]any{
-		"status":      map[string]any{"type": "string", "const": "success"},
-		"message":     map[string]any{"type": "string"},
-		"session":     previewSessionSchema(),
-		"preview_url": map[string]any{"type": "string", "format": "uri"},
-	}, "status", "message", "session", "preview_url")
-}
-
-func pagesPromoteOutputSchema() map[string]any {
-	return objectSchema(map[string]any{
-		"status":  map[string]any{"type": "string", "const": "success"},
-		"message": map[string]any{"type": "string"},
-		"conflict": objectSchema(map[string]any{
-			"current_version":    map[string]any{"type": "string"},
-			"current_version_id": map[string]any{"type": "string"},
-			"current_changelog":  map[string]any{"type": "string"},
-			"current_created_by": map[string]any{"type": "string"},
-			"current_created_at": map[string]any{"type": "string"},
-			"source_version_id":  map[string]any{"type": "string"},
-			"message":            map[string]any{"type": "string"},
-		}, "current_version", "current_version_id", "current_changelog", "current_created_by", "current_created_at", "source_version_id", "message"),
-		"page":    pageItemSchema(),
-		"version": pageVersionSchema(),
-	}, "status", "message")
-}
-
-func pageItemSchema() map[string]any {
-	return objectSchema(map[string]any{
-		"id":                map[string]any{"type": "string"},
-		"project_id":        map[string]any{"type": "string"},
-		"project_name":      map[string]any{"type": "string"},
-		"slug":              map[string]any{"type": "string"},
-		"title":             map[string]any{"type": "string"},
-		"description":       map[string]any{"type": "string"},
-		"status":            map[string]any{"type": "string"},
-		"access_mode":       map[string]any{"type": "string"},
-		"latest_version_id": map[string]any{"type": "string"},
-		"latest_version":    map[string]any{"type": "string"},
-		"page_url":          map[string]any{"type": "string", "format": "uri"},
-		"created_at":        map[string]any{"type": "string"},
-		"updated_at":        map[string]any{"type": "string"},
-	}, "id", "project_id", "project_name", "slug", "title", "status", "access_mode", "latest_version_id", "page_url", "created_at", "updated_at")
-}
-
-func pageVersionSchema() map[string]any {
-	return objectSchema(map[string]any{
-		"id":                map[string]any{"type": "string"},
-		"page_id":           map[string]any{"type": "string"},
-		"version":           map[string]any{"type": "string"},
-		"changelog":         map[string]any{"type": "string"},
-		"source_session_id": map[string]any{"type": []string{"string", "null"}},
-		"base_version_id":   map[string]any{"type": []string{"string", "null"}},
-		"entry_filename":    map[string]any{"type": "string"},
-		"file_count":        map[string]any{"type": "integer"},
-		"total_size":        map[string]any{"type": "integer"},
-		"created_by":        map[string]any{"type": "string"},
-		"is_active":         map[string]any{"type": "boolean"},
-		"created_at":        map[string]any{"type": "string"},
-	}, "id", "page_id", "version", "entry_filename", "file_count", "total_size", "created_by", "is_active", "created_at")
 }
 
 func handlePagesList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -210,7 +133,7 @@ func handlePagesList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallTo
 		items = append(items, pageItemData(&resp.Items[i]))
 	}
 	totalPages := (resp.Total + int64(size) - 1) / int64(size)
-	return previewStructuredResult(map[string]any{
+	return labeledTextResult("PAGES_LIST", map[string]any{
 		"status":      "success",
 		"message":     fmt.Sprintf("找到 %d 个页面。", len(items)),
 		"items":       items,
@@ -278,7 +201,7 @@ func handlePagesPromote(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Cal
 	if resp.Version != nil {
 		result["version"] = pageVersionData(resp.Version)
 	}
-	return previewStructuredResult(result), nil
+	return labeledTextResult("PAGES_PROMOTE", result), nil
 }
 
 func handlePagesFork(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -306,7 +229,7 @@ func handlePagesFork(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallTo
 	if xErr != nil {
 		return previewErrorResult(fmt.Sprintf("Fork 失败: %s", xErr.Error())), nil
 	}
-	return previewStructuredResult(map[string]any{
+	return labeledTextResult("PAGES_FORK", map[string]any{
 		"status":      "success",
 		"message":     "已从页面派生新的 Preview 草稿。",
 		"session":     previewSessionData(&resp.Session, resp.PreviewURL),
@@ -314,32 +237,59 @@ func handlePagesFork(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallTo
 	}), nil
 }
 
-func pageItemData(page any) map[string]any {
-	payload, _ := json.Marshal(page)
-	data := map[string]any{}
-	_ = json.Unmarshal(payload, &data)
-	return data
+func pageItemData(page *apiPages.PageResponse) map[string]any {
+	return map[string]any{
+		"id":                page.ID.String(),
+		"project_id":        page.ProjectID.String(),
+		"project_name":      page.ProjectName,
+		"slug":              page.Slug,
+		"title":             page.Title,
+		"description":       page.Description,
+		"status":            page.Status,
+		"access_mode":       page.AccessMode,
+		"latest_version_id": page.LatestVersionID.String(),
+		"latest_version":    page.LatestVersion,
+		"page_url":          page.PageURL,
+		"created_at":        page.CreatedAt,
+		"updated_at":        page.UpdatedAt,
+	}
 }
 
-func pageVersionData(version any) map[string]any {
-	payload, _ := json.Marshal(version)
-	data := map[string]any{}
-	_ = json.Unmarshal(payload, &data)
-	return data
+func pageVersionData(version *apiPages.PageVersionResponse) map[string]any {
+	var sourceSessionID any
+	if version.SourceSessionID != nil {
+		sourceSessionID = version.SourceSessionID.String()
+	}
+	var baseVersionID any
+	if version.BaseVersionID != nil {
+		baseVersionID = version.BaseVersionID.String()
+	}
+	return map[string]any{
+		"id":                version.ID.String(),
+		"page_id":           version.PageID.String(),
+		"version":           version.Version,
+		"changelog":         version.Changelog,
+		"source_session_id": sourceSessionID,
+		"base_version_id":   baseVersionID,
+		"entry_filename":    version.EntryFilename,
+		"file_count":        version.FileCount,
+		"total_size":        version.TotalSize,
+		"created_by":        version.CreatedBy,
+		"is_active":         version.IsActive,
+		"created_at":        version.CreatedAt,
+	}
 }
 
 // RegisterPagesTools 注册 Pages MCP 工具。
 func RegisterPagesTools(server *mcp.Server) {
 	for _, def := range pagesToolDefs {
 		inputSchemaBytes, _ := json.Marshal(def.inputSchema)
-		outputSchemaBytes, _ := json.Marshal(def.outputSchema)
 		tool := &mcp.Tool{
-			Name:         def.name,
-			Title:        def.title,
-			Description:  def.description,
-			InputSchema:  json.RawMessage(inputSchemaBytes),
-			OutputSchema: json.RawMessage(outputSchemaBytes),
-			Annotations:  def.annotations,
+			Name:        def.name,
+			Title:       def.title,
+			Description: def.description,
+			InputSchema: json.RawMessage(inputSchemaBytes),
+			Annotations: def.annotations,
 		}
 		var handler mcp.ToolHandler
 		switch def.name {

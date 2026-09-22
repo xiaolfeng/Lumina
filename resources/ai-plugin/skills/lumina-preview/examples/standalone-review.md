@@ -49,7 +49,7 @@ Input: 用户要看一个购物车数量加减的交互稿，不改仓库。
 { "session_id": "3333333333333333333" }
 ```
 
-确认 `entry_file` 为 `index.html`，`workflow.state` 为 `ready_for_review`，并拿到绝对 `preview_url`。
+确认 `entry_file` 为 `index.html`，`workflow` 区段下的 `state` 标签为 `ready_for_review`，并拿到绝对 `preview_url`。
 
 ## 4. 打开
 

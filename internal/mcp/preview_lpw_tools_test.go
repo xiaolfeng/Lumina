@@ -35,25 +35,20 @@ func TestPreviewLpwToolDefinitions(t *testing.T) {
 		if def.title == "" || def.description == "" {
 			t.Errorf("tool %s 缺少 title 或 description", def.name)
 		}
-		if def.inputSchema["type"] != "object" || def.outputSchema["type"] != "object" {
-			t.Errorf("tool %s 的输入/输出 Schema 根类型必须为 object", def.name)
+		if def.inputSchema["type"] != "object" {
+			t.Errorf("tool %s 的输入 Schema 根类型必须为 object", def.name)
 		}
 
-		for schemaName, schemaValue := range map[string]map[string]any{
-			"input":  def.inputSchema,
-			"output": def.outputSchema,
-		} {
-			payload, err := json.Marshal(schemaValue)
-			if err != nil {
-				t.Fatalf("marshal %s schema for %s: %v", schemaName, def.name, err)
-			}
-			var schema jsonschema.Schema
-			if err := json.Unmarshal(payload, &schema); err != nil {
-				t.Fatalf("unmarshal %s schema for %s: %v", schemaName, def.name, err)
-			}
-			if _, err := schema.Resolve(nil); err != nil {
-				t.Errorf("resolve %s schema for %s: %v", schemaName, def.name, err)
-			}
+		payload, err := json.Marshal(def.inputSchema)
+		if err != nil {
+			t.Fatalf("marshal input schema for %s: %v", def.name, err)
+		}
+		var schema jsonschema.Schema
+		if err := json.Unmarshal(payload, &schema); err != nil {
+			t.Fatalf("unmarshal input schema for %s: %v", def.name, err)
+		}
+		if _, err := schema.Resolve(nil); err != nil {
+			t.Errorf("resolve input schema for %s: %v", def.name, err)
 		}
 	}
 	if len(expectedTools) > 0 {
@@ -148,31 +143,6 @@ func TestPreviewLpwNodeAddSchemaUsesSingleNodeContract(t *testing.T) {
 	nodeProps, _ := nodeSchema["properties"].(map[string]any)
 	if nodeProps["children"] != nil {
 		t.Error("node_add must not expose children; callers add one node per request")
-	}
-}
-
-func TestPreviewLpwWriteOutputContract(t *testing.T) {
-	schema := previewLpwWriteOutputSchema()
-	props, _ := schema["properties"].(map[string]any)
-	if props == nil {
-		t.Fatalf("previewLpwWriteOutputSchema missing properties")
-	}
-
-	if props["total_nodes"] == nil {
-		t.Errorf("expected total_nodes in output properties")
-	}
-	if props["node_kind"] == nil {
-		t.Errorf("expected node_kind in output properties")
-	}
-	if props["node_id"] == nil {
-		t.Errorf("expected node_id in output properties")
-	}
-
-	if props["total_blocks"] != nil {
-		t.Errorf("total_blocks must be removed from output properties")
-	}
-	if props["block_id"] != nil {
-		t.Errorf("block_id must be removed from output properties")
 	}
 }
 

@@ -96,7 +96,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 ### 阶段 ④ 最终清单与入口核对 (`preview_file_list`)
 所有文件上传完毕后，**必须调用 `preview_file_list(session_id)` 进行最终核对**。
 - 工具会自动扫描是否存在有效的 HTML 入口文件（`entry_file`）。
-- 确认返回的 `workflow.state` 为 `"ready_for_review"`。
+- 确认返回的 `workflow` 区段下的 `state` 标签为 `"ready_for_review"`。
 
 ### 阶段 ⑤ 双分支交付
 
@@ -111,7 +111,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 
 #### 分支 B：作为 Q&A 问题的详情面板挂载 (跨模块协同)
 若该原型是配合 Q&A 问题或选项呈现给用户的富交互面板：
-1. 从 `preview_file_list` 返回中提取 `qa_supplement.content` 字段（这是一个纯 JSON 字符串，形如 `{"session_id":"123","file_id":"456"}`）。
+1. 从 `preview_file_list` 返回中提取 `qa_supplement` 区段下的 `content` 标签（这是一个纯 JSON 字符串，形如 `{"session_id":"123","file_id":"456"}`）。
 2. 调用 `qa_push_supplement`，严格遵守 `../_shared/preview-qa-contract.md`：
    ```json
    {
@@ -143,7 +143,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
   - `insert`：把 content 各行插入到 `start_line` 之前（省略 `start_line` 时追加到文件末尾）；
   - `replace`：替换 `[start_line, end_line]` 闭区间（空 content 等价删除该区间）；
   - `delete`：删除该闭区间（不带 content）。
-  - 编辑后核对返回的 `edited_region`（变更主体 ±3 行、带行号），确认落点正确；不确定行号时先读取再编辑，禁止盲猜。
+  - 编辑后核对返回文本的 `edited_region` 区段（变更主体 ±3 行、带行号），确认落点正确；不确定行号时先读取再编辑，禁止盲猜。
 - **整文件重写**：结构调整或大面积改写时，使用相同的 `session_id` 和 `filename` 调用 `preview_file_upload` 原位覆写。
 - **删除文件**：废弃文件调用 `preview_file_delete(session_id, filename)`；删除的是 HTML 入口时必须重新补齐入口再交付。
 - **重新核对**：变更完成后，重新调用 `preview_file_list` 确认最新状态。

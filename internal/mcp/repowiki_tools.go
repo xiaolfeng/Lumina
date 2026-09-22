@@ -78,22 +78,22 @@ Wiki 必须处于 completed 状态才可查询；分析中或失败的版本会�
 // handleRepoWikiQuery 查询 Wiki 内容
 func handleRepoWikiQuery(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if repoWikiLogic == nil {
-		return textResult("RepoWikiLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("RepoWikiLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	wikiID, ok := parseSnowflakeInt(args["wiki_id"])
 	if !ok {
-		return textResult("缺少必填参数: wiki_id（整数）"), nil
+		return errorTextResult("缺少必填参数: wiki_id（整数）"), nil
 	}
 	page, _ := args["page"].(string)
 	query, _ := args["query"].(string)
 
 	content, xErr := repoWikiLogic.QueryWiki(context.Background(), wikiID, page, query)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("查询 Wiki 失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("查询 Wiki 失败: %s", xErr.Error())), nil
 	}
 
 	return textResult(content), nil
@@ -102,11 +102,11 @@ func handleRepoWikiQuery(_ context.Context, req *mcp.CallToolRequest) (*mcp.Call
 // handleRepoWikiList 列出所有已完成的 Wiki 版本
 func handleRepoWikiList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if repoWikiLogic == nil {
-		return textResult("RepoWikiLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("RepoWikiLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	page := 1
 	size := 20
@@ -119,7 +119,7 @@ func handleRepoWikiList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallT
 
 	wikis, total, xErr := repoWikiLogic.ListCompletedWikis(context.Background(), page, size)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("获取 Wiki 版本列表失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("获取 Wiki 版本列表失败: %s", xErr.Error())), nil
 	}
 
 	totalPages := (total + int64(size) - 1) / int64(size)

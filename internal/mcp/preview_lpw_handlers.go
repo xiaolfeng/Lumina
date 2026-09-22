@@ -85,7 +85,7 @@ func buildLpwWriteResponse(
 		resultData["node_id"] = writeResult.NodeID
 	}
 
-	return previewStructuredResult(resultData)
+	return labeledTextResult("PREVIEW_LPW_WRITE", resultData)
 }
 
 func handlePreviewLpwInit(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -404,39 +404,42 @@ func handlePreviewLpwOutline(ctx context.Context, req *mcp.CallToolRequest) (*mc
 		)
 	}
 
+	items := make([]map[string]any, 0, len(outline.Items))
+	for _, item := range outline.Items {
+		items = append(items, map[string]any{
+			"id":                 item.ID,
+			"kind":               item.Kind,
+			"type":               item.Type,
+			"pattern_or_variant": item.PatternOrVariant,
+			"json_path":          item.JSONPath,
+			"depth":              item.Depth,
+			"children":           item.Children,
+			"props_bytes":        item.PropsBytes,
+		})
+	}
 	resultData := map[string]any{
 		"status":  "success",
 		"message": message,
-		"outline": outline,
+		"outline": map[string]any{
+			"version":               outline.Version,
+			"node_count":            outline.NodeCount,
+			"total_size":            outline.TotalSize,
+			"revision":              outline.Revision,
+			"completeness_warnings": outline.CompletenessWarnings,
+			"items":                 items,
+		},
 	}
 
-	return previewStructuredResult(resultData), nil
+	return labeledTextResult("PREVIEW_LPW_OUTLINE", resultData), nil
 }
 
-func handlePreviewLpwSchema(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handlePreviewLpwSchema(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args := parseArgs(req.Params.Arguments)
+	if errMsg := checkParseError(args); errMsg != "" {
+		return previewErrorResult(errMsg), nil
+	}
 	typeFilter, _ := args["type"].(string)
 	kindFilter, _ := args["kind"].(string)
 
-	specText := GetLpwTextSpec(kindFilter, typeFilter)
-
-	msg := "已获取 LPW 1.1 节点规范与组件契约大纲"
-	if typeFilter != "" {
-		msg = fmt.Sprintf("已获取 [%s] 节点规范与参数契约", typeFilter)
-	}
-
-	resultData := map[string]any{
-		"status":  "success",
-		"message": msg,
-		"format":  "text",
-		"spec":    specText,
-	}
-
-	res := previewStructuredResult(resultData)
-	res.Content = append([]mcp.Content{
-		&mcp.TextContent{
-			Text: specText,
-		},
-	}, res.Content...)
-	return res, nil
+	return textResult(GetLpwTextSpec(kindFilter, typeFilter)), nil
 }

@@ -21,21 +21,16 @@ func TestPagesToolDefinitions(t *testing.T) {
 		if def.title == "" || !strings.Contains(def.description, "何时调用") {
 			t.Errorf("tool %s 缺少标题或调用时机说明", def.name)
 		}
-		for schemaName, schemaValue := range map[string]map[string]any{
-			"input":  def.inputSchema,
-			"output": def.outputSchema,
-		} {
-			payload, err := json.Marshal(schemaValue)
-			if err != nil {
-				t.Fatalf("marshal %s schema for %s: %v", schemaName, def.name, err)
-			}
-			var schema jsonschema.Schema
-			if err := json.Unmarshal(payload, &schema); err != nil {
-				t.Fatalf("unmarshal %s schema for %s: %v", schemaName, def.name, err)
-			}
-			if _, err := schema.Resolve(nil); err != nil {
-				t.Errorf("resolve %s schema for %s: %v", schemaName, def.name, err)
-			}
+		payload, err := json.Marshal(def.inputSchema)
+		if err != nil {
+			t.Fatalf("marshal input schema for %s: %v", def.name, err)
+		}
+		var schema jsonschema.Schema
+		if err := json.Unmarshal(payload, &schema); err != nil {
+			t.Fatalf("unmarshal input schema for %s: %v", def.name, err)
+		}
+		if _, err := schema.Resolve(nil); err != nil {
+			t.Errorf("resolve input schema for %s: %v", def.name, err)
 		}
 	}
 	server := mcp.NewServer(&mcp.Implementation{Name: "pages-test", Version: "test"}, nil)

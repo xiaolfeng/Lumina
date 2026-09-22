@@ -7,7 +7,7 @@ Input: `select` 题的「方案 A」需要给用户看布局稿。
 ## 顺序
 
 1. 按 [`standalone-review.md`](./standalone-review.md) 把文件传完并 `preview_file_list`。
-2. 从返回里取出 `qa_supplement.content`，原样作为字符串。
+2. 从返回里取出 `qa_supplement` 区段下的 `content` 标签，原样作为字符串。
 3. 调用 `qa_push_supplement`：
 
 ```json

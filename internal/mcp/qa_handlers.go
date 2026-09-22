@@ -17,16 +17,16 @@ import (
 // handleQaSessionCreate 创建 QA 会话
 func handleQaSessionCreate(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if qaLogic == nil {
-		return textResult("QaLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("QaLogic 未初始化，请联系管理员"), nil
 	}
 
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	projectID, _ := args["project_id"].(string)
 	if projectID == "" {
-		return textResult("缺少必填参数: project_id"), nil
+		return errorTextResult("缺少必填参数: project_id"), nil
 	}
 
 	title, _ := args["title"].(string)
@@ -38,7 +38,7 @@ func handleQaSessionCreate(ctx context.Context, req *mcp.CallToolRequest) (*mcp.
 
 	id, link, xErr := qaLogic.CreateSession(ctx, title, agentName, sessionType, projectID)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("创建会话失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("创建会话失败: %s", xErr.Error())), nil
 	}
 
 	return textResult(fmt.Sprintf(
@@ -52,12 +52,12 @@ func handleQaSessionCreate(ctx context.Context, req *mcp.CallToolRequest) (*mcp.
 // handleQaSessionList 获取会话列表
 func handleQaSessionList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if qaLogic == nil {
-		return textResult("QaLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("QaLogic 未初始化，请联系管理员"), nil
 	}
 
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	page := 1
 	size := 20
@@ -79,7 +79,7 @@ func handleQaSessionList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 
 	resp, xErr := qaLogic.ListSessions(ctx, listReq)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("获取会话列表失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("获取会话列表失败: %s", xErr.Error())), nil
 	}
 
 	totalPages := (resp.Total + int64(size) - 1) / int64(size)
@@ -100,21 +100,21 @@ func handleQaSessionList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 // handleQaSessionGet 获取会话信息
 func handleQaSessionGet(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if qaLogic == nil {
-		return textResult("QaLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("QaLogic 未初始化，请联系管理员"), nil
 	}
 
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
-		return textResult("缺少必填参数: session_id"), nil
+		return errorTextResult("缺少必填参数: session_id"), nil
 	}
 
 	result, xErr := qaLogic.GetSessionMCP(ctx, sessionID)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("获取会话失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("获取会话失败: %s", xErr.Error())), nil
 	}
 
 	return textResult(result), nil
@@ -123,21 +123,21 @@ func handleQaSessionGet(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Cal
 // handleQaSessionArchive 归档会话
 func handleQaSessionArchive(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if qaLogic == nil {
-		return textResult("QaLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("QaLogic 未初始化，请联系管理员"), nil
 	}
 
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
-		return textResult("缺少必填参数: session_id"), nil
+		return errorTextResult("缺少必填参数: session_id"), nil
 	}
 
 	xErr := qaLogic.ArchiveSession(ctx, sessionID)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("归档会话失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("归档会话失败: %s", xErr.Error())), nil
 	}
 
 	return textResult(fmt.Sprintf("[RESPONSE] 会话已归档（ID: %s）", sessionID)), nil
@@ -146,32 +146,32 @@ func handleQaSessionArchive(ctx context.Context, req *mcp.CallToolRequest) (*mcp
 // handleQaPushQuestion 推送问题到会话
 func handleQaPushQuestion(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if qaLogic == nil {
-		return textResult("QaLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("QaLogic 未初始化，请联系管理员"), nil
 	}
 
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 
 	// 提取必填参数
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
-		return textResult("缺少必填参数: session_id"), nil
+		return errorTextResult("缺少必填参数: session_id"), nil
 	}
 	qType, _ := args["question_type"].(string)
 	if qType == "" {
-		return textResult("缺少必填参数: question_type"), nil
+		return errorTextResult("缺少必填参数: question_type"), nil
 	}
 	if !qaKnownTypes[qType] {
-		return textResult(fmt.Sprintf(
+		return errorTextResult(fmt.Sprintf(
 			"[ERROR] 未知的问题类型: %q。\n[RULE] 题型必须来自 qa_what_question 的返回，不允许猜测。\n请先调用 qa_what_question（传入你想要的 question_type）获取正确参数格式，或调用 qa_what_question（不传参）查看全部受支持的类型列表。\n\n受支持的类型：%s",
 			qType, strings.Join(qaKnownTypeList, " / "),
 		)), nil
 	}
 	content, _ := args["content"].(string)
 	if content == "" {
-		return textResult("缺少必填参数: content"), nil
+		return errorTextResult("缺少必填参数: content"), nil
 	}
 
 	// 可选参数
@@ -194,7 +194,7 @@ func handleQaPushQuestion(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 
 	qID, optionIDMap, xErr := qaLogic.PushQuestion(ctx, sessionID, qType, content, description, options, config, batch, groupLabel, supplement)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("推送问题失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("推送问题失败: %s", xErr.Error())), nil
 	}
 
 	result := fmt.Sprintf("[RESPONSE] 问题已推送（ID: %s）\n", qID)
@@ -220,24 +220,24 @@ func handleQaPushQuestion(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 // handleQaPushSupplement 推送补充内容
 func handleQaPushSupplement(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if qaLogic == nil {
-		return textResult("QaLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("QaLogic 未初始化，请联系管理员"), nil
 	}
 
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
-		return textResult("缺少必填参数: session_id"), nil
+		return errorTextResult("缺少必填参数: session_id"), nil
 	}
 	questionID, _ := args["question_id"].(string)
 	if questionID == "" {
-		return textResult("缺少必填参数: question_id"), nil
+		return errorTextResult("缺少必填参数: question_id"), nil
 	}
 	content, _ := args["content"].(string)
 	if content == "" {
-		return textResult("缺少必填参数: content"), nil
+		return errorTextResult("缺少必填参数: content"), nil
 	}
 
 	optionID, _ := args["option_id"].(string)
@@ -258,7 +258,7 @@ func handleQaPushSupplement(ctx context.Context, req *mcp.CallToolRequest) (*mcp
 
 	xErr := qaLogic.PushSupplement(ctx, sessionID, questionID, optionID, contentType, content)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("推送补充内容失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("推送补充内容失败: %s", xErr.Error())), nil
 	}
 
 	// 查询关联问题的选项列表，静默降级
@@ -322,7 +322,7 @@ func validatePreviewSupplementContent(content string) error {
 func handleQaWhatQuestion(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 
 	// 如果指定了具体类型，返回该类型的详细帮助
@@ -330,7 +330,7 @@ func handleQaWhatQuestion(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 		if detail, ok := qaTypeDetails[qType]; ok {
 			return textResult(detail), nil
 		}
-		return textResult(fmt.Sprintf("未知的问题类型: %s\n\n%s", qType, qaTypeListText)), nil
+		return errorTextResult(fmt.Sprintf("未知的问题类型: %s\n\n%s", qType, qaTypeListText)), nil
 	}
 
 	// 未指定类型，返回概览
@@ -340,22 +340,22 @@ func handleQaWhatQuestion(ctx context.Context, req *mcp.CallToolRequest) (*mcp.C
 // handleGetAnswer 阻塞获取回答
 func handleGetAnswer(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if qaLogic == nil {
-		return textResult("QaLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("QaLogic 未初始化，请联系管理员"), nil
 	}
 
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
-		return textResult("缺少必填参数: session_id"), nil
+		return errorTextResult("缺少必填参数: session_id"), nil
 	}
 
 	// 读取配置：poll_slice 和 max_retries
 	cfg, xErr := qaLogic.GetQaConfig(ctx)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("读取配置失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("读取配置失败: %s", xErr.Error())), nil
 	}
 
 	actualTimeout := fallbackPollSlice
@@ -369,7 +369,7 @@ func handleGetAnswer(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallTo
 
 	result, xErr := qaLogic.GetAnswer(ctx, sessionID, actualTimeout)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("获取回答失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("获取回答失败: %s", xErr.Error())), nil
 	}
 
 	if result == "" {
@@ -413,16 +413,16 @@ func handleGetAnswer(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallTo
 // handleRegetAnswer 批量非阻塞获取已回答问题的内容
 func handleRegetAnswer(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if qaLogic == nil {
-		return textResult("QaLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("QaLogic 未初始化，请联系管理员"), nil
 	}
 
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
-		return textResult("缺少必填参数: session_id"), nil
+		return errorTextResult("缺少必填参数: session_id"), nil
 	}
 
 	// 解析 question_ids 数组
@@ -435,12 +435,12 @@ func handleRegetAnswer(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Call
 		}
 	}
 	if len(questionIDs) == 0 {
-		return textResult("缺少必填参数: question_ids（至少需要一个问题 ID）"), nil
+		return errorTextResult("缺少必填参数: question_ids（至少需要一个问题 ID）"), nil
 	}
 
 	result, xErr := qaLogic.RegetAnswers(ctx, sessionID, questionIDs)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("获取回答失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("获取回答失败: %s", xErr.Error())), nil
 	}
 
 	return textResult(result), nil
@@ -449,16 +449,16 @@ func handleRegetAnswer(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Call
 // handleQaCancelQuestion 取消指定问题或全部待回答问题
 func handleQaCancelQuestion(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if qaLogic == nil {
-		return textResult("QaLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("QaLogic 未初始化，请联系管理员"), nil
 	}
 
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	sessionID, _ := args["session_id"].(string)
 	if sessionID == "" {
-		return textResult("缺少必填参数: session_id"), nil
+		return errorTextResult("缺少必填参数: session_id"), nil
 	}
 
 	questionID, _ := args["question_id"].(string)
@@ -466,12 +466,12 @@ func handleQaCancelQuestion(ctx context.Context, req *mcp.CallToolRequest) (*mcp
 
 	// question_id 和 type 至少传一个
 	if questionID == "" && cancelType != "all" {
-		return textResult("请提供 question_id（取消单个问题）或 type=all（取消全部待回答问题）"), nil
+		return errorTextResult("请提供 question_id（取消单个问题）或 type=all（取消全部待回答问题）"), nil
 	}
 
 	cancelled, skipped, xErr := qaLogic.CancelQuestion(ctx, sessionID, questionID, cancelType == "all")
 	if xErr != nil {
-		return textResult(fmt.Sprintf("取消问题失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("取消问题失败: %s", xErr.Error())), nil
 	}
 
 	if cancelType == "all" {
@@ -488,7 +488,7 @@ func handleQaCancelQuestion(ctx context.Context, req *mcp.CallToolRequest) (*mcp
 		)), nil
 	}
 
-	return textResult(fmt.Sprintf(
+	return errorTextResult(fmt.Sprintf(
 		"[RESPONSE] 问题 %s 无法取消（可能已回答或不存在）",
 		questionID,
 	)), nil
@@ -515,6 +515,6 @@ func errorTextResult(text string) *mcp.CallToolResult {
 // stubToolHandler 返回通用的「尚未实现」存根响应。
 func stubToolHandler(toolName string) mcp.ToolHandler {
 	return func(_ context.Context, _ *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return textResult(toolName + ": 尚未实现"), nil
+		return errorTextResult(toolName + ": 尚未实现"), nil
 	}
 }

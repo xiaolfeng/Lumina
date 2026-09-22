@@ -52,7 +52,7 @@ preview_file_upload 迭代 → pages_promote（slug 可省略）
 
 ### 新建页面
 
-1. Preview 文件齐全且 `workflow.state` 为 `ready_for_review`。
+1. Preview 文件齐全且 `workflow` 区段下的 `state` 标签为 `ready_for_review`。
 2. `pages_list` 看 slug 是否占用。
 3. `pages_promote`：
    ```json
@@ -63,14 +63,14 @@ preview_file_upload 迭代 → pages_promote（slug 可省略）
      "set_as_active": true
    }
    ```
-4. 用返回的 `page.page_url` 打开路径式页面。无 GUI 时才把 URL 交给用户。
+4. 用返回文本 `page` 区段下的 `page_url` 标签 打开路径式页面。无 GUI 时才把 URL 交给用户。
 
 ### 基于线上页面继续改
 
 1. `pages_fork({ "page_id": "<id>" })`，默认拷贝生效版本。
-2. 返回会话带 `source_page_id` / `source_page_slug`。用 `preview_file_get`（可传行区间）/ `preview_file_edit` 局部改草稿，整文件重写才用 `preview_file_upload`。
+2. 返回文本的 `session` 区段带 `source_page_id` / `source_page_slug` 标签。用 `preview_file_get`（可传行区间）/ `preview_file_edit` 局部改草稿，整文件重写才用 `preview_file_upload`。
 3. 再 `pages_promote`。Fork 会话 **不必再传 slug**，后端锁定来源页面并递增 patch（`v1.0.0` → `v1.1.0`）。
-4. 若返回 `conflict`，向用户说明线上已有更新，确认后再带 `confirm_conflict: true`。
+4. 若返回文本包含 `conflict` 区段，向用户说明线上已有更新，确认后再带 `confirm_conflict: true`。
 
 ## 红线
 

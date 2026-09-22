@@ -202,41 +202,41 @@ project_name 只接受雪花 ID 或别名，不是 Project.Name。
 // handlePinPush 推送跨项目约束
 func handlePinPush(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if pinLogic == nil {
-		return textResult("PinLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("PinLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	title, _ := args["title"].(string)
 	if title == "" {
-		return textResult("缺少必填参数: title"), nil
+		return errorTextResult("缺少必填参数: title"), nil
 	}
 	content, _ := args["content"].(string)
 	if content == "" {
-		return textResult("缺少必填参数: content"), nil
+		return errorTextResult("缺少必填参数: content"), nil
 	}
 	priority, _ := args["priority"].(string)
 	if priority == "" {
-		return textResult("缺少必填参数: priority"), nil
+		return errorTextResult("缺少必填参数: priority"), nil
 	}
 	toProjectName, _ := args["to_project_name"].(string)
 	if toProjectName == "" {
-		return textResult("缺少必填参数: to_project_name"), nil
+		return errorTextResult("缺少必填参数: to_project_name"), nil
 	}
 	category, _ := args["category"].(string)
 	fromProjectIDStr, _ := args["from_project_id"].(string)
 	if fromProjectIDStr == "" {
-		return textResult("缺少必填参数: from_project_id"), nil
+		return errorTextResult("缺少必填参数: from_project_id"), nil
 	}
 
 	fromProject, xErr := pinLogic.ResolveProject(context.Background(), fromProjectIDStr, 0)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("来源项目解析失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("来源项目解析失败: %s", xErr.Error())), nil
 	}
 	toProject, xErr := pinLogic.ResolveProject(context.Background(), toProjectName, fromProject.WorkspaceID)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("目标项目解析失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("目标项目解析失败: %s", xErr.Error())), nil
 	}
 
 	apiReq := &apiPin.CreatePinRequest{
@@ -249,7 +249,7 @@ func handlePinPush(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 	}
 	resp, xErr := pinLogic.Push(context.Background(), apiReq)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("Pin 推送失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("Pin 推送失败: %s", xErr.Error())), nil
 	}
 	return textResult(fmt.Sprintf(`Pin 推送成功！
 
@@ -262,38 +262,38 @@ ID: %s
 // handlePinConsume 消费约束（FIFO 队首 / 精确 ID）
 func handlePinConsume(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if pinLogic == nil {
-		return textResult("PinLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("PinLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	projectName, _ := args["project_name"].(string)
 	if projectName == "" {
-		return textResult("缺少必填参数: project_name"), nil
+		return errorTextResult("缺少必填参数: project_name"), nil
 	}
 
 	project, xErr := pinLogic.ResolveProject(context.Background(), projectName, 0)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("解析目标项目失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("解析目标项目失败: %s", xErr.Error())), nil
 	}
 
 	// 精确 ID 消费 vs FIFO 队首消费
 	if idStr, _ := args["id"].(string); idStr != "" {
 		parsedID, err := xSnowflake.ParseSnowflakeID(idStr)
 		if err != nil {
-			return textResult(fmt.Sprintf("无效的 Pin ID: %s", idStr)), nil
+			return errorTextResult(fmt.Sprintf("无效的 Pin ID: %s", idStr)), nil
 		}
 		resp, xErr := pinLogic.Consume(context.Background(), project.ID, &parsedID)
 		if xErr != nil {
-			return textResult(fmt.Sprintf("消费失败: %s", xErr.Error())), nil
+			return errorTextResult(fmt.Sprintf("消费失败: %s", xErr.Error())), nil
 		}
 		return textResult(formatPinConsumed(resp)), nil
 	}
 
 	resp, xErr := pinLogic.Consume(context.Background(), project.ID, nil)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("消费失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("消费失败: %s", xErr.Error())), nil
 	}
 	return textResult(formatPinConsumed(resp)), nil
 }
@@ -301,21 +301,21 @@ func handlePinConsume(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToo
 // handlePinList 列出目标项目的约束列表
 func handlePinList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if pinLogic == nil {
-		return textResult("PinLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("PinLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	projectName, _ := args["project_name"].(string)
 	if projectName == "" {
-		return textResult("缺少必填参数: project_name"), nil
+		return errorTextResult("缺少必填参数: project_name"), nil
 	}
 
 	// 解析目标项目
 	project, xErr := pinLogic.ResolveProject(context.Background(), projectName, 0)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("解析目标项目失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("解析目标项目失败: %s", xErr.Error())), nil
 	}
 
 	page := 1
@@ -334,7 +334,7 @@ func handlePinList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 	if fromProjectIDStr, ok := args["from_project_id"].(string); ok && fromProjectIDStr != "" {
 		fromProj, xErr := pinLogic.ResolveProject(context.Background(), fromProjectIDStr, 0)
 		if xErr != nil {
-			return textResult(fmt.Sprintf("来源项目解析失败: %s", xErr.Error())), nil
+			return errorTextResult(fmt.Sprintf("来源项目解析失败: %s", xErr.Error())), nil
 		}
 		fromProjectID = fromProj.ID
 	}
@@ -350,7 +350,7 @@ func handlePinList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 	}
 	resp, xErr := pinLogic.List(context.Background(), listReq)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("获取约束列表失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("获取约束列表失败: %s", xErr.Error())), nil
 	}
 
 	totalPages := (resp.Total + int64(size) - 1) / int64(size)
@@ -367,19 +367,19 @@ func handlePinList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 // handlePinUpdate 更新约束元数据（优先级 / 分类）
 func handlePinUpdate(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if pinLogic == nil {
-		return textResult("PinLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("PinLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	idStr, _ := args["id"].(string)
 	if idStr == "" {
-		return textResult("缺少必填参数: id"), nil
+		return errorTextResult("缺少必填参数: id"), nil
 	}
 	parsedID, err := xSnowflake.ParseSnowflakeID(idStr)
 	if err != nil {
-		return textResult(fmt.Sprintf("无效的 Pin ID: %s", idStr)), nil
+		return errorTextResult(fmt.Sprintf("无效的 Pin ID: %s", idStr)), nil
 	}
 
 	// 构造可选更新请求（指针字段为 nil 表示不更新）
@@ -393,7 +393,7 @@ func handlePinUpdate(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallTool
 
 	resp, xErr := pinLogic.Update(context.Background(), parsedID, updateReq)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("更新失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("更新失败: %s", xErr.Error())), nil
 	}
 	return textResult(fmt.Sprintf(`更新成功！
 
@@ -407,24 +407,24 @@ ID: %s
 // handlePinPeek 查看约束详情（只读）
 func handlePinPeek(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if pinLogic == nil {
-		return textResult("PinLogic 未初始化，请联系管理员"), nil
+		return errorTextResult("PinLogic 未初始化，请联系管理员"), nil
 	}
 	args := parseArgs(req.Params.Arguments)
 	if errMsg := checkParseError(args); errMsg != "" {
-		return textResult(errMsg), nil
+		return errorTextResult(errMsg), nil
 	}
 	idStr, _ := args["id"].(string)
 	if idStr == "" {
-		return textResult("缺少必填参数: id"), nil
+		return errorTextResult("缺少必填参数: id"), nil
 	}
 	parsedID, err := xSnowflake.ParseSnowflakeID(idStr)
 	if err != nil {
-		return textResult(fmt.Sprintf("无效的 Pin ID: %s", idStr)), nil
+		return errorTextResult(fmt.Sprintf("无效的 Pin ID: %s", idStr)), nil
 	}
 
 	resp, xErr := pinLogic.Peek(context.Background(), parsedID)
 	if xErr != nil {
-		return textResult(fmt.Sprintf("查看约束失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("查看约束失败: %s", xErr.Error())), nil
 	}
 	return textResult(formatPinDetail(resp)), nil
 }

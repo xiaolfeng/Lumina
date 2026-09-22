@@ -244,7 +244,7 @@ var qaToolDefs = []struct {
 content_type 选择：
 - markdown（默认）：技术说明、约束、代码、表格、Mermaid、KaTeX；浏览器与 Agent 都可读。凡是后续推理必须保留的信息都应使用 markdown。
 - html：一个自包含的展示片段或轻量交互；仅浏览器渲染，不返回给 Agent。不要用它承载 Agent 后续必须读取的约束。
-- preview：多文件或可复用前端预览；仅浏览器渲染。必须先完成 preview_session_create/list → preview_file_upload → preview_file_list，并将 Preview 返回的 qa_supplement.content 原样作为 content。
+- preview：多文件或可复用前端预览；仅浏览器渲染。必须先完成 preview_session_create/list → preview_file_upload → preview_file_list，并将 Preview 返回的 qa_supplement 区段下的 content 标签 原样作为 content。
 
 preview 的 content 必须是且只能是 JSON 字符串 {"session_id":"...","file_id":"..."}；file_id 决定实际渲染入口。不要传 preview hash、preview_url、HTML 源码，不要添加 Markdown 围栏或解释文字。
 
@@ -266,7 +266,7 @@ preview 的 content 必须是且只能是 JSON 字符串 {"session_id":"...","fi
 				},
 				"content": map[string]any{
 					"type":        "string",
-					"description": "补充内容。markdown/html 时为正文；preview 时必须原样传入 Preview 工具返回的 qa_supplement.content JSON 字符串。",
+					"description": "补充内容。markdown/html 时为正文；preview 时必须原样传入 Preview 工具返回的 qa_supplement 区段下的 content 标签 JSON 字符串。",
 				},
 				"content_type": map[string]any{
 					"type":        "string",

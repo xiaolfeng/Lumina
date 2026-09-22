@@ -110,10 +110,10 @@ LPW（Lumina Paper Workshop）适合需要清晰叙事、结构化证据和稳�
 调用 `preview_file_list`，确认：
 
 - LPW 文件存在且为入口。
-- `workflow.state` 为 `ready_for_review`。
+- `workflow` 区段下的 `state` 标签为 `ready_for_review`。
 - `preview_url` 非空。
 
-独立评审时主动打开 `preview_url`。挂到 Q&A 时，读取 `../_shared/preview-qa-contract.md`，原样使用 `qa_supplement.content`；传 `session_id + file_id`，不传 URL 或 hash。
+独立评审时主动打开 `preview_url`。挂到 Q&A 时，读取 `../_shared/preview-qa-contract.md`，原样使用 `qa_supplement` 区段下的 `content` 标签；传 `session_id + file_id`，不传 URL 或 hash。
 
 ## 硬约束
 
