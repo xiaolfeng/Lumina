@@ -320,3 +320,22 @@ func (r *PinRepo) ConsumeByID(ctx context.Context, projectID, pinID xSnowflake.S
 	r.log.Info(ctx, fmt.Sprintf("ConsumeByID - 消费成功 [pinID=%d]", pinID.Int64()))
 	return &pin, nil
 }
+
+// GetOldestPending 只读查询指定项目的最旧待处理 Pin（按 created_at ASC 排序）
+// 不加行锁，不修改任何状态，仅供消费前的详情预览与决策分析。
+func (r *PinRepo) GetOldestPending(ctx context.Context, projectID xSnowflake.SnowflakeID) (*entity.Pin, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("GetOldestPending - 只读获取最旧待处理 Pin [projectID=%d]", projectID.Int64()))
+
+	var pin entity.Pin
+	if err := r.db.WithContext(ctx).
+		Where("to_project_id = ? AND status = ?", projectID, bConst.PinStatusPending).
+		Order("created_at ASC").
+		First(&pin).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		r.log.Warn(ctx, err.Error())
+		return nil, xError.NewError(ctx, xError.DatabaseError, "查询待处理 Pin 失败", false, err)
+	}
+	return &pin, nil
+}

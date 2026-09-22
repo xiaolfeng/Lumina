@@ -4,6 +4,7 @@ import { Copy, GitBranch, GripVertical, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PagesBrandHeader } from '#/components/pages/brand-header'
 import { PreviewFileViewer } from '#/components/preview/file-viewer'
+import { useAuth } from '#/hooks/useAuth'
 import { previewKindFromFilename } from '#/lib/preview-file'
 import { useForkPage, useSwitchActiveVersion } from '#/hooks/usePages'
 import type {
@@ -62,6 +63,7 @@ export function ShowcaseShell({
   versions: PageVersionItem[]
 }) {
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
   const [open, setOpen] = useState(false)
   const [advanced, setAdvanced] = useState(false)
   const [pos, setPos] = useState({ x: 20, y: 16 })
@@ -233,72 +235,76 @@ export function ShowcaseShell({
             </span>
           </div>
 
-          {/* 展开悬浮面板卡片（挂在 Bar 容器内部，跟随 Bar 悬浮展开） */}
+          {/* 展开悬浮面板卡片（挂在 Bar 容器内部，跟随 Bar 悬浮展开，自上而下流动） */}
           {open ? (
-            <div className="max-h-[min(540px,calc(100vh-130px))] w-[min(340px,calc(100vw-32px))] space-y-4 overflow-y-auto border-t border-line bg-foam p-3.5 text-xs animate-in fade-in zoom-in-95 duration-150">
-              {/* 元信息区 */}
-              <section>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lagoon-deep">
-                  元信息
-                </p>
-                <p className="mt-1 text-sm font-medium text-sea-ink">
-                  {page.title}
-                </p>
-                <p className="mt-0.5 text-[11px] text-sea-ink-soft">
-                  {page.access_mode === 'password'
-                    ? '🔒 密码保护'
-                    : '🌐 公开访问'}{' '}
-                  · 不可变快照
-                </p>
-              </section>
-
-              {/* 生效指针与版本历史 */}
-              <section>
-                <div className="flex items-center justify-between">
+            <div className="max-h-[min(540px,calc(100vh-130px))] w-[min(340px,calc(100vw-32px))] space-y-4 overflow-y-auto border-t border-line bg-foam p-3.5 text-xs animate-in fade-in slide-in-from-top-2 duration-150">
+              {/* 元信息区（登录态可见；匿名访客只保留文件切换视图） */}
+              {isAuthenticated ? (
+                <section>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lagoon-deep">
-                    版本
+                    元信息
                   </p>
-                  <span className="font-mono text-[10px] font-bold text-emerald-700">
-                    当前生效: {version.version}
-                  </span>
-                </div>
-                <ul className="mt-1.5 space-y-1">
-                  {versions.map((item) => (
-                    <li
-                      key={item.id}
-                      className="flex items-center justify-between gap-2 py-0.5"
-                    >
-                      <span
-                        className={
-                          item.is_active
-                            ? 'font-semibold text-lagoon-deep'
-                            : 'text-sea-ink-soft'
-                        }
+                  <p className="mt-1 text-sm font-medium text-sea-ink">
+                    {page.title}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-sea-ink-soft">
+                    {page.access_mode === 'password'
+                      ? '🔒 密码保护'
+                      : '🌐 公开访问'}{' '}
+                    · 不可变快照
+                  </p>
+                </section>
+              ) : null}
+
+              {/* 生效指针与版本历史（管理入口，仅登录态可见） */}
+              {isAuthenticated ? (
+                <section>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-lagoon-deep">
+                      版本
+                    </p>
+                    <span className="font-mono text-[10px] font-bold text-emerald-700">
+                      当前生效: {version.version}
+                    </span>
+                  </div>
+                  <ul className="mt-1.5 space-y-1">
+                    {versions.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex items-center justify-between gap-2 py-0.5"
                       >
-                        {item.version}
-                      </span>
-                      {!item.is_active ? (
-                        <button
-                          type="button"
-                          className="cursor-pointer text-[11px] text-sea-ink-soft underline hover:text-sea-ink"
-                          onClick={() =>
-                            switchActive.mutate({
-                              id: page.id,
-                              versionId: item.id,
-                            })
+                        <span
+                          className={
+                            item.is_active
+                              ? 'font-semibold text-lagoon-deep'
+                              : 'text-sea-ink-soft'
                           }
                         >
-                          设为生效
-                        </button>
-                      ) : (
-                        <span className="text-[10px] text-emerald-700">
-                          当前
+                          {item.version}
                         </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
+                        {!item.is_active ? (
+                          <button
+                            type="button"
+                            className="cursor-pointer text-[11px] text-sea-ink-soft underline hover:text-sea-ink"
+                            onClick={() =>
+                              switchActive.mutate({
+                                id: page.id,
+                                versionId: item.id,
+                              })
+                            }
+                          >
+                            设为生效
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-emerald-700">
+                            当前
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
 
               {/* 可渲染页面直切区 */}
               <section>
@@ -356,43 +362,45 @@ export function ShowcaseShell({
                 </section>
               ) : null}
 
-              {/* 底部快捷操作条 */}
-              <div className="space-y-1.5 border-t border-line pt-3">
-                <button
-                  type="button"
-                  className="flex w-full cursor-pointer items-center gap-2 text-left text-xs text-sea-ink hover:text-lagoon-deep"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(window.location.href)
-                    toast.success('已复制当前路径')
-                  }}
-                >
-                  <Copy className="size-3.5 text-sea-ink-soft" /> 复制当前路径
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full cursor-pointer items-center gap-2 text-left text-xs text-sea-ink hover:text-lagoon-deep"
-                  onClick={() =>
-                    fork.mutate(
-                      { id: page.id, versionId: version.id },
-                      {
-                        onSuccess: (res) => {
-                          const url = res.data?.preview_url
-                          if (url) window.location.href = url
+              {/* 底部快捷操作条（管理入口，仅登录态可见） */}
+              {isAuthenticated ? (
+                <div className="space-y-1.5 border-t border-line pt-3">
+                  <button
+                    type="button"
+                    className="flex w-full cursor-pointer items-center gap-2 text-left text-xs text-sea-ink hover:text-lagoon-deep"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(window.location.href)
+                      toast.success('已复制当前路径')
+                    }}
+                  >
+                    <Copy className="size-3.5 text-sea-ink-soft" /> 复制当前路径
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full cursor-pointer items-center gap-2 text-left text-xs text-sea-ink hover:text-lagoon-deep"
+                    onClick={() =>
+                      fork.mutate(
+                        { id: page.id, versionId: version.id },
+                        {
+                          onSuccess: (res) => {
+                            const url = res.data?.preview_url
+                            if (url) window.location.href = url
+                          },
                         },
-                      },
-                    )
-                  }
-                >
-                  <GitBranch className="size-3.5 text-sea-ink-soft" /> Fork
-                  到新预览
-                </button>
-                <a
-                  href="/console/pages"
-                  className="flex items-center gap-2 text-xs text-sea-ink-soft hover:text-sea-ink"
-                >
-                  <Settings2 className="size-3.5" /> 管理员端口 · 页面安全设置
-                </a>
-              </div>
+                      )
+                    }
+                  >
+                    <GitBranch className="size-3.5 text-sea-ink-soft" /> Fork
+                    到新预览
+                  </button>
+                  <a
+                    href="/console/pages"
+                    className="flex items-center gap-2 text-xs text-sea-ink-soft hover:text-sea-ink"
+                  >
+                    <Settings2 className="size-3.5" /> 管理员端口 · 页面安全设置
+                  </a>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

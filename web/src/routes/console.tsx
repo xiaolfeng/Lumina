@@ -1,4 +1,9 @@
-import { createFileRoute, Outlet, redirect, useLocation } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  useLocation,
+} from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   SidebarProvider,
@@ -19,7 +24,9 @@ export const Route = createFileRoute('/console')({
     if (!token && !refreshToken) {
       throw redirect({
         to: '/auth/login',
-        search: { redirect: getSafeRedirect(location.href, '/console/dashboard') },
+        search: {
+          redirect: getSafeRedirect(location.href, '/console/dashboard'),
+        },
       })
     }
   },
@@ -27,11 +34,10 @@ export const Route = createFileRoute('/console')({
 })
 
 const headerVariants = {
-  hidden: { opacity: 0, x: 20 },
+  hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    x: 0,
-    transition: { duration: 0.35, ease },
+    transition: { duration: 0.3, ease },
   },
 }
 

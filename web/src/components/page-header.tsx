@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { staggerItemLeft } from '@lumina/components/motion'
+import { staggerItem } from '@lumina/components/motion'
 
 interface PageHeaderProps {
   title: string
@@ -11,7 +11,7 @@ export function PageHeader({ title, description, action }: PageHeaderProps) {
   return (
     <motion.div
       className="flex flex-wrap items-center justify-between gap-3 pl-1"
-      variants={staggerItemLeft}
+      variants={staggerItem}
     >
       <div className="min-w-0">
         <h1 className="display-title text-2xl font-semibold tracking-tight text-sea-ink">
