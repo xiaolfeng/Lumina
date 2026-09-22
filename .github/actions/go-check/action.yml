@@ -1,5 +1,5 @@
 name: Go check
-description: 打包前校验。gofmt、go vet、go test -race。PR 与发版共用。
+description: 打包前校验。发布版本规则测试、gofmt、go vet、go test -race。PR 与发版共用。
 
 runs:
   using: composite
@@ -10,6 +10,6 @@ runs:
         go-version-file: go.mod
         cache: true
 
-    - name: gofmt / vet / race
+    - name: release version rules / gofmt / vet / race
       shell: bash
       run: make check

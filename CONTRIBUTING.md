@@ -41,7 +41,7 @@ Swagger UI 仅在 `XLF_DEBUG=true` 时注册。
 ## 质量门
 
 ```bash
-make check         # gofmt + go vet + go test -race，与 CI 同一道门
+make check         # 版本规则测试 + gofmt + go vet + go test -race，与 CI 同一道门
 make fmt
 make test
 make vet
@@ -61,14 +61,16 @@ pnpm --filter @lumina/components test
 
 ## 发布
 
-版本 tag 或 `make publish VERSION=vX.Y.Z` 会在打包校验通过后执行以下流程：
+版本 tag 或 `make publish VERSION=vX.Y.Z` 会先校验版本连续性，再执行打包校验与发布。正式版本的 major / minor / patch 每次只能有一段递增一级；预发布版本序号必须连续，例如 `v1.1.0-beta.20` 后只能发布 `v1.1.0-beta.21` 或晋升 `v1.1.0`。跨版本预检失败时会清理本次 tag，并跳过全部构建。
+
+通过预检后执行：
 
 1. 构建并推送 Docker 镜像。
 2. 通过 OpenAI 兼容的 `/chat/completions` 生成 Release 正文。
 3. 使用 GoReleaser 构建 Linux、Windows、macOS、FreeBSD、NetBSD、OpenBSD 的 `amd64` / `arm64` 二进制。
 4. 将各平台的原始二进制与 `checksums.txt` 直接上传到 GitHub Release。
 
-AI Release 正文使用仓库 Variables `AI_BASE_URL`、`AI_MODEL` 和 Secret `AI_API_KEY`。模型不可用时自动使用 commit 清单。GoReleaser 配置位于 `.goreleaser.yaml`。校验、镜像构建或二进制发布失败时，工作流会删除本次提交对应的远端版本 tag；tag 已被移动到其他提交时会拒绝删除并明确报错。
+AI Release 正文固定使用 `glm-5.3-flash` 和 `https://ai-intl.x-lf.com/v1`，仓库只需配置 Secret `AI_API_KEY`。模型不可用时自动使用 commit 清单。GoReleaser 配置位于 `.goreleaser.yaml`。校验、镜像构建或二进制发布失败时，工作流会删除本次提交对应的远端版本 tag；tag 已被移动到其他提交时会拒绝删除并明确报错。
 
 ## 分支与提交
 

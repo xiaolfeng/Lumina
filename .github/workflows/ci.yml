@@ -7,7 +7,7 @@
 # https://opensource.org/licenses/MIT
 # --------------------------------------------------------------------------------
 
-# Pull Request 只跑打包前校验（gofmt / go vet / go test -race），不构建镜像。
+# Pull Request 只跑打包前校验（版本规则测试 / gofmt / go vet / go test -race），不构建镜像。
 # 镜像与 Release 仍只在版本 tag 或 make docker-build / make publish 时走 docker-publish.yml，
 # 且必须先通过同一个校验。
 name: CI

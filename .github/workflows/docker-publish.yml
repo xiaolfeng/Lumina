@@ -9,21 +9,21 @@
 
 # Docker 构建与 Release 发布流水线（GitHub Actions 驱动，本机不执行打包）
 #
-# 打包门禁: verify 作业先跑 make check（gofmt / go vet / go test -race）。
-# 未通过则 docker-build 不会启动。Pull Request 只跑同一套校验，见 ci.yml。
+# 发布门禁: preflight 先校验版本连续性；失败后清理本次 tag，后续作业全部跳过。
+# verify 再跑 make check（gofmt / go vet / go test -race），通过后才能构建。
 #
 # 触发方式:
-#   推送版本 tag（vX.Y.Z 或 vX.Y.Z-后缀）              # 校验通过后构建镜像并创建 GitHub Release
+#   推送版本 tag（vX.Y.Z 或 vX.Y.Z-通道.N）             # 预检、校验、构建镜像并创建 Release
 #   make docker-build VERSION=v0.1.0                 # 手动触发，仅构建并推送镜像
 #   make publish VERSION=v0.1.1-beta.1               # 手动触发，构建推送 + 创建 GitHub Release
 #
 # 版本语义:
-#   版本号含 "-"（如 v0.1.1-beta.1 / v0.2.0-alpha）→ 发布为 prerelease，镜像额外打 beta-latest tag
+#   版本号含 "-"（如 v0.1.1-beta.1 / v0.2.0-alpha.1）→ 发布为 prerelease，镜像额外打 beta-latest tag
 #   其余（如 v0.1.0）                                → 正式 Release，镜像额外打 latest tag
 #
 # 前置条件:
 #   Secrets: DOCKERHUB_USERNAME、DOCKERHUB_TOKEN、AI_API_KEY
-#   Variables: AI_BASE_URL、AI_MODEL
+# AI 固定使用 glm-5.3-flash / https://ai-intl.x-lf.com/v1。
 # AI 配置缺失或调用失败时，Release 正文会回退为 commit 清单。
 # 发版失败时会删除本次提交对应的远端 tag；若 tag 已被移动则拒绝删除。
 # 注意: workflow_dispatch 只能从默认分支（master）触发，首次落地需先提交至 master
@@ -37,7 +37,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '发布版本号，如 v0.1.0 或 v0.1.1-beta.1（含 - 视为 prerelease）'
+        description: '发布版本号，如 v0.1.0 或 v0.1.1-beta.1（预发布序号必须连续）'
         required: true
         type: string
       publish:
@@ -54,8 +54,52 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  preflight:
+    name: 发布版本预检
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+      remote-tag-existed: ${{ steps.tag-state.outputs.remote-existed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+          else
+            version="${{ github.ref_name }}"
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check remote tag state
+        id: tag-state
+        run: |
+          version="${{ steps.version.outputs.value }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${version}" >/dev/null 2>&1; then
+            echo "remote-existed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "remote-existed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check consecutive release version
+        run: git tag --list 'v*' | go run ./scripts/check_release_version.go "${{ steps.version.outputs.value }}"
+
   verify:
     name: 打包校验
+    needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -67,34 +111,21 @@ jobs:
 
   docker-build:
     name: 构建并发布镜像
-    needs: verify
+    needs:
+      - preflight
+      - verify
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # 完整历史，供上一 tag 对比生成变更日志
-          fetch-tags: true
-
-      - name: Resolve version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            version="${{ inputs.version }}"
-          else
-            version="${{ github.ref_name }}"
-          fi
-          echo "$version" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' \
-            || { echo "::error::非法版本号: $version，应为 vX.Y.Z 或 vX.Y.Z-预发布后缀"; exit 1; }
-          echo "value=$version" >> "$GITHUB_OUTPUT"
 
       - name: Compute metadata (tags & prerelease)
         id: meta
         run: |
           image="${{ secrets.DOCKERHUB_USERNAME }}/lumina"
-          tags="$image:${{ steps.version.outputs.value }}"
+          tags="$image:${{ needs.preflight.outputs.version }}"
           prerelease="false"
-          if [[ "${{ steps.version.outputs.value }}" == *-* ]]; then
+          if [[ "${{ needs.preflight.outputs.version }}" == *-* ]]; then
             # 预览版（含 -）：额外打 beta-latest，指向最新预览镜像
             prerelease="true"
             tags="$tags,$image:beta-latest"
@@ -127,13 +158,11 @@ jobs:
     name: 发布二进制与 Release
     if: github.event_name == 'push' || inputs.publish
     needs:
+      - preflight
       - verify
       - docker-build
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    outputs:
-      version: ${{ steps.version.outputs.value }}
-      remote-tag-existed: ${{ steps.prepare-tag.outputs.remote-existed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -141,27 +170,9 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Resolve version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            version="${{ inputs.version }}"
-          else
-            version="${{ github.ref_name }}"
-          fi
-          echo "$version" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' \
-            || { echo "::error::非法版本号: $version，应为 vX.Y.Z 或 vX.Y.Z-预发布后缀"; exit 1; }
-          echo "value=$version" >> "$GITHUB_OUTPUT"
-
       - name: Prepare local release tag
-        id: prepare-tag
         run: |
-          version="${{ steps.version.outputs.value }}"
-          if git ls-remote --exit-code --tags origin "refs/tags/${version}" >/dev/null 2>&1; then
-            echo "remote-existed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "remote-existed=false" >> "$GITHUB_OUTPUT"
-          fi
+          version="${{ needs.preflight.outputs.version }}"
           git rev-parse -q --verify "refs/tags/${version}^{commit}" >/dev/null || git tag "$version" HEAD
 
       - name: Set up Go
@@ -191,11 +202,11 @@ jobs:
         id: release-notes
         uses: Laysi/release-notes-action@ad6ed96c1975be6724225d3c18132e08ad474070 # v1.3.0
         env:
-          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
-          AI_MODEL: ${{ vars.AI_MODEL }}
+          AI_BASE_URL: https://ai-intl.x-lf.com/v1
+          AI_MODEL: glm-5.3-flash
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
         with:
-          tag: ${{ steps.version.outputs.value }}
+          tag: ${{ needs.preflight.outputs.version }}
           tag-pattern: "v*"
           context: |
             Lumina · 微明是面向代码项目的知识与人机协作中枢。
@@ -209,15 +220,16 @@ jobs:
           args: release --clean --release-notes=${{ steps.release-notes.outputs.file }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.value }}
+          GORELEASER_CURRENT_TAG: ${{ needs.preflight.outputs.version }}
 
   cleanup-failed-tag:
     name: 清理失败发版 Tag
     if: >-
       always() &&
-      (needs.verify.result == 'failure' || needs.docker-build.result == 'failure' || needs.release.result == 'failure') &&
-      (github.event_name == 'push' || needs.release.outputs.remote-tag-existed == 'false')
+      (needs.preflight.result == 'failure' || needs.verify.result == 'failure' || needs.docker-build.result == 'failure' || needs.release.result == 'failure') &&
+      (github.event_name == 'push' || needs.preflight.outputs.remote-tag-existed == 'false')
     needs:
+      - preflight
       - verify
       - docker-build
       - release
@@ -232,7 +244,7 @@ jobs:
 
       - name: Delete failed release tag
         env:
-          RELEASE_VERSION: ${{ github.event_name == 'push' && github.ref_name || needs.release.outputs.version }}
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
         run: |
           if [ -z "$RELEASE_VERSION" ]; then
             echo "::notice::本次失败发生在创建 tag 之前，无需清理"

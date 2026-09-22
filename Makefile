@@ -11,7 +11,7 @@ WATCH ?= # 置 1 时触发后阻塞观察，如 make publish VERSION=v0.1.0 WATC
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install swag run dev dev-backend dev-frontend dev-wiki-frontend build-frontend build-wiki-frontend tidy fmt test vet lint check build generate
+.PHONY: help install swag run dev dev-backend dev-frontend dev-wiki-frontend build-frontend build-wiki-frontend tidy fmt test vet lint test-release-version check build generate
 .PHONY: validate-version docker-build publish watch
 
 # 显示帮助信息
@@ -41,7 +41,8 @@ help:
 	@echo "  make test                - 运行 Go 测试"
 	@echo "  make vet                 - 运行 go vet 静态检查"
 	@echo "  make lint                - 运行 golangci-lint (未安装则跳过)"
-	@echo "  make check               - 打包前校验：gofmt + go vet + go test -race"
+	@echo "  make test-release-version - 测试发布版本连续性规则"
+	@echo "  make check               - 打包前校验：发布版本规则测试 + gofmt + go vet + go test -race"
 	@echo ""
 	@echo "Docker / Release（GitHub Actions 驱动，需 gh CLI 已登录）:"
 	@echo "  make docker-build VERSION=vX.X.X  - 触发 CI 构建镜像并推送 Docker Hub"
@@ -118,8 +119,12 @@ lint:
 	@which golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not installed, skipping"; exit 0; }
 	@golangci-lint run ./...
 
-# 打包前校验：格式必须已对齐，vet 与竞态测试必须通过。CI 与发版共用。
-check:
+# 发布版本连续性规则测试
+test-release-version:
+	go test ./scripts
+
+# 打包前校验：版本规则、格式、vet 与竞态测试必须通过。CI 与发版共用。
+check: test-release-version
 	@unformatted=$$(git ls-files -z '*.go' | xargs -0 gofmt -l); \
 	if [ -n "$$unformatted" ]; then \
 		printf 'gofmt 未通过，请先执行 make fmt:\n%s\n' "$$unformatted"; \
@@ -128,10 +133,10 @@ check:
 	go vet ./...
 	go test -race -count=1 ./...
 
-# 校验版本号：vX.Y.Z 或 vX.Y.Z-预发布后缀
+# 校验版本号：vX.Y.Z 或 vX.Y.Z-通道.N
 validate-version:
 	@test -n "$(VERSION)" || { echo "ERROR: 请指定 VERSION=vX.X.X（如 make publish VERSION=v0.1.0）"; exit 1; }
-	@echo "$(VERSION)" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$$' \
+	@echo "$(VERSION)" | grep -qE '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+\.(0|[1-9][0-9]*))?$$' \
 		|| { echo "ERROR: 非法版本号 '$(VERSION)'，示例: v0.1.0 / v0.1.1-beta.1"; exit 1; }
 
 # 触发 GitHub Actions 构建镜像并推送 Docker Hub（不创建 Release）

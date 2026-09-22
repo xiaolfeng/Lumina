@@ -35,6 +35,9 @@
 ├── .github/workflows/          # CI/CD 流水线
 │   ├── ci.yml                  # PR 自动跑打包校验（gofmt / vet / race）
 │   └── docker-publish.yml      # 版本 tag 或手动发版；校验通过后才构建镜像
+├── scripts/
+│   ├── check_release_version.go # 发布版本连续性预检（正式版逐级、预发布序号连续）
+│   └── check_release_version_test.go # 版本转换规则单元测试
 ├── pnpm-workspace.yaml         # pnpm monorepo 工作区（web + web-wiki + components）
 ├── pnpm-lock.yaml              # monorepo 根锁文件（由 web/pnpm-lock.yaml 迁移而来）
 ├── components/                 # @lumina/components 共享 workspace 包
@@ -415,7 +418,7 @@
 - **加密存储**：LLM API Key 和 SSH 私钥必须经 AES-256-GCM 加密后存储，禁止明文落库。
 - **Webhook 签名校验**：所有 Webhook 请求必须经 `service/webhook_signer.go` 校验 HMAC 签名，密钥由 `REPOWIKI_HMAC_SECRET` 环境变量提供。
 - **Cron 任务**：定时任务通过 `xCronRunner` 注册（`startup_cron.go`），包含 RepoWiki 超时重试与 Preview 过期会话清理，由 `main.go` 传入 `xMain.Runner` 异步执行，不阻塞启动节点链。
-- **容器化构建与发版**：`Dockerfile` 采用多阶段构建；镜像标签由 `Makefile` 的 `validate-version` + `docker-build` + `publish` 目标驱动。版本 tag 或手动发版前必须通过 `make check`（gofmt / vet / race），随后构建镜像；AI Action 通过 OpenAI 兼容 `/chat/completions` 生成正文，GoReleaser 构建 amd64/arm64 的 Linux、Windows、macOS 与 BSD 原始二进制并直接上传 GitHub Release。PR 只跑校验。
+- **容器化构建与发版**：`Dockerfile` 采用多阶段构建；镜像标签由 `Makefile` 的 `validate-version` + `docker-build` + `publish` 目标驱动。版本 tag 或手动发版先通过 `go run ./scripts/check_release_version.go` 校验版本连续性，再执行 `make check`（版本规则测试 / gofmt / vet / race）；AI Action 固定通过 `https://ai-intl.x-lf.com/v1` 的 `glm-5.3-flash` 生成正文，只读取 `AI_API_KEY` Secret；GoReleaser 构建 amd64/arm64 的 Linux、Windows、macOS 与 BSD 原始二进制并直接上传 GitHub Release。跨版本预检失败时清理本次 tag 并跳过全部构建。PR 只跑质量门。
 - **子模块约定**：后端分层详情见 [internal/](./internal/AGENTS.md)，控制台前端专属约定见 [web/](./web/AGENTS.md)，Wiki Reader 前端约定见 [web-wiki/](./web-wiki/AGENTS.md)，共享组件包见 [components/](./components/AGENTS.md)。
 
 ## 反模式
@@ -512,7 +515,8 @@ make fmt           # 格式化代码
 make test          # 运行测试
 make vet           # go vet 静态检查
 make lint          # golangci-lint 检查
-make check         # 打包前校验：gofmt + go vet + go test -race（与 CI 相同）
+make test-release-version # 测试发布版本连续性规则
+make check         # 打包前校验：版本规则测试 + gofmt + go vet + go test -race
 
 # 验证（端口由 XLF_PORT 决定，默认 8080；容器内默认 8800）
 curl http://localhost:8080/api/v1/health/ping
@@ -571,7 +575,7 @@ pnpm test         # 运行 Vitest 测试（markdown/remark-fenced-blocks）
 
 - 双前端通过 `go:embed` 嵌入 Go 二进制，构建顺序：先 `pnpm build`（产出 `resources/web/dist` + `resources/web-wiki/dist`），再 `go build`。使用 `make generate` 一键完成。
 - 前端独立开发时使用 `make dev-frontend`（控制台 Vite dev server 端口 3000）和 `make dev-wiki-frontend` / `cd web-wiki && pnpm dev`（Wiki Reader 端口 3001），但生产部署时前后端合一。
-- CI：`.github/workflows/ci.yml` 在 Pull Request 上自动执行 `make check`。`.github/workflows/docker-publish.yml` 在版本 tag 或 `make docker-build` / `make publish` 时先跑同一校验，通过后构建镜像；发布模式再生成 AI Release 正文，并通过 `.goreleaser.yaml` 上传跨平台二进制与 SHA-256 校验和。发版任一步失败时自动删除仍指向本次提交的远端版本 tag，tag 已移动则拒绝误删。
+- CI：`.github/workflows/ci.yml` 在 Pull Request 上自动执行 `make check`。`.github/workflows/docker-publish.yml` 在版本 tag 或手动触发时先校验版本连续性；正式版本 major / minor / patch 只能逐级递增，预发布序号必须连续。预检通过后运行 Go 质量门、构建镜像；发布模式再生成 AI Release 正文，并通过 `.goreleaser.yaml` 上传跨平台二进制与 SHA-256 校验和。发版任一步失败时自动删除仍指向本次提交的远端版本 tag，tag 已移动则拒绝误删。
 - 项目已 pnpm monorepo 化：锁文件为根目录 `pnpm-lock.yaml`，`web/pnpm-lock.yaml` 与 `web-wiki/pnpm-lock.yaml` 已移除；依赖安装统一在根目录执行 `pnpm install`。
 - 依赖已升级：bamboo-base-go 全模块升至 v1.2.3（DB/Cache 改由 `xOption.WithDatabase/WithCache` 声明式装配），Go 1.25.11。
 - `make test` 命令存在，已有测试用例覆盖 project、llm_model、llm_provider、ssh_key_gen、webhook_parser、webhook_signer、wiki_auth_token、wiki_storage、git_service、file_scanner、dependency_extractor、repowiki_orchestrator、biometric、runtime_url、prompt_loader、preview_tools、webauthn_user、oauth_logic、ai_plugin、preview MIME 等模块。
