@@ -21,9 +21,9 @@
 
 ## 队列
 
-- `pin_list(status="pending")` 按 `createdAt` 升序，FIFO 可见。
-- 不传 `id` 的 `pin_consume` 取最旧 pending；队列空时返回「暂无待处理约束」，不是错误。
-- `pin_peek` 只读，不改状态。
+- `pin_peek` 只读查看特定或队首待处理约束详情（包含完整正文），完全不改变状态，用于消费前的决策审阅。
+- `pin_list(status="pending")` 按 `createdAt` 升序，包含正文内容，便于通览并决策。
+- `pin_consume` 在代码适配完成后调用，显式将约束状态原子更新为 `consumed`；队列空时返回「暂无待处理约束」，不是错误。
 - `pin_update` 只能改 `priority` / `category`，不能把状态改成 `consumed`。
 
 ## 不要当成 Pin 的东西

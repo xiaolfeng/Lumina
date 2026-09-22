@@ -19,7 +19,33 @@ Output: 得到 Pin 的雪花 ID，状态 `pending`，落在目标项目 FIFO 队
 
 ## 消费端（项目 B · 前端）
 
-进入前端仓库后先看队列：
+### 阶段 1：只读读取约束并评估决策（不改变 pending 状态）
+
+进入前端仓库后，只读预览队首待处理约束详情与正文：
+
+```json
+{
+  "project_name": "Lumina-Frontend"
+}
+```
+（调用 `pin_peek`）
+
+Output: 只读获得完整正文，状态仍为 `pending`：
+```text
+Pin 详情：
+
+ID: 1234567890123456789
+标题: WebSocket 消息体新增 trace_id
+内容:
+## 接口变更
+`qa_push_question` 广播体新增顶层 `trace_id`。interact 页错误上报需要带上该 ID。
+分类: api_change
+状态: pending
+优先级: high
+...
+```
+
+或者调用 `pin_list` 查看全部待处理约束及其内容正文：
 
 ```json
 {
@@ -30,13 +56,13 @@ Output: 得到 Pin 的雪花 ID，状态 `pending`，落在目标项目 FIFO 队
 }
 ```
 
-不确定内容时 `pin_peek`：
+### 阶段 2：展开本地代码适配与修复
 
-```json
-{ "id": "1234567890123456789" }
-```
+根据读取到的正文要求，在前端代码中进行适配（例如为 WebSocket 错误上报带上 `trace_id`），并运行测试确认无误。
 
-代码改完（上报带上 `trace_id`）再消费。只处理了这一条就精确消费：
+### 阶段 3：显式消费闭环约束 (`pin_consume`)
+
+代码修改完成并验证通过后，调用 `pin_consume` 显式确认闭环：
 
 ```json
 {
@@ -45,14 +71,8 @@ Output: 得到 Pin 的雪花 ID，状态 `pending`，落在目标项目 FIFO 队
 }
 ```
 
-按时间挨个清队列时不传 `id`：
-
-```json
-{ "project_name": "Lumina-Frontend" }
-```
-
 ## 反例
 
-- 未改代码就 FIFO 连消三条 → 约束被归档，下游会漏适配
+- 未看内容或未改代码就盲目批量调 `pin_consume` → 导致约束漏适配
 - `pin_update` 把状态改成 consumed → 工具不允许，状态只能 `pin_consume`
 - 把「记得跑一下测试」推进 Pin → 这不是跨项目契约

@@ -249,6 +249,21 @@ func (l *PinLogic) Peek(ctx context.Context, id xSnowflake.SnowflakeID) (*apiPin
 	return l.toResponse(pin), nil
 }
 
+// PeekOldestPending 只读查看指定项目最旧的一条待处理 Pin（只读不改变状态）
+// 供消费前的详情审阅与决策分析使用。
+func (l *PinLogic) PeekOldestPending(ctx context.Context, projectID xSnowflake.SnowflakeID) (*apiPin.PinResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("PeekOldestPending - 只读查看队首待处理 Pin [projectID=%d]", projectID.Int64()))
+
+	pin, xErr := l.repo.pin.GetOldestPending(ctx, projectID)
+	if xErr != nil {
+		return nil, xErr
+	}
+	if pin == nil {
+		return nil, xError.NewError(ctx, xError.NotFound, "暂无待处理约束", false, nil)
+	}
+	return l.toResponse(pin), nil
+}
+
 // toResponse 将 Pin 实体映射为响应 DTO
 //
 // 时间格式遵循 RFC3339（与项目模块 toResponse 保持一致）。

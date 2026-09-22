@@ -21,7 +21,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 ## 🎯 核心定位与适用场景
 
 - **约束发布方 (Producer)**：你在开发项目 A 时，修改了公共模块或 API 契约，这将直接影响项目 B、C。此时通过 `pin_push` 将约束推送到目标项目。
-- **约束消费方 (Consumer)**：你在进入项目 B 开发时，通过 `pin_list` 和 `pin_consume` 按创建时间升序依序消费未处理的约束，确认适配并闭环。
+- **约束消费方 (Consumer)**：你在进入项目 B 开发时，先通过 `pin_peek` 或 `pin_list` 只读读取待处理约束正文，评估影响并做出技术决策；完成代码适配或确认知晓后，再调用 `pin_consume` 显式确认消费并闭环。
 
 ---
 
@@ -33,11 +33,11 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 pin_push(to="B", priority, content)               │
      │                                            │
      ▼ (落库进入 B 的 FIFO 队列)                    │
-  [Pending] ──────────────────────────────▶ pin_list(project="B", status="pending")
-                                                  │
+  [Pending] ──────────────────────────────▶ pin_peek(project="B") 或 pin_list
+                                                  │ (只读读取正文，状态仍为 Pending，开展本地决策与适配)
                                                   ▼
-                                            pin_consume(project="B")
-                                                  │
+                                            pin_consume(project="B", id="...")
+                                                  │ (代码适配完成，显式确认消费闭环)
                                                   ▼
                                             [Consumed] (状态单向归档)
 ```
@@ -63,8 +63,19 @@ pin_push(to="B", priority, content)               │
 
 ---
 
-### 2. 查阅项目约束队列 (`pin_list`)
-进入目标项目工作区后，首先查看当前项目有哪些待处理约束：
+### 2. 只读读取约束详情与决策评估 (`pin_peek` / `pin_list`) —— 只读不改状态
+进入目标项目后，首先读取待处理约束并做出技术决策，**绝不改变任何状态（保持 pending）**：
+
+#### 模式 A：只读预览队首待处理约束 (`pin_peek`)
+传入 `project_name`（不传 `id`），直接只读获取队首待处理约束的完整标题与 Markdown 正文：
+```json
+{
+  "project_name": "Lumina-Frontend"
+}
+```
+
+#### 模式 B：全览待处理列表及内容 (`pin_list`)
+查看当前项目积压的待处理约束列表（每条均包含标题、正文、分类与优先级）：
 ```json
 {
   "project_name": "Lumina-Frontend",
@@ -73,23 +84,21 @@ pin_push(to="B", priority, content)               │
   "size": 10
 }
 ```
-- 结果按 `createdAt` 升序排列（天然呈现 FIFO 顺序）。
 
----
-
-### 3. 消费与闭环约束 (`pin_consume`)
-确认已在代码中适配或处理了该约束后，将其标记为已消费：
-
-#### 模式 A：FIFO 队首消费（最常用）
-不传 `id`，自动取出并消费最旧的一条 pending 约束：
+#### 模式 C：精确查看指定 ID 约束 (`pin_peek`)
 ```json
 {
-  "project_name": "Lumina-Frontend"
+  "id": "1234567890123456789"
 }
 ```
 
-#### 模式 B：精确 ID 消费
-当针对性处理了某一条特定约束时，传入其雪花 ID：
+---
+
+### 3. 本地代码适配与显式消费闭环 (`pin_consume`)
+在本地审阅正文、完成决策并落实代码修改（或确认知晓）后，调用 `pin_consume` 显式将约束状态标记为已消费：
+
+#### 模式 A：精确 ID 消费（推荐）
+针对性消费刚刚已处理完毕的特定约束：
 ```json
 {
   "project_name": "Lumina-Frontend",
@@ -97,27 +106,30 @@ pin_push(to="B", priority, content)               │
 }
 ```
 
+#### 模式 B：FIFO 队首消费
+不传 `id`，消费当前队首约束：
+```json
+{
+  "project_name": "Lumina-Frontend"
+}
+```
+
 ---
 
-### 4. 只读回查与元数据调整
-
-- **只读预览 (`pin_peek`)**：查看指定 Pin 的完整内容（不改变 pending / consumed 状态）：
-  ```json
-  {"id": "1234567890123456789"}
-  ```
-- **调整元数据 (`pin_update`)**：调整约束的优先级或分类（注意：状态不能通过此工具修改）：
-  ```json
-  {
-    "id": "1234567890123456789",
-    "priority": "medium",
-    "category": "notice"
-  }
-  ```
+### 4. 约束元数据调整 (`pin_update`)
+调整约束的优先级或分类（状态只能通过 `pin_consume` 推进到 `consumed`）：
+```json
+{
+  "id": "1234567890123456789",
+  "priority": "medium",
+  "category": "notice"
+}
+```
 
 ---
 
 ## ⛔ 核心红线 (Hard Rules)
 
 1. **MUST**: 状态流转单向原子化。`pending` 转换为 `consumed` 只能通过 `pin_consume`，严禁通过任何其他方式绕过。
-2. **MUST**: 消费前核对内容。消费代表“该约束已在当前项目中得到处理/知晓”，不可在未做任何处理时盲目批量清空队列。
+2. **MUST**: 读取与消费分离。读取操作（`pin_peek` / `pin_list`）绝不修改状态，Agent 必须先读取正文、评估决策并完成本地处理，随后显式调用 `pin_consume` 确认闭环。
 3. **NEVER**: 严禁将本地临时待办当作跨项目约束。Pin 专用于**跨仓库/跨项目**的契约传递。

@@ -69,11 +69,12 @@ from_project_id 必填，表示约束来源项目（雪花 ID 或别名）。`,
 	},
 	{
 		name: "pin_consume",
-		description: `消费目标项目队列中的约束（FIFO 先进先出）。Agent 用于按序处理待处理约束。
+		description: `消费目标项目队列中的约束，将其状态置为 consumed。
+触发场景：Agent 已经通过 pin_list 或 pin_peek 读取并审阅了约束正文，在做出决策并完成相应代码适配处理后，调用本工具显式确认消费并闭环。
 
 支持两种消费模式：
-  - 不传 id 时：消费队首约束（最旧的 pending，FIFO）
-  - 传 id 时：精确消费指定 ID 的约束（仅当该约束归属此项目且状态为 pending 时成功）
+  - 传 id（推荐）：精确消费已完成处理的指定 ID 约束
+  - 不传 id：按 FIFO 消费队首待处理约束
 
 project_name 只接受雪花 ID 或别名，不是 Project.Name。
 
@@ -105,12 +106,12 @@ project_name 只接受雪花 ID 或别名，不是 Project.Name。
 	},
 	{
 		name: "pin_list",
-		description: `列出目标项目的约束列表，支持状态/分类/优先级筛选和分页。
+		description: `列出目标项目的约束列表，包含标题、正文、分类与优先级（只读，不改变状态）。
 
 project_name 只接受雪花 ID 或别名，不是 Project.Name。
 
 默认返回 pending 状态的约束；可指定 status 查看 consumed（已消费）等历史约束。
-排序为 FIFO（创建时间升序），便于消费场景查看队列顺序。`,
+排序为 FIFO（创建时间升序），便于通览待处理约束并在本地进行决策分析。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -180,19 +181,25 @@ project_name 只接受雪花 ID 或别名，不是 Project.Name。
 	},
 	{
 		name: "pin_peek",
-		description: `查看指定约束的详情（只读，不改变状态）。已消费的约束也可查看。
+		description: `只读查看约束详情（不改变 pending / consumed 状态）。
+触发场景：在消费前审阅约束正文内容、评估影响并做出技术决策，或在消费后回查历史约束。
 
-触发场景：需要在消费前预览约束完整内容、或在消费后回查历史约束时使用。
-返回完整字段：ID、标题、内容、分类、状态、优先级、来源项目、目标项目、消费时间（如已消费）、创建/更新时间。`,
+支持两种查询模式：
+  - 传 id：精确查看指定 ID 的约束详情
+  - 传 project_name（不传 id）：只读预览目标项目当前队首的最旧 pending 待处理约束
+二者至少提供一个。状态始终保持原样，不会被标记为 consumed。`,
 		inputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"id": map[string]any{
 					"type":        "string",
-					"description": "要查看的 Pin ID（雪花 ID 字符串）",
+					"description": "要查看的 Pin ID（雪花 ID 字符串，可选）",
+				},
+				"project_name": map[string]any{
+					"type":        "string",
+					"description": "目标项目的雪花 ID 或别名（可选，不传 id 时用于只读预览队首待处理约束）",
 				},
 			},
-			"required": []string{"id"},
 		},
 	},
 }
@@ -356,7 +363,10 @@ func handlePinList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 	totalPages := (resp.Total + int64(size) - 1) / int64(size)
 	result := fmt.Sprintf("约束列表（共 %d 个，第 %d/%d 页）：\n\n", resp.Total, page, totalPages)
 	for i, p := range resp.Items {
-		result += fmt.Sprintf("%d. [%s] %s | 状态: %s | 优先级: %s\n", i+1, p.ID, p.Title, p.Status, p.Priority)
+		result += fmt.Sprintf("%d. [%s] %s | 分类: %s | 优先级: %s | 状态: %s\n", i+1, p.ID, p.Title, p.Category, p.Priority, p.Status)
+		if p.Content != "" {
+			result += fmt.Sprintf("   内容:\n%s\n\n", p.Content)
+		}
 	}
 	if len(resp.Items) == 0 {
 		result += "（暂无约束）\n"
@@ -404,7 +414,7 @@ ID: %s
 		resp.ID, resp.Title, resp.Priority, resp.Category)), nil
 }
 
-// handlePinPeek 查看约束详情（只读）
+// handlePinPeek 查看约束详情（只读，不改变状态）
 func handlePinPeek(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if pinLogic == nil {
 		return errorTextResult("PinLogic 未初始化，请联系管理员"), nil
@@ -414,17 +424,33 @@ func handlePinPeek(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolRe
 		return errorTextResult(errMsg), nil
 	}
 	idStr, _ := args["id"].(string)
-	if idStr == "" {
-		return errorTextResult("缺少必填参数: id"), nil
-	}
-	parsedID, err := xSnowflake.ParseSnowflakeID(idStr)
-	if err != nil {
-		return errorTextResult(fmt.Sprintf("无效的 Pin ID: %s", idStr)), nil
+	projectName, _ := args["project_name"].(string)
+
+	if idStr == "" && projectName == "" {
+		return errorTextResult("缺少参数: 请提供 id 或 project_name（至少提供一个）"), nil
 	}
 
-	resp, xErr := pinLogic.Peek(context.Background(), parsedID)
+	// 模式 1: 传 id 时精确查看
+	if idStr != "" {
+		parsedID, err := xSnowflake.ParseSnowflakeID(idStr)
+		if err != nil {
+			return errorTextResult(fmt.Sprintf("无效的 Pin ID: %s", idStr)), nil
+		}
+		resp, xErr := pinLogic.Peek(context.Background(), parsedID)
+		if xErr != nil {
+			return errorTextResult(fmt.Sprintf("查看约束失败: %s", xErr.Error())), nil
+		}
+		return textResult(formatPinDetail(resp)), nil
+	}
+
+	// 模式 2: 不传 id 但传 project_name 时，只读预览队首待处理约束
+	project, xErr := pinLogic.ResolveProject(context.Background(), projectName, 0)
 	if xErr != nil {
-		return errorTextResult(fmt.Sprintf("查看约束失败: %s", xErr.Error())), nil
+		return errorTextResult(fmt.Sprintf("解析目标项目失败: %s", xErr.Error())), nil
+	}
+	resp, xErr := pinLogic.PeekOldestPending(context.Background(), project.ID)
+	if xErr != nil {
+		return errorTextResult(fmt.Sprintf("查看队首待处理约束失败: %s", xErr.Error())), nil
 	}
 	return textResult(formatPinDetail(resp)), nil
 }
