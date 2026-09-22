@@ -28,7 +28,7 @@
 ├── Makefile                    # 开发/测试/格式化/构建/容器化发布命令
 ├── .env.example                # 必需的环境变量模板
 ├── Dockerfile                  # 多阶段构建镜像（前端 pnpm build → Go 编译 → 精简运行镜像，EXPOSE 8800）
-├── .goreleaser.yaml            # Release 跨平台原始二进制（amd64/arm64，Linux/Windows/macOS/BSD）与校验和
+├── .goreleaser.yaml            # Release 跨平台原始二进制（amd64/arm64，Linux/Windows/macOS）与校验和
 ├── .dockerignore               # 镜像构建忽略清单
 ├── docker-compose.yaml         # 精简编排（app + db + redis）
 ├── docker-compose.full.yaml    # 完整编排（含可选服务）
@@ -418,7 +418,7 @@
 - **加密存储**：LLM API Key 和 SSH 私钥必须经 AES-256-GCM 加密后存储，禁止明文落库。
 - **Webhook 签名校验**：所有 Webhook 请求必须经 `service/webhook_signer.go` 校验 HMAC 签名，密钥由 `REPOWIKI_HMAC_SECRET` 环境变量提供。
 - **Cron 任务**：定时任务通过 `xCronRunner` 注册（`startup_cron.go`），包含 RepoWiki 超时重试与 Preview 过期会话清理，由 `main.go` 传入 `xMain.Runner` 异步执行，不阻塞启动节点链。
-- **容器化构建与发版**：`Dockerfile` 采用多阶段构建；镜像标签由 `Makefile` 的 `validate-version` + `docker-build` + `publish` 目标驱动。版本 tag 或手动发版先通过 `go run ./scripts/check_release_version.go` 校验版本连续性，再执行 `make check`（版本规则测试 / gofmt / vet / race）；AI Action 固定通过 `https://ai-intl.x-lf.com/v1` 的 `glm-5.3-flash` 生成正文，只读取 `AI_API_KEY` Secret；GoReleaser 构建 amd64/arm64 的 Linux、Windows、macOS 与 BSD 原始二进制并直接上传 GitHub Release。跨版本预检失败时清理本次 tag 并跳过全部构建。PR 只跑质量门。
+- **容器化构建与发版**：`Dockerfile` 采用多阶段构建；镜像标签由 `Makefile` 的 `validate-version` + `docker-build` + `publish` 目标驱动。版本 tag 或手动发版先通过 `go run ./scripts/check_release_version.go` 校验版本连续性，再执行 `make check`（版本规则测试 / gofmt / vet / race）；AI Action 固定通过 `https://ai-intl.x-lf.com/v1` 的 `glm-5.3-flash` 生成正文，只读取 `AI_API_KEY` Secret；GoReleaser 构建 amd64/arm64 的 Linux、Windows 与 macOS 原始二进制并直接上传 GitHub Release。跨版本预检失败时清理本次 tag 并跳过全部构建。PR 只跑质量门。
 - **子模块约定**：后端分层详情见 [internal/](./internal/AGENTS.md)，控制台前端专属约定见 [web/](./web/AGENTS.md)，Wiki Reader 前端约定见 [web-wiki/](./web-wiki/AGENTS.md)，共享组件包见 [components/](./components/AGENTS.md)。
 
 ## 反模式

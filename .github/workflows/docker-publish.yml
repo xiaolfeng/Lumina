@@ -218,7 +218,7 @@ jobs:
         with:
           distribution: goreleaser
           version: v2.18.2
-          args: release --clean --release-notes=${{ steps.release-notes.outputs.file }}
+          args: release --clean --parallelism=2 --release-notes=${{ steps.release-notes.outputs.file }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GORELEASER_CURRENT_TAG: ${{ needs.preflight.outputs.version }}
