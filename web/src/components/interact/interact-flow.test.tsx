@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import * as React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SessionProgressBar } from './session-progress-bar'
@@ -9,6 +10,15 @@ import {
   SplitterPanel,
   SplitterHandle,
 } from '@lumina/components/ui/splitter'
+import {
+  COOKIE_KEYS,
+  getQaSplitterRatio,
+  setQaSplitterRatio,
+  removeCookie,
+  QA_SPLITTER_DEFAULT_RATIO,
+  QA_SPLITTER_MIN_RATIO,
+  QA_SPLITTER_MAX_RATIO,
+} from '#/lib/cookie'
 import type { Question } from './types'
 
 describe('Interact flow integration & regression verification', () => {
@@ -135,5 +145,118 @@ describe('Interact flow integration & regression verification', () => {
     expect(markdownDiv?.classList.contains('min-w-0')).toBe(true)
     expect(markdownDiv?.classList.contains('max-w-full')).toBe(true)
     expect(markdownDiv?.classList.contains('break-words')).toBe(true)
+  })
+
+  it('Q-05: verifies Splitter ratio persists to cookie and restores on next question popup / remount', () => {
+    removeCookie(COOKIE_KEYS.QA_SPLITTER_RATIO)
+    expect(getQaSplitterRatio()).toBeNull()
+
+    function TestInteractHarness({ questionIndex }: { questionIndex: number }) {
+      const [splitterRatio, setSplitterRatio] = React.useState<number>(() => {
+        return getQaSplitterRatio() ?? QA_SPLITTER_DEFAULT_RATIO
+      })
+
+      const handleSplitterResizeEnd = (sizes: number[]) => {
+        if (sizes.length > 0 && typeof sizes[0] === 'number') {
+          const ratio = Math.round(sizes[0])
+          setSplitterRatio(ratio)
+          setQaSplitterRatio(ratio)
+        }
+      }
+
+      return (
+        <div data-testid={`question-view-${questionIndex}`}>
+          <Splitter
+            key={`question-splitter-${questionIndex}`}
+            data-testid="splitter"
+            onResizeEnd={handleSplitterResizeEnd}
+          >
+            <SplitterPanel
+              defaultSize={splitterRatio}
+              minSize={QA_SPLITTER_MIN_RATIO}
+              maxSize={QA_SPLITTER_MAX_RATIO}
+              data-testid="panel-left"
+            >
+              Question {questionIndex}
+            </SplitterPanel>
+            <SplitterHandle data-testid="splitter-handle" />
+            <SplitterPanel minSize={30} data-testid="panel-right">
+              Detail {questionIndex}
+            </SplitterPanel>
+          </Splitter>
+        </div>
+      )
+    }
+
+    const { rerender, container } = render(<TestInteractHarness questionIndex={1} />)
+    const splitter1 = container.querySelector<HTMLElement>('[data-testid="splitter"]')!
+    vi.spyOn(splitter1, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      right: 1000,
+      bottom: 600,
+      width: 1000,
+      height: 600,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    })
+
+    // 默认比例 45%
+    expect(splitter1.style.getPropertyValue('--splitter-track')).toBe(
+      '45% var(--splitter-hit-size, 14px) 1fr',
+    )
+
+    // 用户拖动到 36% (360px)
+    const handle = container.querySelector<HTMLElement>('[data-testid="splitter-handle"]')!
+    fireEvent.pointerDown(handle, { clientX: 450, clientY: 300 })
+    fireEvent.pointerMove(handle, { clientX: 360, clientY: 300 })
+    fireEvent.pointerUp(handle)
+
+    // 验证当前比例更新为 36% 且已写入 Cookie
+    expect(splitter1.style.getPropertyValue('--splitter-track')).toBe(
+      '36% var(--splitter-hit-size, 14px) 1fr',
+    )
+    expect(getQaSplitterRatio()).toBe(36)
+
+    // 模拟回答完问题 1，下一个问题 2 弹出（重新挂载 Splitter）
+    rerender(<TestInteractHarness questionIndex={2} />)
+
+    const splitter2 = container.querySelector<HTMLElement>('[data-testid="splitter"]')!
+    vi.spyOn(splitter2, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      right: 1000,
+      bottom: 600,
+      width: 1000,
+      height: 600,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    })
+
+    // 验证下一个问题出现时，依然保持 36%，没有失效退回 45%
+    expect(splitter2.style.getPropertyValue('--splitter-track')).toBe(
+      '36% var(--splitter-hit-size, 14px) 1fr',
+    )
+
+    // 模拟新页面打开（重新执行 useState 初始化读取 Cookie）
+    const secondVisit = render(<TestInteractHarness questionIndex={3} />)
+    const splitter3 = secondVisit.container.querySelector<HTMLElement>('[data-testid="splitter"]')!
+    vi.spyOn(splitter3, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      right: 1000,
+      bottom: 600,
+      width: 1000,
+      height: 600,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    })
+
+    expect(splitter3.style.getPropertyValue('--splitter-track')).toBe(
+      '36% var(--splitter-hit-size, 14px) 1fr',
+    )
   })
 })

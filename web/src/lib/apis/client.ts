@@ -2,6 +2,11 @@ import axios from 'axios'
 import Cookies from 'js-cookie'
 import JSONBig from 'json-bigint'
 import { writeTokenCookies } from '../auth/cookie-utils'
+import {
+  isSessionNeutralRequest,
+  refreshTokenFromRequest,
+  shouldDiscardSessionAfterRefreshFailure,
+} from '../auth/session'
 import type { BaseResponse } from '../models/response/common'
 
 const JSONBigString = JSONBig({ storeAsString: true })
@@ -27,14 +32,19 @@ function convertIdStringsToBigInt(data: unknown): unknown {
   if (data && typeof data === 'object') {
     const result: Record<string, unknown> = {}
     for (const key of Object.keys(data)) {
-      result[key] = convertIdStringsToBigInt((data as Record<string, unknown>)[key])
+      result[key] = convertIdStringsToBigInt(
+        (data as Record<string, unknown>)[key],
+      )
     }
     return result
   }
   return data
 }
 
-function bigintTransformRequest(data: unknown, headers?: Record<string, string>): string {
+function bigintTransformRequest(
+  data: unknown,
+  headers?: Record<string, string>,
+): string {
   if (headers) {
     headers['Content-Type'] = 'application/json'
   }
@@ -98,7 +108,9 @@ let isRefreshing = false
 let refreshPromise: Promise<string> | null = null
 let refreshSubscribers: Array<(token: string, error?: Error) => void> = []
 
-function subscribeTokenRefresh(callback: (token: string, error?: Error) => void) {
+function subscribeTokenRefresh(
+  callback: (token: string, error?: Error) => void,
+) {
   refreshSubscribers.push(callback)
 }
 
@@ -121,24 +133,50 @@ function clearAuthAndRedirect(currentPath?: string) {
   window.location.href = `${LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}`
 }
 
-function refreshToken(): Promise<string> {
-  const refreshTokenValue = Cookies.get('refresh_token')
-  if (!refreshTokenValue) {
-    return Promise.reject(new Error('No refresh token available'))
+function clearSessionAfterRefreshFailure(
+  attemptedRefreshToken: string | undefined,
+  currentPath?: string,
+) {
+  const current = Cookies.get('refresh_token')
+  if (
+    !shouldDiscardSessionAfterRefreshFailure(attemptedRefreshToken, current)
+  ) {
+    return
   }
+  clearAuthAndRedirect(currentPath)
+}
 
-  return apiClient
-    .post('/api/v1/auth/refresh', { refresh_token: refreshTokenValue })
-    .then((res: any) => {
-      const tokenData = res.data
-      if (!tokenData) {
-        throw new Error('Refresh response missing token data')
-      }
+function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined
+  if (!locks?.request) return fn()
+  return locks.request('lumina-auth-refresh', fn)
+}
 
-      writeTokenCookies(tokenData)
+function refreshToken(): Promise<string> {
+  return withRefreshLock(async () => {
+    const refreshTokenValue = Cookies.get('refresh_token')
+    if (!refreshTokenValue) {
+      throw new Error('No refresh token available')
+    }
 
-      return tokenData.access_token as string
+    const res = await apiClient.post('/api/v1/auth/refresh', {
+      refresh_token: refreshTokenValue,
     })
+    const tokenData = (
+      res as { data?: Parameters<typeof writeTokenCookies>[0] }
+    ).data
+    if (!tokenData?.access_token) {
+      throw new Error('Refresh response missing token data')
+    }
+
+    writeTokenCookies(tokenData)
+    return tokenData.access_token
+  })
+}
+
+/** 与 401 拦截器共用同一条刷新，避免页面定时器和请求失败各打一次。 */
+export function refreshAccessToken(): Promise<void> {
+  return doRefresh().then(() => undefined)
 }
 
 function doRefresh(): Promise<string> {
@@ -161,30 +199,54 @@ function doRefresh(): Promise<string> {
   return refreshPromise!
 }
 
-function handle401Error(originalRequest: any): Promise<any> {
-  // 如果 refresh 请求本身 401，说明 RT 也失效，直接跳转避免死循环
-  if (originalRequest.url === REFRESH_URL) {
-    clearAuthAndRedirect()
+function readErrorMessage(cause: unknown, fallback: string): string {
+  if (cause && typeof cause === 'object' && 'response' in cause) {
+    const data = (
+      cause as {
+        response?: { data?: { error_message?: unknown; message?: unknown } }
+      }
+    ).response?.data
+    const message = data?.error_message ?? data?.message
+    if (typeof message === 'string' && message !== '') return message
+  }
+  if (cause instanceof Error && cause.message !== '') return cause.message
+  return fallback
+}
+
+function handle401Error(originalRequest: any, cause?: unknown): Promise<any> {
+  if (!originalRequest) {
+    return Promise.reject(
+      cause instanceof Error ? cause : new Error('Request failed'),
+    )
+  }
+  if (isSessionNeutralRequest(originalRequest?.url)) {
+    return Promise.reject(new Error(readErrorMessage(cause, 'Request failed')))
+  }
+
+  // 刷新请求自己失败：只丢掉这次提交的那把令牌，别把别的标签页刚换上的新令牌清掉
+  if (originalRequest?.url === REFRESH_URL) {
+    clearSessionAfterRefreshFailure(refreshTokenFromRequest(originalRequest))
     return Promise.reject(new Error('Refresh token expired'))
   }
 
   if (!Cookies.get('refresh_token')) {
-    clearAuthAndRedirect()
+    clearSessionAfterRefreshFailure(undefined)
     return Promise.reject(new Error('No refresh token available'))
   }
 
   if (originalRequest._retry) {
-    clearAuthAndRedirect()
+    clearSessionAfterRefreshFailure(Cookies.get('refresh_token'))
     return Promise.reject(new Error('Token refresh failed after retry'))
   }
 
   originalRequest._retry = true
+  const attempted = Cookies.get('refresh_token')
 
   if (isRefreshing) {
     return new Promise((resolve, reject) => {
       subscribeTokenRefresh((token, err) => {
         if (err || !token) {
-          clearAuthAndRedirect()
+          clearSessionAfterRefreshFailure(attempted)
           reject(err || new Error('Token refresh failed'))
           return
         }
@@ -200,7 +262,7 @@ function handle401Error(originalRequest: any): Promise<any> {
       return apiClient(originalRequest)
     })
     .catch((err) => {
-      clearAuthAndRedirect()
+      clearSessionAfterRefreshFailure(attempted)
       return Promise.reject(err)
     })
 }
@@ -240,12 +302,20 @@ apiClient.interceptors.response.use(
   (error) => {
     // HTTP 层面的 401 错误
     if (error.response?.status === 401) {
-      return handle401Error(error.config)
+      return handle401Error(error.config, error)
     }
     const respData = error.response?.data
-    if (respData && typeof respData === 'object' && 'error_message' in respData) {
+    if (
+      respData &&
+      typeof respData === 'object' &&
+      'error_message' in respData
+    ) {
       const msg = respData.error_message ?? respData.message
-      return Promise.reject(new Error(msg ?? `Request failed with status code ${error.response?.status}`))
+      return Promise.reject(
+        new Error(
+          msg ?? `Request failed with status code ${error.response?.status}`,
+        ),
+      )
     }
     return Promise.reject(error)
   },
@@ -275,7 +345,11 @@ publicApiClient.interceptors.response.use(
       const baseData = data as BaseResponse
       if (baseData.code !== 200) {
         return Promise.reject(
-          new Error(baseData.error_message ?? baseData.message ?? `Request failed with code ${baseData.code}`),
+          new Error(
+            baseData.error_message ??
+              baseData.message ??
+              `Request failed with code ${baseData.code}`,
+          ),
         )
       }
     }
@@ -283,11 +357,18 @@ publicApiClient.interceptors.response.use(
   },
   (error) => {
     const respData = error.response?.data
-    if (respData && typeof respData === 'object' && 'error_message' in respData) {
+    if (
+      respData &&
+      typeof respData === 'object' &&
+      'error_message' in respData
+    ) {
       const msg = respData.error_message ?? respData.message
-      return Promise.reject(new Error(msg ?? `Request failed with status code ${error.response?.status}`))
+      return Promise.reject(
+        new Error(
+          msg ?? `Request failed with status code ${error.response?.status}`,
+        ),
+      )
     }
     return Promise.reject(error)
   },
 )
-

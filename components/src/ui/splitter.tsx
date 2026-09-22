@@ -19,6 +19,10 @@ const HANDLE_SIZE_VAR = "var(--splitter-hit-size, 14px)"; // 命中区宽度（C
 /* ── 类型 ── */
 type SplitterProps = React.ComponentProps<"div"> & {
   direction?: Direction;
+  /** 比例发生变化时的实时回调 */
+  onSizesChange?: (sizes: number[]) => void;
+  /** 拖拽松开或键盘调整完成后的比例回调（适合用于持久化保存） */
+  onResizeEnd?: (sizes: number[]) => void;
 };
 
 type SplitterPanelProps = React.ComponentProps<"div"> & {
@@ -47,11 +51,19 @@ type SplitterHandleProps = React.ComponentProps<"div"> & {
    ──────────────────────────────────────────────── */
 function Splitter({
   direction = "horizontal",
+  onSizesChange,
+  onResizeEnd,
   className,
   children,
   ...props
 }: SplitterProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const onSizesChangeRef = React.useRef(onSizesChange);
+  onSizesChangeRef.current = onSizesChange;
+
+  const onResizeEndRef = React.useRef(onResizeEnd);
+  onResizeEndRef.current = onResizeEnd;
 
   // 拆分 children：识别 panel 与 handle（按 JSX 顺序）
   const panels = React.useMemo(
@@ -68,16 +80,21 @@ function Splitter({
     panels.slice(0, -1).map((p) => p.props.defaultSize ?? 100 / panels.length),
   );
 
+  const latestSizesRef = React.useRef<number[]>(sizes);
+  React.useEffect(() => {
+    latestSizesRef.current = sizes;
+  }, [sizes]);
+
   // panel 数量变化时同步默认占比（拖拽中不重置；跳过首屏，避免无效渲染）
   const prevPanelCount = React.useRef(panels.length);
   React.useEffect(() => {
     if (prevPanelCount.current === panels.length) return;
     prevPanelCount.current = panels.length;
-    setSizes(
-      panels
-        .slice(0, -1)
-        .map((p) => p.props.defaultSize ?? 100 / panels.length),
-    );
+    const newSizes = panels
+      .slice(0, -1)
+      .map((p) => p.props.defaultSize ?? 100 / panels.length);
+    latestSizesRef.current = newSizes;
+    setSizes(newSizes);
   }, [panels.length]);
 
   // 收集 minSize 与 maxSize（%）
@@ -115,6 +132,8 @@ function Splitter({
 
         const nextSizes = [...prev];
         nextSizes[index] = Math.min(max, Math.max(min, target - before));
+        latestSizesRef.current = nextSizes;
+        onSizesChangeRef.current?.(nextSizes);
         return nextSizes;
       });
     },
@@ -134,6 +153,9 @@ function Splitter({
         const panelMax = maxSizes[index] ?? 100;
         const max = Math.min(panelMax, Math.max(min, 100 - before - reserve));
         nextSizes[index] = Math.min(max, Math.max(min, prev[index] + delta));
+        latestSizesRef.current = nextSizes;
+        onSizesChangeRef.current?.(nextSizes);
+        onResizeEndRef.current?.(nextSizes);
         return nextSizes;
       });
     },
@@ -168,6 +190,7 @@ function Splitter({
   }, [bodyCursor]);
   const onDragEnd = React.useCallback(() => {
     document.body.style.cursor = "";
+    onResizeEndRef.current?.(latestSizesRef.current);
   }, []);
 
   // 计数：当前遍历到的 handle 下标（避免重复遍历 children）

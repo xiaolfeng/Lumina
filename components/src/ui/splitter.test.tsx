@@ -221,4 +221,63 @@ describe("Splitter", () => {
     // 应被 clamp 在 maxSize=50%
     expect(getTrack(splitter)).toBe("50% var(--splitter-hit-size, 14px) 1fr");
   });
+
+  it("calls onSizesChange during drag and onResizeEnd on pointerUp", () => {
+    const onSizesChange = vi.fn();
+    const onResizeEnd = vi.fn();
+
+    const { container } = render(
+      <Splitter
+        data-testid="splitter"
+        onSizesChange={onSizesChange}
+        onResizeEnd={onResizeEnd}
+      >
+        <SplitterPanel defaultSize={45} minSize={30} maxSize={50}>
+          左
+        </SplitterPanel>
+        <SplitterHandle data-testid="handle" />
+        <SplitterPanel minSize={30}>右</SplitterPanel>
+      </Splitter>,
+    );
+    const splitter = container.querySelector<HTMLElement>(
+      '[data-testid="splitter"]',
+    )!;
+    mockContainerRect(splitter);
+    const handle = container.querySelector<HTMLElement>(
+      '[data-testid="handle"]',
+    )!;
+
+    fireEvent.pointerDown(handle, { clientX: 450, clientY: 250 });
+    fireEvent.pointerMove(handle, { clientX: 380, clientY: 250 });
+
+    expect(onSizesChange).toHaveBeenCalledWith([38]);
+    expect(onResizeEnd).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(handle);
+
+    expect(onResizeEnd).toHaveBeenCalledTimes(1);
+    expect(onResizeEnd).toHaveBeenCalledWith([38]);
+  });
+
+  it("calls onResizeEnd on keyboard arrow navigation", () => {
+    const onResizeEnd = vi.fn();
+
+    const { container } = render(
+      <Splitter data-testid="splitter" onResizeEnd={onResizeEnd}>
+        <SplitterPanel defaultSize={45} minSize={30} maxSize={50}>
+          左
+        </SplitterPanel>
+        <SplitterHandle data-testid="handle" />
+        <SplitterPanel minSize={30}>右</SplitterPanel>
+      </Splitter>,
+    );
+    const handle = container.querySelector<HTMLElement>(
+      '[data-testid="handle"]',
+    )!;
+
+    handle.focus();
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+
+    expect(onResizeEnd).toHaveBeenCalledWith([46]);
+  });
 });

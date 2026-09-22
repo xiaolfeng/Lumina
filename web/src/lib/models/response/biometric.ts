@@ -40,6 +40,7 @@ export interface LoginFinishResponse {
   access_token: string
   refresh_token: string
   expires_at: number
+  refresh_expires_in?: number
 }
 
 export type LoginFinishResponseWrapper = BaseResponse<LoginFinishResponse>

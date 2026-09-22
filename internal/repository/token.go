@@ -14,7 +14,8 @@ import (
 //
 // 该类型为纯缓存仓储，无数据库依赖。通过封装 AccessTokenCache 和 RefreshTokenCache
 // 提供统一的数据访问接口，供上层业务逻辑层使用。
-// AT 缓存默认 2 小时过期，RT 缓存默认 14 天过期。
+// AT / RT 的实际寿命由 AuthLogic 按安全设置写入；这里的默认 TTL 只是未传寿命时的回退，
+// 与设置目录默认值一致（访问令牌 1 小时，刷新令牌 7 天）。
 // 采用单用户模式：AT 仅存储认证状态标记，RT 存储认证状态标记。
 //
 // 字段说明:
@@ -30,7 +31,7 @@ type TokenRepo struct {
 // NewTokenRepo 初始化并返回一个 TokenRepo 仓储实例
 //
 // 该工厂函数通过组装 Redis 客户端和日志记录器，构建具备 AT/RT 缓存管理的
-// TokenRepo 仓储对象。AT 缓存默认 2 小时过期，RT 缓存默认 14 天过期。
+// TokenRepo 仓储对象。未指定寿命时回退到设置默认值：AT 1 小时，RT 7 天。
 //
 // 参数说明:
 //   - rdb: 已初始化的 Redis 客户端实例，用于构建缓存策略
@@ -40,27 +41,21 @@ type TokenRepo struct {
 func NewTokenRepo(rdb *redis.Client) *TokenRepo {
 	return &TokenRepo{
 		atCache: &cache.AccessTokenCache{
-			Base: &cache.Base{RDB: rdb, TTL: 2 * time.Hour},
+			Base: &cache.Base{RDB: rdb, TTL: time.Hour},
 		},
 		rtCache: &cache.RefreshTokenCache{
-			Base: &cache.Base{RDB: rdb, TTL: 14 * 24 * time.Hour},
+			Base: &cache.Base{RDB: rdb, TTL: 7 * 24 * time.Hour},
 		},
 		log: xLog.WithName(xLog.NamedREPO, "TokenRepo"),
 	}
 }
 
-// SetAccessToken 将认证状态写入 AccessToken 缓存
-//
-// 参数:
-//   - ctx: 上下文对象，用于传递请求上下文
-//   - token: AccessToken 原始值，作为缓存键
-//
-// 返回值:
-//   - *xError.Error: 缓存写入过程中的错误
-func (r *TokenRepo) SetAccessToken(ctx context.Context, token string) *xError.Error {
+// SetAccessToken 将认证状态写入 AccessToken 缓存。
+// ttl 为这枚令牌的寿命；<= 0 时使用缓存默认 TTL。
+func (r *TokenRepo) SetAccessToken(ctx context.Context, token string, ttl time.Duration) *xError.Error {
 	r.log.Info(ctx, "SetAccessToken - 写入 AccessToken 缓存")
 
-	if xErr := r.atCache.Set(ctx, token, &cache.TokenInfo{Authenticated: true}); xErr != nil {
+	if xErr := r.atCache.SetWithTTL(ctx, token, &cache.TokenInfo{Authenticated: true}, ttl); xErr != nil {
 		r.log.Warn(ctx, xErr.Error())
 		return xErr
 	}
@@ -104,18 +99,12 @@ func (r *TokenRepo) DeleteAccessToken(ctx context.Context, token string) *xError
 	return nil
 }
 
-// SetRefreshToken 将 RefreshToken 写入缓存
-//
-// 参数:
-//   - ctx: 上下文对象，用于传递请求上下文
-//   - token: RefreshToken 原始值，作为缓存键
-//
-// 返回值:
-//   - *xError.Error: 缓存写入过程中的错误
-func (r *TokenRepo) SetRefreshToken(ctx context.Context, token string) *xError.Error {
+// SetRefreshToken 将 RefreshToken 写入缓存。
+// ttl 为这枚令牌的寿命；<= 0 时使用缓存默认 TTL。
+func (r *TokenRepo) SetRefreshToken(ctx context.Context, token string, ttl time.Duration) *xError.Error {
 	r.log.Info(ctx, "SetRefreshToken - 写入 RefreshToken 缓存")
 
-	if xErr := r.rtCache.Set(ctx, token, &cache.TokenInfo{Authenticated: true}); xErr != nil {
+	if xErr := r.rtCache.SetWithTTL(ctx, token, &cache.TokenInfo{Authenticated: true}, ttl); xErr != nil {
 		r.log.Warn(ctx, xErr.Error())
 		return xErr
 	}

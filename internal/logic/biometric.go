@@ -383,10 +383,10 @@ func (l *BiometricLogic) LoginFinish(ctx context.Context, req *apiBiometric.Logi
 
 	l.log.Info(ctx, "LoginFinish - 生物特征登录成功")
 	return &apiBiometric.LoginFinishResponse{
-		AccessToken:  tokenResp.AccessToken,
-		RefreshToken: tokenResp.RefreshToken,
-		// ExpiresIn 是秒数，转换为 Unix 时间戳
-		ExpiresAt: time.Now().Unix() + tokenResp.ExpiresIn,
+		AccessToken:      tokenResp.AccessToken,
+		RefreshToken:     tokenResp.RefreshToken,
+		ExpiresAt:        time.Now().Unix() + tokenResp.ExpiresIn,
+		RefreshExpiresIn: tokenResp.RefreshExpiresIn,
 	}, nil
 }
 

@@ -16,7 +16,8 @@ type LoginFinishRequest struct {
 
 // LoginFinishResponse 登录完成响应
 type LoginFinishResponse struct {
-	AccessToken  string `json:"access_token"`  // 访问令牌
-	RefreshToken string `json:"refresh_token"` // 刷新令牌
-	ExpiresAt    int64  `json:"expires_at"`    // 过期时间戳
+	AccessToken      string `json:"access_token"`       // 访问令牌
+	RefreshToken     string `json:"refresh_token"`      // 刷新令牌
+	ExpiresAt        int64  `json:"expires_at"`         // 访问令牌过期时间戳（秒）
+	RefreshExpiresIn int64  `json:"refresh_expires_in"` // 刷新令牌有效期（秒）
 }

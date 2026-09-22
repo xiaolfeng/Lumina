@@ -234,24 +234,33 @@ func (l *AuthLogic) GetCurrentUser(ctx context.Context) (*apiUser.UserInfoRespon
 	}, nil
 }
 
-// generateTokens 生成新的 AccessToken 和 RefreshToken 并存储到 Redis
-// Login、Refresh、BiometricLogin 共用此方法
+// generateTokens 生成新的 AccessToken 和 RefreshToken 并存储到 Redis。
+// 寿命读取安全设置；Login、Refresh、BiometricLogin 共用此方法。
 func (l *AuthLogic) generateTokens(ctx context.Context) (*apiAuth.TokenResponse, *xError.Error) {
 	at := xUtil.Security().GenerateKey()
 	rt := xUtil.Security().GenerateKey()
+	accessTTL, refreshTTL := l.tokenTTLs(ctx)
 
-	if xErr := l.repo.token.SetAccessToken(ctx, at); xErr != nil {
+	if xErr := l.repo.token.SetAccessToken(ctx, at, accessTTL); xErr != nil {
 		return nil, xErr
 	}
-	if xErr := l.repo.token.SetRefreshToken(ctx, rt); xErr != nil {
+	if xErr := l.repo.token.SetRefreshToken(ctx, rt, refreshTTL); xErr != nil {
 		return nil, xErr
 	}
 
 	return &apiAuth.TokenResponse{
-		AccessToken:  at,
-		RefreshToken: rt,
-		ExpiresIn:    int64((2 * time.Hour).Seconds()),
+		AccessToken:      at,
+		RefreshToken:     rt,
+		ExpiresIn:        int64(accessTTL.Seconds()),
+		RefreshExpiresIn: int64(refreshTTL.Seconds()),
 	}, nil
+}
+
+func (l *AuthLogic) tokenTTLs(ctx context.Context) (time.Duration, time.Duration) {
+	accessRaw, _ := l.repo.info.GetByKey(ctx, bConst.InfoKeySecurityAccessTokenTTL)
+	refreshRaw, _ := l.repo.info.GetByKey(ctx, bConst.InfoKeySecurityRefreshTokenTTL)
+	return TokenTTL(accessRaw, bConst.InfoKeySecurityAccessTokenTTL),
+		TokenTTL(refreshRaw, bConst.InfoKeySecurityRefreshTokenTTL)
 }
 
 // UpdateProfile 更新个人资料（用户名 + 邮箱）

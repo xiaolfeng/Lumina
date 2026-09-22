@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	xError "github.com/bamboo-services/bamboo-base-go/common/error"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
@@ -38,13 +39,21 @@ func (c *AccessTokenCache) Get(ctx context.Context, token string) (*TokenInfo, b
 	return &info, true, nil
 }
 
-// Set 将认证状态写入 AccessToken 缓存
+// Set 将认证状态写入 AccessToken 缓存，过期时间使用缓存默认 TTL。
 func (c *AccessTokenCache) Set(ctx context.Context, token string, info *TokenInfo) *xError.Error {
+	return c.SetWithTTL(ctx, token, info, c.TTL)
+}
+
+// SetWithTTL 将认证状态写入 AccessToken 缓存。ttl <= 0 时回退到默认 TTL。
+func (c *AccessTokenCache) SetWithTTL(ctx context.Context, token string, info *TokenInfo, ttl time.Duration) *xError.Error {
 	if token == "" {
 		return xError.NewError(ctx, xError.BadRequest, "访问令牌标识为空", false)
 	}
 	if info == nil {
 		return nil
+	}
+	if ttl <= 0 {
+		ttl = c.TTL
 	}
 
 	data, err := json.Marshal(info)
@@ -52,7 +61,7 @@ func (c *AccessTokenCache) Set(ctx context.Context, token string, info *TokenInf
 		return xError.NewError(ctx, xError.SerializeError, "序列化认证状态失败", false, err)
 	}
 
-	if err := c.RDB.Set(ctx, bConst.CacheAuthToken.Get(token).String(), data, c.TTL).Err(); err != nil {
+	if err := c.RDB.Set(ctx, bConst.CacheAuthToken.Get(token).String(), data, ttl).Err(); err != nil {
 		return xError.NewError(ctx, xError.CacheError, "写入 AccessToken 缓存失败", false, err)
 	}
 	return nil
@@ -108,13 +117,21 @@ func (c *RefreshTokenCache) Get(ctx context.Context, token string) (*TokenInfo, 
 	return &info, true, nil
 }
 
-// Set 将认证状态写入 RefreshToken 缓存
+// Set 将认证状态写入 RefreshToken 缓存，过期时间使用缓存默认 TTL。
 func (c *RefreshTokenCache) Set(ctx context.Context, token string, info *TokenInfo) *xError.Error {
+	return c.SetWithTTL(ctx, token, info, c.TTL)
+}
+
+// SetWithTTL 将认证状态写入 RefreshToken 缓存。ttl <= 0 时回退到默认 TTL。
+func (c *RefreshTokenCache) SetWithTTL(ctx context.Context, token string, info *TokenInfo, ttl time.Duration) *xError.Error {
 	if token == "" {
 		return xError.NewError(ctx, xError.BadRequest, "刷新令牌标识为空", false)
 	}
 	if info == nil {
 		return nil
+	}
+	if ttl <= 0 {
+		ttl = c.TTL
 	}
 
 	data, err := json.Marshal(info)
@@ -122,7 +139,7 @@ func (c *RefreshTokenCache) Set(ctx context.Context, token string, info *TokenIn
 		return xError.NewError(ctx, xError.SerializeError, "序列化认证状态失败", false, err)
 	}
 
-	if err := c.RDB.Set(ctx, bConst.CacheRefreshToken.Get(token).String(), data, c.TTL).Err(); err != nil {
+	if err := c.RDB.Set(ctx, bConst.CacheRefreshToken.Get(token).String(), data, ttl).Err(); err != nil {
 		return xError.NewError(ctx, xError.CacheError, "写入 RefreshToken 缓存失败", false, err)
 	}
 	return nil

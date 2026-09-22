@@ -20,6 +20,13 @@ import { computeSessionProgress } from '#/components/interact/session-progress'
 import { useQaSession } from '#/hooks/useQaSession'
 import { useSidebarOpen } from '#/hooks/useSidebarOpen'
 import { getSessionByHash, getSessionList } from '#/lib/apis/qa-admin'
+import {
+  getQaSplitterRatio,
+  setQaSplitterRatio,
+  QA_SPLITTER_DEFAULT_RATIO,
+  QA_SPLITTER_MIN_RATIO,
+  QA_SPLITTER_MAX_RATIO,
+} from '#/lib/cookie'
 
 interface InteractSearch {
   session?: string
@@ -39,6 +46,17 @@ function InteractPage() {
   const [sessionHash, setSessionHash] = useState<string>('')
   const [sessions, setSessions] = useState<Session[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [splitterRatio, setSplitterRatio] = useState<number>(() => {
+    return getQaSplitterRatio() ?? QA_SPLITTER_DEFAULT_RATIO
+  })
+
+  const handleSplitterResizeEnd = (sizes: number[]) => {
+    if (sizes.length > 0 && typeof sizes[0] === 'number') {
+      const ratio = Math.round(sizes[0])
+      setSplitterRatio(ratio)
+      setQaSplitterRatio(ratio)
+    }
+  }
 
   const { setProgress } = useSidebarOpen()
 
@@ -230,11 +248,12 @@ function InteractPage() {
           <Splitter
             direction="horizontal"
             className="h-full w-full min-w-0 flex-1"
+            onResizeEnd={handleSplitterResizeEnd}
           >
             <SplitterPanel
-              defaultSize={45}
-              minSize={30}
-              maxSize={50}
+              defaultSize={splitterRatio}
+              minSize={QA_SPLITTER_MIN_RATIO}
+              maxSize={QA_SPLITTER_MAX_RATIO}
               className="relative flex h-full min-h-0 flex-col overflow-hidden"
             >
               {questionPanelNode}

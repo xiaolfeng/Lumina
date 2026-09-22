@@ -1,10 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
-import {
-  writeTokenCookies,
-  THIRTY_DAYS_IN_SECONDS,
-} from '#/lib/auth/cookie-utils'
+import { writeTokenCookies } from '#/lib/auth/cookie-utils'
+import { shouldRefreshAccessToken } from '#/lib/auth/session'
+import { refreshAccessToken } from '#/lib/apis/client'
 import * as api from '#/lib/apis/auth'
 import { getCurrentUser } from '#/lib/apis/user'
 import type {
@@ -143,14 +142,12 @@ export function useBiometricLogin() {
           0,
           Math.floor(tokenData.expires_at - Date.now() / 1000),
         )
-        writeTokenCookies(
-          {
-            access_token: tokenData.access_token,
-            refresh_token: tokenData.refresh_token,
-            expires_in: expiresIn,
-          },
-          { accessTokenExpiresInDays: THIRTY_DAYS_IN_SECONDS / 86400 },
-        )
+        writeTokenCookies({
+          access_token: tokenData.access_token,
+          refresh_token: tokenData.refresh_token,
+          expires_in: expiresIn,
+          refresh_expires_in: tokenData.refresh_expires_in,
+        })
       }
     },
   })
@@ -169,24 +166,21 @@ export function useAuth() {
   const isAuthenticated =
     !!Cookies.get('access_token') || !!Cookies.get('refresh_token')
 
-  const refreshRef = useRef(refresh)
-  refreshRef.current = refresh
-
   useEffect(() => {
+    let stopped = false
     const tryRefreshIfNeeded = () => {
-      const expiresAt = Cookies.get('expires_at')
-      if (!expiresAt) return
-
-      const expiresAtMs = Number(expiresAt)
-      if (Number.isNaN(expiresAtMs)) return
-
-      const fiveMinutes = 5 * 60 * 1000
-      if (expiresAtMs - Date.now() < fiveMinutes) {
-        const refreshToken = Cookies.get('refresh_token')
-        if (refreshToken && !refreshRef.current.isPending) {
-          refreshRef.current.mutate({ refresh_token: refreshToken })
-        }
+      if (stopped) return
+      const hasRefresh = !!Cookies.get('refresh_token')
+      if (
+        !shouldRefreshAccessToken(
+          Cookies.get('expires_at'),
+          Date.now(),
+          hasRefresh,
+        )
+      ) {
+        return
       }
+      void refreshAccessToken().catch(() => {})
     }
 
     const intervalId = setInterval(tryRefreshIfNeeded, 30 * 1000)
@@ -197,8 +191,10 @@ export function useAuth() {
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    tryRefreshIfNeeded()
 
     return () => {
+      stopped = true
       clearInterval(intervalId)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }

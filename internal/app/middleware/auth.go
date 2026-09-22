@@ -70,20 +70,35 @@ func AuthOrRedirectLogin(ctx context.Context) gin.HandlerFunc {
 				accessToken = cookie
 			}
 		}
-		if accessToken == "" {
+
+		accessValid := false
+		if accessToken != "" {
+			found, xErr := authLogic.ValidateAccessToken(c, accessToken)
+			if xErr == nil && found {
+				newCtx := context.WithValue(c.Request.Context(), bConst.CtxOwnerKey, found)
+				c.Request = c.Request.WithContext(newCtx)
+				accessValid = true
+			} else {
+				log.Info(c, "AuthOrRedirectLogin - 访问令牌无效")
+			}
+		}
+
+		refreshCookie, _ := c.Cookie("refresh_token")
+		if !previewShellAllowed(accessValid, refreshCookie, isTopLevelDocument(c)) {
 			abortPreviewAuth(c)
 			return
 		}
-		found, xErr := authLogic.ValidateAccessToken(c, accessToken)
-		if xErr != nil {
-			log.Info(c, "AuthOrRedirectLogin - 令牌无效")
-			abortPreviewAuth(c)
-			return
-		}
-		newCtx := context.WithValue(c.Request.Context(), bConst.CtxOwnerKey, found)
-		c.Request = c.Request.WithContext(newCtx)
 		c.Next()
 	}
+}
+
+// previewShellAllowed 决定预览文档能否先把 SPA 壳交给浏览器。
+// 访问令牌有效时由调用方直接放行；这里只处理「访问令牌无效，但刷新令牌还在」的顶层文档。
+func previewShellAllowed(accessValid bool, refreshCookie string, document bool) bool {
+	if accessValid {
+		return true
+	}
+	return document && refreshCookie != ""
 }
 
 func abortPreviewAuth(c *gin.Context) {
