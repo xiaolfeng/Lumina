@@ -11,11 +11,12 @@
 #
 # 发布门禁: preflight 先校验版本连续性；失败后清理本次 tag，后续作业全部跳过。
 # verify 再跑 make check（gofmt / go vet / go test -race），通过后才能构建。
+# publish 执行单次前端构建与 Go 模块预热，由 GoReleaser 多系统打包后直接将二进制移交 Docker 构建 Multi-Arch 镜像，消灭重复构建。
 #
 # 触发方式:
 #   make publish VERSION=vX.Y.Z（或 make public）      # 推送代码 + 推送版本 tag 触发本流水线
-#   推送版本 tag（vX.Y.Z 或 vX.Y.Z-通道.N）             # 预检、校验、构建镜像并创建 Release
-#   make docker-build VERSION=v0.1.0                 # 手动触发，仅构建并推送镜像
+#   推送版本 tag（vX.Y.Z 或 vX.Y.Z-通道.N）             # 预检、校验、构建发布全平台二进制并推送镜像
+#   make docker-build VERSION=v0.1.0                 # 手动触发，仅构建并推送镜像（不发 Release）
 #   workflow_dispatch 手动触发                         # 可选：手动触发镜像构建与发布
 #
 # 版本语义:
@@ -110,58 +111,11 @@ jobs:
       - name: Go check
         uses: ./.github/actions/go-check
 
-  docker-build:
-    name: 构建并发布镜像
+  publish:
+    name: 构建发布与镜像推送
     needs:
       - preflight
       - verify
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Compute metadata (tags & prerelease)
-        id: meta
-        run: |
-          image="${{ secrets.DOCKERHUB_USERNAME }}/lumina"
-          tags="$image:${{ needs.preflight.outputs.version }}"
-          prerelease="false"
-          if [[ "${{ needs.preflight.outputs.version }}" == *-* ]]; then
-            # 预览版（含 -）：额外打 beta-latest，指向最新预览镜像
-            prerelease="true"
-            tags="$tags,$image:beta-latest"
-          else
-            # 正式版：额外打 latest，指向最新稳定镜像
-            tags="$tags,$image:latest"
-          fi
-          echo "tags=$tags" >> "$GITHUB_OUTPUT"
-          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  release:
-    name: 发布二进制与 Release
-    if: github.event_name == 'push' || inputs.publish
-    needs:
-      - preflight
-      - verify
-      - docker-build
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -182,6 +136,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Pre-download Go modules
+        run: go mod download
+
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -199,41 +156,99 @@ jobs:
           pnpm --filter ./web build
           pnpm --filter ./web-wiki build
 
+      - name: Compute Docker metadata
+        id: meta
+        run: |
+          image="${{ secrets.DOCKERHUB_USERNAME }}/lumina"
+          version="${{ needs.preflight.outputs.version }}"
+          tags="$image:$version"
+          prerelease="false"
+          if [[ "$version" == *-* ]]; then
+            prerelease="true"
+            tags="$tags,$image:beta-latest"
+          else
+            tags="$tags,$image:latest"
+          fi
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
       - name: Generate AI release notes
-        id: release-notes
-        uses: Laysi/release-notes-action@ad6ed96c1975be6724225d3c18132e08ad474070 # v1.3.0
+        if: github.event_name == 'push' || inputs.publish
         env:
           AI_BASE_URL: https://ai-intl.x-lf.com/v1
           AI_MODEL: glm-5.3-flash
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
-        with:
-          tag: ${{ needs.preflight.outputs.version }}
-          tag-pattern: "v*"
-          context: |
-            Lumina · 微明是面向代码项目的知识与人机协作中枢。
-            发版说明面向部署者、开发者与项目维护者，重点说明可感知变化、兼容性和升级注意事项。
+        run: |
+          go run ./scripts/release_notes \
+            --tag "${{ needs.preflight.outputs.version }}" \
+            --out /tmp/release-notes.md
 
-      - name: Run GoReleaser
+      - name: Run GoReleaser (Release)
+        if: github.event_name == 'push' || inputs.publish
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
         with:
           distribution: goreleaser
           version: v2.18.2
-          args: release --clean --parallelism=2 --release-notes=${{ steps.release-notes.outputs.file }}
+          args: release --clean --parallelism=2 --release-notes=/tmp/release-notes.md
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GORELEASER_CURRENT_TAG: ${{ needs.preflight.outputs.version }}
+
+      - name: Ensure release notes populated
+        if: github.event_name == 'push' || inputs.publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.preflight.outputs.version }}
+        run: |
+          if [ -f /tmp/release-notes.md ]; then
+            gh release edit "$RELEASE_TAG" -R "${{ github.repository }}" --notes-file /tmp/release-notes.md
+            echo "::notice::GitHub Release 正文已强保同步更新"
+          fi
+
+      - name: Run GoReleaser (Build only)
+        if: github.event_name == 'workflow_dispatch' && !inputs.publish
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        with:
+          distribution: goreleaser
+          version: v2.18.2
+          args: build --clean --parallelism=2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GORELEASER_CURRENT_TAG: ${{ needs.preflight.outputs.version }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.release
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   cleanup-failed-tag:
     name: 清理失败发版 Tag
     if: >-
       always() &&
-      (needs.preflight.result == 'failure' || needs.verify.result == 'failure' || needs.docker-build.result == 'failure' || needs.release.result == 'failure') &&
+      (needs.preflight.result == 'failure' || needs.verify.result == 'failure' || needs.publish.result == 'failure') &&
       (github.event_name == 'push' || needs.preflight.outputs.remote-tag-existed == 'false')
     needs:
       - preflight
       - verify
-      - docker-build
-      - release
+      - publish
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

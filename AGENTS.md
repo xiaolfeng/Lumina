@@ -27,7 +27,8 @@
 ├── go.mod                      # Go 1.25.11；依赖 bamboo-base-go v1.2.3 模块
 ├── Makefile                    # 开发/测试/格式化/构建/容器化发布命令
 ├── .env.example                # 必需的环境变量模板
-├── Dockerfile                  # 多阶段构建镜像（前端 pnpm build → Go 编译 → 精简运行镜像，EXPOSE 8800）
+├── Dockerfile                  # 本地多阶段构建镜像（前端 pnpm build → Go 编译 → 精简运行镜像，EXPOSE 8800）
+├── Dockerfile.release          # CI 发布运行镜像（直接消费 GoReleaser 产物构建 Multi-Arch 镜像）
 ├── .goreleaser.yaml            # Release 跨平台原始二进制（amd64/arm64，Linux/Windows/macOS）与校验和
 ├── .dockerignore               # 镜像构建忽略清单
 ├── docker-compose.yaml         # 精简编排（app + db + redis）
@@ -37,7 +38,10 @@
 │   └── docker-publish.yml      # 版本 tag 或手动发版；校验通过后才构建镜像
 ├── scripts/
 │   ├── check_release_version.go # 发布版本连续性预检（正式版逐级、预发布序号连续）
-│   └── check_release_version_test.go # 版本转换规则单元测试
+│   ├── check_release_version_test.go # 版本转换规则单元测试
+│   └── release_notes/          # 智能发版说明生成器（读取 commit/diff 上下文，调用 AI 或结构化模板生成 Release 正文）
+│       ├── main.go
+│       └── main_test.go
 ├── pnpm-workspace.yaml         # pnpm monorepo 工作区（web + web-wiki + components）
 ├── pnpm-lock.yaml              # monorepo 根锁文件（由 web/pnpm-lock.yaml 迁移而来）
 ├── components/                 # @lumina/components 共享 workspace 包
@@ -418,7 +422,7 @@
 - **加密存储**：LLM API Key 和 SSH 私钥必须经 AES-256-GCM 加密后存储，禁止明文落库。
 - **Webhook 签名校验**：所有 Webhook 请求必须经 `service/webhook_signer.go` 校验 HMAC 签名，密钥由 `REPOWIKI_HMAC_SECRET` 环境变量提供。
 - **Cron 任务**：定时任务通过 `xCronRunner` 注册（`startup_cron.go`），包含 RepoWiki 超时重试与 Preview 过期会话清理，由 `main.go` 传入 `xMain.Runner` 异步执行，不阻塞启动节点链。
-- **容器化构建与发版**：`Dockerfile` 采用多阶段构建；镜像标签由 `Makefile` 的 `validate-version` + `docker-build` + `publish` 目标驱动。版本 tag 或手动发版先通过 `go run ./scripts/check_release_version.go` 校验版本连续性，再执行 `make check`（版本规则测试 / gofmt / vet / race）；AI Action 固定通过 `https://ai-intl.x-lf.com/v1` 的 `glm-5.3-flash` 生成正文，只读取 `AI_API_KEY` Secret；GoReleaser 构建 amd64/arm64 的 Linux、Windows 与 macOS 原始二进制并直接上传 GitHub Release。跨版本预检失败时清理本次 tag 并跳过全部构建。PR 只跑质量门。
+- **容器化构建与发版**：`Dockerfile` 采用多阶段构建供本地开箱即用，CI 发布镜像采用 `Dockerfile.release` 直接消费 GoReleaser 预编译产物打出 Multi-Arch（amd64/arm64）镜像以避免重复构建；镜像标签由 `Makefile` 的 `validate-version` + `docker-build` + `publish` 目标驱动。版本 tag 或手动发版先通过 `go run ./scripts/check_release_version.go` 校验版本连续性，再执行 `make check`（版本规则测试 / gofmt / vet / race）；发版正文由 `scripts/release_notes` 抓取 commit/diff 上下文并通过 `https://ai-intl.x-lf.com/v1` 的 `glm-5.3-flash` 生成，并由 `gh release edit` 强保写入，只读取 `AI_API_KEY` Secret；GoReleaser 构建 amd64/arm64 的 Linux、Windows 与 macOS 原始二进制并直接上传 GitHub Release。跨版本预检失败时清理本次 tag 并跳过全部构建。PR 只跑质量门。
 - **子模块约定**：后端分层详情见 [internal/](./internal/AGENTS.md)，控制台前端专属约定见 [web/](./web/AGENTS.md)，Wiki Reader 前端约定见 [web-wiki/](./web-wiki/AGENTS.md)，共享组件包见 [components/](./components/AGENTS.md)。
 
 ## 反模式
@@ -488,7 +492,7 @@
 - **双前端共享**：`@lumina/components` workspace 包统一管理 shadcn/ui 组件、Markdown 渲染原语、motion 动画变体、微明主题 CSS，被 web 和 web-wiki 共同消费。
 - **内嵌资源集中管理**：`resources/` 目录集中管理项目级内嵌静态资源（prompt 文件 + 双前端构建产物 + AI 插件源），通过 `go:embed` 暴露给各业务包引用，避免资源文件散落在业务包内部。
 - **Runner 模式**：`startup.NewWebSocketRunner()` 与 `startup.NewCronRunner()` 返回的函数由 `main.go` 传入 `xMain.Runner` 的 goroutineFunc 参数，与启动节点链解耦异步执行。
-- **容器化部署**：`Dockerfile` 多阶段构建 + `docker-compose.yaml`（精简）/ `docker-compose.full.yaml`（完整）双编排。`ci.yml` 在 PR 上跑打包校验；`docker-publish.yml` 在版本 tag 或手动发版时，依次执行校验、Docker 镜像发布、AI 正文生成与 GoReleaser 二进制发布。
+- **容器化部署**：`Dockerfile` 多阶段构建 + `docker-compose.yaml`（精简）/ `docker-compose.full.yaml`（完整）双编排，CI 经 `Dockerfile.release` 直传二进制秒级发布。`ci.yml` 在 PR 上跑打包校验；`docker-publish.yml` 在版本 tag 或手动发版时，依次执行校验、全平台二进制发布与 Docker Multi-Arch 镜像推送。
 
 ## 常用命令
 
@@ -613,7 +617,7 @@ pnpm test         # 运行 Vitest 测试（markdown/remark-fenced-blocks）
 - Cron Runner 已实现，注册 RepoWiki 超时任务重试与 Preview 过期会话清理（默认每 5 分钟），由 `main.go` 传入 `xMain.Runner` 异步执行。
 - WebSocket Runner 已实现（`NewWebSocketRunner`），Hub 主循环由 `main.go` 传入 `xMain.Runner` 异步执行。
 - Wiki Reader 前端（`web-wiki/`）已实现，独立 SPA 部署在 `/wiki/`，支持密码门认证和只读 .mdx Wiki 渲染。
-- Docker 容器化已实现（多阶段 Dockerfile + 双 docker-compose 编排 + GitHub Actions：PR 校验、版本 tag / 手动发版在校验通过后发布镜像；发布模式同时生成 AI 正文并上传 GoReleaser 跨平台二进制）；容器内部端口默认 8800（`EXPOSE 8800`），由 `XLF_PORT` 环境变量驱动。
+- Docker 容器化已实现（本地多阶段 Dockerfile + 发布专用 Dockerfile.release + 双 docker-compose 编排 + GitHub Actions：PR 校验、版本 tag / 手动发版在校验通过后编译发布多平台二进制并秒级推送 Multi-Arch Docker 镜像）；容器内部端口默认 8800（`EXPOSE 8800`），由 `XLF_PORT` 环境变量驱动。
 
 ## 调试路径
 

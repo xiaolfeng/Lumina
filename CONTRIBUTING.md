@@ -65,12 +65,13 @@ pnpm --filter @lumina/components test
 
 通过预检后执行：
 
-1. 构建并推送 Docker 镜像。
-2. 通过 OpenAI 兼容的 `/chat/completions` 生成 Release 正文。
-3. 使用 GoReleaser 构建 Linux、Windows、macOS 的 `amd64` / `arm64` 二进制。
-4. 将各平台的原始二进制与 `checksums.txt` 直接上传到 GitHub Release。
+1. 通过 `scripts/release_notes` 结合 commit 与 diff 差异由 `glm-5.3-flash` 生成标准 Release 正文。
+2. 使用 GoReleaser 构建 Linux、Windows、macOS 的 `amd64` / `arm64` 原始二进制并直接上传 GitHub Release。
+3. 由 GitHub CLI 强保将 Release 正文注入 GitHub Release，确保发版说明 100% 写入。
+4. Docker 镜像直接消费编译好的 Linux 多架构二进制，秒级构建并推送 `amd64` / `arm64` 官方镜像。
+5. 将各平台的原始二进制与 `checksums.txt` 上传到 GitHub Release。
 
-AI Release 正文固定使用 `glm-5.3-flash` 和 `https://ai-intl.x-lf.com/v1`，仓库只需配置 Secret `AI_API_KEY`。模型不可用时自动使用 commit 清单。GoReleaser 配置位于 `.goreleaser.yaml`。校验、镜像构建或二进制发布失败时，工作流会删除本次提交对应的远端版本 tag；tag 已被移动到其他提交时会拒绝删除并明确报错。
+AI Release 正文固定使用 `glm-5.3-flash` 和 `https://ai-intl.x-lf.com/v1`，仓库只需配置 Secret `AI_API_KEY`。模型不可用时自动回退为结构化 commit 清单。GoReleaser 配置位于 `.goreleaser.yaml`。校验、镜像构建或二进制发布失败时，工作流会删除本次提交对应的远端版本 tag；tag 已被移动到其他提交时会拒绝删除并明确报错。
 
 ## 分支与提交
 
