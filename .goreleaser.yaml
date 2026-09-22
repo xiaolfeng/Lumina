@@ -1,0 +1,56 @@
+version: 2
+
+project_name: lumina
+
+builds:
+  - id: lumina
+    main: .
+    binary: lumina
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -buildid=
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    targets:
+      # 主流部署与开发平台。
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+      - darwin_amd64
+      - darwin_arm64
+
+      # Go 对 amd64 / arm64 支持成熟的小众服务端平台。
+      - freebsd_amd64
+      - freebsd_arm64
+      - netbsd_amd64
+      - netbsd_arm64
+      - openbsd_amd64
+      - openbsd_arm64
+
+archives:
+  - id: release-binaries
+    ids:
+      - lumina
+    formats:
+      - binary
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ .Ext }}
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+release:
+  target_commitish: "{{ .Commit }}"
+  prerelease: auto
+  make_latest: true
+  mode: replace
+  name_template: "{{ .Tag }}"
+  preflight:
+    fail_on_error: true
+
+changelog:
+  disable: true

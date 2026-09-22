@@ -41,11 +41,14 @@ Swagger UI 仅在 `XLF_DEBUG=true` 时注册。
 ## 质量门
 
 ```bash
+make check         # gofmt + go vet + go test -race，与 CI 同一道门
 make fmt
 make test
 make vet
 make lint          # 未安装 golangci-lint 时跳过
 ```
+
+发起 Pull Request 后，GitHub Actions 会自动跑 `make check`。镜像打包只在版本 tag 或 `make docker-build` / `make publish` 时执行，而且必须先通过同一道校验。
 
 前端（在对应包或仓库根）：
 
@@ -55,6 +58,17 @@ pnpm --filter @lumina/components test
 ```
 
 提交前请保证你改动的层有对应测试或可复现的手工验证说明。涉及 UI 的改动要写清你验证过哪些路由，而不是只贴一张截图。
+
+## 发布
+
+版本 tag 或 `make publish VERSION=vX.Y.Z` 会在打包校验通过后执行以下流程：
+
+1. 构建并推送 Docker 镜像。
+2. 通过 OpenAI 兼容的 `/chat/completions` 生成 Release 正文。
+3. 使用 GoReleaser 构建 Linux、Windows、macOS、FreeBSD、NetBSD、OpenBSD 的 `amd64` / `arm64` 二进制。
+4. 将各平台的原始二进制与 `checksums.txt` 直接上传到 GitHub Release。
+
+AI Release 正文使用仓库 Variables `AI_BASE_URL`、`AI_MODEL` 和 Secret `AI_API_KEY`。模型不可用时自动使用 commit 清单。GoReleaser 配置位于 `.goreleaser.yaml`。校验、镜像构建或二进制发布失败时，工作流会删除本次提交对应的远端版本 tag；tag 已被移动到其他提交时会拒绝删除并明确报错。
 
 ## 分支与提交
 

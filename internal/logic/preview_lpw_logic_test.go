@@ -386,10 +386,10 @@ func TestPreviewLpwLogicInitRejectsIncompleteNodes(t *testing.T) {
 	// init 一次性提交语义：split layout 只挂 1 个 child（低于 MinChildren=2）必须整体失败
 	incomplete := []lpwNode{
 		{
-			ID:      "lay-1",
-			Kind:    "layout",
-			Type:    "layout",
-			Props:   map[string]any{"pattern": "split"},
+			ID:    "lay-1",
+			Kind:  "layout",
+			Type:  "layout",
+			Props: map[string]any{"pattern": "split"},
 			Children: []lpwNode{
 				{ID: "md-1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "只有一半"}},
 			},
@@ -527,5 +527,3 @@ func TestInitDocument_ExceedsMaxNodes(t *testing.T) {
 		t.Errorf("expected error message containing '超过上限 500', got: %v", xErr)
 	}
 }
-
-

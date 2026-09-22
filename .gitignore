@@ -39,6 +39,7 @@ go.work.sum
 
 ### Build ###
 build/
+dist/
 lumina
 
 ### Frontend Build ###

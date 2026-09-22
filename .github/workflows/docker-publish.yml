@@ -9,19 +9,31 @@
 
 # Docker 构建与 Release 发布流水线（GitHub Actions 驱动，本机不执行打包）
 #
-# 触发方式（Makefile 封装，需 gh CLI 已登录）:
-#   make docker-build VERSION=v0.1.0                 # 仅构建并推送镜像
-#   make publish VERSION=v0.1.1-beta.1               # 构建推送 + 创建 GitHub Release
+# 打包门禁: verify 作业先跑 make check（gofmt / go vet / go test -race）。
+# 未通过则 docker-build 不会启动。Pull Request 只跑同一套校验，见 ci.yml。
+#
+# 触发方式:
+#   推送版本 tag（vX.Y.Z 或 vX.Y.Z-后缀）              # 校验通过后构建镜像并创建 GitHub Release
+#   make docker-build VERSION=v0.1.0                 # 手动触发，仅构建并推送镜像
+#   make publish VERSION=v0.1.1-beta.1               # 手动触发，构建推送 + 创建 GitHub Release
 #
 # 版本语义:
 #   版本号含 "-"（如 v0.1.1-beta.1 / v0.2.0-alpha）→ 发布为 prerelease，镜像额外打 beta-latest tag
 #   其余（如 v0.1.0）                                → 正式 Release，镜像额外打 latest tag
 #
-# 前置条件: 仓库 Secrets 需配置 DOCKERHUB_USERNAME 与 DOCKERHUB_TOKEN（Docker Hub 凭据）
+# 前置条件:
+#   Secrets: DOCKERHUB_USERNAME、DOCKERHUB_TOKEN、AI_API_KEY
+#   Variables: AI_BASE_URL、AI_MODEL
+# AI 配置缺失或调用失败时，Release 正文会回退为 commit 清单。
+# 发版失败时会删除本次提交对应的远端 tag；若 tag 已被移动则拒绝删除。
 # 注意: workflow_dispatch 只能从默认分支（master）触发，首次落地需先提交至 master
+# GITHUB_TOKEN 创建 Release 附带的 tag 不会再次触发本工作流，避免重复打包。
 name: Docker Build & Release
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       version:
@@ -37,28 +49,52 @@ on:
 permissions:
   contents: write # 创建 Release / Git Tag（Docker Hub 推送走 DOCKERHUB_TOKEN，无需 packages）
 
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  verify:
+    name: 打包校验
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Go check
+        uses: ./.github/actions/go-check
+
   docker-build:
+    name: 构建并发布镜像
+    needs: verify
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 完整历史，供 --generate-notes 与上一 tag 对比
+          fetch-depth: 0 # 完整历史，供上一 tag 对比生成变更日志
           fetch-tags: true
 
-      - name: Validate version format
+      - name: Resolve version
+        id: version
         run: |
-          echo "${{ inputs.version }}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' \
-            || { echo "::error::非法版本号: ${{ inputs.version }}，应为 vX.Y.Z 或 vX.Y.Z-预发布后缀"; exit 1; }
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+          else
+            version="${{ github.ref_name }}"
+          fi
+          echo "$version" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' \
+            || { echo "::error::非法版本号: $version，应为 vX.Y.Z 或 vX.Y.Z-预发布后缀"; exit 1; }
+          echo "value=$version" >> "$GITHUB_OUTPUT"
 
       - name: Compute metadata (tags & prerelease)
         id: meta
         run: |
           image="${{ secrets.DOCKERHUB_USERNAME }}/lumina"
-          tags="$image:${{ inputs.version }}"
+          tags="$image:${{ steps.version.outputs.value }}"
           prerelease="false"
-          if [[ "${{ inputs.version }}" == *-* ]]; then
+          if [[ "${{ steps.version.outputs.value }}" == *-* ]]; then
             # 预览版（含 -）：额外打 beta-latest，指向最新预览镜像
             prerelease="true"
             tags="$tags,$image:beta-latest"
@@ -87,38 +123,133 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Create GitHub Release
-        # inputs.publish 为 boolean 类型，直接以布尔值判断（`== 'true'` 宽松比较
-        # 会转数字导致 true≠'true'，条件恒为 false 使 Release 永不创建）
-        if: inputs.publish
-        env:
-          GH_TOKEN: ${{ github.token }}
+  release:
+    name: 发布二进制与 Release
+    if: github.event_name == 'push' || inputs.publish
+    needs:
+      - verify
+      - docker-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+      remote-tag-existed: ${{ steps.prepare-tag.outputs.remote-existed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve version
+        id: version
         run: |
-          prerelease_flag=""
-          if [ "${{ steps.meta.outputs.prerelease }}" = "true" ]; then
-            prerelease_flag="--prerelease"
-          fi
-
-          # 手动生成变更日志：GitHub 自动生成器（--generate-notes）依赖 previous tag 作
-          # 对比基准，首次发布（无任何 tag）时仅产出 Full Changelog 链接、无实际内容，
-          # 故改为 git log 列出提交：有 previous tag 时取版本区间，否则取全部提交。
-          prev_tag=$(git describe --tags --abbrev=0 2>/dev/null || true)
-          if [ -n "$prev_tag" ]; then
-            changelog=$(git log --oneline --no-merges "$prev_tag"..HEAD)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
           else
-            changelog=$(git log --oneline --no-merges)
+            version="${{ github.ref_name }}"
+          fi
+          echo "$version" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' \
+            || { echo "::error::非法版本号: $version，应为 vX.Y.Z 或 vX.Y.Z-预发布后缀"; exit 1; }
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare local release tag
+        id: prepare-tag
+        run: |
+          version="${{ steps.version.outputs.value }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${version}" >/dev/null 2>&1; then
+            echo "remote-existed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "remote-existed=false" >> "$GITHUB_OUTPUT"
+          fi
+          git rev-parse -q --verify "refs/tags/${version}^{commit}" >/dev/null || git tag "$version" HEAD
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Build embedded frontends
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter ./web build
+          pnpm --filter ./web-wiki build
+
+      - name: Generate AI release notes
+        id: release-notes
+        uses: Laysi/release-notes-action@ad6ed96c1975be6724225d3c18132e08ad474070 # v1.3.0
+        env:
+          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        with:
+          tag: ${{ steps.version.outputs.value }}
+          tag-pattern: "v*"
+          context: |
+            Lumina · 微明是面向代码项目的知识与人机协作中枢。
+            发版说明面向部署者、开发者与项目维护者，重点说明可感知变化、兼容性和升级注意事项。
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        with:
+          distribution: goreleaser
+          version: v2.18.2
+          args: release --clean --release-notes=${{ steps.release-notes.outputs.file }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.value }}
+
+  cleanup-failed-tag:
+    name: 清理失败发版 Tag
+    if: >-
+      always() &&
+      (needs.verify.result == 'failure' || needs.docker-build.result == 'failure' || needs.release.result == 'failure') &&
+      (github.event_name == 'push' || needs.release.outputs.remote-tag-existed == 'false')
+    needs:
+      - verify
+      - docker-build
+      - release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Delete failed release tag
+        env:
+          RELEASE_VERSION: ${{ github.event_name == 'push' && github.ref_name || needs.release.outputs.version }}
+        run: |
+          if [ -z "$RELEASE_VERSION" ]; then
+            echo "::notice::本次失败发生在创建 tag 之前，无需清理"
+            exit 0
+          fi
+          if ! git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_VERSION}" >/dev/null 2>&1; then
+            echo "::notice::远端 tag ${RELEASE_VERSION} 已不存在，无需清理"
+            exit 0
           fi
 
-          # 变更日志写入临时文件，经 --notes-file 传递（多行内容避免参数换行/缩进问题）
-          notes_file=$(mktemp)
-          printf '## 变更日志\n\n' > "$notes_file"
-          printf '%s\n' "$changelog" >> "$notes_file"
+          expected_sha=$(git rev-parse HEAD)
+          git fetch --force origin "refs/tags/${RELEASE_VERSION}:refs/tags/${RELEASE_VERSION}"
+          actual_sha=$(git rev-list -n 1 "$RELEASE_VERSION")
+          if [ "$actual_sha" != "$expected_sha" ]; then
+            echo "::error::拒绝删除 tag ${RELEASE_VERSION}：它指向 ${actual_sha}，本次流水线提交为 ${expected_sha}"
+            exit 1
+          fi
 
-          gh release create "${{ inputs.version }}" \
-            --repo "${{ github.repository }}" \
-            --target "${{ github.sha }}" \
-            --title "${{ inputs.version }}" \
-            --notes-file "$notes_file" \
-            $prerelease_flag
-
-          rm -f "$notes_file"
+          git push origin ":refs/tags/${RELEASE_VERSION}"
+          echo "::notice::发版失败，已删除远端 tag ${RELEASE_VERSION}"

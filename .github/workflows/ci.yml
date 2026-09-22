@@ -1,0 +1,36 @@
+# --------------------------------------------------------------------------------
+# Copyright (c) 2016-NOW(至今) 筱锋
+# Author: 筱锋「xiao_lfeng」(https://www.x-lf.com)
+# --------------------------------------------------------------------------------
+# 许可证声明：版权所有 (c) 2016-2026 筱锋。保留所有权利。
+# 有关MIT许可证的更多信息，请查看项目根目录下的LICENSE文件或访问：
+# https://opensource.org/licenses/MIT
+# --------------------------------------------------------------------------------
+
+# Pull Request 只跑打包前校验（gofmt / go vet / go test -race），不构建镜像。
+# 镜像与 Release 仍只在版本 tag 或 make docker-build / make publish 时走 docker-publish.yml，
+# 且必须先通过同一个校验。
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: 打包校验
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Go check
+        uses: ./.github/actions/go-check

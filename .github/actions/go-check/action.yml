@@ -1,0 +1,15 @@
+name: Go check
+description: 打包前校验。gofmt、go vet、go test -race。PR 与发版共用。
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: true
+
+    - name: gofmt / vet / race
+      shell: bash
+      run: make check
