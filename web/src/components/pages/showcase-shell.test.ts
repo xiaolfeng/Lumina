@@ -72,6 +72,7 @@ describe('isRenderable', () => {
     expect(isRenderable('index.html')).toBe(true)
     expect(isRenderable('page.htm')).toBe(true)
     expect(isRenderable('README.md')).toBe(true)
+    expect(isRenderable('overview.mdx')).toBe(true)
     expect(isRenderable('a.lpw')).toBe(true)
     expect(isRenderable('style.css')).toBe(false)
     expect(isRenderable('main.go')).toBe(false)

@@ -1,6 +1,7 @@
-export type PreviewKind = 'html' | 'markdown' | 'code' | 'svg' | 'lpw' | 'tsx'
+export type PreviewKind = 'html' | 'markdown' | 'code' | 'svg' | 'lpw' | 'tsx' | 'mdx'
 
 const LPW_EXT = new Set(['lpw'])
+const MDX_EXT = new Set(['mdx'])
 const HTML_EXT = new Set(['html', 'htm'])
 const TSX_EXT = new Set(['tsx', 'jsx'])
 const MARKDOWN_EXT = new Set(['md', 'markdown'])
@@ -61,6 +62,7 @@ export function previewKindFromFilename(filename?: string | null): PreviewKind {
   if (!filename) return 'code'
   const ext = fileExtension(filename)
   if (LPW_EXT.has(ext)) return 'lpw'
+  if (MDX_EXT.has(ext)) return 'mdx'
   if (HTML_EXT.has(ext)) return 'html'
   if (TSX_EXT.has(ext)) return 'tsx'
   if (MARKDOWN_EXT.has(ext)) return 'markdown'
@@ -107,6 +109,7 @@ export function previewLanguageFromFilename(filename?: string | null): string {
       return 'text'
     case 'md':
     case 'markdown':
+    case 'mdx':
       return 'markdown'
     case 'yml':
       return 'yaml'

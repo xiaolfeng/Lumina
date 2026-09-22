@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	xResult "github.com/bamboo-services/bamboo-base-go/major/result"
@@ -10,6 +9,7 @@ import (
 	apiCommon "github.com/xiaolfeng/Lumina/api/common"
 	apiPages "github.com/xiaolfeng/Lumina/api/pages"
 	apiPreview "github.com/xiaolfeng/Lumina/api/preview"
+	"github.com/xiaolfeng/Lumina/internal/logic"
 )
 
 // 确保 apiCommon 包被编译器识别（swag 注释依赖此导入）
@@ -288,26 +288,9 @@ func (h *PreviewHandler) ServePreviewPath(ctx *gin.Context) {
 			return
 		}
 		entry := ""
-		// 1. 优先匹配 HTML
-		for _, file := range files {
-			if strings.HasPrefix(strings.ToLower(file.MimeType), "text/html") {
-				entry = file.Filename
-				break
-			}
-		}
-		// 2. 若无 HTML，寻找 TSX / JSX 入口
-		if entry == "" {
-			for _, file := range files {
-				ext := strings.ToLower(filepath.Ext(file.Filename))
-				if ext == ".tsx" || ext == ".jsx" {
-					entry = file.Filename
-					if strings.HasPrefix(strings.ToLower(file.Filename), "app.") || strings.HasPrefix(strings.ToLower(file.Filename), "index.") {
-						break
-					}
-				}
-			}
-		}
-		if entry == "" && len(files) > 0 {
+		if fileEntry := logic.FindPreviewEntry(files); fileEntry != nil {
+			entry = fileEntry.Filename
+		} else if len(files) > 0 {
 			entry = files[0].Filename
 		}
 		if entry == "" {

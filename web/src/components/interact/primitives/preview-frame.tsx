@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { PreviewLpwInlineViewer } from '@lumina/components/lpw'
+import { PreviewMdxInlineViewer } from '@lumina/components/mdx'
 import { getPreviewFileByID } from '#/lib/apis/preview'
 import { previewKindFromFilename } from '#/lib/preview-file'
 
@@ -141,6 +142,9 @@ export function PreviewSupplement({ content }: { content: string }) {
   }
   if (previewKindFromFilename(filename) === 'lpw') {
     return <PreviewLpwInlineViewer src={src} filename={filename} />
+  }
+  if (previewKindFromFilename(filename) === 'mdx') {
+    return <PreviewMdxInlineViewer src={src} filename={filename} />
   }
   return <PreviewFrame src={src} className="min-h-80" />
 }

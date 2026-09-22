@@ -542,9 +542,9 @@ func loadPreviewSessionSnapshot(ctx context.Context, sessionID xSnowflake.Snowfl
 func previewWriteWorkflow(snapshot *previewSessionSnapshot, writeNoun string) (state, nextTool, message string, instructions []string) {
 	if snapshot.entry == nil {
 		return "awaiting_html_entry", "preview_file_upload",
-			fmt.Sprintf("%s，但会话还没有可评审入口（HTML 或 LPW），暂不可作为前端页面交付评审。", writeNoun),
+			fmt.Sprintf("%s，但会话还没有可评审入口（HTML、LPW、TSX 或 MDX），暂不可作为前端页面交付评审。", writeNoun),
 			[]string{
-				"继续上传可评审入口文件（HTML 或 LPW），并用相对路径引用同会话中的 CSS/JavaScript/静态资源。",
+				"继续上传可评审入口文件（HTML、LPW、TSX 或 MDX），并用相对路径引用同会话中的 CSS/JavaScript/静态资源。",
 				"文件齐全后调用 preview_file_list 做最终核对。",
 			}
 	}

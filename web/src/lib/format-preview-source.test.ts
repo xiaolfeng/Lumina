@@ -15,6 +15,7 @@ describe('previewKindFromFilename', () => {
   it('classifies html, markdown, svg, and code', () => {
     expect(previewKindFromFilename('index.html')).toBe('html')
     expect(previewKindFromFilename('README.md')).toBe('markdown')
+    expect(previewKindFromFilename('overview.mdx')).toBe('mdx')
     expect(previewKindFromFilename('icon.svg')).toBe('svg')
     expect(previewKindFromFilename('index.lpw')).toBe('lpw')
     expect(previewKindFromFilename('App.tsx')).toBe('tsx')
@@ -32,6 +33,7 @@ describe('previewLanguageFromFilename', () => {
     expect(previewLanguageFromFilename('a.mjs')).toBe('js')
     expect(previewLanguageFromFilename('a.scss')).toBe('css')
     expect(previewLanguageFromFilename('a.md')).toBe('markdown')
+    expect(previewLanguageFromFilename('overview.mdx')).toBe('markdown')
     expect(previewLanguageFromFilename('App.vue')).toBe('vue')
     expect(previewLanguageFromFilename('App.svelte')).toBe('html')
     expect(previewLanguageFromFilename('config.toml')).toBe('toml')

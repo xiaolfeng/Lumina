@@ -20,6 +20,7 @@ func TestInferMimeType(t *testing.T) {
 		"index.lpw":      bConst.PreviewMimeLPW,
 		"README.md":      bConst.PreviewMimeMarkdown,
 		"notes.markdown": bConst.PreviewMimeMarkdown,
+		"overview.mdx":   bConst.PreviewMimeMDX,
 		"main.ts":        bConst.PreviewMimePlain,
 		"icon.svg":       bConst.PreviewMimeSVG,
 		"unknown.bin":    bConst.PreviewMimePlain,
