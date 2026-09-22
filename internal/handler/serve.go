@@ -21,7 +21,7 @@ const navigateShim = `<script data-lumina-nav="1">
     if (target && target !== "_self") return;
     var href = a.getAttribute("href");
     if (!href || href.charAt(0) === "#" || /^(https?:|mailto:|javascript:|tel:)/i.test(href)) return;
-    if (!/\.(html|htm|md|tsx|jsx)([?#].*)?$/i.test(href.split("/").pop() || href)) return;
+    if (!/\.(html|htm|md|mdx|tsx|jsx)([?#].*)?$/i.test(href.split("/").pop() || href)) return;
     try { parent.postMessage({ type: "lumina:navigate", href: href }, "*"); } catch (err) {}
   }, false);
 })();

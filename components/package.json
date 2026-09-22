@@ -12,6 +12,7 @@
     ".": "./src/index.ts",
     "./ui/*": "./src/ui/*",
     "./markdown": "./src/markdown/index.ts",
+    "./mdx": "./src/mdx/index.ts",
     "./lpw": "./src/lpw/index.ts",
     "./motion": "./src/motion/index.ts",
     "./utils": "./src/lib/utils.ts",

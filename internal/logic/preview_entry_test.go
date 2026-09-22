@@ -57,6 +57,30 @@ func TestFindPreviewEntry(t *testing.T) {
 			wantEntry: "app.html",
 		},
 		{
+			name: "3b. 仅 MDX 文件：优先 index.mdx",
+			files: []apiPreview.PreviewFileResponse{
+				{Filename: "overview.mdx", MimeType: bConst.PreviewMimeMDX},
+				{Filename: "index.mdx", MimeType: bConst.PreviewMimeMDX},
+			},
+			wantEntry: "index.mdx",
+		},
+		{
+			name: "3c. 仅 MDX 文件：无 index 优先选首个 mdx",
+			files: []apiPreview.PreviewFileResponse{
+				{Filename: "style.css", MimeType: bConst.PreviewMimeCSS},
+				{Filename: "guide.mdx", MimeType: bConst.PreviewMimeMDX},
+			},
+			wantEntry: "guide.mdx",
+		},
+		{
+			name: "3d. MDX 与 Markdown 共存：MDX 优先级高于 Markdown",
+			files: []apiPreview.PreviewFileResponse{
+				{Filename: "README.md", MimeType: bConst.PreviewMimeMarkdown},
+				{Filename: "overview.mdx", MimeType: bConst.PreviewMimeMDX},
+			},
+			wantEntry: "overview.mdx",
+		},
+		{
 			name: "4. 两者皆无：无入口",
 			files: []apiPreview.PreviewFileResponse{
 				{Filename: "style.css", MimeType: bConst.PreviewMimeCSS},
@@ -104,6 +128,14 @@ func TestFindPreviewEntryFromPreviewFiles(t *testing.T) {
 		t.Errorf("FindPreviewEntryFromPreviewFiles(html) = %q, want index.html", got)
 	}
 
+	// 仅 MDX
+	mdxFiles := []*entity.PreviewFile{
+		{Filename: "overview.mdx", MimeType: bConst.PreviewMimeMDX},
+	}
+	if got := FindPreviewEntryFromPreviewFiles(mdxFiles); got != "overview.mdx" {
+		t.Errorf("FindPreviewEntryFromPreviewFiles(mdx) = %q, want overview.mdx", got)
+	}
+
 	// 无入口
 	noneFiles := []*entity.PreviewFile{
 		{Filename: "main.go", MimeType: bConst.PreviewMimePlain},
@@ -140,6 +172,14 @@ func TestFindPreviewEntryExtensionFallback(t *testing.T) {
 	}
 	if got := FindPreviewEntryFromPageFiles(legacyLpw); got != "doc.lpw" {
 		t.Errorf("json-mime doc.lpw should match by extension, got %q", got)
+	}
+
+	// 3b. PreviewFile：.mdx 扩展名但 MIME 漂移为 text/plain → 扩展名兜底命中
+	legacyMdx := []*entity.PreviewFile{
+		{Filename: "overview.mdx", MimeType: bConst.PreviewMimePlain},
+	}
+	if got := FindPreviewEntryFromPreviewFiles(legacyMdx); got != "overview.mdx" {
+		t.Errorf("plain-mime overview.mdx should match by extension, got %q", got)
 	}
 
 	// 4. MCP 侧 FindPreviewEntry 保持严格：裸 "text/html" 不命中（既有契约由 preview_tools_test 钉死）

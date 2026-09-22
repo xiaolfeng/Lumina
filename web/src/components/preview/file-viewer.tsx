@@ -5,6 +5,7 @@ import { formatPreviewSource } from '#/lib/format-preview-source'
 import type { PreviewKind } from '#/lib/preview-file'
 import { PreviewCodeView } from './code-view'
 import { PreviewLpwViewer } from '@lumina/components/lpw'
+import { PreviewMdxViewer } from '@lumina/components/mdx'
 import { PreviewMarkdownView } from './markdown-view'
 
 export function PreviewFileViewer({
@@ -18,6 +19,10 @@ export function PreviewFileViewer({
 }) {
   if (kind === 'lpw') {
     return <PreviewLpwViewer src={src} filename={filename} />
+  }
+
+  if (kind === 'mdx') {
+    return <PreviewMdxViewer src={src} filename={filename} />
   }
 
   if (kind === 'html' || kind === 'svg' || kind === 'tsx') {
