@@ -10,6 +10,14 @@ runs:
         go-version-file: go.mod
         cache: true
 
+    # PR checkout 不含前端构建产物，go:embed all:web*/dist 需要至少一个文件才能编译。
+    # 正式发版路径（docker-build / GoReleaser 前置构建）不受影响，仍嵌入真实产物。
+    - name: Ensure embedded dist placeholders
+      shell: bash
+      run: |
+        mkdir -p resources/web/dist resources/web-wiki/dist
+        touch resources/web/dist/index.html resources/web-wiki/dist/index.html
+
     - name: release version rules / gofmt / vet / race
       shell: bash
       run: make check
