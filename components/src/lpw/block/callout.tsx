@@ -17,28 +17,28 @@ const LEVEL_CONFIGS: Record<
     border: "border-lagoon",
     bg: "bg-lagoon/5",
     title: "text-lagoon-deep",
-    tag: "CANONICAL DIRECTIVE · 框架规范",
+    tag: "说明",
     Icon: Info,
   },
   success: {
     border: "border-kicker",
     bg: "bg-kicker/5",
     title: "text-kicker",
-    tag: "VERIFIED CONFORMANCE · 检验达标",
+    tag: "已验证",
     Icon: CheckCircle2,
   },
   warning: {
     border: "border-palm",
     bg: "bg-palm/5",
     title: "text-palm",
-    tag: "SECURITY BOUNDARY · 安全红线",
+    tag: "注意",
     Icon: TriangleAlert,
   },
   error: {
     border: "border-destructive",
     bg: "bg-destructive/5",
     title: "text-destructive",
-    tag: "CRITICAL EXCEPTION · 致命告警",
+    tag: "错误",
     Icon: OctagonAlert,
   },
 };
@@ -64,11 +64,11 @@ export const CalloutBlock: React.FC<LpwBlockSlotProps<LpwCalloutProps>> = ({
       role={level === "error" ? "alert" : "status"}
       data-testid="callout-block"
       data-level={level}
-      className={`my-6 p-4 sm:p-6 text-sm text-sea-ink border border-solid border-line/50 border-l-4 ${resolvedConfig.border} ${resolvedConfig.bg} shadow-sm relative`}
+      className={`relative border border-solid border-line/50 border-l-4 p-4 text-sm text-sea-ink sm:p-5 ${resolvedConfig.border} ${resolvedConfig.bg}`}
     >
       {/* 出版物微型分类签 */}
       <div
-        className={`font-mono text-[10px] font-bold tracking-widest uppercase mb-1.5 flex items-center gap-1.5 ${resolvedConfig.title}`}
+        className={`mb-2 flex items-center gap-1.5 text-xs font-semibold ${resolvedConfig.title}`}
       >
         <LevelIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         <span>{resolvedConfig.tag}</span>

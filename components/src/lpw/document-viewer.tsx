@@ -50,21 +50,21 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
 
   return (
     <AnnotationProvider>
-      <div className="w-full max-w-7xl mx-auto my-6 px-3 sm:px-6 flex justify-center items-start gap-8 min-w-0">
+      <div className="w-full max-w-7xl mx-auto px-3 py-4 sm:px-6 sm:py-8 flex justify-center items-start gap-8 min-w-0">
         <div
           data-testid="lpw-paper"
-          className="w-full max-w-5xl shrink-0 bg-surface-strong border border-line shadow-sm relative text-sea-ink font-sans min-w-0"
+          className="@container/lpw w-full max-w-5xl shrink-0 bg-surface-strong border border-line shadow-[0_18px_60px_rgba(43,32,24,0.07)] relative text-sea-ink font-sans min-w-0"
         >
-          <div aria-hidden="true" className="h-1 bg-lagoon" />
+          <div aria-hidden="true" className="h-0.5 bg-gradient-to-r from-lagoon via-palm/70 to-transparent" />
 
           {meta && (
-            <header className="px-6 sm:px-10 pt-10 pb-8 bg-surface/40">
-              <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-sea-ink leading-snug mb-3.5 break-words [overflow-wrap:anywhere]">
+            <header className="border-b border-line/60 bg-surface/30 px-5 pb-7 pt-8 sm:px-10 sm:pb-9 sm:pt-11">
+              <h1 className="max-w-3xl break-words font-serif text-2xl font-semibold leading-[1.15] tracking-tight text-sea-ink [overflow-wrap:anywhere] sm:text-3xl lg:text-[2.5rem]">
                 {meta.title}
               </h1>
 
               {meta.description && (
-                <p className="text-sm sm:text-base text-sea-ink-soft leading-relaxed italic font-serif max-w-4xl">
+                <p className="mt-4 max-w-2xl font-serif text-sm leading-7 text-sea-ink-soft sm:text-base">
                   {meta.description}
                 </p>
               )}
@@ -85,7 +85,7 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
               )}
 
               {(meta.author || meta.version) && (
-                <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-sea-ink-soft/80 font-mono">
+                <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-sea-ink-soft/80">
                   {meta.author && (
                     <span className="inline-flex items-center gap-1.5">
                       <User className="h-3.5 w-3.5 shrink-0 text-sea-ink-soft" />
@@ -105,7 +105,7 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
             </header>
           )}
 
-          <div className="px-6 sm:px-10 py-8 min-w-0 max-w-full">
+          <div className="min-w-0 max-w-full px-5 py-7 sm:px-10 sm:py-10">
             {content.length === 0 ? (
               <div
                 data-testid="document-empty"
@@ -118,7 +118,7 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
                 空文档：等待节点写入
               </div>
             ) : (
-              <main className="space-y-4 min-w-0 max-w-full">
+              <main className="flex min-w-0 max-w-full flex-col gap-8 sm:gap-10">
                 {content.map((node, i) => (
                   <LpwNodeRenderer
                     key={node.id}

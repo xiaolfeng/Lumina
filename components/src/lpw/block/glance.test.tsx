@@ -8,7 +8,7 @@ afterEach(() => {
 })
 
 describe('GlanceBlock', () => {
-  it('应正确渲染 3 项速览格并生成 01/02/03 序号', () => {
+  it('应正确渲染 3 项速览格并保持低噪声视觉层级', () => {
     const { container } = render(
       <GlanceBlock
         blockId="gl-3"
@@ -24,15 +24,13 @@ describe('GlanceBlock', () => {
     )
 
     expect(screen.getByText('做成')).toBeTruthy()
-    expect(screen.getByText('01')).toBeTruthy()
-    expect(screen.getByText('02')).toBeTruthy()
-    expect(screen.getByText('03')).toBeTruthy()
+    expect(container.querySelectorAll('[class~="bg-lagoon/70"]')).toHaveLength(3)
     expect(
       container.querySelector('[data-testid="glance-block"]')?.className,
-    ).toContain('md:grid-cols-3')
+    ).toContain('repeat(auto-fit')
   })
 
-  it('4 项时采用 4 列布局，1 项时采用通栏', () => {
+  it('多项使用 auto-fit 自适应列宽，单项保持通栏', () => {
     const { container, rerender } = render(
       <GlanceBlock
         blockId="gl-4"
@@ -49,7 +47,7 @@ describe('GlanceBlock', () => {
     )
     expect(
       container.querySelector('[data-testid="glance-block"]')?.className,
-    ).toContain('lg:grid-cols-4')
+    ).toContain('min(100%,11rem)')
 
     rerender(
       <GlanceBlock

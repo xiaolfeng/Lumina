@@ -11,14 +11,12 @@ export const PersonnelBlock: React.FC<LpwBlockSlotProps<LpwPersonnelProps>> = ({
   return (
     <div
       data-testid="personnel-block"
-      className="my-6 border border-line bg-surface/30 p-6 text-xs shadow-2xs font-sans"
+      className="border border-line bg-surface/30 p-5 text-xs font-sans sm:p-6"
     >
       {title && (
         <div className="mb-4 pb-2 border-b border-line/60 font-serif font-semibold text-base text-sea-ink flex items-center justify-between">
           <span>{title}</span>
-          <span className="font-mono text-[10px] text-sea-ink-soft uppercase tracking-widest">
-            COLOPHON // 干系人
-          </span>
+
         </div>
       )}
 
@@ -27,7 +25,7 @@ export const PersonnelBlock: React.FC<LpwBlockSlotProps<LpwPersonnelProps>> = ({
           暂无干系人信息
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-4">
           {items.map((person, idx) => (
             <div
               key={idx}

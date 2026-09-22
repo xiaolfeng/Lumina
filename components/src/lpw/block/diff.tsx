@@ -24,7 +24,7 @@ export const DiffBlock: React.FC<LpwBlockSlotProps<LpwDiffProps>> = ({
   return (
     <div
       data-testid="diff-block"
-      className="my-6 border border-line/60 bg-surface/30 text-xs shadow-2xs font-sans w-full max-w-full overflow-hidden min-w-0"
+      className="w-full max-w-full min-w-0 overflow-hidden border border-line/60 bg-surface/30 text-xs font-sans"
     >
       {showHeader && (
         <div className="flex items-center justify-between border-b border-line bg-surface/60 px-4 py-2.5">

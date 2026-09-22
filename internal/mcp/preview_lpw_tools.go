@@ -100,7 +100,6 @@ var previewLpwToolDefs = []previewLpwToolDef{
 						"type":       map[string]any{"type": "string", "description": "专用组件类型。"},
 						"props":      map[string]any{"type": "object", "description": "组件属性。"},
 						"annotation": map[string]any{"type": "object", "description": "可选批注对象（仅 kind=block 允许）。"},
-						"children":   map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "子节点列表（block 不允许）。"},
 					},
 					"description": "待插入的节点对象，必须包含合法 id、kind、type 和 props。",
 				},

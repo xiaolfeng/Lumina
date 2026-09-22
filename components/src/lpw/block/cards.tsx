@@ -23,7 +23,7 @@ export const CardsBlock: React.FC<LpwBlockSlotProps<LpwCardsProps>> = ({
   props,
 }) => {
   return (
-    <div className="my-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 font-sans">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-4 font-sans">
       {props.items.map((item, idx) => {
         const safeHref = sanitizeHref(item.href)
         const isExternal = Boolean(safeHref && /^https?:\/\//i.test(safeHref))
@@ -58,7 +58,7 @@ export const CardsBlock: React.FC<LpwBlockSlotProps<LpwCardsProps>> = ({
               key={idx}
               href={safeHref}
               {...externalProps}
-              className="block border border-line bg-surface p-5 transition-all duration-150 hover:border-sea-ink/60 hover:bg-surface-muted/40 cursor-pointer shadow-2xs group"
+              className="group block border border-line bg-surface/70 p-5 transition-colors hover:border-lagoon/50 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lagoon/40"
             >
               {content}
             </a>
@@ -68,7 +68,7 @@ export const CardsBlock: React.FC<LpwBlockSlotProps<LpwCardsProps>> = ({
         return (
           <div
             key={idx}
-            className="block border border-line bg-surface p-5 shadow-2xs"
+            className="block border border-line bg-surface/70 p-5"
           >
             {content}
           </div>

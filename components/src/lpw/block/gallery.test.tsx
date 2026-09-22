@@ -60,11 +60,9 @@ describe('GalleryBlock', () => {
     )
 
     const grid = screen.getByTestId('gallery-block')
-    expect(grid.className).toContain('grid-cols-1')
-    expect(grid.className).toContain('sm:grid-cols-2')
-    expect(grid.className).toContain('lg:grid-cols-3')
-    expect(grid.className).toContain('gap-4')
-    expect(grid.className).toContain('sm:gap-6')
+    expect(grid.className).toContain('repeat(auto-fit')
+    expect(grid.className).toContain('min(100%,14rem)')
+    expect(grid.className).toContain('gap-5')
 
     const img = screen.getByRole('img', { name: '图一' })
     expect(img.className).toContain('w-full')

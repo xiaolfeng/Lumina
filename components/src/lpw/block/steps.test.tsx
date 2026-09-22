@@ -140,10 +140,11 @@ describe('StepsBlock', () => {
     )
 
     const ol = container.querySelector('ol')
-    expect(ol?.className).toContain('my-6 flex flex-col sm:flex-row sm:flex-wrap items-start gap-4 sm:gap-8 text-xs font-sans')
+    expect(ol?.className).toContain('grid-cols-[repeat(auto-fit')
+    expect(ol?.className).toContain('gap-5')
 
     // 移动端全宽类名
     const item0 = container.querySelector('[data-testid="step-item-0"]')
-    expect(item0?.className).toContain('w-full sm:w-auto')
+    expect(item0?.className).toContain('w-full')
   })
 })

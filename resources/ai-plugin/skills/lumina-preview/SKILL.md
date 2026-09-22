@@ -1,13 +1,13 @@
 ---
 name: lumina-preview
-description: Lumina Preview 把原生 HTML/CSS/JS 或浏览器端 React/Vue 原型推到沙盒页给用户看。需要展示组件、线框、交互稿或把预览挂到 Q&A 详情时使用。Preview 只是评审媒介，不能代替改真实仓库。
+description: Lumina Preview 把原生 HTML/CSS/JS 或浏览器端 React/Vue 交互原型推到沙盒页给用户看。需要展示组件、线框、交互稿、表单流程、动画或把网页预览挂到 Q&A 详情时使用；结构化技术评审、简报、决策稿和 `.lpw` 文档交给 lumina-preview-lpw。Preview 只是评审媒介，不能代替改真实仓库。
 license: MIT
 compatibility: Requires Lumina MCP (Streamable HTTP) and network access to the Lumina instance.
 metadata:
   author: lumina
   version: "0.1.2"
 argument-hint: [ session-id | filename ]
-allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__project_create, mcp__lumina__preview_session_create, mcp__lumina__preview_session_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_edit, mcp__lumina__preview_file_delete, mcp__lumina__preview_file_list, mcp__lumina__preview_file_get, mcp__lumina__preview_lpw_init, mcp__lumina__preview_lpw_node_add, mcp__lumina__preview_lpw_node_edit, mcp__lumina__preview_lpw_node_remove, mcp__lumina__preview_lpw_node_sort, mcp__lumina__preview_lpw_meta_set, mcp__lumina__preview_lpw_outline, mcp__lumina__preview_lpw_schema, mcp__lumina__qa_push_supplement, mcp__lumina__qa_get_answer, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__project_create, mcp__plugin_lumina_lumina__preview_session_create, mcp__plugin_lumina_lumina__preview_session_list, mcp__plugin_lumina_lumina__preview_file_upload, mcp__plugin_lumina_lumina__preview_file_edit, mcp__plugin_lumina_lumina__preview_file_delete, mcp__plugin_lumina_lumina__preview_file_list, mcp__plugin_lumina_lumina__preview_file_get, mcp__plugin_lumina_lumina__preview_lpw_init, mcp__plugin_lumina_lumina__preview_lpw_node_add, mcp__plugin_lumina_lumina__preview_lpw_node_edit, mcp__plugin_lumina_lumina__preview_lpw_node_remove, mcp__plugin_lumina_lumina__preview_lpw_node_sort, mcp__plugin_lumina_lumina__preview_lpw_meta_set, mcp__plugin_lumina_lumina__preview_lpw_outline, mcp__plugin_lumina_lumina__preview_lpw_schema, mcp__plugin_lumina_lumina__qa_push_supplement, mcp__plugin_lumina_lumina__qa_get_answer
+allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_get, mcp__lumina__project_list, mcp__lumina__project_create, mcp__lumina__preview_session_create, mcp__lumina__preview_session_list, mcp__lumina__preview_file_upload, mcp__lumina__preview_file_edit, mcp__lumina__preview_file_delete, mcp__lumina__preview_file_list, mcp__lumina__preview_file_get, mcp__lumina__qa_push_supplement, mcp__lumina__qa_get_answer, mcp__plugin_lumina_lumina__project_get, mcp__plugin_lumina_lumina__project_list, mcp__plugin_lumina_lumina__project_create, mcp__plugin_lumina_lumina__preview_session_create, mcp__plugin_lumina_lumina__preview_session_list, mcp__plugin_lumina_lumina__preview_file_upload, mcp__plugin_lumina_lumina__preview_file_edit, mcp__plugin_lumina_lumina__preview_file_delete, mcp__plugin_lumina_lumina__preview_file_list, mcp__plugin_lumina_lumina__preview_file_get, mcp__plugin_lumina_lumina__qa_push_supplement, mcp__plugin_lumina_lumina__qa_get_answer
 ---
 
 # Lumina 前端原型实时预览与可视化评审指南 (lumina-preview)
@@ -22,8 +22,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 |---|---|
 | 扁平文件名、相对引用、256 KiB、MIME | [`references/file-layout.md`](./references/file-layout.md) |
 | React/Vue、CDN、ESM、自动刷新边界 | [`references/framework-runtime.md`](./references/framework-runtime.md) |
-| LPW 节点契约 / variant 允许表 / 批注规则 | [`references/lpw-nodes.md`](./references/lpw-nodes.md) |
-| LPW 端到端构建示例 | [`examples/lpw-node-workflow.md`](./examples/lpw-node-workflow.md) |
+| 结构化评审文档、技术简报、决策稿、指标看板、`.lpw` | 使用独立 `lumina-preview-lpw` skill |
 | React 无构建浏览器示例 | [`examples/react-browser-runtime.md`](./examples/react-browser-runtime.md) |
 | Vue 无构建浏览器示例 | [`examples/vue-browser-runtime.md`](./examples/vue-browser-runtime.md) |
 | 独立浏览器评审走查 | [`examples/standalone-review.md`](./examples/standalone-review.md) |
@@ -37,28 +36,22 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 - **媒介定位**：Preview 是快速对齐视觉和交互的**沟通与评审媒介**，不能替代对本地仓库真实源文件的实现、单元测试与交付。
 - **运行环境**：前端采用 `iframe sandbox="allow-scripts"` 隔离环境渲染，同层 HTML 可通过相对路径加载经典 CSS/JS；完整加载边界见框架运行约束。
 - **文件支持**：HTML、CSS、JavaScript/MJS、JSON、SVG 与纯文本。
-- **LPW 文档支持**：结构化交互文档（`.lpw`）支持 1.1 节点语义增量生成与渐进生长，直渲 31 种微明视觉组件与容器。
+- **LPW 分流**：结构化评审文档、技术简报、决策稿、指标看板和 `.lpw` 需求由独立的 `lumina-preview-lpw` skill 负责叙事设计与节点组合。
 - **框架支持**：React/Vue 可使用固定版本 CDN 的浏览器构建，无需在 Lumina 安装 npm 依赖；这不等于提供 Node.js、打包器、SSR、Vue SFC 或本地多文件 ESM 运行时。
 - **实时含义**：文件变更经 WebSocket 通知工作台重新加载 iframe；这是自动刷新，不是保留组件状态的 HMR。
 
 ---
 
-## 🧱 LPW 精度模式（1.1 节点工作流）
+## 🧭 LPW 需求分流
 
-`.lpw` 是 LPW 1.1 结构化文档：根字段 `content`，节点分三类同级 kind——layout（纯结构）/ container（美化整体）/ block（原子内容）。层级硬规则见 references/lpw-nodes.md。
+当用户提到 `.lpw`、`preview_lpw`、结构化技术评审、架构说明、运行简报、方案对比、决策矩阵或要求 Preview 具有出版级排版时，停止当前 HTML 文件流程，改用 `lumina-preview-lpw`。该 skill 负责：
 
-1. **初始化** `preview_lpw_init`：写 meta（title 必填），content 留空。
-2. **先结构后内容** `preview_lpw_node_add`：先加 layout / container，再把 block 挂进去。单次调用只提交**一个**节点；children 通过多次 add 逐个挂载。parent_id 缺省 = 根 content；layout 下只能挂 container/block；container 下只能挂契约允许的 block。
-3. **中途核对** `preview_lpw_outline`：看 kind / type / pattern_or_variant / json_path，取最新 revision；`completeness_warnings` 非空说明文档还没满足完成态契约（如 layout 子节点不足、newspaper 缺 role=body），收工前必须补齐到该列表为空。
-4. **局部修正** `preview_lpw_node_edit`（props 浅合并；annotation 仅 block 可设，传 null 清除）/ `preview_lpw_node_sort` / `preview_lpw_node_remove`。
-5. **终核** `preview_file_list` → 交付 preview_url 或挂 Q&A。
+- 先确定阅读路径与视觉焦点；
+- 从受控 pattern / variant / block 中选择组合；
+- 通过 `preview_lpw_node_*` 逐节点构建；
+- 以 outline 完整性和桌面/窄视口美学检查收尾。
 
-**LPW 红线**：
-- NEVER 调用 preview_lpw_block_add / _edit / _remove / _sort（已删除，会直接报错）。
-- NEVER 写 `blocks` 根字段或 version "1.0"。
-- NEVER 给 layout 写正文、给 block 加 children。
-- NEVER 往 container 塞不匹配 variant 的 block——先查 references/lpw-nodes.md 契约表。
-- NEVER 用 preview_file_upload 覆写分节点构建中的 LPW（JSON 损坏修复除外）。
+普通网页交互、表单、动画和自由品牌页面继续使用本 skill。
 
 ---
 
@@ -166,6 +159,3 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, mcp__lumina__project_ge
 5. **NEVER**: 不要把自动刷新描述成 React Fast Refresh、Vue HMR 或状态保持热更新。
 6. **NEVER**: 严禁向用户交付空的 `preview_url`。
 7. **NEVER**: 挂载到 Q&A 时，严禁传递 URL 或 Hash，严禁给 JSON 添加 Markdown 代码围栏。
-8. **NEVER**: 禁止用 `preview_file_upload` 整体覆写分节点构建中的 LPW（除非修复严重损坏的 JSON；写回内容必须符合 1.1 结构契约，允许合规的渐进中间态）。
-9. **NEVER**: NEVER 在 LPW 文档里使用旧版 blocks 结构或 block 系工具。
-10. **NEVER**: 禁止对 `.lpw` 文件调用 `preview_file_edit` 进行日常局部编辑（除非紧急修复损坏的 JSON；LPW 局部修改必须使用 `preview_lpw_node_*` 节点语义工具族）。

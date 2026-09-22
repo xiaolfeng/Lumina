@@ -50,7 +50,7 @@ export const TabsContainer: React.FC<
       id={actualId}
       data-testid="tabs-container"
       data-variant={variant || "reference"}
-      className="my-3 font-sans"
+      className="min-w-0 font-sans"
     >
       {title && (
         <div className="mb-2 font-serif text-base font-semibold text-sea-ink">
@@ -62,7 +62,7 @@ export const TabsContainer: React.FC<
       <div
         role="tablist"
         onKeyDown={handleKeyDown}
-        className="flex overflow-x-auto border-b border-line font-mono text-xs"
+        className="flex gap-1 overflow-x-auto border-b border-line text-xs"
       >
         {items.map((item) => {
           const isSelected = item.key === resolvedKey;
@@ -76,7 +76,7 @@ export const TabsContainer: React.FC<
               aria-controls={`${actualId}-panel`}
               tabIndex={isSelected ? 0 : -1}
               onClick={() => setActiveKey(item.key)}
-              className={`cursor-pointer px-4 py-2 text-xs font-semibold select-none border-b-2 transition-colors uppercase tracking-wider shrink-0 whitespace-nowrap ${
+              className={`min-h-10 shrink-0 cursor-pointer select-none whitespace-nowrap border-b-2 px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lagoon/40 ${
                 isSelected
                   ? "border-lagoon text-lagoon-deep font-bold"
                   : "border-transparent text-sea-ink-soft hover:text-sea-ink hover:bg-surface/50"
@@ -93,7 +93,7 @@ export const TabsContainer: React.FC<
         id={`${actualId}-panel`}
         role="tabpanel"
         aria-labelledby={`${actualId}-tab-${resolvedKey}`}
-        className="py-6 px-1 [&>[data-testid$='-block']]:my-2 [&>[data-testid$='-block']:first-child]:mt-0 [&>[data-testid$='-block']:last-child]:mb-0"
+        className="flex min-w-0 flex-col gap-6 px-1 py-6"
       >
         {activeChild ? (
           renderContainerBlocks(

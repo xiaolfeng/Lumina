@@ -17,8 +17,9 @@ func GetLpwTextSpec(kindFilter, typeFilter string) string {
 
 	var sb strings.Builder
 	sb.WriteString("=== Lumina LPW 1.1 节点规范与组件契约大纲 (文本速查) ===\n")
-	sb.WriteString("核心原则: 根字段 content 为顶层节点数组。节点分 layout / container / block 三类。\n")
-	sb.WriteString("层级规则: document -> layout -> container -> block\n")
+	sb.WriteString("核心原则: 根字段 content 为顶层节点数组。节点分 layout / container / block 三类。根 content 本身提供纵向顺序；需要 split/grid 等局部布局时，将 layout 与前后 container 放成根部兄弟节点。\n")
+	sb.WriteString("排版规则: meta.title 是唯一主标题；section 已有 title 时不要再放 heading；markdown 正文避免重复 # / ## 标题；同屏只突出一个 takeaway。\n")
+	sb.WriteString("层级规则: document 可包含 layout/container/block；layout 只包含 container/block，严禁 layout 嵌套 layout。\n")
 	sb.WriteString("  - layout: 纯排版骨架，无外边框无标题无正文。子节点只允许 container 或 block。严禁嵌套 layout。\n")
 	sb.WriteString("  - container: 视觉与语义外壳。子节点只允许该 variant 白名单允许的 block。严禁嵌套 container/layout。\n")
 	sb.WriteString("  - block: 原子内容（26 种）。叶子节点，严禁包含任何 children。仅 block 允许 annotation。\n\n")
@@ -29,13 +30,13 @@ func GetLpwTextSpec(kindFilter, typeFilter string) string {
 		sb.WriteString("    props.strategy: {type:\"equal\"} 或 {type:\"ratio\", tracks:[2,1]} 或 {type:\"fixed-fluid\", fixed:\"start\"|\"end\", size:\"sm\"|\"md\"|\"lg\"|\"25%\"|\"33%\"|\"40%\"|\"50%\"}\n")
 		sb.WriteString("  pattern=\"bento\": 2~12 个 children。异形拼接便当格。\n")
 		sb.WriteString("    props.strategy: {type:\"spans\", columns:2|3|4}\n")
-		sb.WriteString("    props.placements: [{nodeId*, colSpan:1..4, rowSpan:1..3, orderOnMobile:1..20}]\n")
+		sb.WriteString("    props.placements: [{nodeId*, colSpan:1..columns, rowSpan:1..3, orderOnMobile:1..20}]\n")
 		sb.WriteString("  pattern=\"alternating\": 2~12 个(偶数) children。成对左右镜像交错。\n")
 		sb.WriteString("    props: alternateFrom=\"media\"|\"body\"\n")
 		sb.WriteString("  pattern=\"grid\": 1~12 个 children。规则等分布局。gap=\"sm\"|\"md\"|\"lg\"\n")
-		sb.WriteString("  pattern=\"newspaper\": 2~4 个 children。经典报纸排版。\n")
+		sb.WriteString("  pattern=\"newspaper\": 2~4 个 children。仅用于长文出版布局；placements 必须覆盖每个 child，且唯一 body 必须是 markdown。\n")
 		sb.WriteString("    props.placements: roles 包含 lead(首部通栏) / body(唯一正文 markdown) / aside(侧边) / media(图表媒体) / full(底部通栏)\n")
-		sb.WriteString("  pattern=\"editorial-wrap\": 恰好 2 个 children (首个必为 image，次个必为 markdown)。\n")
+		sb.WriteString("  pattern=\"editorial-wrap\": 恰好 2 个 children，只能由一个 image 和一个 markdown 组成，顺序不限。\n")
 		sb.WriteString("    props.strategy: {type:\"media-wrap\", mediaPosition:\"top-start\"|\"top-end\", mediaWidth:\"quarter\"|\"third\"|\"two-fifths\"|\"half\", mediaShape:\"square\"|\"portrait\"|\"landscape\"}\n")
 		sb.WriteString("  pattern=\"flow\": 1~20 个 children。纵向流或紧凑流。direction:\"horizontal\"|\"vertical\"\n\n")
 	}
@@ -43,30 +44,31 @@ func GetLpwTextSpec(kindFilter, typeFilter string) string {
 	if kindFilter == "" || kindFilter == "container" {
 		sb.WriteString("[2. Container 受控容器体系 (kind=\"container\")]\n")
 		sb.WriteString("  section (章节卡片, 接受 1~12 个 block):\n")
-		sb.WriteString("    - variant=\"article\": 接受 text, media, notice 组\n")
-		sb.WriteString("    - variant=\"feature\": 接受 media, text, notice 组 (首个 child 必为 image/gallery/heading, 2~6 个)\n")
+		sb.WriteString("    - variant=\"article\": 接受 text, media, notice, process 组；适合正文、步骤、时间线与待决事项\n")
+		sb.WriteString("    - variant=\"feature\": 接受 media, text, notice 组 (首个 child 必须是 image/gallery/heading；优先 image/gallery，纯文本特性可用与 section title 不同文案的 heading, 2~6 个)\n")
 		sb.WriteString("    - variant=\"evidence\": 接受 technical, media, notice 组 (1~8 个)\n")
-		sb.WriteString("    props: variant*, title*, subtitle, icon, tag, collapsible(bool), defaultExpanded(bool)\n")
+		sb.WriteString("    props: variant*, title*, icon, collapsible(bool), defaultOpen(bool)\n")
 		sb.WriteString("  panel (功能面板, 接受 1~8 个 block):\n")
-		sb.WriteString("    - variant=\"summary\": 接受 takeaway, glance, metrics, progress (takeaway 只能有 1 个, 1~4 个)\n")
+		sb.WriteString("    - variant=\"summary\": 接受 decision, data 组，明确禁止 chart；takeaway 只能有 1 个 (1~4 个)\n")
+		sb.WriteString("      推荐组合: takeaway + glance，或 metrics + progress。避免把 comparison/scorecard/quadrant 同时堆叠。\n")
 		sb.WriteString("    - variant=\"dashboard\": 接受 data, decision 组 (1~8 个)\n")
 		sb.WriteString("    - variant=\"aside\": 接受 notice, text 组 (1~4 个)\n")
-		sb.WriteString("    props: variant*, title*, subtitle, icon, tag\n")
+		sb.WriteString("    props: variant*, title(可选), icon\n")
 		sb.WriteString("  details (折叠抽屉, 接受 1~10 个 block):\n")
-		sb.WriteString("    - variant=\"supplement\": 接受 text, technical, media 组\n")
+		sb.WriteString("    - variant=\"supplement\": 接受 text, technical, media, process 组\n")
 		sb.WriteString("    - variant=\"raw-data\": 仅接受 code, diff, table, tree (1~6 个)\n")
 		sb.WriteString("    props: variant*, summary*, defaultOpen(bool, 默认 false)\n")
 		sb.WriteString("  tabs (页签切换, items 数量必须与 children 完全一致):\n")
 		sb.WriteString("    - variant=\"comparison\": 接受 comparison, table, scorecard, markdown\n")
 		sb.WriteString("    - variant=\"reference\": 接受 markdown, code, table, mermaid, chart, image\n")
 		sb.WriteString("    - variant=\"gallery\": 接受 image, gallery\n")
-		sb.WriteString("    props: variant*, items*([{key*, label*, icon}]), defaultKey\n")
+		sb.WriteString("    props: variant*, items*([{key*, label*}]), defaultKey, title(可选)\n")
 		sb.WriteString("  * 组件分组参考:\n")
-		sb.WriteString("    - text: markdown, heading, list, quote, cards\n")
+		sb.WriteString("    - text: markdown, heading, list, quote, cards, divider, personnel\n")
 		sb.WriteString("    - media: image, gallery, mermaid\n")
 		sb.WriteString("    - data: table, metrics, progress, chart\n")
-		sb.WriteString("    - decision: comparison, scorecard, quadrant, takeaway\n")
-		sb.WriteString("    - process: steps, timeline, tree, open-items\n")
+		sb.WriteString("    - decision: comparison, scorecard, quadrant, takeaway, glance\n")
+		sb.WriteString("    - process: steps, timeline, tree, open-items, personnel\n")
 		sb.WriteString("    - technical: code, diff, table, tree\n")
 		sb.WriteString("    - notice: callout, takeaway, quote\n\n")
 	}
@@ -150,7 +152,7 @@ func getSpecificTypeSpec(nodeType string) string {
     placements: [
       {
         nodeId: string (子节点 ID)*,
-        colSpan: 1 | 2 | 3 | 4 (默认 1),
+        colSpan: integer (1..strategy.columns, 默认 1),
         rowSpan: 1 | 2 | 3 (默认 1),
         orderOnMobile: integer (1..20, 移动端展示顺序)
       }
@@ -159,36 +161,32 @@ func getSpecificTypeSpec(nodeType string) string {
 
 	case "section":
 		return `[Container / type: section]
-职责: 结构化章节外壳，支持标题、副标题、图标、标签与折叠
+职责: 结构化章节外壳，支持标题、图标与折叠
 变体 (variant):
-  - "article": 经典出版物章节。接受 [text, media, notice] 组，子节点 1~12 个。
-  - "feature": 特性看板。接受 [media, text, notice] 组，子节点 2~6 个，首个必须是 image / gallery / heading。
+  - "article": 阅读型章节。接受 [text, media, notice, process] 组，子节点 1~12 个。
+  - "feature": 重点展示。接受 [media, text, notice] 组，子节点 2~6 个，首个必须是 image / gallery / heading；优先 image/gallery，纯文本特性可用与 section title 不同文案的 heading。
   - "evidence": 工程与技术证据。接受 [technical, media, notice] 组，子节点 1~8 个。
 属性:
   props: {
     variant: "article" | "feature" | "evidence"*,
     title: string (最长 200)*,
-    subtitle: string (最长 500),
     icon: "bookmark" | "file-text" | "layers" | "network" | "route" | "chart" | "shield-check" | "lightbulb" | "panel-left" | "circle-dot",
-    tag: string (最长 32),
     collapsible: boolean (默认 false),
-    defaultExpanded: boolean (默认 true)
+    defaultOpen: boolean (默认 true)
   }`
 
 	case "panel":
 		return `[Container / type: panel]
-职责: 无缝嵌入的高集成度业务面板
+职责: 聚合摘要、数据或旁注的业务面板
 变体 (variant):
-  - "summary": 结论摘要面板。仅接受 takeaway, glance, metrics, progress。takeaway 只能有 1 个，子节点 1~4 个。
+  - "summary": 结论摘要面板。接受 [decision, data] 组，明确禁止 chart；takeaway 只能有 1 个，子节点 1~4 个。
   - "dashboard": 数据监控大盘。接受 [data, decision] 组，子节点 1~8 个。
   - "aside": 侧边提示边栏。接受 [notice, text] 组，子节点 1~4 个。
 属性:
   props: {
     variant: "summary" | "dashboard" | "aside"*,
-    title: string (最长 200)*,
-    subtitle: string,
-    icon: string,
-    tag: string
+    title: string (最长 200，可选),
+    icon: string
   }`
 
 	case "chart":

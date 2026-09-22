@@ -131,6 +131,26 @@ func TestPreviewLpwInitSchemaContract(t *testing.T) {
 	}
 }
 
+func TestPreviewLpwNodeAddSchemaUsesSingleNodeContract(t *testing.T) {
+	var addDef *previewLpwToolDef
+	for i := range previewLpwToolDefs {
+		if previewLpwToolDefs[i].name == "preview_lpw_node_add" {
+			addDef = &previewLpwToolDefs[i]
+			break
+		}
+	}
+	if addDef == nil {
+		t.Fatal("preview_lpw_node_add not found")
+	}
+
+	props, _ := addDef.inputSchema["properties"].(map[string]any)
+	nodeSchema, _ := props["node"].(map[string]any)
+	nodeProps, _ := nodeSchema["properties"].(map[string]any)
+	if nodeProps["children"] != nil {
+		t.Error("node_add must not expose children; callers add one node per request")
+	}
+}
+
 func TestPreviewLpwWriteOutputContract(t *testing.T) {
 	schema := previewLpwWriteOutputSchema()
 	props, _ := schema["properties"].(map[string]any)
@@ -204,6 +224,14 @@ func TestPreviewLpwSchemaTextOutput(t *testing.T) {
 	if !strings.Contains(fullSpec, "chart:") || !strings.Contains(fullSpec, "diff:") || !strings.Contains(fullSpec, "annotation:") {
 		t.Fatalf("fullSpec missing essential components")
 	}
+	for _, ghostField := range []string{"subtitle", "defaultExpanded", "items*([{key*, label*, icon}])"} {
+		if strings.Contains(fullSpec, ghostField) {
+			t.Fatalf("fullSpec exposes unsupported field %q", ghostField)
+		}
+	}
+	if !strings.Contains(fullSpec, "text, media, notice, process") || !strings.Contains(fullSpec, "decision, data") {
+		t.Fatalf("fullSpec does not match container group contracts")
+	}
 
 	// 2. 指定单个类型输出精准参数
 	chartSpec := GetLpwTextSpec("", "chart")
@@ -214,6 +242,15 @@ func TestPreviewLpwSchemaTextOutput(t *testing.T) {
 	bentoSpec := GetLpwTextSpec("", "bento")
 	if !strings.Contains(bentoSpec, "[Layout / pattern: bento]") || !strings.Contains(bentoSpec, "placements") {
 		t.Fatalf("bentoSpec missing details, got: %s", bentoSpec)
+	}
+	if !strings.Contains(bentoSpec, "1..strategy.columns") || strings.Contains(bentoSpec, "colSpan: 1 | 2 | 3 | 4") {
+		t.Fatalf("bentoSpec does not constrain colSpan to configured columns: %s", bentoSpec)
+	}
+
+	sectionSpec := GetLpwTextSpec("", "section")
+	if !strings.Contains(sectionSpec, "首个必须是 image / gallery / heading") ||
+		!strings.Contains(sectionSpec, "title: string (最长 200)*") {
+		t.Fatalf("sectionSpec does not match feature FirstOf/title contract: %s", sectionSpec)
 	}
 
 	// 3. MCP Handler 调用验证

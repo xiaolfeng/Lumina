@@ -51,6 +51,6 @@ describe('TimelineBlock', () => {
     )
 
     const dot = container.querySelector('[data-testid="timeline-item-0"] > div.absolute')
-    expect(dot?.className).toContain('absolute -left-6 top-1.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-sea-ink bg-surface shadow-xs transition-transform group-hover:scale-125')
+    expect(dot?.className).toContain('absolute -left-6 top-1.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-lagoon bg-surface')
   })
 })

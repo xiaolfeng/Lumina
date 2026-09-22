@@ -8,7 +8,7 @@ afterEach(() => {
 })
 
 describe('HeadingBlock', () => {
-  it('renders heading-1 with 4px lagoon bar and bookmark icon', () => {
+  it('renders heading-1 with a clean type hierarchy and bookmark icon', () => {
     render(
       <HeadingBlock
         blockId="h-1"
@@ -17,12 +17,12 @@ describe('HeadingBlock', () => {
       />,
     )
     const el = screen.getByRole('heading', { level: 1 })
-    expect(el.classList.contains('border-l-4')).toBe(true)
-    expect(el.classList.contains('border-lagoon')).toBe(true)
+    expect(el.className).not.toContain('border-l')
+    expect(el.className).not.toContain('border-b')
     expect(el.querySelector('svg')).toBeTruthy()
   })
 
-  it('level 2 uses thinner bar and smaller icon', () => {
+  it('level 2 uses a compact type scale without a competing rule', () => {
     render(
       <HeadingBlock
         blockId="h-2"
@@ -31,7 +31,7 @@ describe('HeadingBlock', () => {
       />,
     )
     const el = screen.getByRole('heading', { level: 2 })
-    expect(el.className).toContain('border-l-[3px]')
+    expect(el.className).not.toContain('border-l')
   })
 
   it('level 3 uses soft color', () => {

@@ -71,7 +71,7 @@ describe('Q-01 split / bento 窄屏列模板', () => {
     expect(el.className).toContain('grid-cols-1')
     const firstCell = el.firstElementChild as HTMLElement
     expect(firstCell.style.gridColumn).toBe('')
-    expect(firstCell.className).toContain('md:col-span-2')
+    expect(firstCell.className).toContain('@3xl/lpw:col-span-2')
   })
 })
 
@@ -131,8 +131,8 @@ describe('Q-02 newspaper 正文可跨栏', () => {
     const flow = container.querySelector(
       '[data-testid="layout-newspaper-flow"]',
     ) as HTMLElement
-    expect(flow.className).toContain('md:columns-2')
-    expect(flow.className).not.toContain('lg:columns-3')
+    expect(flow.className).toContain('@3xl/lpw:columns-2')
+    expect(flow.className).not.toContain('@5xl/lpw:columns-3')
   })
 
   it('Q-03: newspaper 容器移除 space-y-6，改为在 body 和 aside 子项上加 mb-6', () => {
@@ -167,7 +167,7 @@ describe('Q-02 newspaper 正文可跨栏', () => {
 })
 
 describe('Q-03 alternating 窄屏保持语义 DOM 顺序', () => {
-  it('奇数镜像组不交换 DOM，只用 md:order 做桌面镜像', () => {
+  it('奇数镜像组不交换 DOM，只用容器查询 order 做宽文档镜像', () => {
     const ids = ['m1', 'c1', 'm2', 'c2'] as const
     const raw: LpwLayoutChild[] = ids.map((id) => ({
       id,
@@ -194,8 +194,8 @@ describe('Q-03 alternating 窄屏保持语义 DOM 顺序', () => {
     expect(odd.textContent).toBe('m2c2')
     const first = odd.children[0] as HTMLElement
     const second = odd.children[1] as HTMLElement
-    expect(first.className).toContain('md:order-2')
-    expect(second.className).toContain('md:order-1')
+    expect(first.className).toContain('@3xl/lpw:order-2')
+    expect(second.className).toContain('@3xl/lpw:order-1')
   })
 })
 
@@ -241,5 +241,81 @@ describe('Q-08 orderOnMobile 写入窄屏 order', () => {
     expect(flow.className).toContain('flex')
     expect(flow.className).toContain('flex-col')
     expect(flow.className).toContain('gap-6')
+  })
+})
+
+describe('布局韧性', () => {
+  it('align 会映射为统一的交叉轴对齐类', () => {
+    const { raw, rendered } = pair(['a', 'b'])
+    const props: LpwLayoutProps = { pattern: 'split', align: 'center' }
+    const { container } = render(
+      <>{renderLayoutPreset({ props, rawChildren: raw, renderedChildren: rendered })}</>,
+    )
+
+    expect(
+      container.querySelector('[data-testid="layout-split"]')?.className,
+    ).toContain('items-center')
+  })
+
+  it('alternating 默认保持媒体与正文垂直居中', () => {
+    const { raw, rendered } = pair(['a', 'b'])
+    const props: LpwLayoutProps = { pattern: 'alternating' }
+    const { container } = render(
+      <>{renderLayoutPreset({ props, rawChildren: raw, renderedChildren: rendered })}</>,
+    )
+
+    expect(
+      container.querySelector('[data-testid="layout-alternating"] > div')?.className,
+    ).toContain('items-center')
+  })
+
+  it('horizontal flow 保持紧凑内容宽度，不把短项强制等宽拉伸', () => {
+    const { raw, rendered } = pair(['a', 'b'])
+    const props: LpwLayoutProps = { pattern: 'flow', direction: 'horizontal' }
+    const { container } = render(
+      <>{renderLayoutPreset({ props, rawChildren: raw, renderedChildren: rendered })}</>,
+    )
+    const first = container.querySelector(
+      '[data-testid="layout-flow"] > div',
+    ) as HTMLElement
+
+    expect(first.className).toContain('flex-[0_1_auto]')
+    expect(first.className).not.toContain('flex-[1_1_14rem]')
+  })
+
+  it('newspaper 未配置 placements 时保留全部节点，不静默覆盖正文', () => {
+    const raw: LpwLayoutChild[] = [
+      { id: 'body', kind: 'block', type: 'markdown', props: { content: 'body' } },
+      { id: 'aside', kind: 'block', type: 'quote', props: { content: 'aside' } },
+    ]
+    const rendered = [<div key="body">body</div>, <div key="aside">aside</div>]
+    const props: LpwLayoutProps = { pattern: 'newspaper' }
+    const { container } = render(
+      <>{renderLayoutPreset({ props, rawChildren: raw, renderedChildren: rendered })}</>,
+    )
+
+    expect(container.textContent).toContain('body')
+    expect(container.textContent).toContain('aside')
+    expect(
+      container.querySelectorAll('[data-testid="layout-newspaper-aside"]'),
+    ).toHaveLength(1)
+  })
+
+  it('bento 的 colSpan 会收敛到 strategy.columns', () => {
+    const { raw, rendered } = pair(['a', 'b'])
+    const props: LpwLayoutProps = {
+      pattern: 'bento',
+      strategy: { type: 'spans', columns: 2 },
+      placements: [{ nodeId: 'a', colSpan: 4 }],
+    }
+    const { container } = render(
+      <>{renderLayoutPreset({ props, rawChildren: raw, renderedChildren: rendered })}</>,
+    )
+    const firstCell = container.querySelector(
+      '[data-testid="layout-bento"] > div',
+    ) as HTMLElement
+
+    expect(firstCell.className).toContain('@3xl/lpw:col-span-2')
+    expect(firstCell.className).not.toContain('col-span-4')
   })
 })

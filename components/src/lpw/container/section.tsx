@@ -22,9 +22,9 @@ export const SectionContainer: React.FC<
       id={actualId}
       data-testid="section-container"
       data-variant={variant || "article"}
-      className="my-3 font-sans"
+      className="min-w-0 font-sans"
     >
-      <div className="mb-3 border-l-[3px] border-palm/70 pl-3">
+      <div className="mb-5 flex items-center gap-3 border-b border-line/70 pb-3">
         {collapsible ? (
           <button
             type="button"
@@ -35,7 +35,7 @@ export const SectionContainer: React.FC<
           >
             <h2
               id={`${actualId}-title`}
-              className="flex items-center font-serif text-xl sm:text-2xl font-semibold tracking-tight text-sea-ink transition-colors group-hover:text-lagoon"
+              className="flex items-center font-serif text-lg sm:text-xl font-semibold tracking-tight text-sea-ink transition-colors group-hover:text-lagoon"
             >
               {Icon && (
                 <Icon
@@ -46,13 +46,13 @@ export const SectionContainer: React.FC<
               {props.title}
             </h2>
             <span className="border border-line/60 bg-surface/50 px-2 py-0.5 font-mono text-xs text-sea-ink-soft/70">
-              {open ? "收起 ▲" : "展开 ▼"}
+              {open ? "收起" : "展开"}
             </span>
           </button>
         ) : (
           <h2
             id={`${actualId}-title`}
-            className="flex items-center font-serif text-xl sm:text-2xl font-semibold tracking-tight text-sea-ink"
+            className="flex items-center font-serif text-lg sm:text-xl font-semibold tracking-tight text-sea-ink"
           >
             {Icon && (
               <Icon
@@ -71,7 +71,7 @@ export const SectionContainer: React.FC<
           role="region"
           aria-labelledby={`${actualId}-title`}
           data-testid="section-content"
-          className="space-y-6"
+          className="flex min-w-0 flex-col gap-7"
         >
           {renderContainerBlocks(
             actualChildren,

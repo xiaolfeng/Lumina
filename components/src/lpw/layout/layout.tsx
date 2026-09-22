@@ -22,7 +22,7 @@ export const LayoutNode: React.FC<LpwLayoutSlotProps<LpwLayoutProps>> = ({
   const diagnostics = validateLayoutPattern(layoutNode, location)
   if (diagnostics.length > 0) {
     return (
-      <div className="space-y-4 my-6">
+      <div className="space-y-4">
         {diagnostics.map((d, idx) => (
           <DiagnosticCard key={idx} diagnostic={d} />
         ))}
@@ -33,7 +33,7 @@ export const LayoutNode: React.FC<LpwLayoutSlotProps<LpwLayoutProps>> = ({
   const renderedChildren = renderLayoutChildren(children, location)
 
   return (
-    <section id={nodeId} data-testid="layout-node" className="my-4">
+    <section id={nodeId} data-testid="layout-node" className="min-w-0">
       {renderLayoutPreset({
         props,
         rawChildren: children,

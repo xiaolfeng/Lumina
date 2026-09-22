@@ -21,7 +21,7 @@ export const DetailsContainer: React.FC<
       id={actualId}
       data-testid="details-container"
       data-variant={variant || "supplement"}
-      className="my-3 border-y border-line/60 bg-surface/40 font-sans transition-colors"
+      className="border border-line/70 bg-surface/35 font-sans transition-colors"
     >
       <button
         type="button"
@@ -29,14 +29,14 @@ export const DetailsContainer: React.FC<
         aria-expanded={open}
         aria-controls={`${actualId}-content`}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full cursor-pointer select-none items-center justify-between gap-3 px-3 py-3.5 text-left hover:bg-surface/40 transition-colors"
+        className="flex min-h-12 w-full cursor-pointer select-none items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lagoon/40"
       >
         <span className="min-w-0 break-words flex-1 font-serif text-sm font-semibold text-sea-ink">
           {props.summary}
         </span>
         <span className="flex shrink-0 items-center gap-2">
-          <span className="hidden sm:inline font-mono text-[10px] tracking-widest text-sea-ink-soft/60 uppercase">
-            EXPANDABLE
+          <span className="hidden sm:inline text-xs text-sea-ink-soft">
+            {open ? "收起内容" : "查看内容"}
           </span>
           <ChevronRight
             aria-hidden="true"
@@ -51,7 +51,7 @@ export const DetailsContainer: React.FC<
           id={`${actualId}-content`}
           role="region"
           aria-labelledby={summaryId}
-          className="border-t border-line/40 px-3 py-4"
+          className="flex min-w-0 flex-col gap-6 border-t border-line/50 px-4 py-5"
         >
           {renderContainerBlocks(
             actualChildren,

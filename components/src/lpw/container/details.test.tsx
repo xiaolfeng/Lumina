@@ -9,7 +9,7 @@ afterEach(() => {
 })
 
 describe('DetailsContainer', () => {
-  it('renders as bordered capsule with EXPANDABLE badge', () => {
+  it('renders as a bordered disclosure with a clear state label', () => {
     render(
       <DetailsContainer
         blockId="det-1"
@@ -21,8 +21,8 @@ describe('DetailsContainer', () => {
     const container = screen.getByTestId('details-container')
     expect(container.className).toContain('border')
     expect(container.className).toContain('border-line')
-    expect(container.className).toContain('bg-surface/40')
-    const badge = screen.getByText('EXPANDABLE')
+    expect(container.className).toContain('bg-surface/35')
+    const badge = screen.getByText('查看内容')
     expect(badge).toBeTruthy()
     expect(badge.className).toContain('hidden')
     expect(badge.className).toContain('sm:inline')

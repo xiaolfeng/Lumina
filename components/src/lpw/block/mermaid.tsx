@@ -9,7 +9,7 @@ export const MermaidBlock: React.FC<LpwBlockSlotProps<LpwMermaidProps>> = ({
   const fenced = '```mermaid\n' + props.content.trim() + '\n```'
 
   return (
-    <figure data-testid="mermaid-block" className="my-8 font-sans">
+    <figure data-testid="mermaid-block" className="font-sans">
       <MermaidViewport>
         <Markdown>{fenced}</Markdown>
       </MermaidViewport>

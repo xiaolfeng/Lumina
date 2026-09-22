@@ -74,7 +74,7 @@ export const TableBlock: React.FC<LpwBlockSlotProps<LpwTableProps>> = ({
   return (
     <div
       data-testid="table-block"
-      className="relative my-8 border-t-2 border-b-2 border-sea-ink bg-surface/30 shadow-2xs font-sans"
+      className="relative min-w-0 max-w-full overflow-hidden border border-line bg-surface/30 font-sans"
     >
       <div
         aria-hidden="true"
@@ -100,7 +100,7 @@ export const TableBlock: React.FC<LpwBlockSlotProps<LpwTableProps>> = ({
                     scope="col"
                     aria-sort={props.sortable ? ariaSort : undefined}
                     style={col.width ? { width: col.width } : undefined}
-                    className={`p-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-sea-ink ${getAlignClass(
+                    className={`p-3.5 text-xs font-semibold text-sea-ink ${getAlignClass(
                       col.align,
                     )}`}
                   >

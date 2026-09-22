@@ -115,6 +115,46 @@ func TestHierarchy_RootContainer_Block(t *testing.T) {
 	}
 }
 
+func TestContract_ArticleAcceptsProcessAndRejectsData(t *testing.T) {
+	t.Parallel()
+
+	article := func(child lpwNode) *lpwDocument {
+		return &lpwDocument{
+			Version: "1.1",
+			Content: []lpwNode{{
+				ID:   "article-1",
+				Kind: "container",
+				Type: "section",
+				Props: map[string]any{
+					"variant": "article",
+					"title":   "上线行动",
+				},
+				Children: []lpwNode{child},
+			}},
+		}
+	}
+
+	processDoc := article(lpwNode{
+		ID:    "actions-1",
+		Kind:  "block",
+		Type:  "open-items",
+		Props: map[string]any{"items": []any{map[string]any{"title": "完成演练"}}},
+	})
+	if err := validateDocument11(processDoc); err != nil {
+		t.Fatalf("expected article to accept process block, got: %v", err)
+	}
+
+	dataDoc := article(lpwNode{
+		ID:    "metrics-1",
+		Kind:  "block",
+		Type:  "metrics",
+		Props: map[string]any{"items": []any{map[string]any{"label": "P95", "value": 84}}},
+	})
+	if err := validateDocument11(dataDoc); err == nil {
+		t.Fatal("expected article to reject data block")
+	}
+}
+
 func TestHierarchy_RootBlock(t *testing.T) {
 	t.Parallel()
 	doc := &lpwDocument{
@@ -839,9 +879,9 @@ func TestReplaceNode_ExceedsMaxNodes(t *testing.T) {
 
 	// 构造一个包含 3 个节点的替换子树（替换 1 个节点后总数变为 499 - 1 + 3 = 501 > 500）
 	replacement := lpwNode{
-		ID:   "repl-container",
-		Kind: "container",
-		Type: "section",
+		ID:    "repl-container",
+		Kind:  "container",
+		Type:  "section",
 		Props: map[string]any{"variant": "article", "title": "t"},
 		Children: []lpwNode{
 			{ID: "repl-1", Kind: "block", Type: "markdown", Props: map[string]any{"content": "1"}},
@@ -857,4 +897,3 @@ func TestReplaceNode_ExceedsMaxNodes(t *testing.T) {
 		t.Errorf("expected error message containing '超过上限 500', got: %v", err)
 	}
 }
-

@@ -239,13 +239,12 @@ describe('TabsContainer', () => {
     expect(tab2.getAttribute('aria-selected')).toBe('false')
     expect(tab2.getAttribute('tabindex')).toBe('-1')
 
-    // TabPanel 属性与嵌套 margin collapse 验证
+    // TabPanel 属性与统一 gap 验证
     const panel = screen.getByRole('tabpanel')
     expect(panel.id).toBe('tabs-aria-panel')
     expect(panel.getAttribute('aria-labelledby')).toBe('tabs-aria-tab-opt1')
-    expect(panel.className).toContain("[&>[data-testid$='-block']]:my-2")
-    expect(panel.className).toContain("[&>[data-testid$='-block']:first-child]:mt-0")
-    expect(panel.className).toContain("[&>[data-testid$='-block']:last-child]:mb-0")
+    expect(panel.className).toContain('flex')
+    expect(panel.className).toContain('gap-6')
 
     // 键盘导航：ArrowRight 切换到第二个 tab
     fireEvent.keyDown(tablist, { key: 'ArrowRight' })

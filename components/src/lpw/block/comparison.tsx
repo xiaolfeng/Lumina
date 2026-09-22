@@ -24,7 +24,7 @@ export const ComparisonBlock: React.FC<
   return (
     <div
       data-testid="comparison-block"
-      className="relative my-8 border-t-2 border-b-2 border-sea-ink bg-surface/30 text-xs shadow-2xs font-sans"
+      className="relative min-w-0 max-w-full overflow-hidden border border-line bg-surface/30 text-xs font-sans"
     >
       <div
         aria-hidden="true"
@@ -33,10 +33,7 @@ export const ComparisonBlock: React.FC<
       {title && (
         <div className="border-b border-line bg-surface/60 px-5 py-3 font-serif font-semibold text-base text-sea-ink flex items-center justify-between">
           <span>{title}</span>
-          <span className="inline-flex items-center gap-1 font-mono text-[10px] text-sea-ink-soft uppercase tracking-widest">
-            <Layers className="h-3 w-3" />
-            <span>DIMENSIONAL MATRIX</span>
-          </span>
+          <Layers className="h-4 w-4 text-sea-ink-soft" aria-hidden="true" />
         </div>
       )}
 
@@ -46,7 +43,7 @@ export const ComparisonBlock: React.FC<
             <tr className="border-b border-sea-ink bg-surface/50">
               <th
                 scope="col"
-                className="p-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-sea-ink min-w-[100px] sm:w-1/4"
+                className="p-3.5 text-xs font-semibold text-sea-ink min-w-[100px] sm:w-1/4"
               >
                 维度
               </th>
@@ -56,7 +53,7 @@ export const ComparisonBlock: React.FC<
                   <th
                     key={idx}
                     scope="col"
-                    className={`p-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-sea-ink ${
+                    className={`p-3.5 text-xs font-semibold text-sea-ink ${
                       isRec
                         ? 'bg-lagoon/5 border-x border-lagoon/20 text-lagoon-deep'
                         : ''

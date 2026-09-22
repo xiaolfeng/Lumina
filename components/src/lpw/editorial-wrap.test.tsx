@@ -90,10 +90,12 @@ describe('editorial-wrap', () => {
     expect(wrap).toBeTruthy()
     expect(wrap.className).toContain('flex')
     expect(wrap.className).toContain('flex-col')
-    expect(wrap.className).toContain('md:block')
+    expect(wrap.className).toContain('@3xl/lpw:block')
 
     const imgWrap = wrap.children[0] as HTMLElement
     const mdWrap = wrap.children[1] as HTMLElement
+    expect(imgWrap.className).toContain('@max-3xl/lpw:!mx-0')
+    expect(imgWrap.className).toContain('@max-3xl/lpw:!w-full')
     expect(imgWrap.style.getPropertyValue('--m-order')).toBe('2')
     expect(mdWrap.style.getPropertyValue('--m-order')).toBe('1')
   })

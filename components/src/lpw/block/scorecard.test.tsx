@@ -12,7 +12,7 @@ describe('ScorecardBlock', () => {
     // 权重 30% 与 70%
     // 方案 A: 3*30 + 5*70 = 90 + 350 = 440 -> 4.4
     // 方案 B: 4*30 + 4*70 = 120 + 280 = 400 -> 4.0
-    render(
+    const { container } = render(
       <ScorecardBlock
         blockId="sc-1"
         props={{
@@ -38,6 +38,11 @@ describe('ScorecardBlock', () => {
     // 验证总分
     expect(screen.getByTestId('scorecard-total-0').textContent).toBe('4.4')
     expect(screen.getByTestId('scorecard-total-1').textContent).toBe('4.0')
+
+    const root = container.querySelector('[data-testid="scorecard-block"]')
+    expect(root?.className).toContain('min-w-0')
+    expect(root?.className).toContain('max-w-full')
+    expect(root?.className).toContain('overflow-hidden')
   })
 
   it('权重 30/70 与得分 [4, 5] 时总分应计算为 4.7', () => {

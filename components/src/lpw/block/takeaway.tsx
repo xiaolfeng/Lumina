@@ -13,11 +13,11 @@ export const TakeawayBlock: React.FC<LpwBlockSlotProps<LpwTakeawayProps>> = ({
   return (
     <div
       data-testid="takeaway-block"
-      className="my-6 bg-sea-ink p-4 sm:p-7 text-foam relative shadow-md border border-sea-ink group"
+      className="group relative overflow-hidden border border-sea-ink bg-sea-ink p-5 text-foam sm:p-7"
     >
-      <div className="border border-foam/20 p-5 sm:p-6 relative">
+      <div className="relative border-l border-lagoon/80 pl-4 sm:pl-6">
         {/* 沉金藏书票古典印信标签 */}
-        <div className="absolute -top-3 left-6 bg-sea-ink px-3 font-mono text-[10px] tracking-[0.2em] text-foam/80 uppercase flex items-center gap-1.5 max-w-[calc(100%-3rem)] truncate">
+        <div className="mb-3 flex max-w-full items-center gap-1.5 text-xs font-semibold text-foam/70">
           <Sparkles className="lucide-sparkles h-3 w-3 shrink-0 text-lagoon" />
           <span className="truncate">{title}</span>
         </div>

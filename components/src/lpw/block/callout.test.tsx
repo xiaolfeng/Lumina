@@ -70,7 +70,7 @@ describe('CalloutBlock', () => {
     expect(el.className).toContain('border-lagoon')
   })
 
-  it('Q-08 内边距为 p-4 sm:p-6 且文本容器具有长词换行保护', () => {
+  it('Q-08 内边距为 p-4 sm:p-5 且文本容器具有长词换行保护', () => {
     const { container } = render(
       <CalloutBlock
         blockId="co-padding"
@@ -81,8 +81,8 @@ describe('CalloutBlock', () => {
 
     const root = container.firstElementChild as HTMLElement
     expect(root.className).toContain('p-4')
-    expect(root.className).toContain('sm:p-6')
-    expect(root.className).not.toContain('p-5')
+    expect(root.className).toContain('sm:p-5')
+    expect(root.className.split(/\s+/)).not.toContain('p-5')
 
     const contentWrapper = screen.getByText('换行与内边距保护').closest('div')
     expect(contentWrapper?.className).toContain('break-words')

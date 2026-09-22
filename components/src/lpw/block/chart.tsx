@@ -224,7 +224,7 @@ export const ChartBlock: React.FC<LpwBlockSlotProps<LpwChartProps>> = ({
       <div
         data-testid="chart-empty"
         style={{ height }}
-        className="my-8 flex items-center justify-center border border-dashed border-line bg-surface/40 p-6 text-xs font-serif italic text-sea-ink-soft/70 shadow-2xs"
+        className="flex items-center justify-center border border-dashed border-line bg-surface/40 p-6 text-xs font-serif italic text-sea-ink-soft/70 shadow-2xs"
       >
         暂无图表数据
       </div>
@@ -236,7 +236,7 @@ export const ChartBlock: React.FC<LpwBlockSlotProps<LpwChartProps>> = ({
       <div
         data-testid="chart-error"
         style={{ height }}
-        className="my-8 flex flex-col items-center justify-center border border-dashed border-destructive/40 bg-destructive/5 p-6 text-xs text-destructive shadow-2xs font-sans"
+        className="flex flex-col items-center justify-center border border-dashed border-destructive/40 bg-destructive/5 p-6 text-xs text-destructive shadow-2xs font-sans"
       >
         <span className="font-semibold">图表组件加载失败</span>
         <span className="mt-1 text-2xs text-sea-ink-soft/70">{loadError}</span>
@@ -249,7 +249,7 @@ export const ChartBlock: React.FC<LpwBlockSlotProps<LpwChartProps>> = ({
       data-testid="chart-block"
       role="img"
       aria-label={props.title || '数据图表'}
-      className="my-8 border-t-2 border-b-2 border-sea-ink bg-surface/30 p-6 shadow-2xs font-sans"
+      className="border border-line bg-surface/30 p-4 font-sans sm:p-6"
     >
       <div style={{ height }} className="relative w-full">
         {!ready && (

@@ -13,27 +13,29 @@ export const PanelContainer: React.FC<
 
   const variantClass =
     variant === "summary"
-      ? "border-l-4 border-lagoon bg-surface/35 p-5"
+      ? "border border-lagoon/30 bg-lagoon/5 p-5 sm:p-6"
       : variant === "aside"
-        ? "border-l-2 border-line/70 bg-surface/20 p-4 text-sm"
-        : "p-2";
+        ? "border border-line/70 bg-surface/35 p-4 sm:p-5 text-sm"
+        : "border-y border-line/70 py-5";
 
   return (
     <div
       id={nodeId}
       data-testid="panel-container"
       data-variant={variant}
-      className={`my-3 font-sans ${variantClass}`}
+      className={`min-w-0 font-sans ${variantClass}`}
     >
       {title && (
-        <div className="mb-4 flex items-center gap-2 font-serif font-semibold text-sea-ink">
+        <div className="mb-5 flex items-center gap-2.5 border-b border-line/60 pb-3 font-serif text-base font-semibold text-sea-ink">
           {Icon && <Icon className="h-4 w-4 text-lagoon" aria-hidden="true" />}
           <span>{title}</span>
         </div>
       )}
       <div
         className={`${
-          variant === "dashboard" ? "grid gap-4 md:grid-cols-2" : "space-y-4"
+          variant === "dashboard"
+            ? "grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-5"
+            : "flex flex-col gap-5"
         } [&>[data-testid$='-block']]:my-2 [&>[data-testid$='-block']:first-child]:mt-0 [&>[data-testid$='-block']:last-child]:mb-0`}
       >
         {renderContainerBlocks(

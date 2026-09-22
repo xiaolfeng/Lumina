@@ -10,7 +10,7 @@ export const ListBlock: React.FC<LpwBlockSlotProps<LpwListProps>> = ({
 
   if (style === 'ordered') {
     return (
-      <ol className="my-5 list-decimal space-y-2 pl-6 text-sm text-sea-ink font-sans">
+      <ol className="list-decimal space-y-2 pl-6 text-sm text-sea-ink font-sans">
         {props.items.map((item, index) => (
           <li key={index} className="leading-relaxed">
             <MarkdownLite>{item.content}</MarkdownLite>
@@ -22,7 +22,7 @@ export const ListBlock: React.FC<LpwBlockSlotProps<LpwListProps>> = ({
 
   if (style === 'check') {
     return (
-      <ul className="my-5 space-y-2 text-sm text-sea-ink font-sans">
+      <ul className="space-y-2 text-sm text-sea-ink font-sans">
         {props.items.map((item, index) => {
           const isChecked = Boolean(item.checked)
           return (
@@ -55,7 +55,7 @@ export const ListBlock: React.FC<LpwBlockSlotProps<LpwListProps>> = ({
   }
 
   return (
-    <ul className="my-5 list-disc space-y-2 pl-6 text-sm text-sea-ink font-sans">
+    <ul className="list-disc space-y-2 pl-6 text-sm text-sea-ink font-sans">
       {props.items.map((item, index) => (
         <li key={index} className="leading-relaxed">
           <MarkdownLite>{item.content}</MarkdownLite>

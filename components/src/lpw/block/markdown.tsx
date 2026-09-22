@@ -185,7 +185,7 @@ export const MarkdownBlock: React.FC<LpwBlockSlotProps<LpwMarkdownProps>> = ({
   return (
     <div
       id={actualId}
-      className={`${proseArticle} my-5 font-sans leading-relaxed text-sea-ink min-w-0 max-w-full`}
+      className={`${proseArticle} min-w-0 max-w-full font-sans leading-relaxed text-sea-ink [&>*:first-child]:mt-0 [&>*:last-child]:mb-0`}
     >
       <Markdown components={customComponents}>{content}</Markdown>
       {patternInvalid ? <InvalidPatternNotice /> : null}

@@ -30,7 +30,7 @@ export const StepsBlock: React.FC<LpwBlockSlotProps<LpwStepsProps>> = ({
   const current = props.current
 
   return (
-    <ol className="my-6 flex flex-col sm:flex-row sm:flex-wrap items-start gap-4 sm:gap-8 text-xs font-sans">
+    <ol className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-5 text-xs font-sans">
       {props.items.map((item, idx) => {
         const isCurrent = current !== undefined && current === idx
         const derivedStatus =
@@ -48,7 +48,7 @@ export const StepsBlock: React.FC<LpwBlockSlotProps<LpwStepsProps>> = ({
           <li
             key={idx}
             data-testid={`step-item-${idx}`}
-            className="flex items-start gap-3 relative group w-full sm:w-auto sm:max-w-xs"
+            className="group relative flex w-full items-start gap-3"
           >
             {/* 移动端左侧流程连接视觉元素 */}
             {idx < props.items.length - 1 && (

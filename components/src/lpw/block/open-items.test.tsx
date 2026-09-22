@@ -8,7 +8,7 @@ afterEach(() => {
 })
 
 describe('OpenItemsBlock', () => {
-  it('应正确渲染虚线边框与默认未决事项标题', () => {
+  it('应正确渲染克制边框与默认未决事项标题', () => {
     const { container } = render(
       <OpenItemsBlock
         blockId="oi-1"
@@ -33,7 +33,7 @@ describe('OpenItemsBlock', () => {
     expect(screen.getByText(/截止: 下周五前/)).toBeTruthy()
 
     const box = container.querySelector('[data-testid="open-items-block"]')
-    expect(box?.className).toContain('border-dashed')
+    expect(box?.className).toContain('border-line')
   })
 
   it('缺省 owner 与 due 时省略右侧槽位', () => {

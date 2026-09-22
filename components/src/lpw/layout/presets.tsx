@@ -12,28 +12,34 @@ export interface LayoutPresetProps {
 }
 
 const GAP_MAP = {
-  sm: "gap-4",
-  md: "gap-6",
-  lg: "gap-8",
+  sm: "gap-3 sm:gap-4",
+  md: "gap-5 sm:gap-6",
+  lg: "gap-7 sm:gap-10",
+};
+
+const ALIGN_CLASS = {
+  start: "items-start",
+  center: "items-center",
+  stretch: "items-stretch",
 };
 
 const COL_SPAN_CLASS: Record<number, string> = {
   1: "",
-  2: "md:col-span-2",
-  3: "md:col-span-3",
-  4: "md:col-span-4",
+  2: "@3xl/lpw:col-span-2",
+  3: "@3xl/lpw:col-span-3",
+  4: "@3xl/lpw:col-span-4",
 };
 
 const ROW_SPAN_CLASS: Record<number, string> = {
   1: "",
-  2: "md:row-span-2",
-  3: "md:row-span-3",
+  2: "@3xl/lpw:row-span-2",
+  3: "@3xl/lpw:row-span-3",
 };
 
 const BENTO_COLS_CLASS: Record<number, string> = {
-  2: "md:grid-cols-2",
-  3: "md:grid-cols-3",
-  4: "md:grid-cols-4",
+  2: "@3xl/lpw:grid-cols-2",
+  3: "@3xl/lpw:grid-cols-3",
+  4: "@3xl/lpw:grid-cols-4",
 };
 
 function mobileOrderProps(
@@ -46,7 +52,7 @@ function mobileOrderProps(
     : undefined;
   const order = placed?.orderOnMobile ?? fallback;
   return {
-    className: "max-md:[order:var(--m-order)]",
+    className: "@max-3xl/lpw:[order:var(--m-order)]",
     style: { ["--m-order" as string]: String(order) },
   };
 }
@@ -83,8 +89,11 @@ export function renderLayoutPreset({
     gap = "md",
     placements = [],
     alternateFrom = "media",
+    align,
   } = props;
-  const gapClass = GAP_MAP[gap] || "gap-6";
+  const gapClass = GAP_MAP[gap] || "gap-5 sm:gap-6";
+  const resolvedAlign = align ?? (pattern === "alternating" ? "center" : "stretch");
+  const alignClass = ALIGN_CLASS[resolvedAlign];
 
   switch (pattern) {
     case "split": {
@@ -92,7 +101,7 @@ export function renderLayoutPreset({
         return (
           <div
             data-testid="layout-split"
-            className={`grid grid-cols-1 ${gapClass} w-full min-w-0`}
+            className={`grid grid-cols-1 ${alignClass} ${gapClass} w-full min-w-0`}
           >
             {renderedChildren.map((child, idx) => {
               const order = mobileOrderProps(rawChildren[idx], placements, idx + 1);
@@ -113,7 +122,7 @@ export function renderLayoutPreset({
       return (
         <div
           data-testid="layout-split"
-          className={`grid grid-cols-1 md:[grid-template-columns:var(--layout-cols)] ${gapClass} w-full min-w-0`}
+          className={`grid grid-cols-1 @3xl/lpw:[grid-template-columns:var(--layout-cols)] ${alignClass} ${gapClass} w-full min-w-0`}
           style={{ ["--layout-cols" as string]: splitTemplate(strategy) }}
         >
           {renderedChildren.map((child, idx) => {
@@ -139,7 +148,7 @@ export function renderLayoutPreset({
       }
 
       return (
-        <div data-testid="layout-alternating" className={`space-y-8`}>
+        <div data-testid="layout-alternating" className="space-y-10 sm:space-y-14">
           {pairs.map((pair, pIdx) => {
             const isOddGroup = pIdx % 2 === 1;
             const shouldMirror = isOddGroup && alternateFrom === "media";
@@ -147,7 +156,7 @@ export function renderLayoutPreset({
             return (
               <div
                 key={pIdx}
-                className={`grid grid-cols-1 md:grid-cols-2 ${gapClass} items-center`}
+                className={`grid grid-cols-1 @3xl/lpw:grid-cols-2 ${gapClass} ${alignClass}`}
               >
                 {pair.map((child, i) => {
                   const rawIdx = pIdx * 2 + i;
@@ -158,8 +167,8 @@ export function renderLayoutPreset({
                   );
                   const mirrorClass = shouldMirror
                     ? i === 0
-                      ? "md:order-2"
-                      : "md:order-1"
+                      ? "@3xl/lpw:order-2"
+                      : "@3xl/lpw:order-1"
                     : "";
                   return (
                     <div
@@ -182,13 +191,13 @@ export function renderLayoutPreset({
       const count = renderedChildren.length;
       const colClass =
         count <= 2
-          ? "grid-cols-1 sm:grid-cols-2"
-          : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+          ? "grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))]"
+          : "grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))]";
 
       return (
         <div
           data-testid="layout-grid"
-          className={`grid ${colClass} ${gapClass} w-full min-w-0`}
+          className={`grid ${colClass} ${alignClass} ${gapClass} w-full min-w-0`}
         >
           {renderedChildren.map((child, idx) => {
             const order = mobileOrderProps(rawChildren[idx], placements, idx + 1);
@@ -213,18 +222,18 @@ export function renderLayoutPreset({
       }
 
       const totalCols = strategy?.type === "spans" ? strategy.columns : 3;
-      const colsClass = BENTO_COLS_CLASS[totalCols] || "md:grid-cols-3";
+      const colsClass = BENTO_COLS_CLASS[totalCols] || "@3xl/lpw:grid-cols-3";
 
       return (
         <div
           data-testid="layout-bento"
-          className={`grid grid-cols-1 ${colsClass} ${gapClass} w-full min-w-0`}
+          className={`grid grid-cols-1 ${colsClass} ${alignClass} ${gapClass} w-full min-w-0`}
         >
           {renderedChildren.map((child, idx) => {
             const rawNode = rawChildren[idx];
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             const p = rawNode ? placementMap.get(rawNode.id) : undefined;
-            const colSpan = p?.colSpan ?? 1;
+            const colSpan = Math.min(p?.colSpan ?? 1, totalCols);
             const rowSpan = p?.rowSpan ?? 1;
             const order = mobileOrderProps(rawNode, placements, idx + 1);
 
@@ -258,11 +267,13 @@ export function renderLayoutPreset({
         const rawNode = rawChildren[idx];
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         const p = rawNode ? placementMap.get(rawNode.id) : undefined;
-        const role = p?.role || "body";
+        const inferredRole =
+          rawNode.type === "markdown" && bodyNode === null ? "body" : "aside";
+        const role = p?.role || inferredRole;
 
-        if (role === "lead") {
+        if (role === "lead" && leadNode === null) {
           leadNode = child;
-        } else if (role === "body") {
+        } else if (role === "body" && bodyNode === null) {
           bodyNode = child;
         } else if (role === "full") {
           fullNodes.push(child);
@@ -274,11 +285,11 @@ export function renderLayoutPreset({
       const colCount = strategy?.type === "columns" ? strategy.count : 3;
       const colClass =
         colCount === 2
-          ? "columns-1 md:columns-2"
-          : "columns-1 md:columns-2 lg:columns-3";
+          ? "columns-1 @3xl/lpw:columns-2"
+          : "columns-1 @3xl/lpw:columns-2 @5xl/lpw:columns-3";
 
       return (
-        <div data-testid="layout-newspaper" className="space-y-8 font-sans">
+        <div data-testid="layout-newspaper" className="space-y-10 font-sans">
           {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
           {leadNode ? (
             <div className="border-b border-line pb-6">{leadNode}</div>
@@ -357,10 +368,10 @@ export function renderLayoutPreset({
       return (
         <div
           data-testid="layout-editorial-wrap"
-          className="relative my-6 font-sans flex flex-col gap-4 md:block"
+          className="relative font-sans flex flex-col gap-5 @3xl/lpw:block"
         >
           <div
-            className="max-md:[order:var(--m-order)] md:my-0"
+            className="@max-3xl/lpw:!mx-0 @max-3xl/lpw:!w-full @max-3xl/lpw:[order:var(--m-order)] @3xl/lpw:my-0"
             style={{
               ["--m-order" as string]: String(imgOrder),
               float: isRight ? "right" : "left",
@@ -375,14 +386,14 @@ export function renderLayoutPreset({
             {imgNode}
           </div>
           <div
-            className="max-md:[order:var(--m-order)]"
+            className="@max-3xl/lpw:[order:var(--m-order)]"
             style={{
               ["--m-order" as string]: String(mdOrder),
             }}
           >
             {mdNode}
           </div>
-          <div className="clear-both hidden md:block" />
+          <div className="clear-both hidden @3xl/lpw:block" />
         </div>
       );
     }
@@ -393,12 +404,12 @@ export function renderLayoutPreset({
         return (
           <div
             data-testid="layout-flow"
-            className={`flex flex-wrap items-center ${gapClass}`}
+            className={`flex flex-wrap ${alignClass} ${gapClass}`}
           >
             {renderedChildren.map((child, idx) => {
               const order = mobileOrderProps(rawChildren[idx], placements, idx + 1);
               return (
-                <div key={idx} className={order.className} style={order.style}>
+                <div key={idx} className={`min-w-0 max-w-full flex-[0_1_auto] ${order.className}`} style={order.style}>
                   {child}
                 </div>
               );
@@ -407,11 +418,11 @@ export function renderLayoutPreset({
         );
       }
       return (
-        <div data-testid="layout-flow" className="flex flex-col gap-6">
+        <div data-testid="layout-flow" className={`flex flex-col ${gapClass}`}>
           {renderedChildren.map((child, idx) => {
             const order = mobileOrderProps(rawChildren[idx], placements, idx + 1);
             return (
-              <div key={idx} className={order.className} style={order.style}>
+              <div key={idx} className={`min-w-0 ${order.className}`} style={order.style}>
                 {child}
               </div>
             );

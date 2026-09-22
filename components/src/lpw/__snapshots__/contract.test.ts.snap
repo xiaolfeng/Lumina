@@ -20,7 +20,9 @@ exports[`contract > block groups snapshot matches Go contract 1`] = `
   "diff": [
     "technical",
   ],
-  "divider": [],
+  "divider": [
+    "text",
+  ],
   "gallery": [
     "media",
   ],
@@ -104,6 +106,7 @@ exports[`contract > container variants snapshot matches Go contract 1`] = `
         "text",
         "technical",
         "media",
+        "process",
       ],
       "MaxItems": 10,
       "MinItems": 1,
@@ -147,6 +150,7 @@ exports[`contract > container variants snapshot matches Go contract 1`] = `
         "text",
         "media",
         "notice",
+        "process",
       ],
       "MaxItems": 12,
       "MinItems": 1,

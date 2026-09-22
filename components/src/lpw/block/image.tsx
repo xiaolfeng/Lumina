@@ -18,7 +18,7 @@ export const ImageBlock: React.FC<LpwBlockSlotProps<LpwImageProps>> = ({
     return (
       <figure
         data-testid="image-fallback"
-        className="my-6 max-w-full min-w-0 border border-dashed border-line bg-surface-muted/30 p-6 text-center text-xs text-sea-ink-soft shadow-2xs font-sans"
+        className="max-w-full min-w-0 border border-dashed border-line bg-surface-muted/30 p-6 text-center text-xs text-sea-ink-soft font-sans"
       >
         <div className="font-serif font-semibold text-sm text-sea-ink">
           {props.alt}
@@ -31,8 +31,8 @@ export const ImageBlock: React.FC<LpwBlockSlotProps<LpwImageProps>> = ({
   }
 
   return (
-    <figure className="my-8 flex max-w-full min-w-0 flex-col items-center font-sans">
-      <div className="max-w-full min-w-0 border border-line bg-surface p-1.5 shadow-2xs">
+    <figure className="flex max-w-full min-w-0 flex-col items-center font-sans">
+      <div className="max-w-full min-w-0 border border-line bg-surface p-1.5">
         <img
           src={resolvedSrc}
           alt={props.alt}

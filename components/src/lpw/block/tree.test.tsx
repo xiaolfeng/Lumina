@@ -97,7 +97,7 @@ describe('TreeBlock', () => {
     expect(block?.className).toContain('overflow-x-auto')
     expect(block?.className).toContain('min-w-0')
     expect(block?.className).toContain('p-3')
-    expect(block?.className).toContain('sm:p-4')
+    expect(block?.className).toContain('sm:p-5')
 
     expect(screen.getByText('level-7')).toBeTruthy()
     expect(screen.getByText('level-7').className).toContain('break-all')

@@ -34,7 +34,7 @@ export const ProgressBlock: React.FC<LpwBlockSlotProps<LpwProgressProps>> = ({
   return (
     <div
       data-testid="progress-block"
-      className="my-6 border border-line bg-surface/30 p-6 text-xs shadow-2xs font-sans"
+      className="border border-line bg-surface/30 p-5 text-xs font-sans sm:p-6"
     >
       {title && (
         <div className="mb-4 pb-2 border-b border-line/60 font-serif font-semibold text-base text-sea-ink flex items-center justify-between">
@@ -42,9 +42,7 @@ export const ProgressBlock: React.FC<LpwBlockSlotProps<LpwProgressProps>> = ({
             <Gauge className="h-4 w-4 text-lagoon shrink-0" aria-hidden="true" />
             <span>{title}</span>
           </span>
-          <span className="font-mono text-[10px] text-sea-ink-soft uppercase tracking-widest">
-            GAUGE // 进展规制
-          </span>
+
         </div>
       )}
 

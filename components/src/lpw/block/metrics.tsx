@@ -19,25 +19,19 @@ export const MetricsBlock: React.FC<LpwBlockSlotProps<LpwMetricsProps>> = ({
   return (
     <div
       data-testid="metrics-block"
-      className="my-8 border-t border-b border-sea-ink py-6 bg-surface/20"
+      className="border-y border-line/80 bg-surface/30 py-2"
     >
-      <div className={`grid gap-6 sm:gap-0 ${gridCols}`}>
+      <div className={`grid gap-px bg-line/70 ${gridCols}`}>
         {items.map((item, idx) => {
-          const isLast = idx === len - 1
           return (
             <div
               key={idx}
               data-testid={`metric-item-${idx}`}
-              className={`flex flex-col justify-between sm:px-5 ${
-                !isLast ? 'sm:border-r sm:border-line/70' : ''
-              }`}
+              className="flex min-w-0 flex-col justify-between bg-surface-strong px-4 py-5 sm:px-5"
             >
               {/* 学术图版编号与标签 */}
               <div>
-                <div className="font-mono text-[10px] text-sea-ink-soft/60 mb-1 tracking-wider uppercase">
-                  [FIG. 1.{idx + 1}]
-                </div>
-                <div className="text-xs font-semibold text-sea-ink-soft tracking-wide">
+                                <div className="text-xs font-semibold text-sea-ink-soft tracking-wide">
                   {item.label}
                 </div>
 

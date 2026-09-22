@@ -38,7 +38,7 @@ var blockTypeGroups = map[string][]lpwBlockGroup{
 	"code":       {groupTechnical},
 	"diff":       {groupTechnical},
 	"callout":    {groupNotice},
-	"divider":    {},
+	"divider":    {groupText},
 	"cards":      {groupText},
 }
 
@@ -55,7 +55,7 @@ type lpwVariantContract struct {
 
 var containerVariants = map[string]map[string]lpwVariantContract{
 	"section": {
-		"article":  {AllowedGroups: []lpwBlockGroup{groupText, groupMedia, groupNotice}, MinItems: 1, MaxItems: 12},
+		"article":  {AllowedGroups: []lpwBlockGroup{groupText, groupMedia, groupNotice, groupProcess}, MinItems: 1, MaxItems: 12},
 		"feature":  {AllowedGroups: []lpwBlockGroup{groupMedia, groupText, groupNotice}, MinItems: 2, MaxItems: 6, FirstOf: []string{"image", "gallery", "heading"}},
 		"evidence": {AllowedGroups: []lpwBlockGroup{groupTechnical, groupMedia, groupNotice}, MinItems: 1, MaxItems: 8},
 	},
@@ -65,7 +65,7 @@ var containerVariants = map[string]map[string]lpwVariantContract{
 		"aside":     {AllowedGroups: []lpwBlockGroup{groupNotice, groupText}, MinItems: 1, MaxItems: 4},
 	},
 	"details": {
-		"supplement": {AllowedGroups: []lpwBlockGroup{groupText, groupTechnical, groupMedia}, MinItems: 1, MaxItems: 10},
+		"supplement": {AllowedGroups: []lpwBlockGroup{groupText, groupTechnical, groupMedia, groupProcess}, MinItems: 1, MaxItems: 10},
 		"raw-data":   {AllowedTypes: []string{"code", "diff", "table", "tree"}, MinItems: 1, MaxItems: 6},
 	},
 	"tabs": {

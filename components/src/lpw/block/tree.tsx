@@ -41,14 +41,12 @@ export const TreeBlock: React.FC<LpwBlockSlotProps<LpwTreeProps>> = ({
   return (
     <div
       data-testid="tree-block"
-      className="my-6 border border-line bg-surface/30 overflow-x-auto min-w-0 p-3 sm:p-4 text-xs shadow-2xs font-sans"
+      className="min-w-0 overflow-x-auto border border-line bg-surface/30 p-3 text-xs font-sans sm:p-5"
     >
       {title && (
         <div className="mb-4 pb-2 border-b border-line/60 font-serif font-semibold text-base text-sea-ink flex items-center justify-between">
           <span>{title}</span>
-          <span className="font-mono text-[10px] text-sea-ink-soft uppercase tracking-widest">
-            TAXONOMY TREE // 架构目录
-          </span>
+
         </div>
       )}
 
@@ -57,7 +55,7 @@ export const TreeBlock: React.FC<LpwBlockSlotProps<LpwTreeProps>> = ({
           暂无目录树节点
         </div>
       ) : (
-        <div className="space-y-1 bg-surface/40 border border-line/40 p-4">
+        <div className="space-y-1 border-l border-line/70 pl-4">
           {nodes.map((node, idx) => (
             <TreeNodeItem key={idx} node={node} depth={0} />
           ))}

@@ -10,13 +10,11 @@ export const OpenItemsBlock: React.FC<LpwBlockSlotProps<LpwOpenItemsProps>> = ({
   return (
     <div
       data-testid="open-items-block"
-      className="my-6 border border-dashed border-line bg-surface/40 p-6 text-xs shadow-2xs font-sans"
+      className="border border-line bg-surface/40 p-5 text-xs font-sans sm:p-6"
     >
       <div className="mb-4 pb-2 border-b border-dashed border-line/60 font-serif font-semibold text-base text-sea-ink flex flex-wrap items-center justify-between gap-2">
         <span>{title}</span>
-        <span className="font-mono text-[10px] text-sea-ink-soft uppercase tracking-widest">
-          ADDENDA // 待决备忘
-        </span>
+
       </div>
 
       {props.items.length === 0 ? (

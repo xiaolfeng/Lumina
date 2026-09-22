@@ -107,7 +107,7 @@ export const AnnotationFrame: React.FC<AnnotationFrameProps> = ({
       id={`frame-${nodeId}`}
       data-testid="annotation-frame"
       data-kind={annotation.kind}
-      className={`group relative my-2 transition-all duration-200 ${
+      className={`group relative transition-all duration-200 ${
         isHovered || isActive ? "ring-1 ring-lagoon/40" : ""
       }`}
     >

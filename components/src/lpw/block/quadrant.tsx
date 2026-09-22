@@ -61,14 +61,12 @@ export const QuadrantBlock: React.FC<LpwBlockSlotProps<LpwQuadrantProps>> = ({
   return (
     <div
       data-testid="quadrant-block"
-      className="my-8 overflow-x-auto min-w-0 border-t-2 border-b-2 border-sea-ink bg-surface/30 p-3 sm:p-6 text-xs shadow-2xs font-sans"
+      className="min-w-0 overflow-x-auto border border-line bg-surface/30 p-3 text-xs font-sans sm:p-6"
     >
       {title && (
         <div className="mb-4 pb-2 border-b border-line/60 font-serif font-semibold text-base text-sea-ink flex items-center justify-between">
           <span>{title}</span>
-          <span className="font-mono text-[10px] text-sea-ink-soft uppercase tracking-widest">
-            QUADRANT MATRIX // 战略象限
-          </span>
+
         </div>
       )}
 

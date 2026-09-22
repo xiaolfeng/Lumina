@@ -130,13 +130,11 @@ export const MermaidViewport: React.FC<MermaidViewportProps> = ({
   return (
     <div
       data-testid="mermaid-viewport"
-      className="w-full border border-line/60 bg-surface/30 shadow-2xs font-sans"
+      className="w-full border border-line/60 bg-surface/30 font-sans"
     >
       {/* 视口工具栏 */}
       <div className="flex items-center justify-between border-b border-line/40 bg-surface/50 px-3 py-1.5 text-xs text-sea-ink-soft">
-        <span className="font-mono text-[11px] tracking-wider uppercase">
-          MERMAID DIAGRAM
-        </span>
+        <span className="text-xs font-medium text-sea-ink">图表</span>
         <div className="flex items-center gap-1">
           <button
             type="button"

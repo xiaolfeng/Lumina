@@ -29,7 +29,7 @@ export const ScorecardBlock: React.FC<LpwBlockSlotProps<LpwScorecardProps>> = ({
   return (
     <div
       data-testid="scorecard-block"
-      className="relative my-8 border-t-2 border-b-2 border-sea-ink bg-surface/30 text-xs shadow-2xs font-sans"
+      className="relative min-w-0 max-w-full overflow-hidden border border-line bg-surface/30 text-xs font-sans"
     >
       <div
         aria-hidden="true"
@@ -38,10 +38,7 @@ export const ScorecardBlock: React.FC<LpwBlockSlotProps<LpwScorecardProps>> = ({
       {title && (
         <div className="border-b border-line bg-surface/60 px-5 py-3 font-serif font-semibold text-base text-sea-ink flex items-center justify-between">
           <span>{title}</span>
-          <span className="inline-flex items-center gap-1 font-mono text-[10px] text-sea-ink-soft uppercase tracking-widest">
-            <Calculator className="h-3 w-3" />
-            <span>EVALUATION MATRIX</span>
-          </span>
+          <Calculator className="h-4 w-4 text-sea-ink-soft" aria-hidden="true" />
         </div>
       )}
 
@@ -49,13 +46,13 @@ export const ScorecardBlock: React.FC<LpwBlockSlotProps<LpwScorecardProps>> = ({
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-b border-sea-ink bg-surface/50">
-              <th className="p-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-sea-ink w-1/3">
+              <th className="p-3.5 text-xs font-semibold text-sea-ink w-1/3">
                 评估准则 (权重)
               </th>
               {plans.map((plan, pIdx) => (
                 <th
                   key={pIdx}
-                  className={`p-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-sea-ink ${
+                  className={`p-3.5 text-xs font-semibold text-sea-ink ${
                     plan.recommended
                       ? 'bg-lagoon/5 border-x border-lagoon/20 text-lagoon-deep'
                       : ''

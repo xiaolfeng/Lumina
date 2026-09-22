@@ -28,7 +28,7 @@ export const blockTypeGroups: Record<string, LpwBlockGroup[]> = {
   code: ['technical'],
   diff: ['technical'],
   callout: ['notice'],
-  divider: [],
+  divider: ['text'],
   cards: ['text'],
 }
 
@@ -38,7 +38,7 @@ export const containerVariants: Record<
 > = {
   section: {
     article: {
-      AllowedGroups: ['text', 'media', 'notice'],
+      AllowedGroups: ['text', 'media', 'notice', 'process'],
       MinItems: 1,
       MaxItems: 12,
     },
@@ -75,7 +75,7 @@ export const containerVariants: Record<
   },
   details: {
     supplement: {
-      AllowedGroups: ['text', 'technical', 'media'],
+      AllowedGroups: ['text', 'technical', 'media', 'process'],
       MinItems: 1,
       MaxItems: 10,
     },

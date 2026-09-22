@@ -20,7 +20,7 @@ describe('TableBlock', () => {
       { name: 'Gamma', score: null, active: null },
     ]
 
-    render(
+    const { container } = render(
       <TableBlock
         blockId="tb-1"
         props={{ columns, data, sortable: true }}
@@ -52,6 +52,11 @@ describe('TableBlock', () => {
     // 第 3 次点击：恢复原顺序 (Beta -> Alpha -> Gamma)
     fireEvent.click(sortBtn)
     expect(th?.getAttribute('aria-sort')).toBe('none')
+
+    const root = container.querySelector('[data-testid="table-block"]')
+    expect(root?.className).toContain('min-w-0')
+    expect(root?.className).toContain('max-w-full')
+    expect(root?.className).toContain('overflow-hidden')
   })
 
   it('多个 null/undefined 项排序保持稳定且满足严格弱序', () => {

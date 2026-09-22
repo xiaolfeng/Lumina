@@ -35,8 +35,8 @@ describe('PanelContainer', () => {
 
     const panel = screen.getByTestId('panel-container')
     expect(panel.getAttribute('data-variant')).toBe('summary')
-    expect(panel.className).toContain('border-l-4')
-    expect(panel.className).toContain('border-lagoon')
+    expect(panel.className).toContain('border')
+    expect(panel.className).toContain('border-lagoon/30')
     expect(screen.getByText('概要分析')).toBeTruthy()
 
     const svg = container.querySelector('svg')
@@ -60,12 +60,12 @@ describe('PanelContainer', () => {
 
     const panel = screen.getByTestId('panel-container')
     expect(panel.getAttribute('data-variant')).toBe('aside')
-    expect(panel.className).toContain('border-l-2')
-    expect(panel.className).toContain('bg-surface/20')
+    expect(panel.className).toContain('border')
+    expect(panel.className).toContain('bg-surface/35')
     expect(screen.getByText('边栏说明')).toBeTruthy()
   })
 
-  it('renders dashboard variant with md:grid-cols-2 grid and margin collapse classes', () => {
+  it('renders dashboard variant with an intrinsic responsive grid and normalized spacing', () => {
     lpwRegistry.register('block', 'dash-item', {
       displayName: 'DashItem',
       Component: () => <div data-testid="dashboard-block">指标项</div>,
@@ -88,17 +88,9 @@ describe('PanelContainer', () => {
     expect(panel.getAttribute('data-variant')).toBe('dashboard')
 
     const innerWrapper = container.querySelector(
-      "div[class*='grid gap-4 md:grid-cols-2']",
+      "div[class*='grid-cols-[repeat(auto-fit']",
     )
     expect(innerWrapper).toBeTruthy()
-    expect(innerWrapper?.className).toContain(
-      "[&>[data-testid$='-block']]:my-2",
-    )
-    expect(innerWrapper?.className).toContain(
-      "[&>[data-testid$='-block']:first-child]:mt-0",
-    )
-    expect(innerWrapper?.className).toContain(
-      "[&>[data-testid$='-block']:last-child]:mb-0",
-    )
+    expect(innerWrapper?.className).toContain('gap-5')
   })
 })

@@ -77,7 +77,7 @@ describe('SectionContainer', () => {
     expect(svg?.classList.contains('shrink-0')).toBe(true)
   })
 
-  it('title wrapper has no border-b', () => {
+  it('title wrapper uses a quiet divider without a competing accent bar', () => {
     const { container } = render(
       <SectionContainer
         blockId="sec-border"
@@ -86,9 +86,9 @@ describe('SectionContainer', () => {
       />,
     )
 
-    const titleWrapper = container.querySelector('.border-l-\\[3px\\]')
+    const titleWrapper = container.querySelector('.border-b')
     expect(titleWrapper).toBeTruthy()
-    expect(titleWrapper?.className).not.toContain('border-b')
+    expect(titleWrapper?.className).toContain('border-line/70')
     expect(titleWrapper?.className).not.toContain('border-sea-ink')
   })
 })

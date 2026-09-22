@@ -18,7 +18,7 @@ export const CodeBlock: React.FC<LpwBlockSlotProps<LpwCodeProps>> = ({
   return (
     <div
       data-testid="code-block"
-      className="my-6 border border-line bg-surface/40 text-xs shadow-2xs font-mono"
+      className="border border-line bg-surface/40 text-xs font-mono"
     >
       {showHeader && (
         <div className="flex items-center justify-between border-b border-line bg-surface/60 px-4 py-2">

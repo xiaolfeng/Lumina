@@ -9,7 +9,7 @@ afterEach(() => {
 
 describe('ComparisonBlock', () => {
   it('应正确渲染对比表格、推荐 Badge 与 verdict 三态样式', () => {
-    render(
+    const { container } = render(
       <ComparisonBlock
         blockId="cp-1"
         props={{
@@ -58,6 +58,11 @@ describe('ComparisonBlock', () => {
     const dimHeaderTh = screen.getByText('维度').closest('th')
     expect(dimHeaderTh?.className).toContain('min-w-[100px]')
     expect(dimHeaderTh?.className).toContain('sm:w-1/4')
+
+    const root = container.querySelector('[data-testid="comparison-block"]')
+    expect(root?.className).toContain('min-w-0')
+    expect(root?.className).toContain('max-w-full')
+    expect(root?.className).toContain('overflow-hidden')
   })
 
   it('rows 为空时渲染暂无对比维度', () => {

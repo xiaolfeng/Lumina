@@ -15,7 +15,7 @@ export const QuoteBlock: React.FC<LpwBlockSlotProps<LpwQuoteProps>> = ({
   return (
     <blockquote
       id={actualId}
-      className="my-6 border-l-2 border-lagoon bg-lagoon/5 p-4 sm:p-6 text-sm text-sea-ink shadow-2xs relative"
+      className="relative border-l-2 border-lagoon bg-lagoon/5 p-4 text-sm text-sea-ink sm:p-6"
     >
       <div className="leading-relaxed font-serif text-base sm:text-lg italic text-sea-ink/90 break-words [overflow-wrap:anywhere]">
         <Quote className="h-4 w-4 text-lagoon/60 inline mr-2" aria-hidden="true" />
@@ -27,7 +27,7 @@ export const QuoteBlock: React.FC<LpwBlockSlotProps<LpwQuoteProps>> = ({
         />
       </div>
       {hasFooter && (
-        <footer className="mt-3 text-xs not-italic font-mono text-sea-ink-soft tracking-wider flex flex-wrap items-baseline gap-1.5">
+        <footer className="mt-3 text-xs not-italic text-sea-ink-soft flex flex-wrap items-baseline gap-1.5">
           {props.author && <span>— {props.author}</span>}
           {props.author && props.source && <span>·</span>}
           {props.source && <cite className="not-italic">{props.source}</cite>}
