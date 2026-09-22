@@ -525,7 +525,7 @@ curl http://localhost:8080/api/v1/health/ping
 
 make validate-version  # 校验镜像 tag 与版本一致性
 make docker-build      # 构建 Docker 镜像
-make publish           # 发布 Docker 镜像
+make publish VERSION=vX.X.X  # 推送代码并打 Git Tag 推送至远端触发 Release 流水线（别名 make public）
 
 # 或直接使用 docker compose
 docker compose up -d                    # 精简编排（app + db + redis）

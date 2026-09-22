@@ -12,7 +12,7 @@ WATCH ?= # 置 1 时触发后阻塞观察，如 make publish VERSION=v0.1.0 WATC
 .DEFAULT_GOAL := help
 
 .PHONY: help install swag run dev dev-backend dev-frontend dev-wiki-frontend build-frontend build-wiki-frontend tidy fmt test vet lint test-release-version check build generate
-.PHONY: validate-version docker-build publish watch
+.PHONY: validate-version docker-build publish public watch
 
 # 显示帮助信息
 help:
@@ -44,9 +44,10 @@ help:
 	@echo "  make test-release-version - 测试发布版本连续性规则"
 	@echo "  make check               - 打包前校验：发布版本规则测试 + gofmt + go vet + go test -race"
 	@echo ""
-	@echo "Docker / Release（GitHub Actions 驱动，需 gh CLI 已登录）:"
+	@echo "Docker / Release:"
 	@echo "  make docker-build VERSION=vX.X.X  - 触发 CI 构建镜像并推送 Docker Hub"
-	@echo "  make publish VERSION=vX.X.X      - 触发 CI 构建并创建 GitHub Release"
+	@echo "  make publish VERSION=vX.X.X      - 推送当前分支代码，打 Git Tag 并推送到远端触发 Release"
+	@echo "  make public VERSION=vX.X.X       - 同 publish"
 	@echo "                                     (版本含 -beta/-alpha 等后缀 → prerelease，镜像打 beta-latest)"
 	@echo "  make watch               - 观察最近一次 workflow run 输出"
 	@echo ""
@@ -145,11 +146,27 @@ docker-build: validate-version
 	@gh workflow run $(DOCKER_WORKFLOW) -R $(REPO) -f version=$(VERSION) -f publish=false
 	@if [ "$(WATCH)" = "1" ]; then gh run watch -R $(REPO); fi
 
-# 触发 GitHub Actions 构建镜像并发布 GitHub Release（版本含 - 后缀自动识别为 prerelease）
+# 发布版本：校验版本连续性 -> 推送代码 -> 设置 Git Tag -> 推送 Tag 触发 Release 流水线
 publish: validate-version
-	@echo "触发 GitHub Actions 构建并发布 $(VERSION) ..."
-	@gh workflow run $(DOCKER_WORKFLOW) -R $(REPO) -f version=$(VERSION) -f publish=true
+	@echo "校验版本连续性 $(VERSION) ..."
+	@git tag --list 'v*' | go run ./scripts/check_release_version.go $(VERSION)
+	@if git rev-parse -q --verify "refs/tags/$(VERSION)" >/dev/null; then \
+		echo "ERROR: 本地标签 $(VERSION) 已存在"; exit 1; \
+	fi
+	@if git ls-remote --exit-code --tags origin "refs/tags/$(VERSION)" >/dev/null 2>&1; then \
+		echo "ERROR: 远端标签 $(VERSION) 已存在"; exit 1; \
+	fi
+	@echo "先执行代码推送任务 (git push) ..."
+	git push
+	@echo "创建 Git 标签 $(VERSION) ..."
+	git tag $(VERSION)
+	@echo "推送 Git 标签 $(VERSION) 到远端 ..."
+	git push origin $(VERSION)
+	@echo "已成功推送标签 $(VERSION)，GitHub Actions 将自动执行构建与发布流水线"
 	@if [ "$(WATCH)" = "1" ]; then gh run watch -R $(REPO); fi
+
+# public 为 publish 的别名
+public: publish
 
 # 观察最近一次 workflow run 的实时输出
 watch:

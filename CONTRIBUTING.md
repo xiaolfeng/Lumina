@@ -61,7 +61,7 @@ pnpm --filter @lumina/components test
 
 ## 发布
 
-版本 tag 或 `make publish VERSION=vX.Y.Z` 会先校验版本连续性，再执行打包校验与发布。正式版本的 major / minor / patch 每次只能有一段递增一级；预发布版本序号必须连续，例如 `v1.1.0-beta.20` 后只能发布 `v1.1.0-beta.21` 或晋升 `v1.1.0`。跨版本预检失败时会清理本次 tag，并跳过全部构建。
+版本 tag 或 `make publish VERSION=vX.Y.Z`（亦可写作 `make public`）会先推送当前分支代码、在本地打版本 tag 并推送到远端。远端流水线会先校验版本连续性，再执行打包校验与发布。正式版本的 major / minor / patch 每次只能有一段递增一级；预发布版本序号必须连续，例如 `v1.1.0-beta.20` 后只能发布 `v1.1.0-beta.21` 或晋升 `v1.1.0`。跨版本预检失败时会清理本次 tag，并跳过全部构建。
 
 通过预检后执行：
 
