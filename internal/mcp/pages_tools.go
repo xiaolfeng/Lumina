@@ -124,7 +124,7 @@ func handlePagesList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallTo
 	if s, ok := args["size"].(float64); ok && s > 0 && s <= 100 {
 		size = int(s)
 	}
-	resp, xErr := pagesLogic.List(ctx, projectID, 0, page, size)
+	resp, xErr := pagesLogic.List(ctx, projectID, 0, "", page, size)
 	if xErr != nil {
 		return previewErrorResult(fmt.Sprintf("获取页面列表失败: %s", xErr.Error())), nil
 	}

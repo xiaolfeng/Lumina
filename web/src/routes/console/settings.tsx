@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Tabs, TabsContent } from '@lumina/components/ui/tabs'
@@ -43,18 +42,6 @@ export const Route = createFileRoute('/console/settings')({
 
 function SettingsPage() {
   const { tab = 'site' } = Route.useSearch()
-  const navigate = Route.useNavigate()
-
-  // 🌟 监听 ESC 键一键退出设置并返回控制台看板
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        void navigate({ to: '/console/dashboard' })
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [navigate])
 
   const tabLabels: Record<SettingsTab, string> = {
     site: '站点基础信息',

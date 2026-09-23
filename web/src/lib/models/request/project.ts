@@ -18,4 +18,5 @@ export interface ProjectListParams {
   page?: number
   size?: number
   workspace_id?: string
+  search?: string
 }

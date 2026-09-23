@@ -67,8 +67,8 @@ func (l *PagesLogic) AuthToken() *service.PageAuthTokenService {
 }
 
 // List 分页列出页面
-func (l *PagesLogic) List(ctx context.Context, projectID, workspaceID xSnowflake.SnowflakeID, page, size int) (*apiPages.PageListResponse, *xError.Error) {
-	pages, total, xErr := l.repo.page.List(ctx, projectID, workspaceID, page, size)
+func (l *PagesLogic) List(ctx context.Context, projectID, workspaceID xSnowflake.SnowflakeID, status string, page, size int) (*apiPages.PageListResponse, *xError.Error) {
+	pages, total, xErr := l.repo.page.List(ctx, projectID, workspaceID, status, page, size)
 	if xErr != nil {
 		return nil, xErr
 	}

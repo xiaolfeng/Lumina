@@ -248,7 +248,7 @@ func handleProjectList(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallTo
 	if errMsg != "" {
 		return errorTextResult(errMsg), nil
 	}
-	resp, xErr := projectLogic.List(context.Background(), page, size, workspaceID)
+	resp, xErr := projectLogic.List(context.Background(), page, size, workspaceID, "")
 	if xErr != nil {
 		return errorTextResult(fmt.Sprintf("获取项目列表失败: %s", xErr.Error())), nil
 	}

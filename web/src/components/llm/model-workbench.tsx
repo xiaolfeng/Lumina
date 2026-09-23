@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '@lumina/components/ui/button'
 import { Input } from '@lumina/components/ui/input'
@@ -37,9 +37,13 @@ export function ModelWorkbench() {
 
   // 当前选中的模型，null 表示「新建模式」
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [modelToDelete, setModelToDelete] = useState<Model | null>(null)
+
+  // 标记是否已执行过初次装载默认选中
+  const hasInitialized = useRef(false)
 
   // 表单状态
   const [providerId, setProviderId] = useState('')
@@ -69,7 +73,7 @@ export function ModelWorkbench() {
 
   // 初始化或切换选中项时回填表单
   useEffect(() => {
-    if (selectedModel) {
+    if (!isCreating && selectedModel) {
       setProviderId(selectedModel.provider_id)
       setModelName(selectedModel.model_name)
       setDisplayName(selectedModel.display_name)
@@ -78,7 +82,7 @@ export function ModelWorkbench() {
       setTemperature(String(selectedModel.temperature))
       setDescription(selectedModel.description || '')
       setIsActive(selectedModel.is_active)
-    } else {
+    } else if (isCreating) {
       // 默认切换到新建模式，自动绑定第一个 Provider
       setProviderId(providers[0]?.id || '')
       setModelName('')
@@ -89,18 +93,22 @@ export function ModelWorkbench() {
       setDescription('')
       setIsActive(true)
     }
-  }, [selectedModel, providers])
+  }, [selectedModel, providers, isCreating])
 
-  // 默认选中第一个已有模型，若无模型则为新建模式
+  // 仅在首次拉取到数据时默认选中第一个已有模型
   useEffect(() => {
-    if (rawModels.length > 0 && selectedId === null && !searchTerm) {
+    if (!hasInitialized.current && rawModels.length > 0) {
       setSelectedId(rawModels[0].id)
+      setIsCreating(false)
+      hasInitialized.current = true
+    } else if (rawModels.length === 0 && !isCreating) {
+      setIsCreating(true)
+      setSelectedId(null)
     }
-  }, [rawModels, selectedId, searchTerm])
-
-  const isCreating = selectedId === null
+  }, [rawModels, isCreating])
 
   const handleStartCreate = () => {
+    setIsCreating(true)
     setSelectedId(null)
     setProviderId(providers[0]?.id || '')
     setModelName('')
@@ -110,6 +118,18 @@ export function ModelWorkbench() {
     setTemperature('0.3')
     setDescription('')
     setIsActive(true)
+  }
+
+  const handleSelectModel = (id: string) => {
+    setIsCreating(false)
+    setSelectedId(id)
+  }
+
+  const handleCancelCreate = () => {
+    setIsCreating(false)
+    if (rawModels.length > 0) {
+      setSelectedId(rawModels[0].id)
+    }
   }
 
   const handleSave = () => {
@@ -136,6 +156,7 @@ export function ModelWorkbench() {
             toast.success('模型创建成功', {
               description: `已成功配置模型 [${displayName}]`,
             })
+            setIsCreating(false)
             if (res.data?.id) {
               setSelectedId(res.data.id)
             }
@@ -224,7 +245,7 @@ export function ModelWorkbench() {
               return (
                 <div
                   key={m.id}
-                  onClick={() => setSelectedId(m.id)}
+                  onClick={() => handleSelectModel(m.id)}
                   className={`group relative flex flex-col gap-1.5 p-3.5 border transition-all cursor-pointer ${
                     isSelected
                       ? 'border-lagoon bg-foam shadow-sm border-l-4'
@@ -287,9 +308,22 @@ export function ModelWorkbench() {
                 : `配置模型 · ${selectedModel?.display_name || ''}`}
             </h3>
           </div>
-          <span className="font-mono text-[10px] text-lagoon-deep bg-sand px-2 py-0.5 border border-line">
-            {isCreating ? 'CREATE' : 'EDIT'}
-          </span>
+          <div className="flex items-center gap-2">
+            {isCreating && rawModels.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCancelCreate}
+                className="h-7 text-xs rounded-none border-line text-sea-ink hover:bg-chip-bg"
+              >
+                取消新建
+              </Button>
+            )}
+            <span className="font-mono text-[10px] text-lagoon-deep bg-sand px-2 py-0.5 border border-line">
+              {isCreating ? 'CREATE' : 'EDIT'}
+            </span>
+          </div>
         </div>
 
         {/* 表单主体 */}

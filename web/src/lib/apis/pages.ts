@@ -14,6 +14,7 @@ import type { PromotePreviewSessionRequest } from './preview'
 export interface PageListParams {
   project_id?: string
   workspace_id?: string
+  status?: string
   page?: number
   size?: number
 }

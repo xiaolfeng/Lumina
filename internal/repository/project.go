@@ -134,13 +134,17 @@ func (r *ProjectRepo) GetByName(ctx context.Context, name string) (*entity.Proje
 
 // List 分页获取项目列表（按创建时间降序）
 //
-// workspaceID 为零值时不过滤空间，与现网行为相同。
-func (r *ProjectRepo) List(ctx context.Context, page, size int, workspaceID xSnowflake.SnowflakeID) ([]*entity.Project, int64, *xError.Error) {
-	r.log.Info(ctx, fmt.Sprintf("List - 分页获取项目列表 [page=%d, size=%d, workspace=%d]", page, size, workspaceID.Int64()))
+// workspaceID 为零值时不过滤空间，search 不为空时按名称/别名模糊匹配
+func (r *ProjectRepo) List(ctx context.Context, page, size int, workspaceID xSnowflake.SnowflakeID, search string) ([]*entity.Project, int64, *xError.Error) {
+	r.log.Info(ctx, fmt.Sprintf("List - 分页获取项目列表 [page=%d, size=%d, workspace=%d, search=%s]", page, size, workspaceID.Int64(), search))
 
 	query := r.db.WithContext(ctx).Model(&entity.Project{})
 	if !workspaceID.IsZero() {
 		query = query.Where("workspace_id = ?", workspaceID)
+	}
+	if search != "" {
+		like := "%" + search + "%"
+		query = query.Where("name ILIKE ? OR alias_name ILIKE ?", like, like)
 	}
 
 	var total int64

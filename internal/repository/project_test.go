@@ -107,7 +107,7 @@ func TestProjectRepo_List(t *testing.T) {
 	repo := setupTestRepo(t)
 	ctx := context.Background()
 
-	projects, total, xErr := repo.List(ctx, 1, 10, 0)
+	projects, total, xErr := repo.List(ctx, 1, 10, 0, "")
 	if xErr != nil {
 		t.Fatalf("List failed: %v", xErr)
 	}
