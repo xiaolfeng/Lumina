@@ -64,8 +64,12 @@ function ProjectRow({
       ? item.match_path.join(', ')
       : '未配置匹配路径'
 
-  const hasWiki = Boolean(wikiConfig?.selected_version_id || wikiConfig?.latest_version)
-  const isPreviewLive = Boolean(previewSession && previewSession.status === 'active')
+  const hasWiki = Boolean(
+    wikiConfig?.selected_version_id || wikiConfig?.latest_version,
+  )
+  const isPreviewLive = Boolean(
+    previewSession && previewSession.status === 'active',
+  )
 
   // 🌟 项目管理 Tooltip 浮窗：无默认箭头、纯平发线、顶端 3px 琥珀色微明横线
   return (
@@ -165,7 +169,9 @@ function ProjectRow({
                 pendingPinCount > 0 ? 'bg-lagoon' : 'bg-sea-ink-soft'
               }`}
             />
-            {pendingPinCount > 0 ? `Pin: ${pendingPinCount} 待办` : 'Pin: 0 待办'}
+            {pendingPinCount > 0
+              ? `Pin: ${pendingPinCount} 待办`
+              : 'Pin: 0 待办'}
           </span>
           <span
             className={`inline-flex items-center gap-1.5 border border-line px-2 py-0.5 font-mono text-[11px] ${
@@ -244,6 +250,7 @@ function ProjectPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [detailMode, setDetailMode] = useState<'view' | 'edit'>('view')
   const [selectedItem, setSelectedItem] = useState<ProjectItem | null>(null)
 
   const { current } = useCurrentWorkspace()
@@ -549,11 +556,13 @@ function ProjectPage() {
                       previewSession={previewSessionMap.get(item.id)}
                       onView={(target) => {
                         setSelectedItem(target)
+                        setDetailMode('view')
                         setDetailOpen(true)
                       }}
                       onEdit={(target) => {
                         setSelectedItem(target)
-                        setEditOpen(true)
+                        setDetailMode('edit')
+                        setDetailOpen(true)
                       }}
                       onDelete={(target) => {
                         setSelectedItem(target)
@@ -561,7 +570,10 @@ function ProjectPage() {
                       }}
                       onOpenWiki={(target) => {
                         const config = wikiConfigMap.get(target.id)
-                        if (config?.selected_version_id || config?.latest_version) {
+                        if (
+                          config?.selected_version_id ||
+                          config?.latest_version
+                        ) {
                           window.open(`/wiki/${target.name}`, '_blank')
                         } else {
                           navigate({
@@ -601,6 +613,7 @@ function ProjectPage() {
           open={detailOpen}
           onOpenChange={setDetailOpen}
           item={selectedItem}
+          initialMode={detailMode}
           wikiStatus={
             selectedItem
               ? wikiConfigMap.get(selectedItem.id)?.selected_version_id ||
@@ -619,10 +632,6 @@ function ProjectPage() {
                 : '无活跃沙盒'
               : undefined
           }
-          onEdit={(target) => {
-            setSelectedItem(target)
-            setEditOpen(true)
-          }}
         />
         <ConfirmDeleteDialog
           open={deleteOpen}
