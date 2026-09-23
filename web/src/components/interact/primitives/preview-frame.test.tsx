@@ -36,6 +36,7 @@ describe('PreviewSupplement', () => {
       const iframe = screen.getByTitle('前端预览')
       expect(iframe).toBeTruthy()
       expect(iframe.tagName.toLowerCase()).toBe('iframe')
+      expect(iframe.getAttribute('sandbox')).toBe('allow-scripts allow-popups')
     })
   })
 

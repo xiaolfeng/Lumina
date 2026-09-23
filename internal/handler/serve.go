@@ -70,7 +70,7 @@ func writeServedFile(ctx *gin.Context, filename, mimeType, content string) {
 	}
 
 	if strings.HasPrefix(mime, "text/html") || mime == "image/svg+xml" || strings.Contains(mime, "javascript") {
-		ctx.Header("Content-Security-Policy", "sandbox allow-scripts")
+		ctx.Header("Content-Security-Policy", "sandbox allow-scripts allow-popups")
 	}
 	if strings.HasPrefix(mime, "text/html") {
 		body = injectNavigateShim(body)
