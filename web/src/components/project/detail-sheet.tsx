@@ -16,6 +16,9 @@ interface DetailSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   item: ProjectItem | null
+  wikiStatus?: string
+  pendingPinCount?: number
+  previewStatus?: string
   onEdit?: (item: ProjectItem) => void
 }
 
@@ -23,6 +26,9 @@ export function ProjectDetailSheet({
   open,
   onOpenChange,
   item,
+  wikiStatus = '未初始化',
+  pendingPinCount = 0,
+  previewStatus = '无活跃沙盒',
   onEdit,
 }: DetailSheetProps) {
   const navigate = useNavigate()
@@ -159,7 +165,7 @@ export function ProjectDetailSheet({
             )}
           </div>
 
-          {/* 关联资产概览 */}
+          {/* 关联资产概览 (真实动态传入) */}
           <div className="flex flex-col gap-1.5 border-b border-dashed border-line pb-4">
             <span className="text-[11px] font-bold uppercase tracking-wider text-lagoon-deep">
               核心关联资产状态
@@ -167,15 +173,21 @@ export function ProjectDetailSheet({
             <div className="grid grid-cols-3 gap-2 mt-1">
               <div className="bg-sand border border-line p-2.5 flex flex-col gap-1">
                 <span className="text-[10px] uppercase font-bold text-sea-ink-soft">RepoWiki</span>
-                <span className="font-mono text-xs font-semibold text-sea-ink">已配置</span>
+                <span className="font-mono text-xs font-semibold text-sea-ink truncate" title={wikiStatus}>
+                  {wikiStatus}
+                </span>
               </div>
               <div className="bg-sand border border-line p-2.5 flex flex-col gap-1">
-                <span className="text-[10px] uppercase font-bold text-sea-ink-soft">Pin 队列</span>
-                <span className="font-mono text-xs font-semibold text-sea-ink">FIFO 监控中</span>
+                <span className="text-[10px] uppercase font-bold text-sea-ink-soft">Pin 待办</span>
+                <span className="font-mono text-xs font-semibold text-sea-ink">
+                  {pendingPinCount} 待办
+                </span>
               </div>
               <div className="bg-sand border border-line p-2.5 flex flex-col gap-1">
                 <span className="text-[10px] uppercase font-bold text-sea-ink-soft">Preview</span>
-                <span className="font-mono text-xs font-semibold text-sea-ink">沙盒就绪</span>
+                <span className="font-mono text-xs font-semibold text-sea-ink truncate" title={previewStatus}>
+                  {previewStatus}
+                </span>
               </div>
             </div>
           </div>

@@ -109,16 +109,33 @@ function SettingsPage() {
     providerItems,
   )
 
-  // 🌟 监听 ESC 键一键退出设置并返回控制台看板
+  // 🌟 监听 ESC 键一键退出设置并返回控制台看板（仅在没有任何内部弹窗打开时触发）
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        void navigate({ to: '/console/dashboard' })
+        const hasOpenDialog =
+          createProviderOpen ||
+          editProviderOpen ||
+          deleteProviderOpen ||
+          createModelOpen ||
+          editModelOpen ||
+          deleteModelOpen
+        if (!hasOpenDialog) {
+          void navigate({ to: '/console/dashboard' })
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [navigate])
+  }, [
+    createModelOpen,
+    createProviderOpen,
+    deleteModelOpen,
+    deleteProviderOpen,
+    editModelOpen,
+    editProviderOpen,
+    navigate,
+  ])
 
   const tabLabels: Record<SettingsTab, string> = {
     site: '站点基础信息',

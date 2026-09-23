@@ -26,7 +26,6 @@ import { formatDate } from '#/lib/format-date'
 import type { ProjectItem } from '#/lib/models/response/project'
 import type { RepoWikiConfigItem } from '#/lib/models/response/repowiki'
 import type { PreviewSessionItem } from '#/lib/models/response/preview'
-import type { PinItem } from '#/lib/models/response/pin'
 
 export const Route = createFileRoute('/console/project/')({
   component: ProjectPage,
@@ -68,6 +67,7 @@ function ProjectRow({
   const hasWiki = Boolean(wikiConfig?.selected_version_id || wikiConfig?.latest_version)
   const isPreviewLive = Boolean(previewSession && previewSession.status === 'active')
 
+  // 🌟 项目管理 Tooltip 浮窗：无默认箭头、纯平发线、顶端 3px 琥珀色微明横线
   return (
     <tr className="border-b border-line transition-colors hover:bg-sand/70">
       {/* 序号列 */}
@@ -79,12 +79,13 @@ function ProjectRow({
       <td className="w-72 px-4 py-3.5">
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="inline-flex cursor-pointer items-center gap-2 border-b border-dashed border-lagoon/60 pb-0.5 transition-opacity hover:opacity-80">
+            <div className="inline-flex max-w-[240px] cursor-pointer items-center gap-2 border-b border-dashed border-lagoon/60 pb-0.5 transition-opacity hover:opacity-80">
               <span className="size-1.5 shrink-0 rotate-45 bg-lagoon" />
               <span
-                className={`font-mono text-sm font-semibold ${
+                className={`truncate font-mono text-sm font-semibold ${
                   item.alias_name ? 'text-sea-ink' : 'text-sea-ink-soft italic'
                 }`}
+                title={outerAlias}
               >
                 {outerAlias}
               </span>
@@ -94,7 +95,7 @@ function ProjectRow({
             side="bottom"
             align="start"
             sideOffset={8}
-            className="w-84 max-w-sm rounded-none border border-sea-ink border-t-[3px] border-t-lagoon bg-foam p-3.5 text-sea-ink shadow-xl"
+            className="w-84 max-w-sm rounded-none border border-sea-ink border-t-[3px] border-t-lagoon bg-foam p-3.5 text-sea-ink shadow-xl [&>svg]:hidden"
           >
             <div className="flex flex-col gap-2">
               <div className="flex flex-col gap-0.5">
@@ -247,8 +248,8 @@ function ProjectPage() {
 
   const { current } = useCurrentWorkspace()
   const { data, isLoading } = useProjectList({
-    page,
-    size: pageSize,
+    page: 1,
+    size: 200, // 在工作空间内拉取全集以支持客户端联动搜索与资产统计
     workspace_id: current?.id,
   })
   const { data: pinData } = usePinList({
@@ -265,7 +266,6 @@ function ProjectPage() {
 
   const rawItems = data?.data?.items ?? []
   const totalItems = data?.data?.total ?? 0
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
 
   // 映射各项目的关联资产状态
   const wikiConfigMap = useMemo(() => {
@@ -278,7 +278,7 @@ function ProjectPage() {
 
   const pendingPinCountMap = useMemo(() => {
     const map = new Map<string, number>()
-    pinData?.data?.items.forEach((p: PinItem) => {
+    pinData?.data?.items.forEach((p) => {
       if (p.to_project_id) {
         map.set(p.to_project_id, (map.get(p.to_project_id) || 0) + 1)
       }
@@ -296,8 +296,8 @@ function ProjectPage() {
     return map
   }, [previewData])
 
-  // 客户端辅助搜索与分类胶囊过滤
-  const items = useMemo(() => {
+  // 客户端辅助搜索与分类胶囊过滤全集
+  const filteredAllItems = useMemo(() => {
     let list = rawItems
     if (filterMode === 'wiki') {
       list = list.filter((item) => {
@@ -317,6 +317,14 @@ function ProjectPage() {
     )
   }, [rawItems, filterMode, searchTerm, wikiConfigMap, pendingPinCountMap])
 
+  // 按 pageSize 真实切片当前页数据
+  const totalFiltered = filteredAllItems.length
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize))
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return filteredAllItems.slice(start, start + pageSize)
+  }, [filteredAllItems, page, pageSize])
+
   // 统计当前空间真实的 KPI
   const kpiProjects = totalItems
   const kpiPendingPins = pinData?.data?.total ?? 0
@@ -328,6 +336,10 @@ function ProjectPage() {
     })
     return count
   }, [wikiConfigsData])
+
+  useEffect(() => {
+    setPage(1)
+  }, [filterMode, searchTerm])
 
   useEffect(() => {
     setPage(1)
@@ -509,21 +521,23 @@ function ProjectPage() {
                       </div>
                     </td>
                   </tr>
-                ) : items.length === 0 ? (
+                ) : paginatedItems.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-14 text-center">
                       <p className="text-sm font-semibold text-sea-ink">
-                        {searchTerm ? '无匹配项目' : '暂无项目'}
+                        {searchTerm || filterMode !== 'all'
+                          ? '无匹配项目'
+                          : '暂无项目'}
                       </p>
                       <p className="mt-1 text-xs text-sea-ink-soft">
-                        {searchTerm
-                          ? '尝试使用其他别名或名称进行检索'
+                        {searchTerm || filterMode !== 'all'
+                          ? '尝试使用其他别名或清除筛选条件'
                           : '创建第一个项目，开始组织 Pin 和 Q&A'}
                       </p>
                     </td>
                   </tr>
                 ) : (
-                  items.map((item, idx) => (
+                  paginatedItems.map((item, idx) => (
                     <ProjectRow
                       key={item.id}
                       item={item}
@@ -566,7 +580,7 @@ function ProjectPage() {
           <DataTablePagination
             currentPage={page}
             totalPages={totalPages}
-            totalItems={totalItems}
+            totalItems={totalFiltered}
             pageSize={pageSize}
             onPageChange={setPage}
             onPageSizeChange={(size) => {
@@ -587,6 +601,24 @@ function ProjectPage() {
           open={detailOpen}
           onOpenChange={setDetailOpen}
           item={selectedItem}
+          wikiStatus={
+            selectedItem
+              ? wikiConfigMap.get(selectedItem.id)?.selected_version_id ||
+                wikiConfigMap.get(selectedItem.id)?.latest_version
+                ? '已生成版本'
+                : '未初始化'
+              : undefined
+          }
+          pendingPinCount={
+            selectedItem ? pendingPinCountMap.get(selectedItem.id) || 0 : 0
+          }
+          previewStatus={
+            selectedItem
+              ? previewSessionMap.get(selectedItem.id)?.status === 'active'
+                ? '沙盒活跃 (LIVE)'
+                : '无活跃沙盒'
+              : undefined
+          }
           onEdit={(target) => {
             setSelectedItem(target)
             setEditOpen(true)
