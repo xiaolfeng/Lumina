@@ -1,4 +1,9 @@
-import { createFileRoute, Outlet, useMatches, useParams } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Outlet,
+  useMatches,
+  useParams,
+} from '@tanstack/react-router'
 import { PagesShowcasePage } from '#/components/pages/showcase-page'
 
 export const Route = createFileRoute('/pages/$projectName/$slug')({
@@ -9,7 +14,9 @@ export const Route = createFileRoute('/pages/$projectName/$slug')({
 function PagesSlugRoute() {
   const { projectName, slug } = useParams({ from: '/pages/$projectName/$slug' })
   const matches = useMatches()
-  if (matches.some((match) => match.routeId === '/pages/$projectName/$slug/$')) {
+  if (
+    matches.some((match) => match.routeId === '/pages/$projectName/$slug/$')
+  ) {
     return <Outlet />
   }
   return <PagesShowcasePage projectName={projectName} slug={slug} filepath="" />

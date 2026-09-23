@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
-import { Button } from '@lumina/components/ui/button'
+import { useState, useEffect, useMemo } from 'react'
 import { Input } from '@lumina/components/ui/input'
-import { Label } from '@lumina/components/ui/label'
 import { Textarea } from '@lumina/components/ui/textarea'
 import { useSettings, useUpdateSettings } from '#/hooks/useSettings'
 import { EnvInfoCard } from './env-info-card'
+import { PropertyGrid, PropertyRow, SettingsCommitDock } from './property-grid'
 import { toast } from 'sonner'
 import { motion } from 'motion/react'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
@@ -13,6 +11,7 @@ import { staggerContainer, staggerItem } from '@lumina/components/motion'
 export function SiteSettingsForm() {
   const { data, isLoading } = useSettings('site')
   const updateMutation = useUpdateSettings()
+  const [initialValues, setInitialValues] = useState<Record<string, string>>({})
   const [formValues, setFormValues] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -21,12 +20,27 @@ export function SiteSettingsForm() {
       data.data.items.forEach((item) => {
         map[item.key] = item.value
       })
+      setInitialValues(map)
       setFormValues(map)
     }
   }, [data])
 
+  const dirtyKeys = useMemo(() => {
+    const keys: string[] = []
+    for (const key of Object.keys(formValues)) {
+      if ((formValues[key] || '') !== (initialValues[key] || '')) {
+        keys.push(key)
+      }
+    }
+    return keys
+  }, [formValues, initialValues])
+
   const handleChange = (key: string, value: string) => {
     setFormValues((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleReset = () => {
+    setFormValues(initialValues)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -39,10 +53,11 @@ export function SiteSettingsForm() {
       { category: 'site', items },
       {
         onSuccess: () => {
-          toast.success('保存成功')
+          toast.success('站点设置已保存')
+          setInitialValues(formValues)
         },
         onError: () => {
-          toast.error('保存失败')
+          toast.error('保存失败，请重试')
         },
       },
     )
@@ -50,11 +65,11 @@ export function SiteSettingsForm() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="h-40 animate-pulse rounded-lg bg-muted" />
-        </CardContent>
-      </Card>
+      <div className="border border-line bg-foam p-8 space-y-4">
+        <div className="h-6 w-48 bg-muted animate-pulse rounded-none" />
+        <div className="h-10 w-full bg-muted animate-pulse rounded-none" />
+        <div className="h-10 w-full bg-muted animate-pulse rounded-none" />
+      </div>
     )
   }
 
@@ -63,80 +78,100 @@ export function SiteSettingsForm() {
       variants={staggerContainer}
       initial="hidden"
       animate="visible"
+      className="space-y-6"
     >
       <motion.div variants={staggerItem}>
-        <Card>
-          <CardHeader>
-            <CardTitle>站点设置</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="site.name">站点名称</Label>
-                <Input
-                  id="site.name"
-                  value={formValues['site.name'] || ''}
-                  onChange={(e) => handleChange('site.name', e.target.value)}
-                  placeholder="输入站点名称"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="site.description">站点描述</Label>
-                <Textarea
-                  id="site.description"
-                  value={formValues['site.description'] || ''}
-                  onChange={(e) =>
-                    handleChange('site.description', e.target.value)
-                  }
-                  placeholder="输入站点描述"
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="site.logo-url">站点 Logo URL</Label>
-                <Input
-                  id="site.logo-url"
-                  value={formValues['site.logo-url'] || ''}
-                  onChange={(e) =>
-                    handleChange('site.logo-url', e.target.value)
-                  }
-                  placeholder="https://example.com/logo.png"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="site.domain">对外访问域名</Label>
-                <Input
-                  id="site.domain"
-                  value={formValues['site.domain'] || ''}
-                  onChange={(e) =>
-                    handleChange('site.domain', e.target.value)
-                  }
-                  placeholder="https://your-domain.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="site.footer-text">页脚文本</Label>
-                <Input
-                  id="site.footer-text"
-                  value={formValues['site.footer-text'] || ''}
-                  onChange={(e) =>
-                    handleChange('site.footer-text', e.target.value)
-                  }
-                  placeholder="输入页脚文本"
-                />
-              </div>
-              <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? '保存中…' : '保存'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <form onSubmit={handleSubmit}>
+          <PropertyGrid>
+            <PropertyRow
+              title="站点全称 (Site Name)"
+              propKey="site.name"
+              description="控制台顶部导航栏与浏览器标签页显示的显式名称。"
+            >
+              <Input
+                id="site.name"
+                value={formValues['site.name'] || ''}
+                onChange={(e) => handleChange('site.name', e.target.value)}
+                placeholder="例如：Lumina · 微明"
+                className="max-w-lg rounded-none border-line text-xs focus:border-lagoon"
+              />
+            </PropertyRow>
+
+            <PropertyRow
+              title="站点描述 (Description)"
+              propKey="site.description"
+              description="简短的项目定位说明，用于公开页与元数据标签。"
+            >
+              <Textarea
+                id="site.description"
+                value={formValues['site.description'] || ''}
+                onChange={(e) =>
+                  handleChange('site.description', e.target.value)
+                }
+                placeholder="输入站点描述"
+                rows={3}
+                className="max-w-lg rounded-none border-line text-xs focus:border-lagoon"
+              />
+            </PropertyRow>
+
+            <PropertyRow
+              title="站点 Logo 资源路径"
+              propKey="site.logo-url"
+              description="站点左上角展示的图标矢量图或 PNG 图片网络 URL。"
+            >
+              <Input
+                id="site.logo-url"
+                value={formValues['site.logo-url'] || ''}
+                onChange={(e) => handleChange('site.logo-url', e.target.value)}
+                placeholder="https://example.com/logo.png"
+                className="max-w-lg rounded-none border-line text-xs focus:border-lagoon"
+              />
+            </PropertyRow>
+
+            <PropertyRow
+              title="对外访问域名 (Domain)"
+              propKey="site.domain"
+              description="用于拼接 MCP 接入端点、OAuth 回调以及外部分享深链根端点。"
+            >
+              <Input
+                id="site.domain"
+                value={formValues['site.domain'] || ''}
+                onChange={(e) => handleChange('site.domain', e.target.value)}
+                placeholder="https://your-domain.com"
+                className="max-w-lg rounded-none border-line text-xs focus:border-lagoon"
+              />
+            </PropertyRow>
+
+            <PropertyRow
+              title="页脚展示文本 (Footer Text)"
+              propKey="site.footer-text"
+              description="展示在控制台底部与公开展示态页面的版权与说明文本。"
+            >
+              <Input
+                id="site.footer-text"
+                value={formValues['site.footer-text'] || ''}
+                onChange={(e) =>
+                  handleChange('site.footer-text', e.target.value)
+                }
+                placeholder="输入页脚文本"
+                className="max-w-lg rounded-none border-line text-xs focus:border-lagoon"
+              />
+            </PropertyRow>
+          </PropertyGrid>
+
+          <SettingsCommitDock
+            dirtyCount={dirtyKeys.length}
+            isSubmitting={updateMutation.isPending}
+            onReset={handleReset}
+          />
+        </form>
       </motion.div>
+
       <motion.div variants={staggerItem}>
         <EnvInfoCard
           items={[
             { label: 'APP_NAME', value: 'Lumina' },
-            { label: 'APP_VERSION', value: 'v0.1.0' },
+            { label: 'APP_VERSION', value: 'v1.0.0' },
           ]}
         />
       </motion.div>

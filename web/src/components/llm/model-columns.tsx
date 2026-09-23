@@ -34,9 +34,7 @@ export function getModelColumns(
       accessorKey: 'display_name',
       header: '显示名称',
       cell: ({ row }) => (
-        <span className="font-medium">
-          {row.getValue('display_name')}
-        </span>
+        <span className="font-medium">{row.getValue('display_name')}</span>
       ),
     },
     {

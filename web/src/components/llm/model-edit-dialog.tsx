@@ -94,9 +94,7 @@ export function ModelEditDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>编辑 Model</DialogTitle>
-          <DialogDescription>
-            修改 Model 的配置信息。
-          </DialogDescription>
+          <DialogDescription>修改 Model 的配置信息。</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">

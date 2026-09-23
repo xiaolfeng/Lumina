@@ -3,14 +3,18 @@ import {
   Outlet,
   redirect,
   useLocation,
+  useNavigate,
 } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'motion/react'
+import { ArrowLeft } from 'lucide-react'
+import { Button } from '@lumina/components/ui/button'
 import {
   SidebarProvider,
   SidebarInset,
   SidebarTrigger,
 } from '@lumina/components/ui/sidebar'
 import { AppSidebar } from '#/components/app-sidebar'
+import { SettingsSidebar } from '#/components/settings/settings-sidebar'
 import { ConsoleBreadcrumb } from '#/components/console-breadcrumb'
 import { Toaster } from '@lumina/components/ui/sonner'
 import Cookies from 'js-cookie'
@@ -43,6 +47,10 @@ const headerVariants = {
 
 function ConsoleLayout() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const isSettingsRoute =
+    location.pathname === '/console/settings' ||
+    location.pathname.startsWith('/console/settings/')
 
   return (
     <SidebarProvider>
@@ -52,17 +60,36 @@ function ConsoleLayout() {
       >
         跳到主内容
       </a>
-      <AppSidebar />
+      {isSettingsRoute ? <SettingsSidebar /> : <AppSidebar />}
 
       <SidebarInset className="min-w-0">
         <motion.div
-          className="flex h-16 shrink-0 items-center gap-2 px-4"
+          className="flex h-16 shrink-0 items-center justify-between px-4"
           initial="hidden"
           animate="visible"
           variants={headerVariants}
         >
-          <SidebarTrigger className="-ml-1 transition-colors hover:text-lagoon" />
-          <ConsoleBreadcrumb />
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1 transition-colors hover:text-lagoon" />
+            <ConsoleBreadcrumb />
+          </div>
+
+          {/* 🌟 系统设置下顶栏右侧集中唯一的退出返回按钮 */}
+          {isSettingsRoute && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void navigate({ to: '/console/dashboard' })}
+              className="flex items-center gap-2 rounded-none border-line bg-foam text-xs text-sea-ink hover:border-lagoon hover:bg-chip-bg hover:text-lagoon-deep"
+              title="退出系统设置并返回控制台主看板 (ESC)"
+            >
+              <ArrowLeft className="size-3.5" />
+              <span>退出设置返回看板</span>
+              <kbd className="font-mono text-[9.5px] bg-sand border border-line px-1 py-0.5 text-sea-ink-soft">
+                ESC
+              </kbd>
+            </Button>
+          )}
         </motion.div>
 
         <div

@@ -1,233 +1,274 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
-	getRepoWikiConfigList,
-	getRepoWikiConfig,
-	getConfigByProjectId,
-	createRepoWikiConfig,
-	deleteRepoWikiConfig as deleteRepoWikiConfigApi,
-	updateRepoWikiConfig as updateRepoWikiConfigApi,
-	analyzeRepoWiki,
-	updateRepoWiki as updateRepoWikiApi,
-	getRepoWikiVersionList,
-	updateSelectedVersion,
-	cleanFailedVersions,
-	keepLatestVersions,
-	cleanRepoWikiGitCache,
+  getRepoWikiConfigList,
+  getRepoWikiConfig,
+  getConfigByProjectId,
+  createRepoWikiConfig,
+  deleteRepoWikiConfig as deleteRepoWikiConfigApi,
+  updateRepoWikiConfig as updateRepoWikiConfigApi,
+  analyzeRepoWiki,
+  updateRepoWiki as updateRepoWikiApi,
+  getRepoWikiVersionList,
+  updateSelectedVersion,
+  cleanFailedVersions,
+  keepLatestVersions,
+  cleanRepoWikiGitCache,
 } from '#/lib/apis/repowiki'
 import type {
-	CreateRepoWikiConfigRequest,
-	RepoWikiConfigListParams,
-	UpdateRepoWikiConfigRequest,
+  CreateRepoWikiConfigRequest,
+  RepoWikiConfigListParams,
+  UpdateRepoWikiConfigRequest,
 } from '#/lib/models/request/repowiki'
 
 // ── 版本状态常量 ──
 
-export const ACTIVE_STATUSES = ['pending', 'cloning', 'scanning', 'analyzing', 'assembling'] as const
+export const ACTIVE_STATUSES = [
+  'pending',
+  'cloning',
+  'scanning',
+  'analyzing',
+  'assembling',
+] as const
 export const TERMINAL_STATUSES = ['completed', 'failed', 'cancelled'] as const
 
 // ── 配置列表 ──
 
 export function useRepoWikiConfigs(params?: RepoWikiConfigListParams) {
-	return useQuery({
-		queryKey: ['repowiki', 'list', params],
-		queryFn: () => getRepoWikiConfigList(params),
-	})
+  return useQuery({
+    queryKey: ['repowiki', 'list', params],
+    queryFn: () => getRepoWikiConfigList(params),
+  })
 }
 
 // ── 单个配置详情 ──
 
 export function useRepoWikiConfig(id: string) {
-	return useQuery({
-		queryKey: ['repowiki', 'detail', id],
-		queryFn: () => getRepoWikiConfig(id),
-		enabled: !!id,
-	})
+  return useQuery({
+    queryKey: ['repowiki', 'detail', id],
+    queryFn: () => getRepoWikiConfig(id),
+    enabled: !!id,
+  })
 }
 
 // ── 按项目 ID 查询配置 ──
 
 export function useRepoWikiConfigByProjectId(projectId: string) {
-	return useQuery({
-		queryKey: ['repowiki', 'by-project', projectId],
-		queryFn: () => getConfigByProjectId(projectId),
-		enabled: !!projectId,
-	})
+  return useQuery({
+    queryKey: ['repowiki', 'by-project', projectId],
+    queryFn: () => getConfigByProjectId(projectId),
+    enabled: !!projectId,
+  })
 }
 
 // ── 创建配置 ──
 
 export function useCreateRepoWikiConfig() {
-	const queryClient = useQueryClient()
-	return useMutation({
-		mutationFn: (data: CreateRepoWikiConfigRequest) => createRepoWikiConfig(data),
-		onSuccess: () => {
-			toast.success('配置创建成功')
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
-		},
-		onError: (error: Error) => {
-			toast.error(error.message || '创建失败')
-		},
-	})
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CreateRepoWikiConfigRequest) =>
+      createRepoWikiConfig(data),
+    onSuccess: () => {
+      toast.success('配置创建成功')
+      queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || '创建失败')
+    },
+  })
 }
 
 // ── 删除配置 ──
 
 export function useDeleteRepoWikiConfig() {
-	const queryClient = useQueryClient()
-	return useMutation({
-		mutationFn: deleteRepoWikiConfigApi,
-		onSuccess: () => {
-			toast.success('配置已删除')
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
-		},
-		onError: (error: Error) => {
-			toast.error(error.message || '删除失败')
-		},
-	})
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteRepoWikiConfigApi,
+    onSuccess: () => {
+      toast.success('配置已删除')
+      queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || '删除失败')
+    },
+  })
 }
 
 // ── 清理失败版本 ──
 
 export function useCleanFailedVersions() {
-	const queryClient = useQueryClient()
-	return useMutation({
-		mutationFn: ({ configId }: { configId: string; projectId: string }) =>
-			cleanFailedVersions(configId),
-		onSuccess: (data, { configId, projectId }) => {
-			toast.success(`已清理 ${data.data?.cleaned ?? 0} 个失败版本`)
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'versions', 'list', configId] })
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'by-project', projectId] })
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'detail', configId] })
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
-		},
-		onError: (error: Error) => toast.error(error.message || '清理失败'),
-	})
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ configId }: { configId: string; projectId: string }) =>
+      cleanFailedVersions(configId),
+    onSuccess: (data, { configId, projectId }) => {
+      toast.success(`已清理 ${data.data?.cleaned ?? 0} 个失败版本`)
+      queryClient.invalidateQueries({
+        queryKey: ['repowiki', 'versions', 'list', configId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['repowiki', 'by-project', projectId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['repowiki', 'detail', configId],
+      })
+      queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
+    },
+    onError: (error: Error) => toast.error(error.message || '清理失败'),
+  })
 }
 
 // ── 只保留最新版本 ──
 
 export function useKeepLatestVersions() {
-	const queryClient = useQueryClient()
-	return useMutation({
-		mutationFn: ({ configId }: { configId: string; projectId: string }) =>
-			keepLatestVersions(configId),
-		onSuccess: (data, { configId, projectId }) => {
-			const d = data.data
-			toast.success(
-				`已清理 ${d?.cleaned ?? 0} 个版本，跳过 ${d?.skipped ?? 0} 个进行中版本`,
-			)
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'versions', 'list', configId] })
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'by-project', projectId] })
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'detail', configId] })
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
-		},
-		onError: (error: Error) => toast.error(error.message || '操作失败'),
-	})
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ configId }: { configId: string; projectId: string }) =>
+      keepLatestVersions(configId),
+    onSuccess: (data, { configId, projectId }) => {
+      const d = data.data
+      toast.success(
+        `已清理 ${d?.cleaned ?? 0} 个版本，跳过 ${d?.skipped ?? 0} 个进行中版本`,
+      )
+      queryClient.invalidateQueries({
+        queryKey: ['repowiki', 'versions', 'list', configId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['repowiki', 'by-project', projectId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['repowiki', 'detail', configId],
+      })
+      queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
+    },
+    onError: (error: Error) => toast.error(error.message || '操作失败'),
+  })
 }
 
 // ── 清理 Git 缓存 ──
 
 export function useCleanRepoWikiGitCache() {
-	const queryClient = useQueryClient()
-	return useMutation({
-		mutationFn: ({ configId }: { configId: string; projectId: string }) =>
-			cleanRepoWikiGitCache(configId),
-		onSuccess: (_, { configId, projectId }) => {
-			toast.success('Git 缓存已清理')
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'versions', 'list', configId] })
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'by-project', projectId] })
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'detail', configId] })
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
-		},
-		onError: (error: Error) => toast.error(error.message || '清理失败'),
-	})
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ configId }: { configId: string; projectId: string }) =>
+      cleanRepoWikiGitCache(configId),
+    onSuccess: (_, { configId, projectId }) => {
+      toast.success('Git 缓存已清理')
+      queryClient.invalidateQueries({
+        queryKey: ['repowiki', 'versions', 'list', configId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['repowiki', 'by-project', projectId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['repowiki', 'detail', configId],
+      })
+      queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
+    },
+    onError: (error: Error) => toast.error(error.message || '清理失败'),
+  })
 }
 
 // ── 更新配置 ──
 
 export function useUpdateRepoWikiConfig() {
-	const queryClient = useQueryClient()
-	return useMutation({
-		mutationFn: ({ id, data }: { id: string; data: UpdateRepoWikiConfigRequest }) =>
-			updateRepoWikiConfigApi(id, data),
-		onSuccess: () => {
-			toast.success('配置已更新')
-			queryClient.invalidateQueries({ queryKey: ['repowiki'] })
-		},
-		onError: (error: Error) => toast.error(error.message || '更新失败'),
-	})
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string
+      data: UpdateRepoWikiConfigRequest
+    }) => updateRepoWikiConfigApi(id, data),
+    onSuccess: () => {
+      toast.success('配置已更新')
+      queryClient.invalidateQueries({ queryKey: ['repowiki'] })
+    },
+    onError: (error: Error) => toast.error(error.message || '更新失败'),
+  })
 }
 
 // ── 触发分析（绑定到特定 config） ──
 
 export function useRepoWikiAnalyze(configId: string) {
-	const queryClient = useQueryClient()
-	return useMutation({
-		mutationFn: (data?: { extra_prompt?: string }) => analyzeRepoWiki(configId, data),
-		onSuccess: () => {
-			toast.success('分析任务已启动')
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'versions', 'list', configId] })
-		},
-		onError: (error: Error) => {
-			toast.error(error.message || '启动分析失败')
-		},
-	})
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data?: { extra_prompt?: string }) =>
+      analyzeRepoWiki(configId, data),
+    onSuccess: () => {
+      toast.success('分析任务已启动')
+      queryClient.invalidateQueries({
+        queryKey: ['repowiki', 'versions', 'list', configId],
+      })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || '启动分析失败')
+    },
+  })
 }
 
 // ── 增量更新（绑定到特定 config） ──
 
 export function useRepoWikiUpdate(configId: string) {
-	const queryClient = useQueryClient()
-	return useMutation({
-		mutationFn: (data?: { extra_prompt?: string }) => updateRepoWikiApi(configId, data),
-		onSuccess: () => {
-			toast.success('增量更新已启动')
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'versions', 'list', configId] })
-		},
-		onError: (error: Error) => {
-			toast.error(error.message || '启动更新失败')
-		},
-	})
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data?: { extra_prompt?: string }) =>
+      updateRepoWikiApi(configId, data),
+    onSuccess: () => {
+      toast.success('增量更新已启动')
+      queryClient.invalidateQueries({
+        queryKey: ['repowiki', 'versions', 'list', configId],
+      })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || '启动更新失败')
+    },
+  })
 }
 
 // ── 版本列表（含自动轮询） ──
 
 export function useRepoWikiVersions(configId: string, page = 1, size = 20) {
-	return useQuery({
-		queryKey: ['repowiki', 'versions', 'list', configId, page, size],
-		queryFn: async () => {
-			const res = await getRepoWikiVersionList(configId, { page, size })
-			return res.data
-		},
-		enabled: !!configId,
-		// 如果有任何版本处于活跃状态，每 3 秒刷新
-		refetchInterval: (query) => {
-			const data = query.state.data
-			if (!data?.items) return false
-			const hasActive = data.items.some((v) =>
-				ACTIVE_STATUSES.includes(v.status as (typeof ACTIVE_STATUSES)[number]),
-			)
-			return hasActive ? 3000 : false
-		},
-	})
+  return useQuery({
+    queryKey: ['repowiki', 'versions', 'list', configId, page, size],
+    queryFn: async () => {
+      const res = await getRepoWikiVersionList(configId, { page, size })
+      return res.data
+    },
+    enabled: !!configId,
+    // 如果有任何版本处于活跃状态，每 3 秒刷新
+    refetchInterval: (query) => {
+      const data = query.state.data
+      if (!data?.items) return false
+      const hasActive = data.items.some((v) =>
+        ACTIVE_STATUSES.includes(v.status as (typeof ACTIVE_STATUSES)[number]),
+      )
+      return hasActive ? 3000 : false
+    },
+  })
 }
 
 // ── 切换选中版本 ──
 
 export function useUpdateSelectedVersion() {
-	const queryClient = useQueryClient()
-	return useMutation({
-		mutationFn: ({ configId, versionId }: { configId: string; versionId: string }) =>
-			updateSelectedVersion(configId, versionId),
-		onSuccess: () => {
-			toast.success('已切换选中版本')
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'configs'] })
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
-			queryClient.invalidateQueries({ queryKey: ['repowiki', 'by-project'] })
-		},
-		onError: (error: Error) => {
-			toast.error(error.message || '切换版本失败')
-		},
-	})
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      configId,
+      versionId,
+    }: {
+      configId: string
+      versionId: string
+    }) => updateSelectedVersion(configId, versionId),
+    onSuccess: () => {
+      toast.success('已切换选中版本')
+      queryClient.invalidateQueries({ queryKey: ['repowiki', 'configs'] })
+      queryClient.invalidateQueries({ queryKey: ['repowiki', 'list'] })
+      queryClient.invalidateQueries({ queryKey: ['repowiki', 'by-project'] })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || '切换版本失败')
+    },
+  })
 }

@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Plus } from 'lucide-react'
 import { Button } from '@lumina/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@lumina/components/ui/tabs'
+import { Tabs, TabsContent } from '@lumina/components/ui/tabs'
 import { PageHeader } from '#/components/page-header'
 import { DataTable } from '#/components/data-table'
 import { SkeletonTable } from '#/components/skeleton-table'
@@ -64,7 +64,9 @@ function SettingsPage() {
   const [createProviderOpen, setCreateProviderOpen] = useState(false)
   const [editProviderOpen, setEditProviderOpen] = useState(false)
   const [deleteProviderOpen, setDeleteProviderOpen] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(
+    null,
+  )
 
   // Model dialog state
   const [createModelOpen, setCreateModelOpen] = useState(false)
@@ -107,6 +109,28 @@ function SettingsPage() {
     providerItems,
   )
 
+  // 🌟 监听 ESC 键一键退出设置并返回控制台看板
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        void navigate({ to: '/console/dashboard' })
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [navigate])
+
+  const tabLabels: Record<SettingsTab, string> = {
+    site: '站点基础信息',
+    qa: 'Q&A 运行配置',
+    preview: 'Preview 沙盒配置',
+    repowiki: 'RepoWiki 分析参数',
+    security: '安全策略与访问控制',
+    provider: 'Provider 供应方管理',
+    model: '模型目录管理',
+    agent: 'Agent 角色模型分配',
+  }
+
   return (
     <motion.div
       className="space-y-4"
@@ -115,29 +139,11 @@ function SettingsPage() {
       variants={staggerContainer}
     >
       <PageHeader
-        title="系统设置"
+        title={tabLabels[tab] || '系统设置'}
         description="管理 LLM 配置、站点信息、模块运行参数和安全策略"
       />
 
-      <Tabs
-        value={tab}
-        onValueChange={(value) => {
-          if (!isSettingsTab(value)) return
-          void navigate({ search: { tab: value }, replace: true })
-        }}
-        className="min-w-0 space-y-4"
-      >
-        <TabsList variant="line" className="w-full justify-start gap-6">
-          <TabsTrigger value="site">站点信息</TabsTrigger>
-          <TabsTrigger value="qa">Q&A 配置</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
-          <TabsTrigger value="repowiki">RepoWiki</TabsTrigger>
-          <TabsTrigger value="security">安全策略</TabsTrigger>
-          <TabsTrigger value="provider">Provider 管理</TabsTrigger>
-          <TabsTrigger value="model">模型管理</TabsTrigger>
-          <TabsTrigger value="agent">Agent 分配</TabsTrigger>
-        </TabsList>
-
+      <Tabs value={tab} className="min-w-0 space-y-4">
         {/* 站点信息 */}
         <TabsContent value="site">
           <motion.div variants={staggerItem}>

@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { KeyRound, PlugZap, ShieldCheck } from 'lucide-react'
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@lumina/components/ui/tabs'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@lumina/components/ui/tabs'
 
 import { ChannelKicker } from './channel-band'
 import { ClientConfigPanel } from './client-config-panel'

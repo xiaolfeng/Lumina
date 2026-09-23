@@ -308,7 +308,10 @@ export const MCP_TOOL_MODULES: McpToolModule[] = [
     name: 'Workspace',
     summary: '先选定工作空间，再在该空间内解析项目。单用户用来拆开生活与工作。',
     tools: [
-      { name: 'workspace_list', summary: '列出全部空间，默认空间 slug 为 default' },
+      {
+        name: 'workspace_list',
+        summary: '列出全部空间，默认空间 slug 为 default',
+      },
       { name: 'workspace_get', summary: '按 ID 或 slug 查看空间' },
     ],
   },
@@ -362,7 +365,10 @@ export const MCP_TOOL_MODULES: McpToolModule[] = [
     tools: [
       { name: 'pages_list', summary: '列出项目已发布页面与生效版本' },
       { name: 'pages_promote', summary: '将预览会话晋升为 Pages 快照' },
-      { name: 'pages_fork', summary: '从已发布页面派生可继续修改的 Preview 草稿' },
+      {
+        name: 'pages_fork',
+        summary: '从已发布页面派生可继续修改的 Preview 草稿',
+      },
     ],
   },
   {
@@ -400,7 +406,13 @@ export const MCP_WORKFLOW_STEPS: McpWorkflowStep[] = [
     step: 1,
     title: '先选定空间，再找到当前项目',
     body: 'Agent 先列出空间并选定一个，再按项目路径在该空间内查找。第一次接入的代码库，确认没有重复记录后再创建。',
-    tools: ['workspace_list', 'workspace_get', 'project_get', 'project_list', 'project_create'],
+    tools: [
+      'workspace_list',
+      'workspace_get',
+      'project_get',
+      'project_list',
+      'project_create',
+    ],
   },
   {
     step: 2,

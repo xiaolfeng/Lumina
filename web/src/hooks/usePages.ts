@@ -81,7 +81,12 @@ export function useUnlockPage() {
         }),
       )
       queryClient.invalidateQueries({
-        queryKey: ['pages', 'auth-check', variables.projectName, variables.slug],
+        queryKey: [
+          'pages',
+          'auth-check',
+          variables.projectName,
+          variables.slug,
+        ],
       })
       queryClient.invalidateQueries({
         queryKey: ['pages', 'meta', variables.projectName, variables.slug],

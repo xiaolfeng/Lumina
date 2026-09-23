@@ -52,7 +52,11 @@ export function PagesPasswordGate({
               {unlock.error.message || '密码错误，请重试'}
             </p>
           )}
-          <Button type="submit" className="w-full" disabled={unlock.isPending || !password.trim()}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={unlock.isPending || !password.trim()}
+          >
             {unlock.isPending ? '解锁中…' : '解锁'}
           </Button>
         </form>

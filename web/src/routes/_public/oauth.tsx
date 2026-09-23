@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState  } from 'react'
+import type {FormEvent} from 'react';
 import { createFileRoute } from '@tanstack/react-router'
 import { CheckCircle2, ShieldCheck, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -10,9 +11,10 @@ import { Label } from '@lumina/components/ui/label'
 import { useAuth, useLogin } from '#/hooks/useAuth'
 import {
   getOAuthConsentDetail,
-  postOAuthConsent,
-  type OAuthConsentDetail,
+  postOAuthConsent
+  
 } from '#/lib/apis/oauth'
+import type {OAuthConsentDetail} from '#/lib/apis/oauth';
 
 interface OAuthSearch {
   authorize_id?: string
@@ -130,11 +132,7 @@ function OAuthAuthorizePage() {
                 autoComplete="current-password"
               />
             </div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={login.isPending}
-            >
+            <Button type="submit" className="w-full" disabled={login.isPending}>
               {login.isPending ? '登录中…' : '登录并继续授权'}
             </Button>
           </form>
@@ -185,7 +183,10 @@ function useOAuthSearch(): OAuthSearch {
 function Notice({ text }: { text: string }) {
   return (
     <div className="flex items-start gap-2 text-[13px] leading-relaxed text-sea-ink-soft">
-      <XCircle className="mt-0.5 size-4 shrink-0 text-lagoon-deep" aria-hidden />
+      <XCircle
+        className="mt-0.5 size-4 shrink-0 text-lagoon-deep"
+        aria-hidden
+      />
       <span>{text}</span>
     </div>
   )

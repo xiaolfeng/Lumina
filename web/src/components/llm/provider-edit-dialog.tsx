@@ -91,9 +91,7 @@ export function ProviderEditDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>编辑 Provider</DialogTitle>
-          <DialogDescription>
-            修改 Provider 的配置信息。
-          </DialogDescription>
+          <DialogDescription>修改 Provider 的配置信息。</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">

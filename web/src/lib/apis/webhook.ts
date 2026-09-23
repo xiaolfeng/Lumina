@@ -40,7 +40,9 @@ export interface WebhookEventList {
   items: WebhookEvent[]
 }
 
-export async function getWebhookConfig(configId: string): Promise<BaseResponse<WebhookConfig>> {
+export async function getWebhookConfig(
+  configId: string,
+): Promise<BaseResponse<WebhookConfig>> {
   return apiClient.get(`/api/v1/repowiki/configs/${configId}/webhook`)
 }
 
@@ -48,13 +50,18 @@ export async function updateWebhookBranches(
   configId: string,
   branches: string[],
 ): Promise<BaseResponse> {
-  return apiClient.put(`/api/v1/repowiki/configs/${configId}/webhook/branches`, { branches })
+  return apiClient.put(
+    `/api/v1/repowiki/configs/${configId}/webhook/branches`,
+    { branches },
+  )
 }
 
 export async function regenerateWebhook(
   configId: string,
 ): Promise<BaseResponse<RegenerateWebhookResponse>> {
-  return apiClient.post(`/api/v1/repowiki/configs/${configId}/webhook/regenerate`)
+  return apiClient.post(
+    `/api/v1/repowiki/configs/${configId}/webhook/regenerate`,
+  )
 }
 
 export async function listWebhookEvents(

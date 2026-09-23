@@ -1,15 +1,32 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@lumina/components/ui/card'
 import { Badge } from '@lumina/components/ui/badge'
-import type { QuestionSummary, SupplementItem } from '#/lib/models/response/qa-admin'
-import { Markdown, proseHint, SandboxFrame, PreviewSupplement } from '#/components/interact/primitives'
-import { formatAnswer, type AnswerOption } from '#/lib/format-answer'
+import type {
+  QuestionSummary,
+  SupplementItem,
+} from '#/lib/models/response/qa-admin'
+import {
+  Markdown,
+  proseHint,
+  SandboxFrame,
+  PreviewSupplement,
+} from '#/components/interact/primitives'
+import { formatAnswer  } from '#/lib/format-answer'
+import type {AnswerOption} from '#/lib/format-answer';
 import { formatDateTime } from '#/lib/format-date'
 
 interface QuestionCardProps {
   question: QuestionSummary
 }
 
-const statusVariantMap: Record<QuestionSummary['status'], 'default' | 'outline' | 'destructive' | 'secondary'> = {
+const statusVariantMap: Record<
+  QuestionSummary['status'],
+  'default' | 'outline' | 'destructive' | 'secondary'
+> = {
   answered: 'default',
   skipped: 'outline',
   cancelled: 'destructive',
@@ -55,7 +72,9 @@ export function QuestionCard({ question }: QuestionCardProps) {
         {question.status === 'answered' && question.answer != null && (
           <div>
             <h4 className="text-sm font-semibold mb-1">回答</h4>
-            <p className="text-sm text-sea-ink">{formatAnswer(question.answer, options)}</p>
+            <p className="text-sm text-sea-ink">
+              {formatAnswer(question.answer, options)}
+            </p>
           </div>
         )}
 
@@ -68,14 +87,25 @@ export function QuestionCard({ question }: QuestionCardProps) {
                 const supplements = optionSupplements.get(opt.id) ?? []
                 return (
                   <li key={opt.id} className="text-sm">
-                    <span className="font-medium text-sea-ink">{opt.label}</span>
+                    <span className="font-medium text-sea-ink">
+                      {opt.label}
+                    </span>
                     {opt.description && (
-                      <span className="text-sea-ink-soft"> — {opt.description}</span>
+                      <span className="text-sea-ink-soft">
+                        {' '}
+                        — {opt.description}
+                      </span>
                     )}
                     {supplements.map((s) => (
-                      <div key={s.id} className="mt-1.5 rounded-md bg-muted p-2.5">
+                      <div
+                        key={s.id}
+                        className="mt-1.5 rounded-md bg-muted p-2.5"
+                      >
                         {s.content_type === 'html' ? (
-                          <SandboxFrame content={s.content} className="w-full" />
+                          <SandboxFrame
+                            content={s.content}
+                            className="w-full"
+                          />
                         ) : s.content_type === 'preview' ? (
                           <PreviewSupplement content={s.content} />
                         ) : (
@@ -117,7 +147,8 @@ export function QuestionCard({ question }: QuestionCardProps) {
 
         <div className="text-xs text-muted-foreground">
           创建: {formatDateTime(question.created_at)}
-          {question.answered_at && ` | 回答: ${formatDateTime(question.answered_at)}`}
+          {question.answered_at &&
+            ` | 回答: ${formatDateTime(question.answered_at)}`}
         </div>
       </CardContent>
     </Card>

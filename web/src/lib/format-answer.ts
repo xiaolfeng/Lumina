@@ -18,7 +18,10 @@ function labelOf(options: AnswerOption[] | undefined, id: string): string {
 /** 将各题型提交的 answer 格式化为可读字符串。
  *  对于存选项 ID 的题型（select/multi-select/options/rank/rate），
  *  通过 options 把雪花 ID 映射回 label；不传 options 则回退显示原始值。 */
-export function formatAnswer(answer: unknown, options?: AnswerOption[]): string {
+export function formatAnswer(
+  answer: unknown,
+  options?: AnswerOption[],
+): string {
   if (answer == null) return '—'
   if (typeof answer === 'string') return answer
   if (typeof answer === 'number' || typeof answer === 'boolean')
@@ -70,7 +73,9 @@ export function formatAnswer(answer: unknown, options?: AnswerOption[]): string 
             : '',
         )
         .filter(Boolean)
-      return names.length > 0 ? `📷 ${names.join('、')}` : `📷 ${obj.images.length} 张图片`
+      return names.length > 0
+        ? `📷 ${names.join('、')}`
+        : `📷 ${obj.images.length} 张图片`
     }
     // 文件: { files: [{ filename, ... }] }
     if ('files' in obj && Array.isArray(obj.files)) {
@@ -81,7 +86,9 @@ export function formatAnswer(answer: unknown, options?: AnswerOption[]): string 
             : '',
         )
         .filter(Boolean)
-      return names.length > 0 ? `📎 ${names.join('、')}` : `📎 ${obj.files.length} 个文件`
+      return names.length > 0
+        ? `📎 ${names.join('、')}`
+        : `📎 ${obj.files.length} 个文件`
     }
     // 布尔: { choice: "yes" | "no" }
     if ('choice' in obj) return String(obj.choice)
@@ -100,17 +107,25 @@ export function formatAnswer(answer: unknown, options?: AnswerOption[]): string 
     // 决策题 (diff/plan/review): { decision, feedback?, edited?, annotations? }
     if ('decision' in obj) {
       const decision = String(obj.decision)
-      const labels: Record<string, string> = { approve: '批准', reject: '拒绝', edit: '已编辑', revise: '需修订' }
+      const labels: Record<string, string> = {
+        approve: '批准',
+        reject: '拒绝',
+        edit: '已编辑',
+        revise: '需修订',
+      }
       const parts: string[] = [labels[decision] ?? decision]
       if ('feedback' in obj && obj.feedback) parts.push(String(obj.feedback))
       return parts.join('（') + (parts.length > 1 ? '）' : '')
     }
     // 兜底：过滤掉 content 等大字段后显示 JSON key 名
-    const { content: _c, ...rest } = obj as Record<string, unknown>
+    const { content: _c, ...rest } = obj
     const keys = Object.keys(rest)
     if (keys.length === 0) return '—'
     return keys
-      .map((k) => `${k}: ${typeof rest[k] === 'string' ? String(rest[k]) : JSON.stringify(rest[k])}`)
+      .map(
+        (k) =>
+          `${k}: ${typeof rest[k] === 'string' ? String(rest[k]) : JSON.stringify(rest[k])}`,
+      )
       .join(', ')
   }
   return String(answer)

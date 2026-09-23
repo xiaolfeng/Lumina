@@ -11,35 +11,35 @@ import { cn } from '#/lib/utils'
 type KickerTone = 'kicker' | 'sea-ink-soft' | 'lagoon-deep'
 
 const toneClass: Record<KickerTone, string> = {
-	kicker: 'text-kicker',
-	'sea-ink-soft': 'text-sea-ink-soft',
-	'lagoon-deep': 'text-lagoon-deep',
+  kicker: 'text-kicker',
+  'sea-ink-soft': 'text-sea-ink-soft',
+  'lagoon-deep': 'text-lagoon-deep',
 }
 
 interface KickerProps {
-	children: ReactNode
-	tone?: KickerTone
-	/** 是否显示左侧琥珀竖线装饰（默认 true） */
-	accent?: boolean
-	className?: string
+  children: ReactNode
+  tone?: KickerTone
+  /** 是否显示左侧琥珀竖线装饰（默认 true） */
+  accent?: boolean
+  className?: string
 }
 
 export function Kicker({
-	children,
-	tone = 'kicker',
-	accent = true,
-	className,
+  children,
+  tone = 'kicker',
+  accent = true,
+  className,
 }: KickerProps) {
-	return (
-		<span
-			className={cn(
-				'inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em]',
-				toneClass[tone],
-				accent && 'before:h-3 before:w-0.5 before:bg-lagoon',
-				className,
-			)}
-		>
-			{children}
-		</span>
-	)
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em]',
+        toneClass[tone],
+        accent && 'before:h-3 before:w-0.5 before:bg-lagoon',
+        className,
+      )}
+    >
+      {children}
+    </span>
+  )
 }

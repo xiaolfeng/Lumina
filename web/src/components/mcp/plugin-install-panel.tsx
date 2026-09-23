@@ -47,8 +47,9 @@ export function PluginInstallPanel({ origin }: PluginInstallPanelProps) {
       </div>
 
       <p className="mt-3 max-w-[48em] text-[15px] leading-relaxed text-sea-ink-soft">
-        插件随包携带 Q&A、Preview、Pin 与 RepoWiki 技能说明，并按客户端机制读取随包提供的
-        MCP 配置连接到当前站点。MCP 采用 OAuth 登录授权，首次连接时完成一次登录即可，无需手动管理密钥。
+        插件随包携带 Q&A、Preview、Pin 与 RepoWiki
+        技能说明，并按客户端机制读取随包提供的 MCP 配置连接到当前站点。MCP 采用
+        OAuth 登录授权，首次连接时完成一次登录即可，无需手动管理密钥。
       </p>
 
       <div className="mt-5 grid gap-px bg-line sm:grid-cols-1">
@@ -120,8 +121,7 @@ export function PluginInstallPanel({ origin }: PluginInstallPanelProps) {
             </p>
             <p className="text-xs leading-relaxed text-sea-ink-soft">
               <Wrench className="mr-1 inline size-3.5" aria-hidden />
-              旧版本 Claude Code 不支持 archive
-              插件源时，可改用仓库市场：
+              旧版本 Claude Code 不支持 archive 插件源时，可改用仓库市场：
               <span className="font-mono break-all text-sea-ink">
                 {buildClaudeRepoMarketplaceAdd()}
               </span>
@@ -130,19 +130,18 @@ export function PluginInstallPanel({ origin }: PluginInstallPanelProps) {
           </TabsContent>
           <TabsContent value="zcode" className="space-y-3">
             <p className="text-[13px] leading-relaxed text-sea-ink-soft">
-              打开 ZCode 的「设置 → 插件管理 → 发现」，点击{' '}
-              <code>+</code>{' '}
-              粘贴下方专用市场地址并安装 <code>lumina</code>{' '}
-              插件，完成后重启 ZCode。
+              打开 ZCode 的「设置 → 插件管理 → 发现」，点击 <code>+</code>{' '}
+              粘贴下方专用市场地址并安装 <code>lumina</code> 插件，完成后重启
+              ZCode。
             </p>
             <CopyBlock
               code={zcodeMarketplaceUrl}
               filename="ZCode · 专用市场地址"
             />
             <p className="text-xs leading-relaxed text-sea-ink-soft">
-              该地址始终返回 ZCode 兼容的 url + zip
-              清单变体，不会出现「不支持 archive
-              源」的报错。若 ZCode 未自动完成 MCP 连接，请使用方案二手动接入。
+              该地址始终返回 ZCode 兼容的 url + zip 清单变体，不会出现「不支持
+              archive 源」的报错。若 ZCode 未自动完成 MCP
+              连接，请使用方案二手动接入。
             </p>
           </TabsContent>
           <TabsContent value="codex" className="space-y-3">
@@ -152,9 +151,9 @@ export function PluginInstallPanel({ origin }: PluginInstallPanelProps) {
             </p>
             <CopyBlock code={buildCodexPluginSnippet()} filename="Codex" />
             <p className="text-xs leading-relaxed text-sea-ink-soft">
-              插件提供 Q&A、Preview、Pin 与 RepoWiki
-              技能。Codex 不消费动态插件包内的 MCP 配置，连接 MCP 请使用方案二的
-              OAuth 直连（<code>codex mcp login</code>）或 API Key 配置。
+              插件提供 Q&A、Preview、Pin 与 RepoWiki 技能。Codex
+              不消费动态插件包内的 MCP 配置，连接 MCP 请使用方案二的 OAuth
+              直连（<code>codex mcp login</code>）或 API Key 配置。
             </p>
           </TabsContent>
         </Tabs>

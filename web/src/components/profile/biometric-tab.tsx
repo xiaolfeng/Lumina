@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { formatDateTime } from '#/lib/format-date'
-import { Card, CardContent, CardHeader, CardTitle } from '@lumina/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@lumina/components/ui/card'
 import { Button } from '@lumina/components/ui/button'
 import { Input } from '@lumina/components/ui/input'
 import { Label } from '@lumina/components/ui/label'
@@ -24,7 +29,11 @@ import {
   AlertDialogTitle,
 } from '@lumina/components/ui/alert-dialog'
 import { Fingerprint, Plus, Trash2, Monitor } from 'lucide-react'
-import { useBiometricCredentials, useRegisterBiometric, useDeleteBiometric } from '#/hooks/useBiometric'
+import {
+  useBiometricCredentials,
+  useRegisterBiometric,
+  useDeleteBiometric,
+} from '#/hooks/useBiometric'
 import type { BiometricCredentialItem } from '#/lib/models/response/user'
 import { toast } from 'sonner'
 
@@ -96,10 +105,16 @@ export function BiometricTab() {
                 />
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setRegisterOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setRegisterOpen(false)}
+                >
                   取消
                 </Button>
-                <Button onClick={handleRegister} disabled={registerBiometric.isPending}>
+                <Button
+                  onClick={handleRegister}
+                  disabled={registerBiometric.isPending}
+                >
                   {registerBiometric.isPending ? '注册中…' : '开始注册'}
                 </Button>
               </DialogFooter>
@@ -111,7 +126,9 @@ export function BiometricTab() {
         {isLoading ? (
           <p className="text-sm text-sea-ink-soft">加载中…</p>
         ) : credentials.length === 0 ? (
-          <p className="text-sm text-sea-ink-soft">尚未注册任何生物特征凭证。</p>
+          <p className="text-sm text-sea-ink-soft">
+            尚未注册任何生物特征凭证。
+          </p>
         ) : (
           <div className="space-y-3">
             {credentials.map((cred: BiometricCredentialItem) => (
@@ -124,7 +141,9 @@ export function BiometricTab() {
                     <Monitor className="size-4" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-sea-ink">{cred.device_name}</p>
+                    <p className="text-sm font-medium text-sea-ink">
+                      {cred.device_name}
+                    </p>
                     <p className="text-xs text-sea-ink-soft">
                       {cred.last_used_at
                         ? `最后使用：${formatDateTime(cred.last_used_at * 1000)}`
@@ -145,7 +164,10 @@ export function BiometricTab() {
         )}
       </CardContent>
 
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+      <AlertDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除凭证？</AlertDialogTitle>
@@ -155,7 +177,9 @@ export function BiometricTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>确认删除</AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete}>
+              确认删除
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

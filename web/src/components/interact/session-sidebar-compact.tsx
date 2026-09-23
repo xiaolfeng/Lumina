@@ -6,29 +6,29 @@ import type { Session } from './types'
  * 桌面端第三列（≥ xl）—— 真 flex 子列，宽度由 sidebar open 状态过渡。
  */
 export function SessionSidebarCompact({
-	sessions,
-	selectedId,
-	onSelect,
+  sessions,
+  selectedId,
+  onSelect,
 }: {
-	sessions: Session[]
-	selectedId: string
-	onSelect: (id: string) => void
+  sessions: Session[]
+  selectedId: string
+  onSelect: (id: string) => void
 }) {
-	const { open } = useSidebarOpen()
+  const { open } = useSidebarOpen()
 
-	return (
-		<aside
-			className={`hidden shrink-0 flex-col overflow-hidden border border-line bg-surface transition-[width,opacity,margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] xl:flex ${
-				open
-					? 'm-4 w-[320px] opacity-100'
-					: 'm-0 w-0 rounded-none border-0 opacity-0 shadow-none pointer-events-none'
-			}`}
-		>
-			<SessionPanel
-				sessions={sessions}
-				selectedId={selectedId}
-				onSelect={onSelect}
-			/>
-		</aside>
-	)
+  return (
+    <aside
+      className={`hidden shrink-0 flex-col overflow-hidden border border-line bg-surface transition-[width,opacity,margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] xl:flex ${
+        open
+          ? 'm-4 w-[320px] opacity-100'
+          : 'm-0 w-0 rounded-none border-0 opacity-0 shadow-none pointer-events-none'
+      }`}
+    >
+      <SessionPanel
+        sessions={sessions}
+        selectedId={selectedId}
+        onSelect={onSelect}
+      />
+    </aside>
+  )
 }
