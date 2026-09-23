@@ -16,21 +16,21 @@
  * - 内容高度经 postMessage 回传，iframe 自适应内容高度（无内部滚动条）
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 export interface SandboxFrameProps {
-	/** 原始 HTML 片段（body 内容，可含 <style>/<script>） */
-	content: string;
-	/** 额外注入 <head> 的 CSS 字符串（可选） */
-	css?: string;
-	/** 作用于 iframe 元素的 className（布局，不作用于内容排版） */
-	className?: string;
-	/** iframe 无障碍标题 */
-	title?: string;
+  /** 原始 HTML 片段（body 内容，可含 <style>/<script>） */
+  content: string
+  /** 额外注入 <head> 的 CSS 字符串（可选） */
+  css?: string
+  /** 作用于 iframe 元素的 className（布局，不作用于内容排版） */
+  className?: string
+  /** iframe 无障碍标题 */
+  title?: string
 }
 
 /** 高度回传消息类型 —— 与 iframe 内注入脚本约定 */
-const HEIGHT_MSG_TYPE = 'lumina:frame-height';
+const HEIGHT_MSG_TYPE = 'lumina:frame-height'
 
 /**
  * 注入 iframe 的主题 CSS 变量白名单（微明主题语义前缀）。
@@ -38,23 +38,23 @@ const HEIGHT_MSG_TYPE = 'lumina:frame-height';
  * `--*` 自定义属性（如动态注入的 token / 密钥）一并交给沙箱内不可信内容脚本读取。
  */
 const THEME_VAR_PREFIXES = [
-	'--sea-',
-	'--lagoon',
-	'--palm',
-	'--sand',
-	'--foam',
-	'--line',
-];
+  '--sea-',
+  '--lagoon',
+  '--palm',
+  '--sand',
+  '--foam',
+  '--line',
+]
 
 /** 收集根元素上主题命名空间的 CSS 自定义属性（仅主题变量） */
 function collectThemeVariables(): string {
-	const styles = getComputedStyle(document.documentElement);
-	return Array.from({ length: styles.length }, (_, i) => styles.item(i))
-		.filter((name) =>
-			THEME_VAR_PREFIXES.some((prefix) => name.startsWith(prefix)),
-		)
-		.map((name) => `${name}: ${styles.getPropertyValue(name).trim()};`)
-		.join('\n');
+  const styles = getComputedStyle(document.documentElement)
+  return Array.from({ length: styles.length }, (_, i) => styles.item(i))
+    .filter((name) =>
+      THEME_VAR_PREFIXES.some((prefix) => name.startsWith(prefix)),
+    )
+    .map((name) => `${name}: ${styles.getPropertyValue(name).trim()};`)
+    .join('\n')
 }
 
 /**
@@ -123,14 +123,14 @@ const BASE_STYLE = `
 	pre code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
 	hr { border: none; border-top: 1px solid var(--line, rgba(51,39,28,0.11)); margin: 1em 0; }
 	img { max-width: 100%; height: auto; border-radius: 8px; }
-`;
+`
 
 /**
  * 构建 iframe 完整 HTML 文档。
  * base 样式置于 <head>，用户 content 置于 <body>（靠后声明，其 <style> 自然覆盖 base）。
  */
 function buildDoc(content: string, css: string, themeVars: string): string {
-	return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
@@ -168,74 +168,88 @@ ${content}
 })();
 </script>
 </body>
-</html>`;
+</html>`
 }
 
-export function SandboxFrame({ content, css, className, title }: SandboxFrameProps) {
-	const frameRef = useRef<HTMLIFrameElement>(null);
-	const [mounted, setMounted] = useState(false);
-	const [height, setHeight] = useState(0);
-	const [loaded, setLoaded] = useState(false);
-	const [themeVars, setThemeVars] = useState<string>(() =>
-		typeof document !== 'undefined' ? collectThemeVariables() : ''
-	);
+export function SandboxFrame({
+  content,
+  css,
+  className,
+  title,
+}: SandboxFrameProps) {
+  const frameRef = useRef<HTMLIFrameElement>(null)
+  const [mounted, setMounted] = useState(false)
+  const [height, setHeight] = useState(0)
+  const [loaded, setLoaded] = useState(false)
+  const [themeVars, setThemeVars] = useState<string>(() =>
+    typeof document !== 'undefined' ? collectThemeVariables() : '',
+  )
 
-	// 首次挂载后再渲染 iframe，规避 SSR 下 srcDoc 序列化与 document 访问问题
-	useEffect(() => {
-		setMounted(true);
-	}, []);
+  // 首次挂载后再渲染 iframe，规避 SSR 下 srcDoc 序列化与 document 访问问题
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-	// 主题切换（.dark 类增删）时重新收集变量 → srcDoc 重算 → iframe 重载
-	useEffect(() => {
-		if (typeof MutationObserver === 'undefined') return;
-		const observer = new MutationObserver(() => setThemeVars(collectThemeVariables()));
-		observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-		return () => observer.disconnect();
-	}, []);
+  // 主题切换（.dark 类增删）时重新收集变量 → srcDoc 重算 → iframe 重载
+  useEffect(() => {
+    if (typeof MutationObserver === 'undefined') return
+    const observer = new MutationObserver(() =>
+      setThemeVars(collectThemeVariables()),
+    )
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+    return () => observer.disconnect()
+  }, [])
 
-	// 监听 iframe 高度回传 —— 用 e.source 校验来源（sandbox 下 origin 恒为 "null"，不可靠）
-	useEffect(() => {
-		const onMessage = (e: MessageEvent) => {
-			const frame = frameRef.current;
-			if (!frame || e.source !== frame.contentWindow) return;
-			const data = e.data;
-			if (data && data.type === HEIGHT_MSG_TYPE && typeof data.height === 'number') {
-				setHeight(data.height);
-				if (data.height > 0) setLoaded(true);
-			}
-		};
-		window.addEventListener('message', onMessage);
-		return () => window.removeEventListener('message', onMessage);
-	}, []);
+  // 监听 iframe 高度回传 —— 用 e.source 校验来源（sandbox 下 origin 恒为 "null"，不可靠）
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      const frame = frameRef.current
+      if (!frame || e.source !== frame.contentWindow) return
+      const data = e.data
+      if (
+        data &&
+        data.type === HEIGHT_MSG_TYPE &&
+        typeof data.height === 'number'
+      ) {
+        setHeight(data.height)
+        if (data.height > 0) setLoaded(true)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
 
-	const doc = useMemo(
-		() => buildDoc(content, css ?? '', themeVars),
-		[content, css, themeVars]
-	);
+  const doc = useMemo(
+    () => buildDoc(content, css ?? '', themeVars),
+    [content, css, themeVars],
+  )
 
-	useEffect(() => {
-		setLoaded(false);
-		setHeight(0);
-	}, [doc]);
+  useEffect(() => {
+    setLoaded(false)
+    setHeight(0)
+  }, [doc])
 
-	return (
-		<div className={`relative min-h-40 w-full ${className ?? ''}`}>
-			{(!mounted || !loaded) && (
-				<div className="absolute inset-0 z-10 flex items-center justify-center bg-bg-base">
-					<p className="text-sm text-sea-ink-soft/50">正在加载中</p>
-				</div>
-			)}
-			{mounted ? (
-				<iframe
-					ref={frameRef}
-					title={title ?? '即时渲染预览'}
-					sandbox="allow-scripts"
-					srcDoc={doc}
-					onLoad={() => setLoaded(true)}
-					style={{ height: height > 0 ? height : 160 }}
-					className="block w-full border-0"
-				/>
-			) : null}
-		</div>
-	);
+  return (
+    <div className={`relative min-h-40 w-full ${className ?? ''}`}>
+      {(!mounted || !loaded) && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-bg-base">
+          <p className="text-sm text-sea-ink-soft/50">正在加载中</p>
+        </div>
+      )}
+      {mounted ? (
+        <iframe
+          ref={frameRef}
+          title={title ?? '即时渲染预览'}
+          sandbox="allow-scripts"
+          srcDoc={doc}
+          onLoad={() => setLoaded(true)}
+          style={{ height: height > 0 ? height : 160 }}
+          className="block w-full border-0"
+        />
+      ) : null}
+    </div>
+  )
 }

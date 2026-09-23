@@ -1,6 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@lumina/components/ui/tabs'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@lumina/components/ui/tabs'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
 import { PageHeader } from '#/components/page-header'
 import { ProfileTab } from '#/components/profile/profile-tab'

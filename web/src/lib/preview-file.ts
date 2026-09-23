@@ -1,4 +1,5 @@
-export type PreviewKind = 'html' | 'markdown' | 'code' | 'svg' | 'lpw' | 'tsx' | 'mdx'
+export type PreviewKind =
+  'html' | 'markdown' | 'code' | 'svg' | 'lpw' | 'tsx' | 'mdx'
 
 const LPW_EXT = new Set(['lpw'])
 const MDX_EXT = new Set(['mdx'])

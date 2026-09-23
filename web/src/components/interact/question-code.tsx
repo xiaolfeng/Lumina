@@ -17,12 +17,25 @@ import type { QuestionComponentProps } from './question-shell'
  * 改为按需动态 import：仅当用户实际使用某种语言时才下载对应包。
  */
 const LANG_LOADERS: Record<string, (() => Promise<any>) | undefined> = {
-  javascript: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
+  javascript: () =>
+    import('@codemirror/lang-javascript').then((m) => m.javascript()),
   js: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
-  jsx: () => import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: true })),
-  typescript: () => import('@codemirror/lang-javascript').then((m) => m.javascript({ typescript: true })),
-  ts: () => import('@codemirror/lang-javascript').then((m) => m.javascript({ typescript: true })),
-  tsx: () => import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: true, typescript: true })),
+  jsx: () =>
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ jsx: true }),
+    ),
+  typescript: () =>
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ typescript: true }),
+    ),
+  ts: () =>
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ typescript: true }),
+    ),
+  tsx: () =>
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ jsx: true, typescript: true }),
+    ),
   python: () => import('@codemirror/lang-python').then((m) => m.python()),
   py: () => import('@codemirror/lang-python').then((m) => m.python()),
   json: () => import('@codemirror/lang-json').then((m) => m.json()),
@@ -44,8 +57,10 @@ const LANG_LOADERS: Record<string, (() => Promise<any>) | undefined> = {
   yml: () => import('@codemirror/lang-yaml').then((m) => m.yaml()),
   go: () => import('@codemirror/lang-go').then((m) => m.go()),
   golang: () => import('@codemirror/lang-go').then((m) => m.go()),
-  regex: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
-  shell: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
+  regex: () =>
+    import('@codemirror/lang-javascript').then((m) => m.javascript()),
+  shell: () =>
+    import('@codemirror/lang-javascript').then((m) => m.javascript()),
   bash: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
   sh: () => import('@codemirror/lang-javascript').then((m) => m.javascript()),
 }

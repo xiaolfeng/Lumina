@@ -46,9 +46,7 @@ const ROLE_DISPLAY_MAP: Partial<Record<string, RoleDisplay>> = {
   },
 }
 
-export function AgentModelAssignGroup({
-  module,
-}: AgentModelAssignGroupProps) {
+export function AgentModelAssignGroup({ module }: AgentModelAssignGroupProps) {
   const { data: agentData } = useAgentModels(module)
   const { data: modelsData } = useModels()
 
@@ -82,10 +80,7 @@ interface AgentModelSelectProps {
   models: Array<{ id: string; display_name: string }>
 }
 
-function AgentModelSelect({
-  assignment,
-  models,
-}: AgentModelSelectProps) {
+function AgentModelSelect({ assignment, models }: AgentModelSelectProps) {
   const updateMutation = useUpdateAgentModel()
   const [selectedModelId, setSelectedModelId] = useState(
     assignment.model_id ?? '',
@@ -114,8 +109,7 @@ function AgentModelSelect({
 
   const display = ROLE_DISPLAY_MAP[assignment.role]
   const label = display?.label ?? assignment.role
-  const description =
-    display?.description ?? '为 Agent 角色分配默认使用的模型'
+  const description = display?.description ?? '为 Agent 角色分配默认使用的模型'
 
   return (
     <div className="flex items-center justify-between rounded-lg border p-4">

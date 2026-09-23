@@ -7,6 +7,7 @@
 TanStack Start（React 19）+ Tailwind CSS 4 + shadcn/ui 构建的 Lumina 前端应用，通过 REST API + WebSocket 与后端通信。前端构建产物通过 `go:embed` 嵌入 Go 二进制，支持单文件部署。同时通过 `@lumina/components` workspace 包与 `web-wiki` 共享 shadcn/ui 组件、Markdown 原语、motion 动画变体和微明主题 CSS。
 
 ## 目录结构
+
 ```text
 web/
 ├── package.json                # pnpm 管理；React 19 + TanStack Start + Tailwind CSS 4
@@ -285,39 +286,39 @@ web/
 
 ## 导航指南
 
-| 任务 | 位置 | 说明 |
-|---|---|---|
-| 新增页面 | `src/routes/` | 文件路径即路由路径；布局路由以 `_` 前缀 |
-| 新增控制台子页面 | `src/routes/console/` | 在 `console.tsx` 布局下添加，自动继承 Sidebar + Breadcrumb |
-| 新增工作空间管理 | `src/routes/console/workspace.tsx` | 工作空间增删改查、默认空间保障与图标配置 |
-| 新增 Pages 管理页 | `src/routes/console/pages/` | 已发布页面列表、版本查询、访问策略与密码门设置 |
-| 新增 Pages 展示页 | `src/routes/pages/` | 路径式寻址 `/pages/:projectName/:slug`，密码门认证、沉浸壳展示 |
-| 新增 Preview 工作台 | `src/routes/preview/$sessionHash/$.tsx` | 路径式寻址 `/preview/:hash/:file`，视口缩放、源码查看、晋升对话框 |
-| 新增 LPW 文档渲染 | `@lumina/components/lpw` | 25+ 块组件与 4 种容器，支持 React 直渲与 ECharts 懒加载 |
-| 新增 MCP 接入说明 | `src/routes/console/connect.tsx` | 四级信道：插件安装 / 手动 MCP / 技能安装 / 工具速览；模板在 `mcp-connect.ts` + `plugin-connect.ts` |
-| 新增 MCP 接入组件 | `src/components/mcp/` | 复制块/端点卡/插件安装/技能安装/手动配置/工具目录；令牌弹窗复用 `created-key-panel` |
-| 新增 OAuth 同意页 | `src/routes/_public/oauth.tsx` | 公开布局；`?authorize_id=` 对应后端授权请求缓存；未登录先走登录再裁决 |
-| 新增项目级子页面 | `src/routes/console/project/$projectId/` | 按模块划分子目录（如 `repowiki/`） |
-| 新增 Interact 子页面 | `src/routes/interact/` | 在 `interact.tsx` 布局下添加 |
-| 新增通用组件 | `src/components/` | 全局级组件（Navbar/Footer/Sidebar/通用对话框/骨架屏等） |
-| 新增首页落地页区块 | `src/components/landing/` | 首页拆分为 hero/features/tech 等区块组件 |
-| 新增业务组件 | `src/components/<domain>/` | 按业务域组织（apikey/、workspace/、project/、pin/、profile/、qa/、preview/、pages/、interact/、llm/、ssh/、repowiki/、settings/） |
-| 新增题型组件 | `src/components/interact/question-*.tsx` | 遵循 `question-<type>.tsx` 命名，通过 `question-card.tsx` 分发 |
-| 新增交互原语 | `src/components/interact/primitives/` | 可复用的展示原语（Kicker/PanelCard/SandboxFrame/PreviewFrame 等）；Markdown 原语由 `@lumina/components` 提供 |
-| 新增 LLM 配置组件 | `src/components/llm/` | Provider/Model CRUD + Agent 角色模型分配 |
-| 新增 SSH Key 组件 | `src/components/ssh/` | CRUD 对话框 + 密钥生成入口 |
-| 新增 RepoWiki 组件 | `src/components/repowiki/` | 配置表单/版本管理/分析触发/Webhook 配置 |
-| 新增系统设置组件 | `src/components/settings/` | 按分组组织（站点/安全/Q&A/RepoWiki/Preview） |
-| 新增 shadcn/ui 组件 | `components/src/ui/` | 通过 `pnpm dlx shadcn@latest add <name>` 添加到共享包 |
-| 新增 API 接口 | `src/lib/apis/` | 使用 apiClient 封装，返回类型化响应 |
-| 新增数据 Hook | `src/hooks/` | 基于 TanStack Query 的 useMutation/useQuery |
-| 新增类型定义 | `src/lib/models/` | 按 request/response 子目录组织 |
-| 新增 WebAuthn 辅助函数 | `src/lib/webauthn/helpers.ts` | 浏览器端 base64 编解码、选项解析 |
-| 新增题型格式化 | `src/lib/format-answer.ts` | 各题型 answer → 可读字符串，跨 QA/interact 复用 |
-| 修改全局主题色 | `components/src/styles/theme.css` | 主题色盘已迁到共享包（静烛 v1） |
-| 修改路由配置 | `src/router.tsx` | 预加载策略、滚动恢复等 |
-| 修改动画配置 | `components/src/motion/` | 缓动函数和全局动画变体（共享包，详见 [components/](../components/AGENTS.md)） |
-| 工具函数 | `src/lib/` 或 `components/src/lib/` | 通用工具（如 `cn()`） |
+| 任务                   | 位置                                     | 说明                                                                                                                              |
+| ---------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 新增页面               | `src/routes/`                            | 文件路径即路由路径；布局路由以 `_` 前缀                                                                                           |
+| 新增控制台子页面       | `src/routes/console/`                    | 在 `console.tsx` 布局下添加，自动继承 Sidebar + Breadcrumb                                                                        |
+| 新增工作空间管理       | `src/routes/console/workspace.tsx`       | 工作空间增删改查、默认空间保障与图标配置                                                                                          |
+| 新增 Pages 管理页      | `src/routes/console/pages/`              | 已发布页面列表、版本查询、访问策略与密码门设置                                                                                    |
+| 新增 Pages 展示页      | `src/routes/pages/`                      | 路径式寻址 `/pages/:projectName/:slug`，密码门认证、沉浸壳展示                                                                    |
+| 新增 Preview 工作台    | `src/routes/preview/$sessionHash/$.tsx`  | 路径式寻址 `/preview/:hash/:file`，视口缩放、源码查看、晋升对话框                                                                 |
+| 新增 LPW 文档渲染      | `@lumina/components/lpw`                 | 25+ 块组件与 4 种容器，支持 React 直渲与 ECharts 懒加载                                                                           |
+| 新增 MCP 接入说明      | `src/routes/console/connect.tsx`         | 四级信道：插件安装 / 手动 MCP / 技能安装 / 工具速览；模板在 `mcp-connect.ts` + `plugin-connect.ts`                                |
+| 新增 MCP 接入组件      | `src/components/mcp/`                    | 复制块/端点卡/插件安装/技能安装/手动配置/工具目录；令牌弹窗复用 `created-key-panel`                                               |
+| 新增 OAuth 同意页      | `src/routes/_public/oauth.tsx`           | 公开布局；`?authorize_id=` 对应后端授权请求缓存；未登录先走登录再裁决                                                             |
+| 新增项目级子页面       | `src/routes/console/project/$projectId/` | 按模块划分子目录（如 `repowiki/`）                                                                                                |
+| 新增 Interact 子页面   | `src/routes/interact/`                   | 在 `interact.tsx` 布局下添加                                                                                                      |
+| 新增通用组件           | `src/components/`                        | 全局级组件（Navbar/Footer/Sidebar/通用对话框/骨架屏等）                                                                           |
+| 新增首页落地页区块     | `src/components/landing/`                | 首页拆分为 hero/features/tech 等区块组件                                                                                          |
+| 新增业务组件           | `src/components/<domain>/`               | 按业务域组织（apikey/、workspace/、project/、pin/、profile/、qa/、preview/、pages/、interact/、llm/、ssh/、repowiki/、settings/） |
+| 新增题型组件           | `src/components/interact/question-*.tsx` | 遵循 `question-<type>.tsx` 命名，通过 `question-card.tsx` 分发                                                                    |
+| 新增交互原语           | `src/components/interact/primitives/`    | 可复用的展示原语（Kicker/PanelCard/SandboxFrame/PreviewFrame 等）；Markdown 原语由 `@lumina/components` 提供                      |
+| 新增 LLM 配置组件      | `src/components/llm/`                    | Provider/Model CRUD + Agent 角色模型分配                                                                                          |
+| 新增 SSH Key 组件      | `src/components/ssh/`                    | CRUD 对话框 + 密钥生成入口                                                                                                        |
+| 新增 RepoWiki 组件     | `src/components/repowiki/`               | 配置表单/版本管理/分析触发/Webhook 配置                                                                                           |
+| 新增系统设置组件       | `src/components/settings/`               | 按分组组织（站点/安全/Q&A/RepoWiki/Preview）                                                                                      |
+| 新增 shadcn/ui 组件    | `components/src/ui/`                     | 通过 `pnpm dlx shadcn@latest add <name>` 添加到共享包                                                                             |
+| 新增 API 接口          | `src/lib/apis/`                          | 使用 apiClient 封装，返回类型化响应                                                                                               |
+| 新增数据 Hook          | `src/hooks/`                             | 基于 TanStack Query 的 useMutation/useQuery                                                                                       |
+| 新增类型定义           | `src/lib/models/`                        | 按 request/response 子目录组织                                                                                                    |
+| 新增 WebAuthn 辅助函数 | `src/lib/webauthn/helpers.ts`            | 浏览器端 base64 编解码、选项解析                                                                                                  |
+| 新增题型格式化         | `src/lib/format-answer.ts`               | 各题型 answer → 可读字符串，跨 QA/interact 复用                                                                                   |
+| 修改全局主题色         | `components/src/styles/theme.css`        | 主题色盘已迁到共享包（静烛 v1）                                                                                                   |
+| 修改路由配置           | `src/router.tsx`                         | 预加载策略、滚动恢复等                                                                                                            |
+| 修改动画配置           | `components/src/motion/`                 | 缓动函数和全局动画变体（共享包，详见 [components/](../components/AGENTS.md)）                                                     |
+| 工具函数               | `src/lib/` 或 `components/src/lib/`      | 通用工具（如 `cn()`）                                                                                                             |
 
 ## 约定
 

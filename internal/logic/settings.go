@@ -3,7 +3,10 @@ package logic
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strconv"
+	"strings"
+	"unicode"
 
 	apiSettings "github.com/xiaolfeng/Lumina/api/settings"
 	bConst "github.com/xiaolfeng/Lumina/internal/constant"
@@ -155,9 +158,47 @@ func (l *SettingsLogic) GetSettingBool(ctx context.Context, key string) (bool, *
 	return value == "true", nil
 }
 
+// ValidateSiteDomain 校验对外站点域名格式。
+//
+// 允许空字符串（未配置时回退到默认监听地址）。
+// 非空时必须为合法的 HTTP 或 HTTPS 绝对地址，拥有非空 Host，
+// 禁止包含账号凭据 (userinfo)、查询参数 (?)、锚点 (#)、控制字符或空白字符。
+func ValidateSiteDomain(ctx context.Context, value string) *xError.Error {
+	if value == "" {
+		return nil
+	}
+
+	// 拦截包含任何空白字符或控制字符（包含 Unicode 空格、行分隔符等）
+	for _, r := range value {
+		if unicode.IsSpace(r) || unicode.IsControl(r) {
+			return xError.NewError(ctx, xError.BadRequest, xError.ErrMessage("站点域名不得包含空白字符或控制字符"), false, nil)
+		}
+	}
+
+	// 拦截命令行特殊符号、查询参数与锚点标识
+	if strings.ContainsAny(value, "\"'`$<>|&?#\\") {
+		return xError.NewError(ctx, xError.BadRequest, xError.ErrMessage("站点域名必须为合法的 HTTP 或 HTTPS 根地址，不得包含查询参数 (?)、页面锚点 (#) 或特殊字符"), false, nil)
+	}
+
+	parsedURL, err := url.ParseRequestURI(value)
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") || parsedURL.Host == "" {
+		return xError.NewError(ctx, xError.BadRequest, xError.ErrMessage("站点域名必须为合法的 HTTP 或 HTTPS 地址（例如 https://lumina.example.com）"), false, err)
+	}
+
+	if parsedURL.User != nil {
+		return xError.NewError(ctx, xError.BadRequest, xError.ErrMessage("站点域名不得包含账号或密码凭据信息"), false, nil)
+	}
+
+	if parsedURL.RawQuery != "" || parsedURL.Fragment != "" {
+		return xError.NewError(ctx, xError.BadRequest, xError.ErrMessage("站点域名不得包含查询参数或页面锚点"), false, nil)
+	}
+
+	return nil
+}
+
 // validateSettingValue 根据 KeyDef.Type 校验值合法性
 //
-// int → strconv.Atoi 必须成功；bool → 必须为 "true" 或 "false"；string → 不校验。
+// int → strconv.Atoi 必须成功；bool → 必须为 "true" 或 "false"；string → 特定键（如 site.domain）校验合法 URL 格式。
 func validateSettingValue(ctx context.Context, def bConst.SettingKeyDef, value string) *xError.Error {
 	switch def.Type {
 	case "int":
@@ -171,6 +212,12 @@ func validateSettingValue(ctx context.Context, def bConst.SettingKeyDef, value s
 	case "bool":
 		if value != "true" && value != "false" {
 			return xError.NewError(ctx, xError.BadRequest, xError.ErrMessage("设置项 ["+def.Key+"] 值 ["+value+"] 不是有效的布尔值（true/false）"), false, nil)
+		}
+	case "string":
+		if def.Key == bConst.InfoKeySiteDomain {
+			if xErr := ValidateSiteDomain(ctx, value); xErr != nil {
+				return xErr
+			}
 		}
 	}
 	return nil

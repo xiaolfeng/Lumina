@@ -200,9 +200,7 @@ function Kpi({
           {value ?? 0}
         </p>
       )}
-      {delta && (
-        <p className="mt-2 text-[11.5px] text-sea-ink-soft">{delta}</p>
-      )}
+      {delta && <p className="mt-2 text-[11.5px] text-sea-ink-soft">{delta}</p>}
     </div>
   )
 }
@@ -215,11 +213,17 @@ function SessionStatus({ status }: { status: SessionItem['status'] }) {
       text: 'text-sea-ink-soft',
       label: '已归档',
     },
-    deleted: { dot: 'bg-destructive', text: 'text-destructive', label: '已删除' },
+    deleted: {
+      dot: 'bg-destructive',
+      text: 'text-destructive',
+      label: '已删除',
+    },
   }[status]
 
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${config.text}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 text-xs font-medium ${config.text}`}
+    >
       <span className={`inline-block size-[7px] rounded-full ${config.dot}`} />
       {config.label}
     </span>

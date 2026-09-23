@@ -9,44 +9,41 @@ import { cn } from '#/lib/utils'
  * 支持 header / footer slot（带分隔线）。
  */
 interface PanelCardProps {
-	children: ReactNode
-	/** 头部内容（可选），渲染时带底部分隔线 */
-	header?: ReactNode
-	/** 底部内容（可选），渲染时带顶部分隔线 */
-	footer?: ReactNode
-	/** 头部是否紧凑（无 padding，由调用方自定） */
-	flushHeader?: boolean
-	className?: string
-	bodyClassName?: string
+  children: ReactNode
+  /** 头部内容（可选），渲染时带底部分隔线 */
+  header?: ReactNode
+  /** 底部内容（可选），渲染时带顶部分隔线 */
+  footer?: ReactNode
+  /** 头部是否紧凑（无 padding，由调用方自定） */
+  flushHeader?: boolean
+  className?: string
+  bodyClassName?: string
 }
 
 export function PanelCard({
-	children,
-	header,
-	footer,
-	flushHeader,
-	className,
-	bodyClassName,
+  children,
+  header,
+  footer,
+  flushHeader,
+  className,
+  bodyClassName,
 }: PanelCardProps) {
-	return (
-		<section
-			className={cn(
-				'overflow-hidden border border-line bg-surface',
-				className,
-			)}
-		>
-			{header && (
-				<div
-					className={cn(
-						!flushHeader && 'px-4 py-2.5',
-						footer || children ? 'border-b border-line/50' : '',
-					)}
-				>
-					{header}
-				</div>
-			)}
-			<div className={cn('p-4', bodyClassName)}>{children}</div>
-			{footer && <div className="border-t border-line/50">{footer}</div>}
-		</section>
-	)
+  return (
+    <section
+      className={cn('overflow-hidden border border-line bg-surface', className)}
+    >
+      {header && (
+        <div
+          className={cn(
+            !flushHeader && 'px-4 py-2.5',
+            footer || children ? 'border-b border-line/50' : '',
+          )}
+        >
+          {header}
+        </div>
+      )}
+      <div className={cn('p-4', bodyClassName)}>{children}</div>
+      {footer && <div className="border-t border-line/50">{footer}</div>}
+    </section>
+  )
 }

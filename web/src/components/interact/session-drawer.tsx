@@ -11,45 +11,45 @@ import type { Session } from './types'
  * 桌面端（≥ xl）自动隐藏。
  */
 export function MobileSessionDrawer({
-	sessions,
-	selectedId,
-	onSelect,
+  sessions,
+  selectedId,
+  onSelect,
 }: {
-	sessions: Session[]
-	selectedId: string
-	onSelect: (id: string) => void
+  sessions: Session[]
+  selectedId: string
+  onSelect: (id: string) => void
 }) {
-	const { open, setOpen } = useSidebarOpen()
-	const [isDesktop, setIsDesktop] = useState(false)
+  const { open, setOpen } = useSidebarOpen()
+  const [isDesktop, setIsDesktop] = useState(false)
 
-	useEffect(() => {
-		const mq = window.matchMedia('(min-width: 1280px)')
-		setIsDesktop(mq.matches)
-		const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
-		mq.addEventListener('change', handler)
-		return () => mq.removeEventListener('change', handler)
-	}, [])
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1280px)')
+    setIsDesktop(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
-	if (isDesktop) return null
+  if (isDesktop) return null
 
-	return (
-		<Sheet open={open} onOpenChange={setOpen}>
-			<SheetContent
-				side="right"
-				showCloseButton={false}
-				overlayClassName="bg-black/20 backdrop-blur-sm"
-				className="m-3 h-[calc(100%-1.5rem)] w-[340px] border border-line bg-surface-strong data-[state=open]:duration-300 data-[state=closed]:duration-200"
-			>
-				<SessionPanel
-					sessions={sessions}
-					selectedId={selectedId}
-					onSelect={(id) => {
-						setOpen(false)
-						onSelect(id)
-					}}
-					onClose={() => setOpen(false)}
-				/>
-			</SheetContent>
-		</Sheet>
-	)
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        overlayClassName="bg-black/20 backdrop-blur-sm"
+        className="m-3 h-[calc(100%-1.5rem)] w-[340px] border border-line bg-surface-strong data-[state=open]:duration-300 data-[state=closed]:duration-200"
+      >
+        <SessionPanel
+          sessions={sessions}
+          selectedId={selectedId}
+          onSelect={(id) => {
+            setOpen(false)
+            onSelect(id)
+          }}
+          onClose={() => setOpen(false)}
+        />
+      </SheetContent>
+    </Sheet>
+  )
 }

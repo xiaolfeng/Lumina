@@ -28,6 +28,9 @@ function PreviewSplatPage() {
     '',
   )
   return (
-    <PreviewWorkbenchPage sessionHash={sessionHash} requestedFile={requestedFile} />
+    <PreviewWorkbenchPage
+      sessionHash={sessionHash}
+      requestedFile={requestedFile}
+    />
   )
 }

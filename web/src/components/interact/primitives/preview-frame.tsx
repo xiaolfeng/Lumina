@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { ease } from '@lumina/components/motion'
 
 import { PreviewLpwInlineViewer } from '@lumina/components/lpw'
 import { PreviewMdxInlineViewer } from '@lumina/components/mdx'
@@ -13,7 +15,7 @@ import { previewKindFromFilename } from '#/lib/preview-file'
  * 原生解析 <link href="style.css"> / <script src="app.js"> 等相对引用 ——
  * 相对引用会基于 iframe 的 src 解析，命中同 Session 的其它文件。
  *
- * - sandbox="allow-scripts" 刻意不配 allow-same-origin，脚本运行在隔离 origin
+ * - sandbox="allow-scripts allow-popups" 刻意不配 allow-same-origin，脚本运行在隔离 origin
  * - iframe 高度由父容器决定（h-full），内部滚动，无需 postMessage 高度回传
  */
 export interface PreviewFrameProps {
@@ -36,6 +38,8 @@ function LoadingSlot() {
 export function PreviewFrame({ src, className, title }: PreviewFrameProps) {
   const [mounted, setMounted] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const isFirstMountRef = useRef(true)
+  const shouldReduceMotion = useReducedMotion()
 
   useEffect(() => {
     setMounted(true)
@@ -45,17 +49,72 @@ export function PreviewFrame({ src, className, title }: PreviewFrameProps) {
     setLoaded(false)
   }, [src])
 
+  // 超时保护：防止 iframe onLoad 异常导致界面永久停留在半透明态 (Q-04 / Q-02)
+  useEffect(() => {
+    if (loaded) return
+    const timer = setTimeout(() => {
+      setLoaded(true)
+      isFirstMountRef.current = false
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [loaded, src])
+
+  const handleLoad = () => {
+    setLoaded(true)
+    isFirstMountRef.current = false
+  }
+
+  const isInitialLoading = !mounted || (!loaded && isFirstMountRef.current)
+
   return (
-    <div className={`relative min-h-0 h-full w-full ${className ?? ''}`}>
-      {(!mounted || !loaded) && <LoadingSlot />}
+    <div
+      className={`relative min-h-0 h-full w-full overflow-hidden ${
+        className ?? ''
+      }`}
+    >
+      {/* 首次加载占位 */}
+      {isInitialLoading && <LoadingSlot />}
+
+      {/* 增量同步顶部细进度条 (LUMINA-22) */}
+      <AnimatePresence>
+        {!loaded && !isFirstMountRef.current ? (
+          <motion.div
+            key="preview-sync-bar"
+            data-testid="preview-sync-bar"
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: 1, scaleX: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: shouldReduceMotion ? 0 : 0.15,
+              ease,
+            }}
+            className="absolute top-0 left-0 right-0 z-20 h-0.5 origin-left bg-lagoon shadow-[0_0_8px_var(--color-lagoon)] pointer-events-none"
+          />
+        ) : null}
+      </AnimatePresence>
+
+      {/* iframe 动效容器 (Q-02, Q-06, S-02) */}
       {mounted ? (
-        <iframe
-          src={src}
-          title={title ?? '前端预览'}
-          sandbox="allow-scripts"
-          onLoad={() => setLoaded(true)}
-          className="block h-full w-full border-0"
-        />
+        <motion.div
+          data-testid="preview-frame-viewport"
+          className={`h-full w-full ${!loaded ? 'pointer-events-none' : ''}`}
+          initial={false}
+          animate={{
+            opacity: loaded ? 1 : 0.35,
+          }}
+          transition={{
+            duration: shouldReduceMotion ? 0 : loaded ? 0.18 : 0.12,
+            ease,
+          }}
+        >
+          <iframe
+            src={src}
+            title={title ?? '前端预览'}
+            sandbox="allow-scripts allow-popups"
+            onLoad={handleLoad}
+            className="block h-full w-full border-0"
+          />
+        </motion.div>
       ) : null}
     </div>
   )

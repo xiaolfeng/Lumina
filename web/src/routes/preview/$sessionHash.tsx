@@ -1,4 +1,10 @@
-import { createFileRoute, Outlet, redirect, useMatches, useParams } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  useMatches,
+  useParams,
+} from '@tanstack/react-router'
 import Cookies from 'js-cookie'
 import { PreviewWorkbenchPage } from '#/components/preview/workbench-page'
 import { getSafeRedirect } from '#/lib/apis/client'

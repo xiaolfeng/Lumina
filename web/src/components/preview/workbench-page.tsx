@@ -134,6 +134,16 @@ export function PreviewWorkbenchPage({
       ) {
         return
       }
+
+      // S-01: 来源鉴权守卫 — 严格校验消息是否来自当前 DOM 中挂载的预览 iframe
+      const iframes = Array.from(document.querySelectorAll('iframe'))
+      const isFromPreviewIframe = iframes.some(
+        (iframe) => iframe.contentWindow === event.source,
+      )
+      if (!isFromPreviewIframe) {
+        return
+      }
+
       const rawHref = event.data.href.split(/[?#]/)[0]
       const href = rawHref.split('/').pop()
       if (!href) return
@@ -179,7 +189,8 @@ export function PreviewWorkbenchPage({
 
   useEffect(() => {
     if (internalNavRef.current === activeFile) {
-      // 来自 iframe 内部导航：iframe 已完成或正在自然加载目标文件，避免重设 src 触发二次硬重载
+      // 来自 iframe 内部导航：iframe 已完成原生跳转（保留其 hash 与 query 参数），
+      // 避免立即用 computedSrc 重设 iframe.src 导致参数被抹除或触发二次重复硬重载
       internalNavRef.current = null
       return
     }

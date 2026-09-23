@@ -40,7 +40,9 @@ export function switchActiveVersion(
   id: string,
   versionId: string,
 ): Promise<BaseResponse<unknown>> {
-  return apiClient.post(`/api/v1/pages/${id}/versions/${versionId}/switch-active`)
+  return apiClient.post(
+    `/api/v1/pages/${id}/versions/${versionId}/switch-active`,
+  )
 }
 
 export function forkPage(
@@ -76,7 +78,9 @@ export function getPageVersionsByProject(
   projectName: string,
   slug: string,
 ): Promise<BaseResponse<PageVersionListResponse>> {
-  return publicApiClient.get(`/api/v1/pages/by-project/${projectName}/${slug}/versions`)
+  return publicApiClient.get(
+    `/api/v1/pages/by-project/${projectName}/${slug}/versions`,
+  )
 }
 
 export function checkPageAuth(
@@ -106,8 +110,10 @@ export function getPageMeta(
   slug: string,
   version?: string,
 ): Promise<BaseResponse<PagePublicMetaResponse>> {
-  return publicApiClient.get(`/api/v1/pages/by-project/${projectName}/${slug}/meta`, {
-    params: version ? { v: version } : undefined,
-  })
+  return publicApiClient.get(
+    `/api/v1/pages/by-project/${projectName}/${slug}/meta`,
+    {
+      params: version ? { v: version } : undefined,
+    },
+  )
 }
-

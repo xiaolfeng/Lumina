@@ -28,10 +28,7 @@ export function DataTablePagination({
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <label
-            htmlFor={pageSizeId}
-            className="text-sm text-muted-foreground"
-          >
+          <label htmlFor={pageSizeId} className="text-sm text-muted-foreground">
             每页
           </label>
           <select

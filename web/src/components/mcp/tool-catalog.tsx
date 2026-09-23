@@ -6,7 +6,7 @@ export function ToolCatalog() {
     <div>
       <ChannelKicker>可以做什么</ChannelKicker>
       <h2 className="display-title mt-2 text-[22px] font-medium text-sea-ink">
-        五组能力，覆盖日常项目协作
+        八大核心能力域，40 套标准协作工具
       </h2>
       <div className="mt-4">
         {MCP_TOOL_MODULES.map((module) => (

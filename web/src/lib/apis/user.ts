@@ -6,7 +6,10 @@ import type {
   UpdatePasswordResponseWrapper,
   BiometricCredentialListResponseWrapper,
 } from '../models/response/user'
-import type { UpdateProfileRequest, UpdatePasswordRequest } from '../models/request/user'
+import type {
+  UpdateProfileRequest,
+  UpdatePasswordRequest,
+} from '../models/request/user'
 
 /** 获取当前用户信息 */
 export function getCurrentUser(): Promise<UserInfoResponseWrapper> {

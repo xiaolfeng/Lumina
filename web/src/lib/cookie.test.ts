@@ -88,7 +88,9 @@ describe('cookie governance', () => {
 
     it('returns null if cookie value is invalid or out of range', () => {
       // 恶意或异常非数值
-      Cookies.set(COOKIE_KEYS.QA_SPLITTER_RATIO, 'invalid_number', { path: '/' })
+      Cookies.set(COOKIE_KEYS.QA_SPLITTER_RATIO, 'invalid_number', {
+        path: '/',
+      })
       expect(getQaSplitterRatio()).toBeNull()
 
       // 外部篡改为超出界限的值

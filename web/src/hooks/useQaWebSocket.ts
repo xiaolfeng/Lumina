@@ -34,7 +34,8 @@ export interface WsMessage {
   timestamp: number
 }
 
-export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'rejected'
+export type ConnectionStatus =
+  'idle' | 'connecting' | 'connected' | 'disconnected' | 'rejected'
 
 // ── Hook Options ──
 

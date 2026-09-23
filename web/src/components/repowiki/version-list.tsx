@@ -1,411 +1,452 @@
 import { useState } from 'react'
 import { Button } from '@lumina/components/ui/button'
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@lumina/components/ui/table'
 import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from '@lumina/components/ui/alert-dialog'
 import { SkeletonTable } from '#/components/skeleton-table'
 import { StatusBadge } from '#/components/repowiki/status-badge'
 import { DataTablePagination } from '#/components/data-table-pagination'
 import {
-	useRepoWikiVersions,
-	useRepoWikiAnalyze,
-	useRepoWikiUpdate,
-	useUpdateSelectedVersion,
-	ACTIVE_STATUSES,
+  useRepoWikiVersions,
+  useRepoWikiAnalyze,
+  useRepoWikiUpdate,
+  useUpdateSelectedVersion,
+  ACTIVE_STATUSES,
 } from '#/hooks/useRepoWiki'
 import { buildWikiReaderUrl } from '#/lib/utils'
 import { formatDateTime } from '#/lib/format-date'
 import {
-	Play,
-	RefreshCw,
-	ChevronDown,
-	ChevronRight,
-	Clock,
-	Loader2,
-	ExternalLink,
-	Check,
+  Play,
+  RefreshCw,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Loader2,
+  ExternalLink,
+  Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ── 阶段配置 ──
 
 const STAGE_LABELS: Record<string, string> = {
-	scan: '扫描',
-	pass1: '分析 Pass 1',
-	pass2: '分析 Pass 2',
-	pass3: '分析 Pass 3',
-	pass4: '分析 Pass 4',
-	assemble: '组装',
+  scan: '扫描',
+  pass1: '分析 Pass 1',
+  pass2: '分析 Pass 2',
+  pass3: '分析 Pass 3',
+  pass4: '分析 Pass 4',
+  assemble: '组装',
 }
 
 const STAGE_ORDER = ['scan', 'pass1', 'pass2', 'pass3', 'pass4', 'assemble']
 
 // ── 阶段进度指示器 ──
 
-function StageProgress({ currentStage, durationMs }: { currentStage?: string; durationMs?: number }) {
-	if (!currentStage && !durationMs) return <span className="text-xs text-muted-foreground">—</span>
+function StageProgress({
+  currentStage,
+  durationMs,
+}: {
+  currentStage?: string
+  durationMs?: number
+}) {
+  if (!currentStage && !durationMs)
+    return <span className="text-xs text-muted-foreground">—</span>
 
-	const currentIndex = currentStage ? STAGE_ORDER.indexOf(currentStage) : -1
-	const totalStages = STAGE_ORDER.length
-	const progress = currentIndex >= 0 ? ((currentIndex + 1) / totalStages) * 100 : 0
+  const currentIndex = currentStage ? STAGE_ORDER.indexOf(currentStage) : -1
+  const totalStages = STAGE_ORDER.length
+  const progress =
+    currentIndex >= 0 ? ((currentIndex + 1) / totalStages) * 100 : 0
 
-	return (
-		<div className="flex items-center gap-3 text-xs text-muted-foreground">
-			{currentStage && (
-				<div className="flex items-center gap-1.5">
-					<span className="font-medium text-foreground">当前阶段:</span>
-					<span className="text-lagoon font-medium">{STAGE_LABELS[currentStage] || currentStage}</span>
-				</div>
-			)}
-			{durationMs !== undefined && durationMs > 0 && (
-				<div className="flex items-center gap-1">
-					<Clock className="size-3" />
-					<span>{(durationMs / 1000).toFixed(1)}s</span>
-				</div>
-			)}
-			{currentIndex >= 0 && (
-				<div className="flex items-center gap-2 flex-1 max-w-[120px]">
-					<div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
-						<div
-							className="h-full bg-lagoon rounded-full transition-all duration-500 ease-out"
-							style={{ width: `${progress}%` }}
-						/>
-					</div>
-					<span className="text-[10px] tabular-nums">{Math.round(progress)}%</span>
-				</div>
-			)}
-		</div>
-	)
+  return (
+    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+      {currentStage && (
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-foreground">当前阶段:</span>
+          <span className="text-lagoon font-medium">
+            {STAGE_LABELS[currentStage] || currentStage}
+          </span>
+        </div>
+      )}
+      {durationMs !== undefined && durationMs > 0 && (
+        <div className="flex items-center gap-1">
+          <Clock className="size-3" />
+          <span>{(durationMs / 1000).toFixed(1)}s</span>
+        </div>
+      )}
+      {currentIndex >= 0 && (
+        <div className="flex items-center gap-2 flex-1 max-w-[120px]">
+          <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full bg-lagoon rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="text-[10px] tabular-nums">
+            {Math.round(progress)}%
+          </span>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── 错误信息（可折叠） ──
 
 function ErrorMessage({ message }: { message: string }) {
-	const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
-	return (
-		<div className="mt-1.5">
-			<button
-				type="button"
-				onClick={() => setExpanded(!expanded)}
-				className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors cursor-pointer"
-			>
-				{expanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-				<span>{expanded ? '收起错误详情' : '展开错误详情'}</span>
-			</button>
-			{expanded && (
-				<div className="mt-1.5 p-2.5 rounded-md bg-destructive/10 border border-destructive/20 text-xs text-destructive font-mono leading-relaxed break-all max-h-[120px] overflow-y-auto">
-					{message}
-				</div>
-			)}
-		</div>
-	)
+  return (
+    <div className="mt-1.5">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors cursor-pointer"
+      >
+        {expanded ? (
+          <ChevronDown className="size-3" />
+        ) : (
+          <ChevronRight className="size-3" />
+        )}
+        <span>{expanded ? '收起错误详情' : '展开错误详情'}</span>
+      </button>
+      {expanded && (
+        <div className="mt-1.5 p-2.5 rounded-md bg-destructive/10 border border-destructive/20 text-xs text-destructive font-mono leading-relaxed break-all max-h-[120px] overflow-y-auto">
+          {message}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── 分析按钮 + 确认对话框 ──
 
 export function AnalyzeButton({ configId }: { configId: string }) {
-	const [dialogOpen, setDialogOpen] = useState(false)
-	const analyzeMutation = useRepoWikiAnalyze(configId)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const analyzeMutation = useRepoWikiAnalyze(configId)
 
-	const handleConfirm = () => {
-		analyzeMutation.mutate(undefined)
-		setDialogOpen(false)
-	}
+  const handleConfirm = () => {
+    analyzeMutation.mutate(undefined)
+    setDialogOpen(false)
+  }
 
-	return (
-		<>
-			<Button
-				onClick={() => setDialogOpen(true)}
-				disabled={analyzeMutation.isPending}
-				className="gap-2 bg-lagoon text-foam hover:bg-lagoon-deep"
-			>
-				<Play className="size-4" />
-				开始分析
-			</Button>
+  return (
+    <>
+      <Button
+        onClick={() => setDialogOpen(true)}
+        disabled={analyzeMutation.isPending}
+        className="gap-2 bg-lagoon text-foam hover:bg-lagoon-deep"
+      >
+        <Play className="size-4" />
+        开始分析
+      </Button>
 
-			<AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>确认启动分析？</AlertDialogTitle>
-						<AlertDialogDescription>
-							这将触发一次完整的仓库克隆和分析流程，可能需要较长时间。确定要继续吗？
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel disabled={analyzeMutation.isPending}>取消</AlertDialogCancel>
-						<AlertDialogAction onClick={handleConfirm} disabled={analyzeMutation.isPending}>
-							{analyzeMutation.isPending ? (
-								<span className="flex items-center gap-2">
-									<Loader2 className="size-4 animate-spin" />
-									启动中...
-								</span>
-							) : (
-								'确认启动'
-							)}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
-		</>
-	)
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认启动分析？</AlertDialogTitle>
+            <AlertDialogDescription>
+              这将触发一次完整的仓库克隆和分析流程，可能需要较长时间。确定要继续吗？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={analyzeMutation.isPending}>
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirm}
+              disabled={analyzeMutation.isPending}
+            >
+              {analyzeMutation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  启动中...
+                </span>
+              ) : (
+                '确认启动'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
 }
 
 // ── 增量更新按钮 + 确认对话框 ──
 
 export function UpdateButton({ configId }: { configId: string }) {
-	const [dialogOpen, setDialogOpen] = useState(false)
-	const updateMutation = useRepoWikiUpdate(configId)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const updateMutation = useRepoWikiUpdate(configId)
 
-	const handleConfirm = () => {
-		updateMutation.mutate(undefined)
-		setDialogOpen(false)
-	}
+  const handleConfirm = () => {
+    updateMutation.mutate(undefined)
+    setDialogOpen(false)
+  }
 
-	return (
-		<>
-			<Button
-				variant="outline"
-				onClick={() => setDialogOpen(true)}
-				disabled={updateMutation.isPending}
-				className="gap-2"
-			>
-				<RefreshCw className={`size-4 ${updateMutation.isPending ? 'animate-spin' : ''}`} />
-				增量更新
-			</Button>
+  return (
+    <>
+      <Button
+        variant="outline"
+        onClick={() => setDialogOpen(true)}
+        disabled={updateMutation.isPending}
+        className="gap-2"
+      >
+        <RefreshCw
+          className={`size-4 ${updateMutation.isPending ? 'animate-spin' : ''}`}
+        />
+        增量更新
+      </Button>
 
-			<AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>确认增量更新？</AlertDialogTitle>
-						<AlertDialogDescription>
-							这将拉取最新代码并执行增量分析。相比全量分析更快，但仅适用于已有历史版本的仓库。
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel disabled={updateMutation.isPending}>取消</AlertDialogCancel>
-						<AlertDialogAction onClick={handleConfirm} disabled={updateMutation.isPending}>
-							{updateMutation.isPending ? (
-								<span className="flex items-center gap-2">
-									<Loader2 className="size-4 animate-spin" />
-									启动中...
-								</span>
-							) : (
-								'确认更新'
-							)}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
-		</>
-	)
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认增量更新？</AlertDialogTitle>
+            <AlertDialogDescription>
+              这将拉取最新代码并执行增量分析。相比全量分析更快，但仅适用于已有历史版本的仓库。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateMutation.isPending}>
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirm}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  启动中...
+                </span>
+              ) : (
+                '确认更新'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
 }
 
 // ── 版本列表主组件（含选中版本切换） ──
 
 interface VersionListProps {
-	configId: string
-	/** 当前选中的版本 ID（用于对外服务） */
-	selectedVersionId?: string
+  configId: string
+  /** 当前选中的版本 ID（用于对外服务） */
+  selectedVersionId?: string
 }
 
 export function VersionList({ configId, selectedVersionId }: VersionListProps) {
-	const [page, setPage] = useState(1)
-	const [pageSize, setPageSize] = useState(20)
-	const { data, isLoading, isError, error } = useRepoWikiVersions(configId, page, pageSize)
-	const updateSelectedMutation = useUpdateSelectedVersion()
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const { data, isLoading, isError, error } = useRepoWikiVersions(
+    configId,
+    page,
+    pageSize,
+  )
+  const updateSelectedMutation = useUpdateSelectedVersion()
 
-	if (isLoading) return <SkeletonTable rows={5} />
+  if (isLoading) return <SkeletonTable rows={5} />
 
-	if (isError) {
-		return (
-			<div className="text-center py-12 text-destructive">
-				<p className="font-medium">加载版本列表失败</p>
-				<p className="text-sm mt-1">{error.message || '请稍后重试'}</p>
-			</div>
-		)
-	}
+  if (isError) {
+    return (
+      <div className="text-center py-12 text-destructive">
+        <p className="font-medium">加载版本列表失败</p>
+        <p className="text-sm mt-1">{error.message || '请稍后重试'}</p>
+      </div>
+    )
+  }
 
-	const versions = data?.items ?? []
-	const total = data?.total ?? 0
-	const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1
+  const versions = data?.items ?? []
+  const total = data?.total ?? 0
+  const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1
 
-	if (versions.length === 0) {
-		return (
-			<div className="text-center py-12 text-muted-foreground">
-				<p className="text-lg font-medium mb-1">暂无版本记录</p>
-				<p className="text-sm">点击「开始分析」创建第一个版本</p>
-			</div>
-		)
-	}
+  if (versions.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <p className="text-lg font-medium mb-1">暂无版本记录</p>
+        <p className="text-sm">点击「开始分析」创建第一个版本</p>
+      </div>
+    )
+  }
 
-	const handleSwitchVersion = (versionId: string) => {
-		if (versionId === selectedVersionId) return
-		updateSelectedMutation.mutate(
-			{ configId, versionId },
-			{
-				onError: (err: Error) => toast.error(err.message || '切换版本失败'),
-			},
-		)
-	}
+  const handleSwitchVersion = (versionId: string) => {
+    if (versionId === selectedVersionId) return
+    updateSelectedMutation.mutate(
+      { configId, versionId },
+      {
+        onError: (err: Error) => toast.error(err.message || '切换版本失败'),
+      },
+    )
+  }
 
-	return (
-		<div className="space-y-4">
-			{/* 版本概览 KPI · 发丝线分栏 */}
-			<div className="grid grid-cols-3 border-b border-line">
-				<div className="border-r border-line py-6 md:px-5 md:first:pl-0">
-					<p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
-						版本总数
-					</p>
-					<p className="display-title mt-3 text-5xl font-medium tracking-tight text-sea-ink">
-						{total}
-					</p>
-				</div>
-				<div className="border-r border-line py-6 md:px-5">
-					<p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
-						已完成
-					</p>
-					<p className="display-title mt-3 text-5xl font-medium tracking-tight text-sea-ink">
-						{data?.completed_count ?? 0}
-					</p>
-				</div>
-				<div className="py-6 md:px-5">
-					<p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
-						生成中
-					</p>
-					<p className="display-title mt-3 text-5xl font-medium tracking-tight text-sea-ink">
-						{data?.generating_count ?? 0}
-					</p>
-				</div>
-			</div>
+  return (
+    <div className="space-y-4">
+      {/* 版本概览 KPI · 发丝线分栏 */}
+      <div className="grid grid-cols-3 border-b border-line">
+        <div className="border-r border-line py-6 md:px-5 md:first:pl-0">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
+            版本总数
+          </p>
+          <p className="display-title mt-3 text-5xl font-medium tracking-tight text-sea-ink">
+            {total}
+          </p>
+        </div>
+        <div className="border-r border-line py-6 md:px-5">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
+            已完成
+          </p>
+          <p className="display-title mt-3 text-5xl font-medium tracking-tight text-sea-ink">
+            {data?.completed_count ?? 0}
+          </p>
+        </div>
+        <div className="py-6 md:px-5">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-sea-ink-soft">
+            生成中
+          </p>
+          <p className="display-title mt-3 text-5xl font-medium tracking-tight text-sea-ink">
+            {data?.generating_count ?? 0}
+          </p>
+        </div>
+      </div>
 
-			<div className="min-w-0 overflow-hidden rounded-lg border">
-				<Table>
-					<TableHeader>
-						<TableRow className="bg-muted/50 hover:bg-muted/50">
-							<TableHead className="w-[60px]">选中</TableHead>
-							<TableHead className="w-[110px]">版本号</TableHead>
-							<TableHead className="w-[120px]">提交哈希</TableHead>
-							<TableHead className="w-[110px]">状态</TableHead>
-							<TableHead className="min-w-[280px]">进度</TableHead>
-							<TableHead className="w-[160px]">创建时间</TableHead>
-							<TableHead className="w-[60px]" />
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{versions.map((version) => {
-							const isActive = ACTIVE_STATUSES.includes(
-								version.status as (typeof ACTIVE_STATUSES)[number],
-							)
-							const isCompleted = version.status === 'completed'
-							const isSelected = version.id === selectedVersionId
-							const isSwitchingThisRow =
-								updateSelectedMutation.isPending &&
-								updateSelectedMutation.variables.versionId === version.id
+      <div className="min-w-0 overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="w-[60px]">选中</TableHead>
+              <TableHead className="w-[110px]">版本号</TableHead>
+              <TableHead className="w-[120px]">提交哈希</TableHead>
+              <TableHead className="w-[110px]">状态</TableHead>
+              <TableHead className="min-w-[280px]">进度</TableHead>
+              <TableHead className="w-[160px]">创建时间</TableHead>
+              <TableHead className="w-[60px]" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {versions.map((version) => {
+              const isActive = ACTIVE_STATUSES.includes(
+                version.status as (typeof ACTIVE_STATUSES)[number],
+              )
+              const isCompleted = version.status === 'completed'
+              const isSelected = version.id === selectedVersionId
+              const isSwitchingThisRow =
+                updateSelectedMutation.isPending &&
+                updateSelectedMutation.variables.versionId === version.id
 
-							return (
-								<TableRow
-									key={version.id}
-									className={`group transition-colors ${
-										isSelected
-											? 'bg-lagoon/5 hover:bg-lagoon/10 border-l-2 border-l-lagoon'
-											: isActive
-												? 'bg-blue-50/30 hover:bg-blue-50/50 dark:bg-blue-950/10 dark:hover:bg-blue-950/20'
-												: ''
-									}`}
-								>
-									<TableCell>
-										{isCompleted ? (
-											<button
-												type="button"
-												onClick={() => handleSwitchVersion(version.id)}
-												disabled={isSwitchingThisRow || isSelected}
-												aria-label={`将版本 ${version.id} 设为当前选中`}
-												className="flex size-5 items-center justify-center rounded-full border-2 transition-colors cursor-pointer disabled:cursor-default disabled:opacity-100"
-												style={{
-													borderColor: isSelected ? 'var(--color-lagoon)' : 'var(--color-border)',
-													backgroundColor: isSelected ? 'var(--color-lagoon)' : 'transparent',
-												}}
-											>
-												{isSelected && <Check className="size-3 text-foam" />}
-												{isSwitchingThisRow && (
-													<Loader2 className="size-3 animate-spin text-muted-foreground" />
-												)}
-											</button>
-										) : (
-											<span className="inline-block size-5 rounded-full border-2 border-dashed border-muted-foreground/20" aria-hidden />
-										)}
-									</TableCell>
-									<TableCell className="font-mono text-sm font-medium">{version.id}</TableCell>
-									<TableCell>
-										<code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
-											{version.commit_hash.slice(0, 7)}
-										</code>
-									</TableCell>
-									<TableCell>
-										<StatusBadge status={version.status} />
-									</TableCell>
-									<TableCell>
-										<div className="space-y-1">
-											<StageProgress
-												currentStage={version.current_stage}
-												durationMs={version.duration_ms}
-											/>
-											{version.status === 'failed' && version.error_msg && (
-												<ErrorMessage message={version.error_msg} />
-											)}
-										</div>
-									</TableCell>
-									<TableCell className="text-sm text-muted-foreground">
-										{formatDateTime(version.created_at)}
-									</TableCell>
-									<TableCell className="text-right">
-										{isCompleted && (
-											<Button variant="ghost" size="sm" asChild>
-												<a
-													href={buildWikiReaderUrl(configId)}
-													target="_blank"
-													rel="noopener noreferrer"
-												>
-													<ExternalLink className="size-3.5" />
-													查看
-												</a>
-											</Button>
-										)}
-									</TableCell>
-								</TableRow>
-							)
-						})}
-					</TableBody>
-				</Table>
-			</div>
+              return (
+                <TableRow
+                  key={version.id}
+                  className={`group transition-colors ${
+                    isSelected
+                      ? 'bg-lagoon/5 hover:bg-lagoon/10 border-l-2 border-l-lagoon'
+                      : isActive
+                        ? 'bg-blue-50/30 hover:bg-blue-50/50 dark:bg-blue-950/10 dark:hover:bg-blue-950/20'
+                        : ''
+                  }`}
+                >
+                  <TableCell>
+                    {isCompleted ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchVersion(version.id)}
+                        disabled={isSwitchingThisRow || isSelected}
+                        aria-label={`将版本 ${version.id} 设为当前选中`}
+                        className="flex size-5 items-center justify-center rounded-full border-2 transition-colors cursor-pointer disabled:cursor-default disabled:opacity-100"
+                        style={{
+                          borderColor: isSelected
+                            ? 'var(--color-lagoon)'
+                            : 'var(--color-border)',
+                          backgroundColor: isSelected
+                            ? 'var(--color-lagoon)'
+                            : 'transparent',
+                        }}
+                      >
+                        {isSelected && <Check className="size-3 text-foam" />}
+                        {isSwitchingThisRow && (
+                          <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                        )}
+                      </button>
+                    ) : (
+                      <span
+                        className="inline-block size-5 rounded-full border-2 border-dashed border-muted-foreground/20"
+                        aria-hidden
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono text-sm font-medium">
+                    {version.id}
+                  </TableCell>
+                  <TableCell>
+                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
+                      {version.commit_hash.slice(0, 7)}
+                    </code>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={version.status} />
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <StageProgress
+                        currentStage={version.current_stage}
+                        durationMs={version.duration_ms}
+                      />
+                      {version.status === 'failed' && version.error_msg && (
+                        <ErrorMessage message={version.error_msg} />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatDateTime(version.created_at)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {isCompleted && (
+                      <Button variant="ghost" size="sm" asChild>
+                        <a
+                          href={buildWikiReaderUrl(configId)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="size-3.5" />
+                          查看
+                        </a>
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </div>
 
-			<DataTablePagination
-				currentPage={page}
-				totalPages={totalPages}
-				totalItems={total}
-				pageSize={pageSize}
-				onPageChange={(newPage) => setPage(newPage)}
-				onPageSizeChange={(newSize) => {
-					setPageSize(newSize)
-					setPage(1)
-				}}
-			/>
-		</div>
-	)
+      <DataTablePagination
+        currentPage={page}
+        totalPages={totalPages}
+        totalItems={total}
+        pageSize={pageSize}
+        onPageChange={(newPage) => setPage(newPage)}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize)
+          setPage(1)
+        }}
+      />
+    </div>
+  )
 }

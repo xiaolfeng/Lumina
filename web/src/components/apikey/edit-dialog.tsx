@@ -54,9 +54,7 @@ export function EditDialog({ open, onOpenChange, item }: EditDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>编辑令牌</DialogTitle>
-          <DialogDescription>
-            修改令牌的名称、描述和状态。
-          </DialogDescription>
+          <DialogDescription>修改令牌的名称、描述和状态。</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">

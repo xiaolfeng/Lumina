@@ -54,7 +54,10 @@ export function WorkbenchCanvas({
     const preset = DEVICE_PRESETS.find((item) => item.id === device)
     if (preset?.width) {
       setWidth((current) =>
-        clampDeviceWidth(preset.width, typeof window === 'undefined' ? current : window.innerWidth),
+        clampDeviceWidth(
+          preset.width,
+          typeof window === 'undefined' ? current : window.innerWidth,
+        ),
       )
     }
   }, [device])
@@ -140,7 +143,9 @@ export function WorkbenchCanvas({
               max={Math.min(1100, widthUpperBound)}
               value={width}
               onChange={(event) =>
-                setWidth(clampDeviceWidth(Number(event.target.value), viewportWidth))
+                setWidth(
+                  clampDeviceWidth(Number(event.target.value), viewportWidth),
+                )
               }
             />
             {QUICK_WIDTHS.map((value) => (

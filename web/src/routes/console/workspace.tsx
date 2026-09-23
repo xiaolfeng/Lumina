@@ -11,10 +11,7 @@ import { ConfirmDeleteDialog } from '#/components/confirm-delete-dialog'
 import { CreateWorkspaceDialog } from '#/components/workspace/create-dialog'
 import { EditWorkspaceDialog } from '#/components/workspace/edit-dialog'
 import { getWorkspaceColumns } from '#/components/workspace/columns'
-import {
-  useWorkspaceList,
-  useDeleteWorkspace,
-} from '#/hooks/useWorkspace'
+import { useWorkspaceList, useDeleteWorkspace } from '#/hooks/useWorkspace'
 import type { WorkspaceItem } from '#/lib/models/response/workspace'
 import { staggerContainer, staggerItem } from '@lumina/components/motion'
 

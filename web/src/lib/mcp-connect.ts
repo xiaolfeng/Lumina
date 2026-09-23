@@ -308,7 +308,10 @@ export const MCP_TOOL_MODULES: McpToolModule[] = [
     name: 'Workspace',
     summary: '先选定工作空间，再在该空间内解析项目。单用户用来拆开生活与工作。',
     tools: [
-      { name: 'workspace_list', summary: '列出全部空间，默认空间 slug 为 default' },
+      {
+        name: 'workspace_list',
+        summary: '列出全部空间，默认空间 slug 为 default',
+      },
       { name: 'workspace_get', summary: '按 ID 或 slug 查看空间' },
     ],
   },
@@ -347,11 +350,59 @@ export const MCP_TOOL_MODULES: McpToolModule[] = [
     summary:
       '把 HTML、CSS 和 JavaScript 原型放进安全沙盒，先看见真实效果，再决定怎样落到项目里。',
     tools: [
-      { name: 'preview_session_list', summary: '复用当前任务的预览会话' },
-      { name: 'preview_session_create', summary: '创建空会话，不会生成代码' },
-      { name: 'preview_file_upload', summary: '逐文件上传，单文件上限 256KB' },
-      { name: 'preview_file_list', summary: '打开页面前核对文件清单' },
-      { name: 'preview_file_get', summary: '读取单个预览文件' },
+      { name: 'preview_session_list', summary: '复用当前任务未过期的有效预览' },
+      {
+        name: 'preview_session_create',
+        summary: '创建空预览会话（生成专属哈希访问通道）',
+      },
+      {
+        name: 'preview_file_upload',
+        summary: '上传或覆写单个静态资源文件（单文件上限 256KB）',
+      },
+      { name: 'preview_file_edit', summary: '行级精准增量替换与代码段修补' },
+      { name: 'preview_file_delete', summary: '删除会话中的冗余或废弃文件' },
+      {
+        name: 'preview_file_list',
+        summary: '打开沙盒前核对会话文件清单与入口文件',
+      },
+      { name: 'preview_file_get', summary: '读取指定文件全文或指定行号区间' },
+    ],
+  },
+  {
+    id: 'preview_lpw',
+    name: 'Preview LPW',
+    summary:
+      '按 1.1 节点层级语义分块编排出版级交互文档，包含布局、容器与 26 种原子块，提供极速大纲与规范速查。',
+    tools: [
+      {
+        name: 'preview_lpw_init',
+        summary: '初始化或重置出版级 LPW 节点树骨架',
+      },
+      {
+        name: 'preview_lpw_node_add',
+        summary: '按层级追加或按位置插入结构化节点',
+      },
+      {
+        name: 'preview_lpw_node_edit',
+        summary: '精准编辑指定节点的属性、正文或容器变体',
+      },
+      { name: 'preview_lpw_node_remove', summary: '移除不需要的特定节点' },
+      {
+        name: 'preview_lpw_node_sort',
+        summary: '批量调整节点树排序与层级拓扑',
+      },
+      {
+        name: 'preview_lpw_meta_set',
+        summary: '声明或修改文档标题、导读与元数据',
+      },
+      {
+        name: 'preview_lpw_outline',
+        summary: '极速提取大纲树，辅助 Agent 掌握文档脉络',
+      },
+      {
+        name: 'preview_lpw_schema',
+        summary: '动态拉取 LPW Schema 规范定义与只读契约',
+      },
     ],
   },
   {
@@ -362,7 +413,10 @@ export const MCP_TOOL_MODULES: McpToolModule[] = [
     tools: [
       { name: 'pages_list', summary: '列出项目已发布页面与生效版本' },
       { name: 'pages_promote', summary: '将预览会话晋升为 Pages 快照' },
-      { name: 'pages_fork', summary: '从已发布页面派生可继续修改的 Preview 草稿' },
+      {
+        name: 'pages_fork',
+        summary: '从已发布页面派生可继续修改的 Preview 草稿',
+      },
     ],
   },
   {
@@ -400,7 +454,13 @@ export const MCP_WORKFLOW_STEPS: McpWorkflowStep[] = [
     step: 1,
     title: '先选定空间，再找到当前项目',
     body: 'Agent 先列出空间并选定一个，再按项目路径在该空间内查找。第一次接入的代码库，确认没有重复记录后再创建。',
-    tools: ['workspace_list', 'workspace_get', 'project_get', 'project_list', 'project_create'],
+    tools: [
+      'workspace_list',
+      'workspace_get',
+      'project_get',
+      'project_list',
+      'project_create',
+    ],
   },
   {
     step: 2,
@@ -417,35 +477,53 @@ export const MCP_WORKFLOW_STEPS: McpWorkflowStep[] = [
   },
   {
     step: 3,
-    title: '界面想法先放进预览',
-    body: '涉及页面或交互时，可以先上传一个可操作的沙盒原型。核对文件清单后，再把预览交给你体验。',
+    title: '界面想法放进预览，支持行级微调',
+    body: '涉及页面或交互时，可以先上传或按行编辑沙盒原型。局部改动通过行区间精准替换，核对清单后即可实时查看。',
     tools: [
       'preview_session_list',
       'preview_session_create',
       'preview_file_upload',
+      'preview_file_get',
+      'preview_file_edit',
+      'preview_file_delete',
       'preview_file_list',
     ],
   },
   {
     step: 4,
+    title: '结构化方案采用 LPW 节点编排',
+    body: '对于架构评审、技术简报或数据看板，Agent 按三层节点树增量构建出版级 LPW 文档，并在生成大纲确认无误后交付。',
+    tools: [
+      'preview_lpw_init',
+      'preview_lpw_node_add',
+      'preview_lpw_node_edit',
+      'preview_lpw_node_remove',
+      'preview_lpw_node_sort',
+      'preview_lpw_meta_set',
+      'preview_lpw_outline',
+      'preview_lpw_schema',
+    ],
+  },
+  {
+    step: 5,
     title: '草稿确认后晋升为 Pages',
     body: '需要对外路径式访问时，先列出已发布页面确认 slug，再把当前 Preview 晋升为不可变快照。密码保护只在控制台配置。',
     tools: ['pages_list', 'pages_promote', 'pages_fork'],
   },
   {
-    step: 5,
+    step: 6,
     title: '把预览带回同一次讨论',
     body: 'Agent 可以直接打开预览链接，也可以把预览作为问答补充发到交互页，让设计和反馈留在同一个会话里。',
     tools: ['qa_push_supplement', 'qa_get_answer'],
   },
   {
-    step: 6,
+    step: 7,
     title: '需要全局视野时翻阅 Wiki',
     body: '先找到已完成的 Wiki 版本，再读取相关页面。版本更新由仓库的 Git Webhook 自动触发。',
     tools: ['repoWiki_list', 'repoWiki_query'],
   },
   {
-    step: 7,
+    step: 8,
     title: '跨项目变化及时传递',
     body: '接口变化或依赖升级会影响其他代码库时，先查看目标项目的待处理约束，再推送或消费对应记录。',
     tools: ['pin_peek', 'pin_list', 'pin_push', 'pin_consume'],

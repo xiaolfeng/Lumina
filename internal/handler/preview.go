@@ -110,7 +110,7 @@ func (h *PreviewHandler) GetFile(ctx *gin.Context) {
 	// 对可执行 MIME 施加 sandbox，防止上传的恶意 HTML/SVG 在 Lumina 同源下执行脚本窃取令牌
 	// 存储的 HTML MIME 为常量 PreviewMimeHTML（"text/html; charset=utf-8"），故用 HasPrefix 匹配
 	if mime := strings.ToLower(file.MimeType); strings.HasPrefix(mime, "text/html") || mime == "image/svg+xml" || strings.Contains(mime, "javascript") {
-		ctx.Header("Content-Security-Policy", "sandbox allow-scripts")
+		ctx.Header("Content-Security-Policy", "sandbox allow-scripts allow-popups")
 	}
 	ctx.Data(http.StatusOK, file.MimeType, []byte(file.Content))
 }

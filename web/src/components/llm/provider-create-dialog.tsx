@@ -73,9 +73,7 @@ export function ProviderCreateDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>创建 Provider</DialogTitle>
-          <DialogDescription>
-            配置一个新的 LLM Provider。
-          </DialogDescription>
+          <DialogDescription>配置一个新的 LLM Provider。</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
@@ -134,7 +132,9 @@ export function ProviderCreateDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!name.trim() || !apiKey.trim() || createMutation.isPending}
+            disabled={
+              !name.trim() || !apiKey.trim() || createMutation.isPending
+            }
           >
             {createMutation.isPending ? '创建中...' : '创建'}
           </Button>

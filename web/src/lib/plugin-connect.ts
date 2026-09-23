@@ -62,10 +62,9 @@ export function buildNpxSkillsSnippet(origin: string): string {
 }
 
 export function buildClaudePluginSnippet(origin: string): string {
-  return [
-    buildClaudeMarketplaceAdd(origin),
-    buildClaudePluginInstall(),
-  ].join('\n')
+  return [buildClaudeMarketplaceAdd(origin), buildClaudePluginInstall()].join(
+    '\n',
+  )
 }
 
 export function buildCodexMarketplaceAdd(): string {

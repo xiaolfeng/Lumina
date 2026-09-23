@@ -6,7 +6,11 @@ import type {
   LoginStartResponseWrapper,
   LoginFinishResponseWrapper,
 } from '../models/response/biometric'
-import type { RegisterStartRequest, RegisterFinishRequest, LoginFinishRequest } from '../models/request/biometric'
+import type {
+  RegisterStartRequest,
+  RegisterFinishRequest,
+  LoginFinishRequest,
+} from '../models/request/biometric'
 
 /**
  * 获取生物特征登录可用性（公开接口）

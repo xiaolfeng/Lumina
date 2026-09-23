@@ -11,8 +11,10 @@ export function useWebhookConfig(configId: string) {
 export function useUpdateWebhookBranches(configId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (branches: string[]) => webhookApi.updateWebhookBranches(configId, branches),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['webhook-config', configId] }),
+    mutationFn: (branches: string[]) =>
+      webhookApi.updateWebhookBranches(configId, branches),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['webhook-config', configId] }),
   })
 }
 
@@ -20,7 +22,8 @@ export function useRegenerateWebhook(configId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => webhookApi.regenerateWebhook(configId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['webhook-config', configId] }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['webhook-config', configId] }),
   })
 }
 

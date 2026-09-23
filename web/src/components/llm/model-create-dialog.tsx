@@ -83,9 +83,7 @@ export function ModelCreateDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>创建 Model</DialogTitle>
-          <DialogDescription>
-            配置一个新的 LLM Model。
-          </DialogDescription>
+          <DialogDescription>配置一个新的 LLM Model。</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">

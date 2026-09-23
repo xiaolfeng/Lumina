@@ -14,12 +14,16 @@ function SessionDetailPage() {
   const { data, isLoading } = useSessionDetail(sessionId)
 
   if (isLoading) {
-    return <div className="text-center py-12 text-muted-foreground">加载中…</div>
+    return (
+      <div className="text-center py-12 text-muted-foreground">加载中…</div>
+    )
   }
 
   const session = data?.data
   if (!session) {
-    return <div className="text-center py-12 text-muted-foreground">会话不存在</div>
+    return (
+      <div className="text-center py-12 text-muted-foreground">会话不存在</div>
+    )
   }
 
   return (
@@ -32,7 +36,9 @@ function SessionDetailPage() {
       <SessionDetail session={session} />
 
       <div>
-        <h2 className="text-lg font-semibold mb-4">问题列表 ({session.questions?.length ?? 0})</h2>
+        <h2 className="text-lg font-semibold mb-4">
+          问题列表 ({session.questions?.length ?? 0})
+        </h2>
         <div className="space-y-3">
           {session.questions?.map((q: QuestionSummary) => (
             <QuestionCard key={q.id} question={q} />

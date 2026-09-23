@@ -7,7 +7,10 @@ export const Route = createFileRoute('/pages/$projectName/$slug/$')({
 
 function PagesSplatRoute() {
   const params = useParams({ from: '/pages/$projectName/$slug/$' })
-  const filepath = ((params as { _splat?: string })._splat ?? '').replace(/^\/+/, '')
+  const filepath = ((params as { _splat?: string })._splat ?? '').replace(
+    /^\/+/,
+    '',
+  )
   return (
     <PagesShowcasePage
       projectName={params.projectName}

@@ -81,7 +81,9 @@ function ProjectCombobox({
           aria-expanded={open}
           className="w-full justify-between"
         >
-          {selectedProject ? selectedProject.name : (placeholder ?? '选择项目...')}
+          {selectedProject
+            ? selectedProject.name
+            : (placeholder ?? '选择项目...')}
           <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -128,7 +130,14 @@ export function CreatePinDialog({ open, onOpenChange }: CreateDialogProps) {
   const createMutation = useCreatePin()
 
   const handleSubmit = () => {
-    if (!title.trim() || !content.trim() || !priority || !toProjectId || !fromProjectId) return
+    if (
+      !title.trim() ||
+      !content.trim() ||
+      !priority ||
+      !toProjectId ||
+      !fromProjectId
+    )
+      return
     createMutation.mutate(
       {
         title: title.trim(),

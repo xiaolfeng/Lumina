@@ -1,9 +1,10 @@
 import {
-  type ColumnDef,
+  
   flexRender,
   getCoreRowModel,
-  useReactTable,
+  useReactTable
 } from '@tanstack/react-table'
+import type {ColumnDef} from '@tanstack/react-table';
 
 import {
   Table,
@@ -59,20 +60,14 @@ export function DataTable<TData, TValue>({
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>
-                    {flexRender(
-                      cell.column.columnDef.cell,
-                      cell.getContext(),
-                    )}
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
               </TableRow>
             ))
           ) : (
             <TableRow>
-              <TableCell
-                colSpan={columns.length}
-                className="h-24 text-center"
-              >
+              <TableCell colSpan={columns.length} className="h-24 text-center">
                 暂无数据
               </TableCell>
             </TableRow>
