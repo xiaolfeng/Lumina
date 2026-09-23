@@ -378,6 +378,9 @@ func (l *QaLogic) UpdateQaConfig(ctx context.Context, req *qa.UpdateQaConfigRequ
 
 	// 更新运行时域名
 	if req.RuntimeDomain != nil {
+		if xErr := ValidateSiteDomain(ctx, *req.RuntimeDomain); xErr != nil {
+			return nil, xErr
+		}
 		if xErr := l.repo.info.UpdateValue(ctx, bConst.InfoKeySiteDomain, *req.RuntimeDomain); xErr != nil {
 			return nil, xError.NewError(ctx, xError.DatabaseError, "更新运行时域名失败", false, nil)
 		}

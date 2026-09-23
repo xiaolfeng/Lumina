@@ -4,7 +4,9 @@ import {
   MCP_KEY_PLACEHOLDER,
   MCP_PATH,
   MCP_SERVER_NAME,
+  MCP_TOOL_MODULES,
   MCP_TOOL_NAMES,
+  MCP_WORKFLOW_STEPS,
   buildAuthorizationHeader,
   buildAuthorizationValue,
   buildClaudeOAuthAdd,
@@ -45,8 +47,18 @@ const expectedTools = [
   'preview_session_create',
   'preview_session_list',
   'preview_file_upload',
+  'preview_file_edit',
+  'preview_file_delete',
   'preview_file_list',
   'preview_file_get',
+  'preview_lpw_init',
+  'preview_lpw_node_add',
+  'preview_lpw_node_edit',
+  'preview_lpw_node_remove',
+  'preview_lpw_node_sort',
+  'preview_lpw_meta_set',
+  'preview_lpw_outline',
+  'preview_lpw_schema',
   'workspace_list',
   'workspace_get',
   'pages_list',
@@ -104,12 +116,58 @@ describe('api key helpers', () => {
 })
 
 describe('tool catalog', () => {
-  it('lists the 30 backend MCP tools', () => {
-    expect(MCP_TOOL_NAMES).toHaveLength(30)
+  it('lists the 40 backend MCP tools', () => {
+    expect(MCP_TOOL_NAMES).toHaveLength(40)
     expect([...MCP_TOOL_NAMES].sort()).toEqual([...expectedTools].sort())
     expect(MCP_TOOL_NAMES).not.toContain('qa_pushQuestion')
     expect(MCP_TOOL_NAMES).not.toContain('memory_create')
     expect(MCP_TOOL_NAMES).not.toContain('repoWiki_analyze')
+  })
+
+  it('organizes tools into 8 core capability modules', () => {
+    expect(MCP_TOOL_MODULES).toHaveLength(8)
+    const moduleIds = MCP_TOOL_MODULES.map((mod) => mod.id)
+    expect(moduleIds).toEqual([
+      'workspace',
+      'project',
+      'qa',
+      'preview',
+      'preview_lpw',
+      'pages',
+      'repowiki',
+      'pin',
+    ])
+
+    const previewMod = MCP_TOOL_MODULES.find((m) => m.id === 'preview')
+    expect(previewMod?.tools.map((t) => t.name)).toContain('preview_file_edit')
+    expect(previewMod?.tools.map((t) => t.name)).toContain(
+      'preview_file_delete',
+    )
+    expect(previewMod?.tools).toHaveLength(7)
+
+    const lpwMod = MCP_TOOL_MODULES.find((m) => m.id === 'preview_lpw')
+    expect(lpwMod?.tools).toHaveLength(8)
+    expect(lpwMod?.tools.map((t) => t.name)).toEqual([
+      'preview_lpw_init',
+      'preview_lpw_node_add',
+      'preview_lpw_node_edit',
+      'preview_lpw_node_remove',
+      'preview_lpw_node_sort',
+      'preview_lpw_meta_set',
+      'preview_lpw_outline',
+      'preview_lpw_schema',
+    ])
+  })
+
+  it('includes incremental editing and LPW steps in workflow', () => {
+    expect(MCP_WORKFLOW_STEPS).toHaveLength(8)
+    const step3 = MCP_WORKFLOW_STEPS.find((s) => s.step === 3)
+    expect(step3?.tools).toContain('preview_file_edit')
+    expect(step3?.tools).toContain('preview_file_delete')
+
+    const step4 = MCP_WORKFLOW_STEPS.find((s) => s.step === 4)
+    expect(step4?.tools).toContain('preview_lpw_init')
+    expect(step4?.tools).toContain('preview_lpw_node_add')
   })
 })
 
