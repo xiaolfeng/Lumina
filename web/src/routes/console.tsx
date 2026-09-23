@@ -6,7 +6,7 @@ import {
   useNavigate,
   useSearch,
 } from '@tanstack/react-router'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion } from 'motion/react'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@lumina/components/ui/button'
 import {
@@ -104,23 +104,12 @@ function ConsoleLayout() {
           )}
         </motion.div>
 
-        <div
+        <main
           id="console-main"
           className="flex min-w-0 flex-1 flex-col gap-4 p-4 pt-0"
         >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              className="min-w-0"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -15 }}
-              transition={{ duration: 0.3, ease }}
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
-        </div>
+          <Outlet />
+        </main>
       </SidebarInset>
 
       <Toaster />
