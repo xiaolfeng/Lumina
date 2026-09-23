@@ -115,7 +115,7 @@ func main() {
 	}
 
 	// 确保末尾有且仅有一个换行符
-	releaseNotes = strings.TrimSpace(releaseNotes) + "\n"
+	releaseNotes = formatReleaseNotes(releaseNotes, gitCtx) + "\n"
 
 	if *outFlag != "" {
 		if err := os.MkdirAll(filepath.Dir(*outFlag), 0o755); err != nil {
@@ -219,24 +219,22 @@ func collectGitContext(currentTag, explicitPrevTag, repo string) (*gitContext, e
 }
 
 func buildSystemPrompt() string {
-	return `你是一名世界一流的开源系统架构师与工程发布专家。
-你的任务是根据输入的 Git 提交记录、统计数据（Diff Stat）与代码变动（Diff Snippet），撰写一份具有工业出版级美感与清晰度、符合互联网顶尖开源项目标准的 GitHub Release 发版说明。
+	return `你是一名开源项目发布说明编辑。根据 Git 提交记录、Diff Stat 与 Diff Snippet，撰写准确、简洁的 GitHub Release 正文。
 
-## 输出要求与格式规范
-1. 语言：统一使用专业、沉稳、精准的简体中文。代码符号、技术名词、组件名、架构名、文件路径保持英文原样。
-2. 结构排版（请使用标准 Markdown）：
-   - 第一部分：版本速览（1~2 句话总结本次版本最核心的交付价值与可感知变化，使用 blockquote 引用块格式）。
-   - 第二部分：根据变动事实，按以下板块分门别类（注意：仅列出本次确实存在变动的板块，严禁强行拼凑空板块）：
-     * ### 🚀 新增特性 (Features)
-     * ### ⚡ 优化与改进 (Improvements & Performance)
-     * ### 🐛 缺陷修复 (Bug Fixes)
-     * ### 🛠️ 基础设施与工程构建 (Infrastructure & CI/CD)
-     * ### ⚠️ 破坏性变更与升级指南 (Breaking Changes & Upgrade Notes) - 仅在涉及接口废弃、配置变更或不兼容调整时出现
-   - 第三部分：末尾附加完整对比链接与贡献者鸣谢。
-3. 条目写作规范：
-   - 每一条使用单层 bullet，格式如：- **模块/范围**: 简明扼要说明变更内容及其实际影响。([hash])
-   - 绝不简单照抄 commit message；要结合真实代码 diff 提炼出对开发者/运维者/用户有实质意义的描述。
-   - 严禁输出任何多余的客套前言、开场白（如“以下是发版说明”、“很高兴为您生成”等）或总结废话。直接输出 Markdown 正文。`
+## 排版要求
+1. 全文使用简体中文；代码符号、产品名、路径保持原样。参考以下版式，仅模仿信息层次，不借用示例项目的内容：
+   > [!IMPORTANT]
+   > 本次最值得关注的实际变化及其影响。可以分成两段，每段聚焦一个主题。
+
+   ### 新增特性
+   - 具体变化及其用户价值。
+
+   ### 修复与改进
+   - 具体修复及其影响。
+2. 重点摘要只写能够从输入核实的变化，突出影响；不要重复罗列提交。分类条目同样基于事实，按主题归纳，简明直接。
+3. 仅输出本次确实涉及的分类；基础设施等变更可放入“### 其他变更”。分类标题不加 emoji。
+4. 不要输出版本标题、逐条提交记录、对比链接、贡献者鸣谢或总结段落；程序会在正文之后附加提交记录与完整变更对比。
+5. 直接输出 Markdown 正文，不要使用代码围栏或客套话。`
 }
 
 func buildUserPrompt(ctx *gitContext) string {
@@ -327,114 +325,82 @@ func generateWithAI(ctx *gitContext, baseURL, model, apiKey string) (string, err
 		return "", fmt.Errorf("AI 返回内容为空")
 	}
 
-	content := strings.TrimSpace(chatResp.Choices[0].Message.Content)
-
-	// 如果输出没有包含比较链接，自动在文末附上标准的 compare 链接
-	if ctx.PreviousTag != "" && !strings.Contains(content, "/compare/") {
-		compareURL := fmt.Sprintf("https://github.com/%s/compare/%s...%s", ctx.Repo, ctx.PreviousTag, ctx.CurrentTag)
-		content += fmt.Sprintf("\n\n---\n**完整变更对比**: [%s...%s](%s)", ctx.PreviousTag, ctx.CurrentTag, compareURL)
-	}
-
-	return content, nil
+	return strings.TrimSpace(chatResp.Choices[0].Message.Content), nil
 }
 
-// renderFallbackTemplate 在没有 AI 或 AI 失败时本地基于 Conventional Commits 格式化
+// renderFallbackTemplate 在没有 AI 或 AI 失败时按提交类型整理正文。
 func renderFallbackTemplate(ctx *gitContext) string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("## Lumina · 微明 %s\n\n", ctx.CurrentTag))
-	sb.WriteString("> 本次更新包含以下变更与改进。\n\n")
-
-	var (
-		featGroup []string
-		fixGroup  []string
-		perfGroup []string
-		ciGroup   []string
-		miscGroup []string
-	)
-
-	reType := regexp.MustCompile(`^([0-9a-fA-F]+)\s+([a-zA-Z]+)(?:\(([^)]+)\))?:\s*(.*?)(?:\s+\(([^()]+)\))?$`)
+	var featGroup, fixGroup, otherGroup []string
+	reType := regexp.MustCompile(`^[[:xdigit:]]+\s+([a-zA-Z]+)(?:\([^)]+\))?!?:\s*(.*?)(?:\s+\([^()]+\))?$`)
 
 	for _, commit := range ctx.Commits {
 		matches := reType.FindStringSubmatch(commit)
-		if matches != nil {
-			hash := matches[1]
-			ctype := strings.ToLower(matches[2])
-			scope := matches[3]
-			msg := strings.TrimSpace(matches[4])
-			author := matches[5]
+		if matches == nil {
+			otherGroup = append(otherGroup, "- "+commit)
+			continue
+		}
 
-			authorSuffix := ""
-			if author != "" {
-				authorSuffix = fmt.Sprintf(" by @%s", author)
+		item := "- " + matches[2]
+		switch strings.ToLower(matches[1]) {
+		case "feat":
+			featGroup = append(featGroup, item)
+		case "fix", "perf", "refactor":
+			fixGroup = append(fixGroup, item)
+		default:
+			otherGroup = append(otherGroup, item)
+		}
+	}
+
+	var sb strings.Builder
+	sb.WriteString("> [!IMPORTANT]\n")
+	if len(ctx.Commits) == 0 {
+		sb.WriteString("> 本次发布暂无可列出的独立提交。\n")
+	} else {
+		highlights := make([]string, 0, 2)
+		for _, group := range [][]string{featGroup, fixGroup, otherGroup} {
+			if len(group) > 0 {
+				highlights = append(highlights, strings.TrimPrefix(group[0], "- "))
 			}
-
-			var item string
-			if scope != "" {
-				item = fmt.Sprintf("- **%s**: %s (%s)%s", scope, msg, hash, authorSuffix)
-			} else {
-				item = fmt.Sprintf("- %s (%s)%s", msg, hash, authorSuffix)
+			if len(highlights) == 2 {
+				break
 			}
+		}
+		sb.WriteString("> 本次更新重点：" + strings.Join(highlights, "；") + "。\n")
+	}
 
-			switch ctype {
-			case "feat":
-				featGroup = append(featGroup, item)
-			case "fix":
-				fixGroup = append(fixGroup, item)
-			case "perf", "refactor":
-				perfGroup = append(perfGroup, item)
-			case "ci", "build":
-				ciGroup = append(ciGroup, item)
-			default:
-				miscGroup = append(miscGroup, item)
+	for _, group := range []struct {
+		title string
+		items []string
+	}{
+		{"新增特性", featGroup},
+		{"修复与改进", fixGroup},
+		{"其他变更", otherGroup},
+	} {
+		if len(group.items) > 0 {
+			sb.WriteString("\n### " + group.title + "\n")
+			for _, item := range group.items {
+				sb.WriteString(item + "\n")
 			}
-		} else {
-			miscGroup = append(miscGroup, "- "+commit)
 		}
 	}
 
-	if len(featGroup) > 0 {
-		sb.WriteString("### 🚀 新增特性 (Features)\n")
-		for _, it := range featGroup {
-			sb.WriteString(it + "\n")
+	return strings.TrimSpace(sb.String())
+}
+
+func formatReleaseNotes(body string, ctx *gitContext) string {
+	var sb strings.Builder
+	sb.WriteString(strings.TrimSpace(body))
+
+	if len(ctx.Commits) > 0 {
+		sb.WriteString("\n\n### 变更记录\n")
+		for _, commit := range ctx.Commits {
+			sb.WriteString("- " + commit + "\n")
 		}
-		sb.WriteString("\n")
 	}
 
-	if len(perfGroup) > 0 {
-		sb.WriteString("### ⚡ 优化与改进 (Improvements & Performance)\n")
-		for _, it := range perfGroup {
-			sb.WriteString(it + "\n")
-		}
-		sb.WriteString("\n")
-	}
-
-	if len(fixGroup) > 0 {
-		sb.WriteString("### 🐛 缺陷修复 (Bug Fixes)\n")
-		for _, it := range fixGroup {
-			sb.WriteString(it + "\n")
-		}
-		sb.WriteString("\n")
-	}
-
-	if len(ciGroup) > 0 {
-		sb.WriteString("### 🛠️ 基础设施与工程构建 (Infrastructure & CI/CD)\n")
-		for _, it := range ciGroup {
-			sb.WriteString(it + "\n")
-		}
-		sb.WriteString("\n")
-	}
-
-	if len(miscGroup) > 0 {
-		sb.WriteString("### 📝 其他变更 (Other Changes)\n")
-		for _, it := range miscGroup {
-			sb.WriteString(it + "\n")
-		}
-		sb.WriteString("\n")
-	}
-
-	if ctx.PreviousTag != "" {
+	if ctx.PreviousTag != "" && ctx.PreviousTag != ctx.CurrentTag {
 		compareURL := fmt.Sprintf("https://github.com/%s/compare/%s...%s", ctx.Repo, ctx.PreviousTag, ctx.CurrentTag)
-		sb.WriteString(fmt.Sprintf("---\n**完整变更对比**: [%s...%s](%s)\n", ctx.PreviousTag, ctx.CurrentTag, compareURL))
+		sb.WriteString(fmt.Sprintf("\n完整变更记录：[%s...%s](%s)\n", ctx.PreviousTag, ctx.CurrentTag, compareURL))
 	}
 
 	return strings.TrimSpace(sb.String())
