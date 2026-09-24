@@ -289,6 +289,7 @@ export interface LpwCardsProps {
 export interface LpwMermaidProps {
   content: string
   caption?: string
+  width?: string
 }
 
 export type LpwChartType =
