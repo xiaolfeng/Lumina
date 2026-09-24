@@ -85,11 +85,11 @@ func (r *PageRepo) GetByIDs(ctx context.Context, ids []xSnowflake.SnowflakeID) (
 	return pages, nil
 }
 
-// List 分页获取页面列表（按更新时间降序；projectID / workspaceID 为零值时不过滤）
-func (r *PageRepo) List(ctx context.Context, projectID, workspaceID xSnowflake.SnowflakeID, page, size int) ([]*entity.Page, int64, *xError.Error) {
+// List 分页获取页面列表（按更新时间降序；projectID / workspaceID 为零值时不过滤；status 为空不过滤）
+func (r *PageRepo) List(ctx context.Context, projectID, workspaceID xSnowflake.SnowflakeID, status string, page, size int) ([]*entity.Page, int64, *xError.Error) {
 	pageReq := xModels.PageRequest{Page: int64(page), Size: int64(size)}.Normalize()
 	page, size = int(pageReq.Page), int(pageReq.Size)
-	r.log.Info(ctx, fmt.Sprintf("List - 分页获取页面列表 [projectID=%d, workspace=%d, page=%d, size=%d]", projectID.Int64(), workspaceID.Int64(), page, size))
+	r.log.Info(ctx, fmt.Sprintf("List - 分页获取页面列表 [projectID=%d, workspace=%d, status=%s, page=%d, size=%d]", projectID.Int64(), workspaceID.Int64(), status, page, size))
 
 	query := r.db.WithContext(ctx).Model(&entity.Page{})
 	if !projectID.IsZero() {
@@ -98,6 +98,9 @@ func (r *PageRepo) List(ctx context.Context, projectID, workspaceID xSnowflake.S
 	if !workspaceID.IsZero() {
 		projects := r.db.WithContext(ctx).Model(&entity.Project{}).Select("id").Where("workspace_id = ?", workspaceID)
 		query = query.Where("project_id IN (?)", projects)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
 	}
 
 	var total int64

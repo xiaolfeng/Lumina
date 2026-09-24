@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FolderCode, Plus, X } from 'lucide-react'
 import { Button } from '@lumina/components/ui/button'
 import {
   Dialog,
@@ -31,7 +32,8 @@ interface EditDialogProps {
 export function EditDialog({ open, onOpenChange, item }: EditDialogProps) {
   const [name, setName] = useState('')
   const [aliasName, setAliasName] = useState('')
-  const [matchPathInput, setMatchPathInput] = useState('')
+  const [paths, setPaths] = useState<string[]>([])
+  const [newPathInput, setNewPathInput] = useState('')
   const [description, setDescription] = useState('')
   const [workspaceId, setWorkspaceId] = useState('')
   const workspaceOptions = useWorkspaceOptions()
@@ -50,18 +52,28 @@ export function EditDialog({ open, onOpenChange, item }: EditDialogProps) {
     if (open && item) {
       setName(item.name)
       setAliasName(item.alias_name || '')
-      setMatchPathInput(item.match_path?.join(', ') ?? '')
+      setPaths(item.match_path ? [...item.match_path] : [])
+      setNewPathInput('')
       setDescription(item.description)
       setWorkspaceId(item.workspace_id)
     }
   }, [item, open])
 
+  const handleAddPath = () => {
+    const trimmed = newPathInput.trim()
+    if (!trimmed) return
+    if (!paths.includes(trimmed)) {
+      setPaths([...paths, trimmed])
+    }
+    setNewPathInput('')
+  }
+
+  const handleRemovePath = (index: number) => {
+    setPaths(paths.filter((_, i) => i !== index))
+  }
+
   const handleSubmit = () => {
     if (!item || !canSubmit) return
-    const matchPaths = matchPathInput
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
     updateMutation.mutate(
       {
         id: item.id,
@@ -70,7 +82,7 @@ export function EditDialog({ open, onOpenChange, item }: EditDialogProps) {
             workspaceId !== item.workspace_id ? workspaceId : undefined,
           name: name.trim(),
           alias_name: aliasName.trim() || undefined,
-          match_path: matchPaths,
+          match_path: paths,
           description: description.trim() || undefined,
         },
       },
@@ -168,17 +180,65 @@ export function EditDialog({ open, onOpenChange, item }: EditDialogProps) {
               placeholder="输入项目别名"
             />
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="e-match-path">匹配路径</Label>
-            <Input
-              id="e-match-path"
-              value={matchPathInput}
-              onChange={(e) => setMatchPathInput(e.target.value)}
-              placeholder="逗号分隔，如: /api/v1/*,/docs/*"
-            />
-            <p className="text-xs text-muted-foreground">
-              支持通配符 * 匹配，用于自动关联请求路径
+          {/* 本地 Agent 检出路径映射 Tag 列表 */}
+          <div className="border border-line bg-sand/40 p-3 space-y-2.5">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-sea-ink">
+              <FolderCode className="size-3.5 text-lagoon" />
+              <span>本地工作目录映射 (MatchPath)</span>
+            </div>
+            <p className="text-[11px] text-sea-ink-soft leading-relaxed">
+              供本地 Agent (如 MCP / CLI) 在此目录下工作时自动关联该项目。
             </p>
+            <div className="flex gap-2">
+              <Input
+                value={newPathInput}
+                onChange={(e) => setNewPathInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleAddPath()
+                  }
+                }}
+                placeholder="如: /Users/username/workspace/repo"
+                className="h-8 text-xs font-mono bg-foam"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddPath}
+                className="h-8 shrink-0 text-xs px-2.5"
+              >
+                <Plus className="size-3 mr-1" />
+                添加
+              </Button>
+            </div>
+            {paths.length > 0 ? (
+              <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                {paths.map((p, idx) => (
+                  <div
+                    key={p}
+                    className="flex items-center justify-between gap-2 bg-foam border border-line px-2.5 py-1 text-[11px] font-mono"
+                  >
+                    <span className="truncate text-sea-ink select-all">
+                      {p}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePath(idx)}
+                      className="text-sea-ink-soft hover:text-destructive shrink-0"
+                      title="移除此路径"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-[11px] text-sea-ink-soft italic">
+                暂未绑定路径映射（建议通过 Agent 自动绑定）
+              </div>
+            )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="e-desc">描述</Label>

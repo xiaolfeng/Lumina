@@ -133,7 +133,7 @@ func TestProjectLogic_List(t *testing.T) {
 	}
 
 	// 分页查询
-	listResp, xErr := l.List(ctx, 1, 10, 0)
+	listResp, xErr := l.List(ctx, 1, 10, 0, "")
 	if xErr != nil {
 		t.Fatalf("List failed: %v", xErr)
 	}

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "../ui/sheet";
 import { useAnnotationContext } from "./annotation-context";
 import type { RegisteredAnnotation } from "./annotation-context";
 import { isSafeAnnotationPattern } from "./safe-pattern";
@@ -314,8 +315,20 @@ export const AnnotationGutter: React.FC = () => {
   const annotations = ctx?.annotations ?? [];
   const asideRef = useRef<HTMLElement>(null);
   const [tops, setTops] = useState<Record<string, number>>({});
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isLg, setIsLg] = useState(false);
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const checkLg = () => {
+      setIsLg(window.innerWidth >= 1024);
+    };
+    checkLg();
+    window.addEventListener("resize", checkLg);
+    return () => window.removeEventListener("resize", checkLg);
+  }, []);
 
   useLayoutEffect(() => {
     if (annotations.length === 0) return;
@@ -362,6 +375,38 @@ export const AnnotationGutter: React.FC = () => {
     [annotations, tops],
   );
 
+  const isGroupExpanded = (key: string, groupLen: number) => {
+    if (groupLen <= 1) return true;
+    if (isLg) {
+      return !collapsedKeys.has(key);
+    }
+    return expandedKeys.has(key);
+  };
+
+  const handleToggleGroup = (key: string, currentlyExpanded: boolean) => {
+    if (currentlyExpanded) {
+      if (isLg) {
+        setCollapsedKeys((prev) => new Set([...prev, key]));
+      } else {
+        setExpandedKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+    } else {
+      if (isLg) {
+        setCollapsedKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      } else {
+        setExpandedKeys((prev) => new Set([...prev, key]));
+      }
+    }
+  };
+
   const clusterTops = useMemo(() => {
     const result: Record<string, number> = {};
     let minTop = 0;
@@ -386,12 +431,12 @@ export const AnnotationGutter: React.FC = () => {
         ref={asideRef}
         data-testid="annotation-gutter"
         aria-label="文档批注"
-        className="relative hidden w-64 shrink-0 self-stretch py-2 pr-2 md:block"
+        className="relative hidden w-60 lg:w-64 shrink-0 self-stretch py-2 pr-2 md:block"
       >
         {clusters.map((group) => {
           const key = group.map((g) => g.nodeId).join("-");
           const top = clusterTops[key] ?? (tops[group[0].nodeId] ?? 0);
-          const expanded = expandedKey === key || group.length === 1;
+          const expanded = isGroupExpanded(key, group.length);
 
           return (
             <div
@@ -411,7 +456,7 @@ export const AnnotationGutter: React.FC = () => {
                   {group.length > 1 ? (
                     <button
                       type="button"
-                      onClick={() => setExpandedKey(null)}
+                      onClick={() => handleToggleGroup(key, true)}
                       className="font-mono text-[10px] text-sea-ink-soft hover:text-sea-ink cursor-pointer"
                     >
                       收起
@@ -423,7 +468,7 @@ export const AnnotationGutter: React.FC = () => {
                   type="button"
                   data-testid="annotation-cluster"
                   aria-label={`展开 ${group.length} 条批注`}
-                  onClick={() => setExpandedKey(key)}
+                  onClick={() => handleToggleGroup(key, false)}
                   className="relative w-full cursor-pointer text-left"
                 >
                   <MessageBubble
@@ -440,35 +485,69 @@ export const AnnotationGutter: React.FC = () => {
         })}
       </aside>
 
+      {/* 移动端与 MD 屏幕下的优雅隐藏批注触发栏与侧边抽屉 */}
       <div
         data-testid="annotation-mobile-strip"
-        className="w-full border-t border-line/60 bg-surface/40 md:hidden"
+        className="fixed bottom-5 right-5 z-40 lg:hidden print:hidden"
       >
         <button
           type="button"
-          aria-expanded={mobileOpen}
+          aria-expanded={sheetOpen}
           aria-label={`查看 ${annotations.length} 条批注`}
-          onClick={() => setMobileOpen((v) => !v)}
-          className="flex w-full cursor-pointer items-center justify-between px-4 py-3 font-mono text-xs text-sea-ink"
+          onClick={() => {
+            setSheetOpen(true);
+          }}
+          className="flex cursor-pointer items-center gap-2 border border-line bg-surface-strong/95 px-3.5 py-2 font-mono text-xs text-sea-ink shadow-lg backdrop-blur-sm transition-all hover:border-lagoon hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lagoon/40"
         >
-          <span className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-lagoon" />
-            批注 ({annotations.length})
+          <MessageSquare className="h-4 w-4 text-lagoon" />
+          <span className="font-sans font-medium">批注</span>
+          <span className="flex h-4 min-w-4 items-center justify-center border border-lagoon/50 bg-lagoon/15 px-1 font-mono text-[10px] font-semibold text-lagoon-deep">
+            {annotations.length}
           </span>
-          <span className="text-sea-ink-soft">{mobileOpen ? "收起" : "展开"}</span>
         </button>
-        {mobileOpen ? (
-          <div className="space-y-3 px-4 pb-4">
+      </div>
+
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md bg-surface-strong border-l border-line p-0 flex flex-col font-sans"
+        >
+          <SheetHeader className="p-5 border-b border-line bg-surface/50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center border border-lagoon/40 bg-lagoon/10">
+                  <MessageSquare className="h-4 w-4 text-lagoon" />
+                </div>
+                <div>
+                  <SheetTitle className="font-serif text-base font-semibold text-sea-ink">
+                    文档批注与审查建议
+                  </SheetTitle>
+                  <SheetDescription className="font-mono text-[11px] text-sea-ink-soft">
+                    共 {annotations.length} 条批注 · 点击条目直达正文
+                  </SheetDescription>
+                </div>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
             {annotations.map((item) => (
-              <MessageBubble
+              <div
                 key={item.nodeId}
-                nodeId={item.nodeId}
-                annotation={item.annotation}
-              />
+                onClick={() => {
+                  setSheetOpen(false);
+                  ctx?.scrollToNode(item.nodeId);
+                }}
+              >
+                <MessageBubble
+                  nodeId={item.nodeId}
+                  annotation={item.annotation}
+                />
+              </div>
             ))}
           </div>
-        ) : null}
-      </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 };

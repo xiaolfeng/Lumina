@@ -116,15 +116,15 @@ func (l *ProjectLogic) GetByID(ctx context.Context, id string) (*apiProject.Proj
 	return l.toResponse(project), nil
 }
 
-// List 分页获取项目列表；workspaceID 为零时不过滤
-func (l *ProjectLogic) List(ctx context.Context, page, size int, workspaceID xSnowflake.SnowflakeID) (*apiProject.ProjectListResponse, *xError.Error) {
-	l.log.Info(ctx, fmt.Sprintf("List - 获取项目列表 [page=%d, size=%d, workspace=%d]", page, size, workspaceID.Int64()))
+// List 分页获取项目列表；workspaceID 为零时不过滤，search 不为空时模糊搜索
+func (l *ProjectLogic) List(ctx context.Context, page, size int, workspaceID xSnowflake.SnowflakeID, search string) (*apiProject.ProjectListResponse, *xError.Error) {
+	l.log.Info(ctx, fmt.Sprintf("List - 获取项目列表 [page=%d, size=%d, workspace=%d, search=%s]", page, size, workspaceID.Int64(), search))
 
 	pageReq := xModels.PageRequest{Page: int64(page), Size: int64(size)}.Normalize()
 	page = int(pageReq.Page)
 	size = int(pageReq.Size)
 
-	projects, total, xErr := l.repo.project.List(ctx, page, size, workspaceID)
+	projects, total, xErr := l.repo.project.List(ctx, page, size, workspaceID, search)
 	if xErr != nil {
 		return nil, xErr
 	}

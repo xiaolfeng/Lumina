@@ -52,6 +52,9 @@ func (h *ProjectHandler) CreateProject(ctx *gin.Context) {
 // @Param       page           query     int      false  "页码"
 // @Param       size           query     int      false  "每页数量"
 // @Param       workspace_id   query     string   false  "所属空间ID"
+// @Param       search         query     string   false  "项目名称/别名模糊搜索"
+// @Param       page           query     int      false  "页码（默认 1）"
+// @Param       size           query     int      false  "每页数量（默认 10）"
 // @Success     200  {object}  apiCommon.BaseResponse{data=apiProject.ProjectListResponse}  "获取成功"
 // @Failure     401  {object}  apiCommon.BaseResponse  "未授权"
 // @Router      /api/v1/project [GET]
@@ -63,7 +66,7 @@ func (h *ProjectHandler) ListProjects(ctx *gin.Context) {
 		return
 	}
 
-	resp, xErr := h.service.projectLogic.List(ctx, req.Page, req.Size, req.WorkspaceID)
+	resp, xErr := h.service.projectLogic.List(ctx, req.Page, req.Size, req.WorkspaceID, req.Search)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return

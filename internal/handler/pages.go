@@ -23,6 +23,7 @@ var _ = apiCommon.BaseResponse{}
 // @Param       Authorization  header  string  true  "Bearer Access Token"
 // @Param       project_id     query   string  false "项目ID"
 // @Param       workspace_id   query   string  false "空间ID"
+// @Param       status         query   string  false "状态筛选（published/archived）"
 // @Param       page           query   int     false "页码"
 // @Param       size           query   int     false "每页数量"
 // @Success     200  {object}  apiCommon.BaseResponse{data=apiPages.PageListResponse}  "查询成功"
@@ -33,7 +34,7 @@ func (h *PagesHandler) ListPages(ctx *gin.Context) {
 	if !BindQuery(ctx, &req) {
 		return
 	}
-	resp, xErr := h.service.pagesLogic.List(ctx.Request.Context(), req.ProjectID, req.WorkspaceID, req.Page, req.Size)
+	resp, xErr := h.service.pagesLogic.List(ctx.Request.Context(), req.ProjectID, req.WorkspaceID, req.Status, req.Page, req.Size)
 	if xErr != nil {
 		_ = ctx.Error(xErr)
 		return

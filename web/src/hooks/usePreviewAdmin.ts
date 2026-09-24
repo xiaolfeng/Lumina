@@ -39,6 +39,14 @@ export function useDeletePreviewSession() {
   })
 }
 
+export function usePreviewSessionDetail(hash: string | null) {
+  return useQuery({
+    queryKey: ['preview', 'session-detail', hash],
+    queryFn: () => api.getPreviewSessionDetail(hash!),
+    enabled: Boolean(hash),
+  })
+}
+
 export function useDeletePreviewFile() {
   const queryClient = useQueryClient()
   return useMutation({

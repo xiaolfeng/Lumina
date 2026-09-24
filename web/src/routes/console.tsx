@@ -4,8 +4,9 @@ import {
   redirect,
   useLocation,
   useNavigate,
+  useSearch,
 } from '@tanstack/react-router'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion } from 'motion/react'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@lumina/components/ui/button'
 import {
@@ -48,9 +49,23 @@ const headerVariants = {
 function ConsoleLayout() {
   const location = useLocation()
   const navigate = useNavigate()
+  const search = useSearch({ strict: false }) as unknown as { from?: string }
+
   const isSettingsRoute =
     location.pathname === '/console/settings' ||
-    location.pathname.startsWith('/console/settings/')
+    location.pathname.startsWith('/console/settings/') ||
+    location.pathname === '/console/profile' ||
+    location.pathname === '/console/apikey' ||
+    location.pathname === '/console/ssh' ||
+    location.pathname === '/console/workspace'
+
+  const handleExitSettings = () => {
+    if (search.from && search.from.startsWith('/console/')) {
+      void navigate({ to: search.from })
+    } else {
+      void navigate({ to: '/console/dashboard' })
+    }
+  }
 
   return (
     <SidebarProvider>
@@ -74,41 +89,27 @@ function ConsoleLayout() {
             <ConsoleBreadcrumb />
           </div>
 
-          {/* 🌟 系统设置下顶栏右侧集中唯一的退出返回按钮 */}
+          {/* 🌟 设置中心顶栏右侧统一的退出返回按钮 */}
           {isSettingsRoute && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void navigate({ to: '/console/dashboard' })}
+              onClick={handleExitSettings}
               className="flex items-center gap-2 rounded-none border-line bg-foam text-xs text-sea-ink hover:border-lagoon hover:bg-chip-bg hover:text-lagoon-deep"
-              title="退出系统设置并返回控制台主看板 (ESC)"
+              title="退出设置并返回"
             >
               <ArrowLeft className="size-3.5" />
-              <span>退出设置返回看板</span>
-              <kbd className="font-mono text-[9.5px] bg-sand border border-line px-1 py-0.5 text-sea-ink-soft">
-                ESC
-              </kbd>
+              <span>{search.from ? '返回来源页面' : '退出设置返回看板'}</span>
             </Button>
           )}
         </motion.div>
 
-        <div
+        <main
           id="console-main"
           className="flex min-w-0 flex-1 flex-col gap-4 p-4 pt-0"
         >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              className="min-w-0"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -15 }}
-              transition={{ duration: 0.3, ease }}
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
-        </div>
+          <Outlet />
+        </main>
       </SidebarInset>
 
       <Toaster />

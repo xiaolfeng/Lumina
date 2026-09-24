@@ -183,7 +183,7 @@ describe('LpwDocumentViewer', () => {
     expect(screen.queryByText(/IMPRIMATUR/)).toBeNull()
   })
 
-  it('Q-04 批注栏在纸张外部，没有视口 fixed FAB 和右上角 label', async () => {
+  it('Q-04 批注栏在纸张外部，没有右上角 label', async () => {
     const source = JSON.stringify({
       version: '1.1',
       meta: { title: '批注纸外' },
@@ -208,12 +208,11 @@ describe('LpwDocumentViewer', () => {
         },
       ],
     })
-    const { container } = render(<LpwDocumentViewer source={source} />)
+    render(<LpwDocumentViewer source={source} />)
     const gutter = await screen.findByTestId('annotation-gutter')
     expect(gutter).toBeTruthy()
     const paper = await screen.findByTestId('lpw-paper')
     expect(paper.querySelector('[data-testid="annotation-gutter"]')).toBeNull()
-    expect(container.querySelector('.fixed')).toBeNull()
     expect(screen.queryByRole('button', { name: /批注：/ })).toBeNull()
     expect(document.getElementById('frame-md-1')).toBeTruthy()
   })

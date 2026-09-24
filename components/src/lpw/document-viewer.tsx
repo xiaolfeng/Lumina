@@ -50,10 +50,10 @@ export const LpwDocumentViewer: React.FC<LpwDocumentViewerProps> = ({
 
   return (
     <AnnotationProvider>
-      <div className="w-full max-w-7xl mx-auto px-3 py-4 sm:px-6 sm:py-8 flex justify-center items-start gap-8 min-w-0">
+      <div className="w-full max-w-7xl mx-auto px-3 py-4 sm:px-6 sm:py-8 flex justify-center items-start gap-4 lg:gap-8 min-w-0">
         <div
           data-testid="lpw-paper"
-          className="@container/lpw w-full max-w-5xl shrink-0 bg-surface-strong border border-line shadow-[0_18px_60px_rgba(43,32,24,0.07)] relative text-sea-ink font-sans min-w-0"
+          className="@container/lpw w-full max-w-5xl flex-1 bg-surface-strong border border-line shadow-[0_18px_60px_rgba(43,32,24,0.07)] relative text-sea-ink font-sans min-w-0"
         >
           <div aria-hidden="true" className="h-0.5 bg-gradient-to-r from-lagoon via-palm/70 to-transparent" />
 

@@ -5,6 +5,7 @@ import type { LpwBlockSlotProps, LpwImageProps } from '../types'
 
 export const ImageBlock: React.FC<LpwBlockSlotProps<LpwImageProps>> = ({
   props,
+  location,
 }) => {
   const [hasError, setHasError] = useState(false)
   const runtime = useLpwRuntime()
@@ -13,6 +14,9 @@ export const ImageBlock: React.FC<LpwBlockSlotProps<LpwImageProps>> = ({
   useEffect(() => {
     setHasError(false)
   }, [props.src])
+
+  const isNested = Boolean(location?.idPath && location.idPath.length > 0)
+  const targetWidth = props.width ? props.width : isNested ? '100%' : '80%'
 
   if (hasError) {
     return (
@@ -31,14 +35,18 @@ export const ImageBlock: React.FC<LpwBlockSlotProps<LpwImageProps>> = ({
   }
 
   return (
-    <figure className="flex max-w-full min-w-0 flex-col items-center font-sans">
-      <div className="max-w-full min-w-0 border border-line bg-surface p-1.5">
+    <figure
+      data-testid="image-block"
+      className="flex max-w-full min-w-0 flex-col items-center font-sans"
+      style={{ width: targetWidth, maxWidth: '100%', margin: '0 auto' }}
+    >
+      <div className="w-full max-w-full min-w-0 border border-line bg-surface p-1.5 flex justify-center">
         <img
           src={resolvedSrc}
           alt={props.alt}
           style={props.width ? { width: props.width } : undefined}
           onError={() => setHasError(true)}
-          className="max-w-full object-contain bg-surface-muted/20"
+          className="w-full max-w-full object-contain bg-surface-muted/20"
         />
       </div>
       {props.caption && (

@@ -1362,6 +1362,11 @@
             "caption": {
               "type": "string",
               "maxLength": 200
+            },
+            "width": {
+              "type": "string",
+              "maxLength": 16,
+              "pattern": "^(auto|[0-9]{1,4}(px|%)?)$"
             }
           }
         },

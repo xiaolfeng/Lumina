@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useLocation, useNavigate, useSearch } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Search } from 'lucide-react'
 import {
@@ -14,6 +14,8 @@ export type SettingsTabId =
   | 'site'
   | 'profile'
   | 'apikey'
+  | 'ssh'
+  | 'workspace'
   | 'qa'
   | 'preview'
   | 'repowiki'
@@ -39,7 +41,7 @@ export interface SettingsCategoryGroup {
 
 export const SETTINGS_GROUPS: SettingsCategoryGroup[] = [
   {
-    groupLabel: '基础标识',
+    groupLabel: '账号与凭据',
     items: [
       {
         id: 'site',
@@ -66,6 +68,29 @@ export const SETTINGS_GROUPS: SettingsCategoryGroup[] = [
         description: '发放与管理用于 MCP 及 REST API 调用的访问令牌。',
         keywords: ['apikey', 'token', '令牌', '密钥'],
         externalPath: '/console/apikey',
+      },
+      {
+        id: 'ssh',
+        name: 'SSH 密钥',
+        slug: 'sys.ssh.*',
+        chip: '加密',
+        description: '配置用于访问私有 Git 仓库与 RepoWiki 的 SSH 密钥。',
+        keywords: ['ssh', 'git', '密钥', '私钥', '公钥'],
+        externalPath: '/console/ssh',
+      },
+    ],
+  },
+  {
+    groupLabel: '空间与组织',
+    items: [
+      {
+        id: 'workspace',
+        name: '工作空间',
+        slug: 'sys.workspace.*',
+        chip: '多空间',
+        description: '管理工作空间隔离环境、空间图标与默认空间标记。',
+        keywords: ['workspace', '工作空间', '空间', '隔离', '租户'],
+        externalPath: '/console/workspace',
       },
     ],
   },
@@ -155,9 +180,18 @@ export const SETTINGS_GROUPS: SettingsCategoryGroup[] = [
 
 export function SettingsSidebar() {
   const navigate = useNavigate()
+  const location = useLocation()
   const search = useSearch({ strict: false })
-  const currentTab = search.tab || 'site'
+  const fromParam = (search as { from?: string }).from
   const [filterQuery, setFilterQuery] = useState('')
+
+  const currentTab = useMemo(() => {
+    if (location.pathname === '/console/profile') return 'profile'
+    if (location.pathname === '/console/apikey') return 'apikey'
+    if (location.pathname === '/console/ssh') return 'ssh'
+    if (location.pathname === '/console/workspace') return 'workspace'
+    return (search as { tab?: string }).tab || 'site'
+  }, [location.pathname, search])
 
   const filteredGroups = useMemo(() => {
     if (!filterQuery.trim()) return SETTINGS_GROUPS
@@ -175,12 +209,18 @@ export function SettingsSidebar() {
 
   const handleSelectTab = (item: SettingsCategoryItem) => {
     if (item.externalPath) {
-      void navigate({ to: item.externalPath })
+      void (navigate as any)({
+        to: item.externalPath,
+        search: fromParam ? { from: fromParam } : undefined,
+      })
       return
     }
-    void navigate({
+    void (navigate as any)({
       to: '/console/settings',
-      search: { tab: item.id as 'site' | 'qa' | 'preview' | 'repowiki' | 'security' | 'provider' | 'model' | 'agent' },
+      search: {
+        tab: item.id,
+        ...(fromParam ? { from: fromParam } : {}),
+      },
       replace: true,
     })
   }

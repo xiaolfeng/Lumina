@@ -197,7 +197,11 @@ describe('annotation', () => {
     expect(container.querySelector('#frame-md-annotated')).toBeTruthy()
   })
 
-  it('Q-04 重叠批注压缩，点击后展开', async () => {
+  it('Q-04 MD 尺寸下重叠批注压缩，点击后展开；LG 尺寸下默认展开', async () => {
+    // 模拟 MD 大小 (例如 800px)
+    window.innerWidth = 800
+    window.dispatchEvent(new Event('resize'))
+
     const ann: LpwAnnotation = { kind: 'note', message: '第一条' }
     const ann2: LpwAnnotation = { kind: 'issue', message: '第二条' }
     render(
@@ -220,6 +224,38 @@ describe('annotation', () => {
     expect(screen.getAllByTestId('annotation-bubble').length).toBeGreaterThanOrEqual(
       2,
     )
+
+    // 切回 LG 尺寸 (1200px)
+    window.innerWidth = 1200
+    window.dispatchEvent(new Event('resize'))
+  })
+
+  it('移动端/MD 浮动批注按钮与精致侧边抽屉设计', async () => {
+    window.innerWidth = 640
+    window.dispatchEvent(new Event('resize'))
+
+    const ann: LpwAnnotation = { kind: 'note', message: '移动端批注' }
+    render(
+      <div data-testid="lpw-paper">
+        <AnnotationProvider>
+          <AnnotationFrame nodeId="n-m" annotation={ann}>
+            <div>移动正文</div>
+          </AnnotationFrame>
+          <AnnotationGutter />
+        </AnnotationProvider>
+      </div>,
+    )
+
+    const triggerBtn = screen.getByRole('button', { name: /查看 1 条批注/ })
+    expect(triggerBtn).toBeTruthy()
+    fireEvent.click(triggerBtn)
+
+    // 打开抽屉
+    expect(await screen.findByText('文档批注与审查建议')).toBeTruthy()
+    expect(screen.getAllByText('移动端批注').length).toBeGreaterThanOrEqual(1)
+
+    window.innerWidth = 1200
+    window.dispatchEvent(new Event('resize'))
   })
 
   it('supports unicode and case-insensitive flags combined (iu)', () => {

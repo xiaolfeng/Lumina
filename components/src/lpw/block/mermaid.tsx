@@ -5,11 +5,18 @@ import { MermaidViewport } from './mermaid-viewport'
 
 export const MermaidBlock: React.FC<LpwBlockSlotProps<LpwMermaidProps>> = ({
   props,
+  location,
 }) => {
   const fenced = '```mermaid\n' + props.content.trim() + '\n```'
+  const isNested = Boolean(location?.idPath && location.idPath.length > 0)
+  const targetWidth = props.width ? props.width : isNested ? '100%' : '80%'
 
   return (
-    <figure data-testid="mermaid-block" className="font-sans">
+    <figure
+      data-testid="mermaid-block"
+      className="font-sans"
+      style={{ width: targetWidth, maxWidth: '100%', margin: '0 auto' }}
+    >
       <MermaidViewport>
         <Markdown>{fenced}</Markdown>
       </MermaidViewport>

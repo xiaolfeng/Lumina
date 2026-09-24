@@ -90,7 +90,7 @@ func GetLpwTextSpec(kindFilter, typeFilter string) string {
 		sb.WriteString("  image:       props: src*(str), alt*(str), caption(str), width(str)\n")
 		sb.WriteString("  divider:     props: {} (无必填字段)\n")
 		sb.WriteString("  cards:       props: items*([ {title*, description, href} ], 1..12)\n")
-		sb.WriteString("  mermaid:     props: content*(str: Mermaid 语法, 1..8192), caption(str)\n")
+		sb.WriteString("  mermaid:     props: content*(str: Mermaid 语法, 1..8192), caption(str), width(str)\n")
 		sb.WriteString("  comparison:  props: plans*([ {name*, recommended(bool)} ]), rows*([ {dimension*, values*([ {text*, verdict:\"good\"|\"warn\"|\"bad\"} ])} ]), title\n")
 		sb.WriteString("  progress:    props: items*([ {label*, value*(0..100), status:\"wait\"|\"process\"|\"finish\"|\"error\"} ], 1..12), title\n")
 		sb.WriteString("  tree:        props: nodes*([ {label*, note, children:[treeNode]} ]), title\n")
@@ -240,7 +240,8 @@ func getSpecificTypeSpec(nodeType string) string {
 属性:
   props: {
     content: string (合法的 Mermaid 源码文本，如 graph TD / sequenceDiagram)*,
-    caption: string (图表注脚说明)
+    caption: string (图表注脚说明),
+    width: string (可选宽度，如 "80%" 或 "600px", 默认 "80%")
   }`
 
 	case "table":

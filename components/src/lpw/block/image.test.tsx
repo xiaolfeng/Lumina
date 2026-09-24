@@ -28,6 +28,33 @@ describe('ImageBlock', () => {
     expect(screen.getByText('图 1. 架构流向')).toBeTruthy()
   })
 
+  it('默认页面级宽度应为 80%，嵌套在 layout/container 内时应为 100%', () => {
+    const { rerender } = render(
+      <ImageBlock
+        blockId="img-default"
+        props={{
+          src: '/preview.png',
+          alt: '顶层图片',
+        }}
+        location={{ jsonPath: '/content/0', idPath: [] }}
+      />,
+    )
+    const figTop = screen.getByTestId('image-block')
+    expect(figTop.style.width).toBe('80%')
+
+    rerender(
+      <ImageBlock
+        blockId="img-nested"
+        props={{
+          src: '/preview.png',
+          alt: '嵌套图片',
+        }}
+        location={{ jsonPath: '/content/0/children/0', idPath: ['container-1'] }}
+      />,
+    )
+    expect(figTop.style.width).toBe('100%')
+  })
+
   it('图片加载失败触发 onError 时应切换为占位卡', () => {
     render(
       <ImageBlock

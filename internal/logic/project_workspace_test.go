@@ -126,11 +126,11 @@ func TestProjectUpdateWorkspacePreservesProjectAndLists(t *testing.T) {
 	if resp.ID.String() != "100000000000000003" || resp.AliasName != "alias" || resp.Description != "original" || len(resp.MatchPath) != 1 || resp.MatchPath[0] != "/test" {
 		t.Fatalf("migration changed project identity or fields: %+v", resp)
 	}
-	oldList, xErr := l.List(ctx, 1, 10, 100000000000000001)
+	oldList, xErr := l.List(ctx, 1, 10, 100000000000000001, "")
 	if xErr != nil || oldList.Total != 0 {
 		t.Fatalf("old list = %+v, error = %v", oldList, xErr)
 	}
-	newList, xErr := l.List(ctx, 1, 10, 100000000000000002)
+	newList, xErr := l.List(ctx, 1, 10, 100000000000000002, "")
 	if xErr != nil || newList.Total != 1 || newList.Items[0].ID != resp.ID {
 		t.Fatalf("new list = %+v, error = %v", newList, xErr)
 	}
