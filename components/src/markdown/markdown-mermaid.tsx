@@ -7,6 +7,7 @@ import rehypeHighlight from 'rehype-highlight'
 import rehypeKatex from 'rehype-katex'
 import rehypeMermaid from 'rehype-mermaid'
 import { remarkFencedBlocks } from './remark-fenced-blocks'
+import { MarkdownTable } from './markdown-table'
 import { Callout, Card, Steps, Step } from './fenced-components'
 
 /**
@@ -46,6 +47,7 @@ export default function MarkdownMermaid({ children, className, components: userC
           card: Card,
           steps: Steps,
           step: Step,
+          table: MarkdownTable,
           ...(userComponents || {}),
         } as never}
         {...rest}

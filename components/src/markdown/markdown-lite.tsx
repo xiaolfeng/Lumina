@@ -6,6 +6,7 @@ import remarkMath from "remark-math";
 import rehypeSlug from "rehype-slug";
 import { cn } from "../lib/utils";
 import { remarkFencedBlocks } from "./remark-fenced-blocks";
+import { MarkdownTable } from "./markdown-table";
 import { Callout, Card, Steps, Step } from "./fenced-components";
 
 /**
@@ -64,6 +65,7 @@ export function MarkdownLite({
             card: Card,
             steps: Steps,
             step: Step,
+            table: MarkdownTable,
             ...(userComponents || {}),
           } as never
         }

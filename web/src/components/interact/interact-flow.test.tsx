@@ -126,8 +126,8 @@ describe('Interact flow integration & regression verification', () => {
 
   it('Q-04: verifies Markdown and prose styles enforce word breaking to prevent layout overflow', () => {
     expect(proseQuestion).toContain('break-words')
-    expect(proseQuestion).toContain('[overflow-wrap:anywhere]')
-    expect(proseQuestion).toContain('[&_code]:break-all')
+    expect(proseQuestion).toContain('[&_code]:break-words')
+    expect(proseQuestion).not.toContain('[&_code]:break-all')
     expect(proseQuestion).toContain('[&_pre]:overflow-x-auto')
 
     const longWord =

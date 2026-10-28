@@ -1,6 +1,74 @@
 /* ─── 微明色盘 · 共享主题 ───────────────────────── */
 
-@import 'katex/dist/katex.min.css';
+@import "katex/dist/katex.min.css";
+
+/* ─── KaTeX · 长公式块内横向滚动 ─────────────────────── */
+/* katex.min.css 将 .katex-display > .katex 设为 nowrap，超宽公式会直接溢出
+   公式块撑破版面。改为 flex + margin auto：放得下时保持居中，放不下时贴左
+   并在块内出现横向滚动条；padding-bottom 为滚动条预留高度，防止遮挡下标。 */
+.katex-display {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.6em;
+  scrollbar-width: thin;
+  /* 滚动边缘渐隐阴影提示：当超长公式横向溢出时呈现柔和阴影，指示可水平滑动 */
+  background:
+    /* 两侧随内容滚动的背景遮罩，滚动到底部时遮住对应侧的阴影 */
+    linear-gradient(to right, var(--bg-base, #faf7f1) 30%, transparent),
+    linear-gradient(to left, var(--bg-base, #faf7f1) 30%, transparent) 100% 0,
+    /* 容器两端固定边缘的微弱内阴影 */
+    radial-gradient(
+        farthest-side at 0 50%,
+        var(--line, rgba(43, 32, 24, 0.12)),
+        transparent
+      ),
+    radial-gradient(
+        farthest-side at 100% 50%,
+        var(--line, rgba(43, 32, 24, 0.12)),
+        transparent
+      )
+      100% 0;
+  background-repeat: no-repeat;
+  background-size:
+    2.5rem 100%,
+    2.5rem 100%,
+    1rem 100%,
+    1rem 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+.katex-display > .katex {
+  margin-inline: auto;
+  flex-shrink: 0;
+}
+
+/* 修复带 \tag{...} 编号的公式在 flex 下宽度收缩导致公式内容与右侧编号重叠：
+   将带编号公式的 .katex-html 重构为基于 flex 的流式排版，让 .tag 脱离绝对定位参与实际宽度计算，
+   移除固定的 padding-right: 4rem，完美支持超长编号自适应撑开且不偏心短公式。 */
+.katex-display:has(.tag) > .katex {
+  width: 100%;
+  position: relative;
+}
+
+.katex-display:has(.tag) > .katex > .katex-html {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.katex-display:has(.tag) > .katex > .katex-html::before {
+  content: "";
+  margin-left: auto;
+}
+
+.katex-display:has(.tag) > .katex > .katex-html > .tag {
+  position: relative;
+  margin-left: auto;
+  padding-left: 1.5rem;
+  flex-shrink: 0;
+  align-self: center;
+}
 
 /* ─── 微明色盘 · 烛照幽微 ─────────────────────────────── */
 /* 以幽暗为底，燃一寸静烛。不求烈日灼目，只愿微光渡桥。 */
@@ -129,7 +197,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
 
   /* ── 微明色盘 · @theme 映射（自动生成语义工具类） ── */
   /* 意象层 */
@@ -208,7 +276,7 @@
 
 /* ── 排版工具类（全局约定，非组件样式） ── */
 .display-title {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: "Fraunces", Georgia, serif;
   text-wrap: balance;
 }
 
@@ -334,4 +402,3 @@
 :root {
   --splitter-hit-size: 14px;
 }
-
